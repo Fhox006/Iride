@@ -686,7 +686,11 @@ constructor(
                 )
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
-                database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
+                database.playlists(sortType, descending).map { playlists ->
+                    playlists
+                        .filterNot { it.id.startsWith("LP_") }
+                        .filterYoutubeShorts(hideYoutubeShorts)
+                }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
@@ -857,7 +861,11 @@ constructor(
         .map { it[HideYoutubeShortsKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideYoutubeShorts ->
-            database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
+            database.playlists(PlaylistSortType.CREATE_DATE, true).map { playlists ->
+                playlists
+                    .filterNot { it.id.startsWith("LP_") }
+                    .filterYoutubeShorts(hideYoutubeShorts)
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val lastLikedDate = database.lastLikedSongDate()

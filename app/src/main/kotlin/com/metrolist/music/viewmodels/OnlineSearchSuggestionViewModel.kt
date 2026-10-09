@@ -35,6 +35,10 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -46,6 +50,7 @@ class OnlineSearchSuggestionViewModel
         database: MusicDatabase,
     ) : ViewModel() {
         val query = MutableStateFlow("")
+        var previewResultsEnabled = false
         private val _viewState = MutableStateFlow(SearchSuggestionViewState())
         val viewState = _viewState.asStateFlow()
 
@@ -77,7 +82,16 @@ class OnlineSearchSuggestionViewModel
                                         )
                                     }
                             } else {
-                                val result = YouTube.searchSuggestions(query).getOrNull()
+                                val (result, summary) = coroutineScope {
+                                    val completions = async { YouTube.searchSuggestions(query).getOrNull() }
+                                    val previews = async {
+                                        if (previewResultsEnabled && query.trim().length >= 3) {
+                                            YouTube.searchSummary(query).getOrNull()
+                                        } else null
+                                    }
+                                    completions.await() to previews.await()
+                                }
+                                currentCoroutineContext().ensureActive()
                                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                                 val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
@@ -85,7 +99,7 @@ class OnlineSearchSuggestionViewModel
                                     .searchHistory(query)
                                     .map { it.take(3) }
                                     .map { history ->
-                                        val remainingSlots = (3 - history.size).coerceAtLeast(0)
+                                        val remainingSlots = (6 - history.size).coerceAtLeast(0)
                                         SearchSuggestionViewState(
                                             history = history,
                                             suggestions =
@@ -96,13 +110,13 @@ class OnlineSearchSuggestionViewModel
                                                     }
                                                     ?.take(remainingSlots)
                                                     .orEmpty(),
-                                            items =
-                                                result
-                                                    ?.recommendedItems
-                                                    ?.distinctBy { it.id }
-                                                    ?.filterExplicit(hideExplicit)
-                                                    ?.filterVideoSongs(hideVideoSongs)
-                                                    .orEmpty(),
+                                            items = (
+                                                result?.recommendedItems.orEmpty() +
+                                                    summary?.summaries.orEmpty().flatMap { it.items }
+                                                ).distinctBy { it.id }
+                                                .filterExplicit(hideExplicit)
+                                                .filterVideoSongs(hideVideoSongs)
+                                                .take(24),
                                         )
                                     }
                             }

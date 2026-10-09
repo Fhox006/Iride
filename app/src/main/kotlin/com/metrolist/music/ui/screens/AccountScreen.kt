@@ -224,7 +224,7 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubePlaylistMenu(
                                                 playlist = item,
                                                 coroutineScope = coroutineScope,
@@ -261,7 +261,7 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubeAlbumMenu(
                                                 albumItem = item,
                                                 navController = navController,
@@ -298,7 +298,7 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubeArtistMenu(
                                                 artist = item,
                                                 onDismiss = menuState::dismiss,

@@ -14,12 +14,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -27,6 +26,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.repository.ChartPlaylistIdentity
+import com.metrolist.music.ui.component.IrideArtistPageSurface
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
 import com.metrolist.music.ui.screens.artist.ArtistDiscographyScreen
 import com.metrolist.music.ui.screens.artist.ArtistGameScreen
@@ -37,6 +38,8 @@ import com.metrolist.music.ui.screens.equalizer.EqEditorScreen
 import com.metrolist.music.ui.screens.library.LibraryCategory
 import com.metrolist.music.ui.screens.library.LibraryScreen
 import com.metrolist.music.ui.screens.playlist.AutoPlaylistScreen
+import com.metrolist.music.ui.screens.playlist.DailyChartScreen
+import com.metrolist.music.ui.screens.playlist.DailyChartsWorldScreen
 import com.metrolist.music.ui.screens.playlist.LocalPlaylistScreen
 import com.metrolist.music.ui.screens.playlist.OnlinePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.TopPlaylistScreen
@@ -74,6 +77,7 @@ import com.metrolist.music.ui.screens.GenresScreen
 import com.metrolist.music.ui.screens.IrideScreen
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.NavigationBuilder(
@@ -126,6 +130,16 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable("history") { HistoryScreen(navController) }
+    // Redirect restored navigation state from the retired News tab.
+    composable("new_releases") {
+        LaunchedEffect(Unit) {
+            navController.navigate(Screens.Home.route) {
+                popUpTo("new_releases") { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+    composable("all_charts") { com.metrolist.music.ui.screens.playlist.AllChartsScreen(navController) }
     composable("stats") { StatsScreen(navController) }
     composable("notes") { NotesScreen(navController) }
     composable("iride") {
@@ -207,29 +221,37 @@ fun NavGraphBuilder.NavigationBuilder(
     composable(
         route = "artist/{artistId}/songs",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
-    ) {
-        ArtistSongsScreen(navController)
+    ) { entry ->
+        IrideArtistPageSurface(requireNotNull(entry.arguments?.getString("artistId"))) {
+            ArtistSongsScreen(navController)
+        }
     }
 
     composable(
         route = "artist/{artistId}/game",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
-    ) {
-        ArtistGameScreen(navController)
+    ) { entry ->
+        IrideArtistPageSurface(requireNotNull(entry.arguments?.getString("artistId"))) {
+            ArtistGameScreen(navController)
+        }
     }
 
     composable(
         route = "artist/{artistId}/albums",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
-    ) {
-        ArtistAlbumsScreen(navController, scrollBehavior)
+    ) { entry ->
+        IrideArtistPageSurface(requireNotNull(entry.arguments?.getString("artistId"))) {
+            ArtistAlbumsScreen(navController, scrollBehavior)
+        }
     }
 
     composable(
         route = "artist/{artistId}/discography",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
-    ) {
-        ArtistDiscographyScreen(navController)
+    ) { entry ->
+        IrideArtistPageSurface(requireNotNull(entry.arguments?.getString("artistId"))) {
+            ArtistDiscographyScreen(navController)
+        }
     }
 
     composable(
@@ -239,8 +261,28 @@ fun NavGraphBuilder.NavigationBuilder(
             navArgument("browseId") { type = NavType.StringType; nullable = true },
             navArgument("params") { type = NavType.StringType; nullable = true }
         )
+    ) { entry ->
+        IrideArtistPageSurface(requireNotNull(entry.arguments?.getString("artistId"))) {
+            ArtistItemsScreen(navController)
+        }
+    }
+
+    composable("daily_charts") {
+        DailyChartsWorldScreen(navController)
+    }
+
+    composable(
+        route = "new_releases_chart/{market}",
+        arguments = listOf(navArgument("market") { type = NavType.StringType }),
     ) {
-        ArtistItemsScreen(navController)
+        DailyChartScreen(navController, englishTitle = true)
+    }
+
+    composable(
+        route = "daily_chart/{market}",
+        arguments = listOf(navArgument("market") { type = NavType.StringType }),
+    ) {
+        DailyChartScreen(navController)
     }
 
     composable(
@@ -260,8 +302,20 @@ fun NavGraphBuilder.NavigationBuilder(
     composable(
         route = "local_playlist/{playlistId}",
         arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
-    ) {
-        LocalPlaylistScreen(navController)
+    ) { backStackEntry ->
+        val market = ChartPlaylistIdentity.market(backStackEntry.arguments?.getString("playlistId").orEmpty())
+        if (market == null) {
+            LocalPlaylistScreen(navController)
+        } else {
+            LaunchedEffect(backStackEntry.id) {
+                if (navController.currentBackStackEntry == backStackEntry) {
+                    navController.navigate("new_releases_chart/${market.code}") {
+                        popUpTo(backStackEntry.destination.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
     }
 
     composable(

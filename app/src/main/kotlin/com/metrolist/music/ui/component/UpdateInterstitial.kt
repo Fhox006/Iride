@@ -18,13 +18,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -112,148 +108,132 @@ fun UpdateInterstitialScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(InterstitialBlack),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+    IrideFolioDarkSurface {
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 32.dp),
+                .background(InterstitialBlack),
         ) {
-            Spacer(Modifier.weight(0.7f))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 32.dp),
+            ) {
+                Spacer(Modifier.weight(0.7f))
 
-            Icon(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = null,
-                tint = InterstitialInk,
-                modifier = Modifier.size(72.dp),
-            )
+                Icon(
+                    painter = painterResource(R.drawable.ic_logo),
+                    contentDescription = null,
+                    tint = InterstitialInk,
+                    modifier = Modifier.size(72.dp),
+                )
 
-            Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(28.dp))
 
-            Text(
-                text = stringResource(R.string.update_interstitial_title),
-                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily),
-                fontWeight = FontWeight.Bold,
-                color = InterstitialInk,
-                textAlign = TextAlign.Center,
-            )
-
-            if (versionName.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.update_interstitial_version, versionName),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
-                    color = InterstitialInk.copy(alpha = 0.6f),
+                    text = stringResource(R.string.update_interstitial_title),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily),
+                    fontWeight = FontWeight.Bold,
+                    color = InterstitialInk,
                     textAlign = TextAlign.Center,
                 )
-            }
 
-            if (whatsNewLines.isNotEmpty()) {
-                Spacer(Modifier.height(28.dp))
-                Column(modifier = Modifier.fillMaxWidth()) {
+                if (versionName.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.update_interstitial_whats_new),
-                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = InterstitialInk.copy(alpha = 0.45f),
+                        text = stringResource(R.string.update_interstitial_version, versionName),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                        color = InterstitialInk.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center,
                     )
-                    Spacer(Modifier.height(10.dp))
-                    whatsNewLines.forEach { line ->
-                        Row(modifier = Modifier.padding(vertical = 2.dp)) {
-                            Text(
-                                text = "—",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
-                                color = InterstitialInk.copy(alpha = 0.45f),
-                                modifier = Modifier.padding(end = 10.dp),
-                            )
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
-                                color = InterstitialInk.copy(alpha = 0.9f),
-                            )
+                }
+
+                if (whatsNewLines.isNotEmpty()) {
+                    Spacer(Modifier.height(28.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(R.string.update_interstitial_whats_new),
+                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = InterstitialInk.copy(alpha = 0.45f),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        whatsNewLines.forEach { line ->
+                            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text(
+                                    text = "—",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                                    color = InterstitialInk.copy(alpha = 0.45f),
+                                    modifier = Modifier.padding(end = 10.dp),
+                                )
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                                    color = InterstitialInk.copy(alpha = 0.9f),
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (canInstall) {
-                    val ready = downloadState is UpdateDownloadState.ReadyToInstall
-                    Button(
-                        onClick = { UpdateDownloader.promptInstall(context) },
-                        enabled = ready,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = InterstitialInk,
-                            contentColor = InterstitialBlack,
-                            disabledContainerColor = InterstitialInk.copy(alpha = 0.25f),
-                            disabledContentColor = InterstitialBlack.copy(alpha = 0.4f),
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.update_interstitial_update_now),
-                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    when (downloadState) {
-                        is UpdateDownloadState.Downloading ->
-                            InterstitialCaption(stringResource(R.string.update_interstitial_preparing))
-                        is UpdateDownloadState.Failed ->
-                            InterstitialCaption(stringResource(R.string.update_download_failed))
-                        else -> Unit
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            headingToPermissionSettings = true
-                            UpdateDownloader.openInstallPermissionSettings(context)
-                        },
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = InterstitialInk,
-                            contentColor = InterstitialBlack,
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.update_interstitial_enable_install),
-                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(contentColor = InterstitialInk.copy(alpha = 0.5f)),
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = stringResource(R.string.update_interstitial_not_now),
-                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
-                    )
-                }
-            }
+                    if (canInstall) {
+                        val ready = downloadState is UpdateDownloadState.ReadyToInstall
+                        IrideFolioPrimaryButton(
+                            onClick = { UpdateDownloader.promptInstall(context) },
+                            enabled = ready,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                ,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.update_interstitial_update_now),
+                            )
+                        }
+                        when (downloadState) {
+                            is UpdateDownloadState.Downloading ->
+                                InterstitialCaption(stringResource(R.string.update_interstitial_preparing))
+                            is UpdateDownloadState.Failed ->
+                                InterstitialCaption(stringResource(R.string.update_download_failed))
+                            else -> Unit
+                        }
+                    } else {
+                        IrideFolioPrimaryButton(
+                            onClick = {
+                                headingToPermissionSettings = true
+                                UpdateDownloader.openInstallPermissionSettings(context)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                ,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.update_interstitial_enable_install),
+                            )
+                        }
+                    }
 
-            Spacer(Modifier.height(24.dp))
+                    IrideFolioSecondaryButton(
+                        onClick = onDismiss,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.update_interstitial_not_now),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }

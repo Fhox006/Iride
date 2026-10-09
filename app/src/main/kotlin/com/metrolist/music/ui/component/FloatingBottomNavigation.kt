@@ -1,17 +1,14 @@
 package com.metrolist.music.ui.component
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateValueAsState
-import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -20,52 +17,53 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,17 +71,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.rememberReducedMotion
-import kotlin.math.roundToInt
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-val FloatingBottomNavigationHeight = 62.dp
-internal val FloatingBottomNavigationPillHeight = 54.dp
-internal val FloatingBottomNavigationOffset = 12.dp
+val FloatingBottomNavigationHeight = IrideFolio.NavigationHeight
+internal val FloatingBottomNavigationPillHeight = IrideFolio.NavigationSurfaceHeight
+internal val FloatingBottomNavigationOffset = 6.dp
 
 @Composable
 fun FloatingBottomNavigation(
@@ -93,12 +90,16 @@ fun FloatingBottomNavigation(
     backdrop: FrostBackdrop?,
     visible: Boolean = true,
     modifier: Modifier = Modifier,
+    contentColor: Color = Color.White,
+    backgroundColor: Color? = null,
+    surfaceAlpha: Float? = null,
 ) {
-    val surface = MaterialTheme.colorScheme.surface
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val groupShape = RoundedCornerShape(18.dp)
-    val borderColor = MaterialTheme.colorScheme.strokeCard
-    val groupedScreens = listOf(Screens.Home, Screens.Library, Screens.Account)
+    val onSurface = contentColor
+    val surface = IrideFolio.frostedSurfaceColor(onSurface, backgroundColor)
+    val navigationSurfaceAlpha = surfaceAlpha ?: IrideFolio.floatingPillSurfaceAlpha(backdrop, backgroundColor)
+    val groupShape = IrideFolio.ControlsShape
+    val borderColor = onSurface.copy(alpha = 0.22f)
+    val groupedScreens = remember(navigationItems) { navigationItems.filter { it != Screens.Search } }
     val activeScreen = Screens.MainScreens.firstOrNull {
         isRouteSelected(currentRoute, it.route, navigationItems)
     }
@@ -119,13 +120,22 @@ fun FloatingBottomNavigation(
     var floatingDragOffset by remember { mutableStateOf(Offset.Zero) }
     var isFloatingDragged by remember { mutableStateOf(false) }
     var snapFromSearch by remember { mutableStateOf(false) }
+    var skippedGroupIndices by remember { mutableStateOf(IntRange.EMPTY) }
     val reducedMotion = rememberReducedMotion()
     val coroutineScope = rememberCoroutineScope()
     val currentOnItemClick by rememberUpdatedState(onItemClick)
     var navigationJob by remember { mutableStateOf<Job?>(null) }
-    val selectScreen: (Screens, Boolean) -> Unit = { screen, selected ->
+    val selectScreen: (Screens, Boolean, Boolean) -> Unit = { screen, selected, fromDrag ->
         navigationJob?.cancel()
-        groupedScreens.indexOf(screen).takeIf { it >= 0 }?.let { visualGroupIndex = it }
+        val targetIndex = groupedScreens.indexOf(screen)
+        skippedGroupIndices = if (!fromDrag && !selected && targetIndex >= 0 &&
+            selectedRoute != Screens.Search.route
+        ) {
+            (minOf(selectedGroupIndex, targetIndex) + 1) until maxOf(selectedGroupIndex, targetIndex)
+        } else {
+            IntRange.EMPTY
+        }
+        if (targetIndex >= 0) visualGroupIndex = targetIndex
         snapFromSearch = selectedRoute == Screens.Search.route
         navigationJob = coroutineScope.launch {
             if (!selected && !reducedMotion && screen != Screens.Search && selectedRoute != Screens.Search.route) {
@@ -142,6 +152,7 @@ fun FloatingBottomNavigation(
         if (!visible) {
             navigationJob?.cancel()
             isDragging = false
+            skippedGroupIndices = IntRange.EMPTY
             visualGroupIndex = selectedGroupIndex
         }
     }
@@ -160,10 +171,14 @@ fun FloatingBottomNavigation(
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "bottomNavigationIndicatorPosition",
+        finishedListener = { skippedGroupIndices = IntRange.EMPTY },
     )
     val indicatorAlpha by animateFloatAsState(
         targetValue = if (selectedRoute == Screens.Search.route) 0f else 1f,
-        animationSpec = tween(180),
+        animationSpec = if (reducedMotion) snap() else tween(
+            IrideFolio.NavigationReturnDurationMillis,
+            easing = IrideFolio.NavigationMotionEasing,
+        ),
         label = "bottomNavigationIndicatorAlpha",
     )
     val floatingOffset = animateValueAsState(
@@ -176,16 +191,20 @@ fun FloatingBottomNavigation(
         ),
         label = "bottomNavigationFloatingOffset",
     )
+    // Keep selection state while hidden, without leaving invisible pointer targets above the player.
+    if (!visible) return
     Row(
-        modifier = modifier.widthIn(max = 320.dp).fillMaxWidth()
+        modifier = modifier.widthIn(max = IrideFolio.NavigationMaxWidth).fillMaxWidth()
+            .padding(horizontal = IrideFolio.HorizontalPadding)
+            .selectableGroup()
             .graphicsLayer {
                 val offset = floatingOffset.value
                 translationX = offset.x * 6.dp.toPx()
                 translationY = offset.y * 6.dp.toPx()
             }
-            .pointerInput(visible, selectedRoute, reducedMotion) {
+            .pointerInput(visible, selectedRoute, reducedMotion, groupedScreens) {
                 if (!visible) return@pointerInput
-                val groupWidthPx = size.width - (FloatingBottomNavigationPillHeight + 8.dp).toPx()
+                val groupWidthPx = size.width - (IrideFolio.NavigationTouchTargetSize + IrideFolio.NavigationGap).toPx()
                 val segmentWidthPx = groupWidthPx / groupedScreens.size
                 if (segmentWidthPx <= 0f) return@pointerInput
                 val activationThresholdPx = 24.dp.toPx()
@@ -198,6 +217,7 @@ fun FloatingBottomNavigation(
                     detectDragGestures(
                         onDragStart = { start ->
                             navigationJob?.cancel()
+                            skippedGroupIndices = IntRange.EMPTY
                             startedOnGroup = start.x < groupWidthPx
                             horizontalNavigation = null
                             rawDragPosition = selectedGroupIndex.toFloat()
@@ -212,7 +232,7 @@ fun FloatingBottomNavigation(
                                 isDragging = false
                                 val targetScreen = groupedScreens[targetIndex]
                                 if (selectedRoute != targetScreen.route) {
-                                    selectScreen(targetScreen, false)
+                                    selectScreen(targetScreen, false, true)
                                 }
                             }
                             isFloatingDragged = false
@@ -268,14 +288,25 @@ fun FloatingBottomNavigation(
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .height(FloatingBottomNavigationPillHeight)
-                .frostedNavigationSurface(backdrop, surface, groupShape)
-                .border(1.dp, borderColor, groupShape),
+                .height(IrideFolio.NavigationTouchTargetSize),
         ) {
+            Box(
+                Modifier.align(Alignment.Center)
+                    .fillMaxWidth()
+                    .height(FloatingBottomNavigationPillHeight)
+                    .frostedNavigationSurface(
+                        backdrop, surface, groupShape,
+                        surfaceAlpha = navigationSurfaceAlpha,
+                        observeBackdrop = true,
+                    )
+                    .border(1.dp, borderColor, groupShape),
+            )
             val segmentWidth = maxWidth / groupedScreens.size
             val segmentWidthPx = with(LocalDensity.current) { segmentWidth.toPx() }
-            val indicatorInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
-            val indicatorHeightPx = with(LocalDensity.current) { 46.dp.toPx() }
+            val indicatorInsetPx = with(LocalDensity.current) { IrideFolio.NavigationSelectionInset.toPx() }
+            val indicatorHeightPx = with(LocalDensity.current) {
+                (FloatingBottomNavigationPillHeight - IrideFolio.NavigationSelectionInset * 2).toPx()
+            }
             val indicatorWidthPx = segmentWidthPx - 2f * indicatorInsetPx
             Canvas(Modifier.fillMaxSize()) {
                 val left = segmentWidthPx * animatedPosition + indicatorInsetPx
@@ -284,7 +315,9 @@ fun FloatingBottomNavigation(
                     color = onSurface.copy(alpha = 0.10f),
                     topLeft = Offset(left, top),
                     size = Size(indicatorWidthPx, indicatorHeightPx),
-                    cornerRadius = CornerRadius(14.dp.toPx()),
+                    cornerRadius = CornerRadius(
+                        IrideFolio.NavigationSelectionCornerRadius.toPx(),
+                    ),
                     alpha = indicatorAlpha,
                 )
             }
@@ -299,32 +332,42 @@ fun FloatingBottomNavigation(
                     val buttonLeft = segmentWidthPx * index
                     val maskStart = (indicatorStart - buttonLeft).coerceIn(0f, segmentWidthPx)
                     val maskEnd = (indicatorStart + indicatorWidthPx - buttonLeft).coerceIn(0f, segmentWidthPx)
+                    // A tap across tabs must not activate the icons it only passes over.
+                    val showActiveContent = selectedRoute != Screens.Search.route && index !in skippedGroupIndices
                     NavigationButton(
                         screen = screen,
                         selected = selectedRoute == screen.route,
-                        maskStart = if (selectedRoute == Screens.Search.route) 0f else maskStart,
-                        maskEnd = if (selectedRoute == Screens.Search.route) 0f else maskEnd,
-                        onItemClick = selectScreen,
-                        enabled = visible,
+                        maskStart = if (showActiveContent) maskStart else 0f,
+                        maskEnd = if (showActiveContent) maskEnd else 0f,
+                        onItemClick = { screen, selected -> selectScreen(screen, selected, false) },
+                        reducedMotion = reducedMotion,
+                        contentColor = onSurface,
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(IrideFolio.NavigationGap))
         val search = Screens.Search
         Box(
-            modifier = Modifier
-                .size(FloatingBottomNavigationPillHeight)
-                .frostedNavigationSurface(backdrop, surface, groupShape)
-                .border(1.dp, borderColor, groupShape),
+            modifier = Modifier.size(IrideFolio.NavigationTouchTargetSize),
             contentAlignment = Alignment.Center,
         ) {
+            Box(
+                Modifier.size(FloatingBottomNavigationPillHeight)
+                    .frostedNavigationSurface(
+                        backdrop, surface, groupShape,
+                        surfaceAlpha = navigationSurfaceAlpha,
+                        observeBackdrop = true,
+                    )
+                    .border(1.dp, borderColor, groupShape),
+            )
             NavigationButton(
                 screen = search,
                 selected = selectedRoute == search.route,
-                onItemClick = selectScreen,
-                enabled = visible,
+                onItemClick = { screen, selected -> selectScreen(screen, selected, false) },
+                reducedMotion = reducedMotion,
+                contentColor = onSurface,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -336,60 +379,80 @@ private fun NavigationButton(
     screen: Screens,
     selected: Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
-    enabled: Boolean,
+    reducedMotion: Boolean,
+    contentColor: Color,
     maskStart: Float = 0f,
     maskEnd: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
     val currentSelected by rememberUpdatedState(selected)
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val searchColor by animateColorAsState(
-        if (selected) onSurface else onSurface.copy(alpha = 0.72f),
-        label = "bottomNavigationSearchIcon",
-    )
-    val searchBackground by animateColorAsState(
-        if (screen == Screens.Search && selected) onSurface.copy(alpha = 0.10f) else Color.Transparent,
+    val description = stringResource(screen.titleId)
+    val searchSelection = animateFloatAsState(
+        targetValue = if (screen == Screens.Search && selected) 1f else 0f,
+        animationSpec = if (reducedMotion) snap() else tween(
+            IrideFolio.NavigationSelectionDurationMillis,
+            easing = IrideFolio.NavigationMotionEasing,
+        ),
         label = "bottomNavigationSearchSelection",
     )
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(14.dp))
-            .semantics { this.selected = selected }
-            .clickable(enabled = enabled, role = Role.Tab, interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onItemClick(screen, currentSelected)
-            },
+            .semantics { contentDescription = description }
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onItemClick(screen, currentSelected) },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (screen == Screens.Search) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(searchBackground),
+                    .size(FloatingBottomNavigationPillHeight - IrideFolio.NavigationSelectionInset * 2)
+                    .drawBehind {
+                        drawRoundRect(
+                            color = contentColor,
+                            alpha = searchSelection.value * 0.10f,
+                            cornerRadius = CornerRadius(
+                                IrideFolio.NavigationSelectionCornerRadius.toPx(),
+                            ),
+                        )
+                    },
             )
+        }
+        if (screen == Screens.Search) {
             Icon(
                 painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
-                contentDescription = stringResource(screen.titleId),
-                tint = searchColor,
+                contentDescription = null,
+                tint = contentColor.copy(alpha = contentColor.alpha * (0.72f + 0.28f * searchSelection.value)),
                 modifier = Modifier.size(23.dp),
             )
         } else {
-            NavigationButtonContent(screen, active = false, color = onSurface.copy(alpha = 0.72f))
             NavigationButtonContent(
-                screen,
-                active = true,
-                color = onSurface,
-                modifier = Modifier
-                    .drawWithContent {
-                        if (maskEnd > maskStart) {
-                            clipRect(left = maskStart, right = maskEnd) {
-                                this@drawWithContent.drawContent()
-                            }
-                        }
+                screen = screen,
+                active = false,
+                color = contentColor.copy(alpha = contentColor.alpha * 0.72f),
+                modifier = Modifier.drawWithContent {
+                    if (maskEnd > maskStart) {
+                        if (maskStart > 0f) clipRect(right = maskStart) { this@drawWithContent.drawContent() }
+                        if (maskEnd < size.width) clipRect(left = maskEnd) { this@drawWithContent.drawContent() }
+                    } else {
+                        drawContent()
                     }
-                    .clearAndSetSemantics { },
+                },
+            )
+            NavigationButtonContent(
+                screen = screen,
+                active = true,
+                color = contentColor,
+                modifier = Modifier.drawWithContent {
+                    if (maskEnd > maskStart) {
+                        clipRect(left = maskStart, right = maskEnd) { this@drawWithContent.drawContent() }
+                    }
+                },
             )
         }
     }
@@ -404,8 +467,8 @@ private fun NavigationButtonContent(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        modifier = modifier.fillMaxSize().padding(horizontal = 4.dp).clearAndSetSemantics { },
     ) {
         Icon(
             painter = painterResource(if (active) screen.iconIdActive else screen.iconIdInactive),
@@ -432,24 +495,51 @@ internal fun Modifier.frostedNavigationSurface(
     surface: Color,
     shape: androidx.compose.ui.graphics.Shape,
     progress: Float = 1f,
-): Modifier {
-    var position = Offset.Zero
-    return this
+    surfaceAlpha: Float? = null,
+    observeBackdrop: Boolean = false,
+): Modifier = composed {
+    var position by remember { mutableStateOf(Offset.Zero) }
+    val revealPaint = remember { Paint() }
+    val density = LocalDensity.current.density
+    val grain = remember(density) { irideGrainBrush(density) }
+    this
         .onGloballyPositioned { position = it.positionOnScreen() }
         .clip(shape)
+        // The observer must share the blur's clipped layer. Invalidating a node outside this
+        // clip only replays the inner cached layer, which can still contain the unblurred fallback.
+        .then(if (observeBackdrop) Modifier.observeFrostBackdrop(backdrop) else Modifier)
         .drawBehind {
             val reveal = progress.coerceIn(0f, 1f)
             if (reveal <= 0f) return@drawBehind
-            // Cover the original sharp pixels before compositing a potentially transparent snapshot.
-            drawRect(surface.copy(alpha = 1f), alpha = reveal)
-            if (backdrop != null && backdrop.content.size.width > 0) {
-                backdrop.blurred.alpha = reveal
-                backdrop.blurred.record(size = backdrop.content.size) { drawLayer(backdrop.content) }
-                translate(
-                    backdrop.positionOnScreen.x - position.x,
-                    backdrop.positionOnScreen.y - position.y,
-                ) { drawLayer(backdrop.blurred) }
+            val backdropReady = backdrop != null && backdrop.content.size.width > 0 &&
+                backdrop.content.size.height > 0
+            if (backdropReady) {
+                // Fade each control locally; mutating the shared layer's alpha also changes menus
+                // and other controls that reference it in the same frame.
+                if (reveal < 1f) {
+                    revealPaint.alpha = reveal
+                    drawContext.canvas.saveLayer(Rect(Offset.Zero, size), revealPaint)
+                }
+                // Replace the sharp page even where the native blur loses coverage at its edges.
+                drawRect(surface.copy(alpha = 1f))
+                drawFrostedBackdrop(backdrop, position)
+                if (reveal < 1f) drawContext.canvas.restore()
             }
-            drawRect(surface, alpha = reveal * if (backdrop == null) 0.96f else 0.84f)
+            drawRect(
+                surface,
+                alpha = reveal * (surfaceAlpha ?: if (backdropReady) {
+                    IrideFolio.FrostedSurfaceOpacity
+                } else {
+                    IrideFolio.FrostedFallbackOpacity
+                }),
+            )
+            // Blur replaces the sharp backdrop grain. Restore it only on a ready blurred surface;
+            // the unblurred fallback already inherits the background's texture.
+            if (backdropReady) {
+                // Sample in the same coordinates as the backdrop, not the moving control's local
+                // origin. Scrolling/dragging reveals another part of the field beneath the clip.
+                val sampleOffset = position - backdrop.positionOnScreen
+                drawIrideSurfaceGrain(grain, reveal * IrideFolio.SurfaceGrainOpacity, sampleOffset)
+            }
         }
 }

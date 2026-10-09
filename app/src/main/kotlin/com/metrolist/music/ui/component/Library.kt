@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.component.SongMenuIconButton
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,9 +56,9 @@ fun LibraryArtistListItem(
     artist = artist,
     showLikedIcon = false,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     ArtistMenu(
                         originalArtist = artist,
                         coroutineScope = coroutineScope,
@@ -97,7 +99,7 @@ fun LibraryArtistGridItem(
                 navController.navigate("artist/${artist.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     ArtistMenu(
                         originalArtist = artist,
                         coroutineScope = coroutineScope,
@@ -122,9 +124,9 @@ fun LibraryAlbumListItem(
     isActive = isActive,
     isPlaying = isPlaying,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     AlbumMenu(
                         originalAlbum = album,
                         navController = navController,
@@ -170,7 +172,7 @@ fun LibraryAlbumGridItem(
                 navController.navigate("album/${album.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     AlbumMenu(
                         originalAlbum = album,
                         navController = navController,
@@ -209,7 +211,7 @@ fun LibraryContinueListeningAlbumItem(
             },
             onLongClick = {
                 onAlbumSelected()
-                menuState.show {
+                menuState.show(anchored = true) {
                     AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
                 }
             },
@@ -309,9 +311,9 @@ fun LibraryPlaylistListItem(
 ) = PlaylistListItem(
     playlist = playlist,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     if (playlist.playlist.isEditable || playlist.songCount != 0) {
                         PlaylistMenu(
                             playlist = playlist,
@@ -394,7 +396,7 @@ fun LibraryPlaylistGridItem(
                     navController.navigate("local_playlist/${playlist.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     if (playlist.playlist.isEditable || playlist.songCount != 0) {
                         PlaylistMenu(
                             playlist = playlist,

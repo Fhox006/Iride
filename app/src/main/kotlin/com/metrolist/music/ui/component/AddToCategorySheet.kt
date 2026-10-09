@@ -157,31 +157,12 @@ fun AddToCategorySheet(
             }
             Spacer(Modifier.height(12.dp))
             val enabled = selectedIds.value.isNotEmpty()
-            val confirmInteractionSource = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp)
-                    .height(52.dp)
-                    .pressScale(confirmInteractionSource, pressedScale = 0.97f)
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(if (enabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.fillSelected)
-                    .clickable(
-                        interactionSource = confirmInteractionSource,
-                        indication = null,
-                        enabled = enabled,
-                        role = Role.Button,
-                    ) { onConfirm(selectedIds.value.toList()) },
-                contentAlignment = Alignment.Center,
+            IrideFolioPrimaryButton(
+                onClick = { onConfirm(selectedIds.value.toList()) },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.action_add),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = if (enabled) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.textTertiary,
-                )
+                Text(text = stringResource(R.string.action_add))
             }
         }
     }

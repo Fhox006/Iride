@@ -1,24 +1,15 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings.integrations
-import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageFrame
-import com.metrolist.music.ui.component.IrideSwitch
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.widget.Toast
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -34,27 +25,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,7 +71,6 @@ import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
-import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.ListenTogetherEvent
 import com.metrolist.music.listentogether.ListenTogetherServer
 import com.metrolist.music.listentogether.ListenTogetherServers
@@ -102,9 +82,10 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IntegrationCard
 import com.metrolist.music.ui.component.IntegrationCardItem
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ListenTogetherViewModel
@@ -118,7 +99,8 @@ fun ListenTogetherSettings(
     viewModel: ListenTogetherViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val cannotEditUsernameInRoomStr = stringResource(R.string.listen_together_cannot_edit_username_in_room)
+    val cannotEditUsernameInRoomStr =
+        stringResource(R.string.listen_together_cannot_edit_username_in_room)
     val coroutineScope = rememberCoroutineScope()
 
     val connectionState by viewModel.connectionState.collectAsState()
@@ -129,7 +111,8 @@ fun ListenTogetherSettings(
     val blockedUsernames by viewModel.blockedUsernames.collectAsState()
 
     val servers = remember { ListenTogetherServers.servers }
-    var serverUrl by rememberPreference(ListenTogetherServerUrlKey, ListenTogetherServers.defaultServerUrl)
+    var serverUrl by
+        rememberPreference(ListenTogetherServerUrlKey, ListenTogetherServers.defaultServerUrl)
     var username by rememberPreference(ListenTogetherUsernameKey, "")
     var autoApprovalJoins by rememberPreference(ListenTogetherAutoApprovalKey, false)
     var autoApproveSuggestions by rememberPreference(ListenTogetherAutoApproveSuggestionsKey, false)
@@ -146,19 +129,21 @@ fun ListenTogetherSettings(
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
-                is ListenTogetherEvent.RoomCreated -> {
-                }
+                is ListenTogetherEvent.RoomCreated -> {}
 
                 is ListenTogetherEvent.JoinApproved -> {
-                    Toast.makeText(context, "Joined room: ${event.roomCode}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Joined room: ${event.roomCode}", Toast.LENGTH_SHORT)
+                        .show()
                 }
 
                 is ListenTogetherEvent.JoinRejected -> {
-                    Toast.makeText(context, "Join rejected: ${event.reason}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Join rejected: ${event.reason}", Toast.LENGTH_SHORT)
+                        .show()
                 }
 
                 is ListenTogetherEvent.JoinRequestReceived -> {
-                    Toast.makeText(context, "${event.username} wants to join", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "${event.username} wants to join", Toast.LENGTH_SHORT)
+                        .show()
                 }
 
                 is ListenTogetherEvent.Kicked -> {
@@ -166,7 +151,8 @@ fun ListenTogetherSettings(
                 }
 
                 is ListenTogetherEvent.ConnectionError -> {
-                    Toast.makeText(context, "Connection error: ${event.error}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Connection error: ${event.error}", Toast.LENGTH_SHORT)
+                        .show()
                 }
 
                 is ListenTogetherEvent.ServerError -> {
@@ -202,17 +188,21 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.person), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_username)) },
             buttons = {
-                TextButton(onClick = {
-                    username = ""
-                    showUsernameDialog = false
-                }) {
+                IrideFolioSecondaryButton(
+                    onClick = {
+                        username = ""
+                        showUsernameDialog = false
+                    }
+                ) {
                     Text(stringResource(R.string.reset))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = {
-                    username = tempUsername.trim()
-                    showUsernameDialog = false
-                }) {
+                IrideFolioPrimaryButton(
+                    onClick = {
+                        username = tempUsername.trim()
+                        showUsernameDialog = false
+                    }
+                ) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -245,11 +235,11 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.add), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_create_room)) },
             buttons = {
-                TextButton(onClick = { showCreateRoomDialog = false }) {
+                IrideFolioSecondaryButton(onClick = { showCreateRoomDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
+                IrideFolioPrimaryButton(
                     onClick = {
                         val finalUsername = createUsername.trim()
                         if (finalUsername.isNotBlank()) {
@@ -257,7 +247,12 @@ fun ListenTogetherSettings(
                             viewModel.createRoom(finalUsername)
                             showCreateRoomDialog = false
                         } else {
-                            Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                    context,
+                                    R.string.error_username_empty,
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                         }
                     },
                     enabled = createUsername.trim().isNotBlank(),
@@ -266,9 +261,7 @@ fun ListenTogetherSettings(
                 }
             },
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = stringResource(R.string.listen_together_create_room_desc),
                     style = MaterialTheme.typography.bodyMedium,
@@ -296,11 +289,11 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.group_add), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_join_room)) },
             buttons = {
-                TextButton(onClick = { showJoinRoomDialog = false }) {
+                IrideFolioSecondaryButton(onClick = { showJoinRoomDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
+                IrideFolioPrimaryButton(
                     onClick = {
                         val finalUsername = joinUsername.trim()
                         if (finalUsername.isNotBlank() && roomCodeInput.length == 8) {
@@ -309,7 +302,12 @@ fun ListenTogetherSettings(
                             showJoinRoomDialog = false
                             roomCodeInput = ""
                         } else {
-                            Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                    context,
+                                    R.string.error_username_empty,
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                         }
                     },
                     enabled = joinUsername.trim().isNotBlank() && roomCodeInput.length == 8,
@@ -318,9 +316,7 @@ fun ListenTogetherSettings(
                 }
             },
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = joinUsername,
                     onValueChange = { joinUsername = it },
@@ -333,7 +329,9 @@ fun ListenTogetherSettings(
                 )
                 OutlinedTextField(
                     value = roomCodeInput,
-                    onValueChange = { roomCodeInput = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
+                    onValueChange = {
+                        roomCodeInput = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8)
+                    },
                     label = { Text(stringResource(R.string.listen_together_room_code)) },
                     leadingIcon = {
                         Icon(painterResource(R.drawable.key), contentDescription = null)
@@ -363,49 +361,50 @@ fun ListenTogetherSettings(
 
     val settingsScrollState = rememberScrollState()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(
-        PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
-    )
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) {
-        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
-    }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
     IridePageFrame(
         title = stringResource(R.string.listen_together),
         scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        background = {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
                     mediaMetadata = mediaMetadata,
                     playerBackground = playerBackgroundStyle,
                 )
             } else {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                )
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                    .verticalScroll(settingsScrollState),
+                Modifier.windowInsetsPadding(
+                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
+                )
             ) {
                 Spacer(
                     Modifier.windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(WindowInsetsSides.Top),
-                    ),
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Top)
+                    )
                 )
 
-                val selectedServer = remember(serverUrl) { ListenTogetherServers.findByUrl(serverUrl) }
+                val selectedServer =
+                    remember(serverUrl) { ListenTogetherServers.findByUrl(serverUrl) }
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     IntegrationCard(
@@ -414,14 +413,21 @@ fun ListenTogetherSettings(
                             listOf(
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.person),
-                                    title = { Text(stringResource(R.string.listen_together_blocked_users)) },
+                                    title = {
+                                        Text(stringResource(R.string.listen_together_blocked_users))
+                                    },
                                     description = {
                                         Text(
                                             if (blockedUsernames.isNotEmpty()) {
-                                                stringResource(R.string.listen_together_blocked_users_count, blockedUsernames.size)
+                                                stringResource(
+                                                    R.string.listen_together_blocked_users_count,
+                                                    blockedUsernames.size,
+                                                )
                                             } else {
-                                                stringResource(R.string.listen_together_no_blocked_users)
-                                            },
+                                                stringResource(
+                                                    R.string.listen_together_no_blocked_users
+                                                )
+                                            }
                                         )
                                     },
                                     onClick =
@@ -433,7 +439,9 @@ fun ListenTogetherSettings(
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.cloud),
-                                    title = { Text(stringResource(R.string.listen_together_server_url)) },
+                                    title = {
+                                        Text(stringResource(R.string.listen_together_server_url))
+                                    },
                                     description = {
                                         Text(
                                             selectedServer?.let { server ->
@@ -447,7 +455,9 @@ fun ListenTogetherSettings(
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.person),
-                                    title = { Text(stringResource(R.string.listen_together_username)) },
+                                    title = {
+                                        Text(stringResource(R.string.listen_together_username))
+                                    },
                                     description = {
                                         Text(username.ifEmpty { stringResource(R.string.not_set) })
                                     },
@@ -456,20 +466,30 @@ fun ListenTogetherSettings(
                                             { showUsernameDialog = true }
                                         } else {
                                             {
-                                                Toast
-                                                    .makeText(
+                                                Toast.makeText(
                                                         context,
                                                         cannotEditUsernameInRoomStr,
                                                         Toast.LENGTH_SHORT,
-                                                    ).show()
+                                                    )
+                                                    .show()
                                             }
                                         },
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.done),
-                                    title = { Text(stringResource(R.string.listen_together_auto_approval_joins)) },
+                                    title = {
+                                        Text(
+                                            stringResource(
+                                                R.string.listen_together_auto_approval_joins
+                                            )
+                                        )
+                                    },
                                     description = {
-                                        Text(stringResource(R.string.listen_together_auto_approval_joins_desc))
+                                        Text(
+                                            stringResource(
+                                                R.string.listen_together_auto_approval_joins_desc
+                                            )
+                                        )
                                     },
                                     trailingContent = {
                                         IrideSwitch(
@@ -480,21 +500,39 @@ fun ListenTogetherSettings(
                                                 Icon(
                                                     painter =
                                                         painterResource(
-                                                            id = if (autoApprovalJoins) R.drawable.check else R.drawable.close,
+                                                            id =
+                                                                if (autoApprovalJoins)
+                                                                    R.drawable.check
+                                                                else R.drawable.close
                                                         ),
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    modifier =
+                                                        Modifier.size(SwitchDefaults.IconSize),
                                                 )
                                             },
                                         )
                                     },
-                                    onClick = { if (roomState == null || role != RoomRole.GUEST) autoApprovalJoins = !autoApprovalJoins },
+                                    onClick = {
+                                        if (roomState == null || role != RoomRole.GUEST)
+                                            autoApprovalJoins = !autoApprovalJoins
+                                    },
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.done),
-                                    title = { Text(stringResource(R.string.listen_together_auto_approval_suggestions)) },
+                                    title = {
+                                        Text(
+                                            stringResource(
+                                                R.string.listen_together_auto_approval_suggestions
+                                            )
+                                        )
+                                    },
                                     description = {
-                                        Text(stringResource(R.string.listen_together_auto_approval_suggestions_desc))
+                                        Text(
+                                            stringResource(
+                                                R.string
+                                                    .listen_together_auto_approval_suggestions_desc
+                                            )
+                                        )
                                     },
                                     trailingContent = {
                                         IrideSwitch(
@@ -505,21 +543,34 @@ fun ListenTogetherSettings(
                                                 Icon(
                                                     painter =
                                                         painterResource(
-                                                            id = if (autoApproveSuggestions) R.drawable.check else R.drawable.close,
+                                                            id =
+                                                                if (autoApproveSuggestions)
+                                                                    R.drawable.check
+                                                                else R.drawable.close
                                                         ),
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    modifier =
+                                                        Modifier.size(SwitchDefaults.IconSize),
                                                 )
                                             },
                                         )
                                     },
-                                    onClick = { if (roomState == null || role != RoomRole.GUEST) autoApproveSuggestions = !autoApproveSuggestions },
+                                    onClick = {
+                                        if (roomState == null || role != RoomRole.GUEST)
+                                            autoApproveSuggestions = !autoApproveSuggestions
+                                    },
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.volume_up),
-                                    title = { Text(stringResource(R.string.listen_together_sync_volume)) },
+                                    title = {
+                                        Text(stringResource(R.string.listen_together_sync_volume))
+                                    },
                                     description = {
-                                        Text(stringResource(R.string.listen_together_sync_volume_desc))
+                                        Text(
+                                            stringResource(
+                                                R.string.listen_together_sync_volume_desc
+                                            )
+                                        )
                                     },
                                     trailingContent = {
                                         IrideSwitch(
@@ -529,10 +580,13 @@ fun ListenTogetherSettings(
                                                 Icon(
                                                     painter =
                                                         painterResource(
-                                                            id = if (syncHostVolume) R.drawable.check else R.drawable.close,
+                                                            id =
+                                                                if (syncHostVolume) R.drawable.check
+                                                                else R.drawable.close
                                                         ),
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    modifier =
+                                                        Modifier.size(SwitchDefaults.IconSize),
                                                 )
                                             },
                                         )
@@ -541,9 +595,13 @@ fun ListenTogetherSettings(
                                 ),
                                 IntegrationCardItem(
                                     icon = painterResource(R.drawable.bug_report),
-                                    title = { Text(stringResource(R.string.listen_together_view_logs)) },
+                                    title = {
+                                        Text(stringResource(R.string.listen_together_view_logs))
+                                    },
                                     description = {
-                                        Text(stringResource(R.string.listen_together_view_logs_desc))
+                                        Text(
+                                            stringResource(R.string.listen_together_view_logs_desc)
+                                        )
                                     },
                                     onClick = { showLogsDialog = true },
                                 ),
@@ -554,7 +612,6 @@ fun ListenTogetherSettings(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-
     }
 }
 
@@ -579,7 +636,7 @@ fun LogsDialog(
         icon = { Icon(painterResource(R.drawable.bug_report), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_logs)) },
         buttons = {
-            TextButton(
+            IrideFolioSecondaryButton(
                 onClick = {
                     val textToCopy =
                         logs.joinToString("\n") { log ->
@@ -592,8 +649,11 @@ fun LogsDialog(
                                 log.details?.let { d -> append(" -- $d") }
                             }
                         }
-                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText("ListenTogetherLogs", textToCopy)
+                    val cm =
+                        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    val clip =
+                        android.content.ClipData.newPlainText("ListenTogetherLogs", textToCopy)
                     cm.setPrimaryClip(clip)
                     Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
                 },
@@ -601,21 +661,16 @@ fun LogsDialog(
             ) {
                 Text(stringResource(R.string.copy))
             }
-            TextButton(onClick = onClear) {
+            IrideFolioSecondaryButton(onClick = onClear) {
                 Text(stringResource(R.string.clear))
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onDismiss) {
+            IrideFolioPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(350.dp),
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
             if (logs.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -656,25 +711,19 @@ private fun ServerChooserDialog(
         icon = { Icon(painterResource(R.drawable.cloud), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_choose_server)) },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            IrideFolioSecondaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         },
     ) {
         Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             servers.forEach { server ->
                 val isSelected = server.url == currentUrl
                 Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(server) },
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(server) },
                     shape = RoundedCornerShape(16.dp),
                     colors =
                         CardDefaults.cardColors(
@@ -683,14 +732,11 @@ private fun ServerChooserDialog(
                                     MaterialTheme.colorScheme.primaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant
-                                },
+                                }
                         ),
                 ) {
                     Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -740,11 +786,10 @@ private fun ServerChooserDialog(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(
+            IrideFolioPrimaryButton(
                 onClick = { onUseCustom(trimmedCustomUrl) },
                 enabled = trimmedCustomUrl.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
             ) {
                 Text(stringResource(R.string.listen_together_use_custom_server))
             }
@@ -756,12 +801,7 @@ private fun ServerChooserDialog(
 fun LogEntryItem(log: LogEntry) {
     val context = LocalContext.current
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 2.dp),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
@@ -829,17 +869,12 @@ fun BlockedUsersDialog(
         icon = { Icon(painterResource(R.drawable.person), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_blocked_users)) },
         buttons = {
-            Button(onClick = onDismiss) {
+            IrideFolioPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(280.dp),
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(280.dp)) {
             if (blockedUsernames.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -860,8 +895,7 @@ fun BlockedUsersDialog(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
+                                Modifier.fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .padding(12.dp),
@@ -883,9 +917,7 @@ fun BlockedUsersDialog(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
-                            TextButton(
-                                onClick = { onUnblock(username) },
-                            ) {
+                            IrideFolioSecondaryButton(onClick = { onUnblock(username) }) {
                                 Text(stringResource(R.string.unblock))
                             }
                         }

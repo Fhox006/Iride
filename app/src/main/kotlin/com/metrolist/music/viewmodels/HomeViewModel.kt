@@ -53,9 +53,7 @@ import com.metrolist.music.constants.LastMoodChipTitleKey
 import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
-import com.metrolist.music.constants.HeroCarouselEnabledKey
 import com.metrolist.music.constants.HeroCarouselSnapshotKey
-import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.LastDiscoveryWeeklySyncKey
 import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.ShowWrappedCardKey
@@ -126,7 +124,7 @@ import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.random.Random
 
-private const val QUICK_PICKS_TARGET_COUNT = 60
+private const val QUICK_PICKS_TARGET_COUNT = 20
 private const val HOME_MIX_CONTINUATION_LIMIT = 3
 private const val MAX_SIMILAR_RECOMMENDATIONS = 14
 private const val HOME_SIMILAR_CONTINUATION_LIMIT = 6
@@ -174,6 +172,7 @@ class HomeViewModel @Inject constructor(
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
 ) : ViewModel() {
+    val contentSnapshot = HomeContentSnapshot(viewModelScope)
     val syncState = syncUtils.syncState
 
     val syncBannerLaunchCount: StateFlow<Int> = context.dataStore.data
@@ -192,7 +191,7 @@ class HomeViewModel @Inject constructor(
     // Snapshot-backed read: after App.onCreate warms the store this never blocks the main
     // thread, unlike the runBlocking data.first() it replaces (this runs during the first
     // composition of the app).
-    private val smartBootEnabled: Boolean = context.dataStore[SmartBootKey] ?: true
+    private val smartBootEnabled: Boolean = true
 
     private var restoredHomeFeed = false
 
@@ -238,10 +237,7 @@ class HomeViewModel @Inject constructor(
 
     val moodPage = MutableStateFlow<HomePage?>(null)
 
-    val isHeroCarouselEnabled: StateFlow<Boolean> = context.dataStore.data
-        .map { it[HeroCarouselEnabledKey] ?: true }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val isHeroCarouselEnabled = MutableStateFlow(true)
 
     val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
@@ -464,6 +460,14 @@ class HomeViewModel @Inject constructor(
     private val moodPosters by moodPostersLazy
     val moodPosterImageLoader get() = moodPosters.imageLoader
     val moodPosterUrls = MutableStateFlow<Map<String, String>>(emptyMap())
+    data class HomeMoodContent(
+        val params: String?,
+        val items: List<PlaylistItem>?,
+        val posters: Map<String, String>,
+    )
+    val homeMoodContent = combine(loadedMoodParams, moodMixItems, moodPosterUrls) { params, items, posters ->
+        HomeMoodContent(params, items, posters)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeMoodContent(null, null, emptyMap()))
     private var moodPosterJob: Job? = null
     private var moodPosterSize = 448
     private var requestedMoodParams: String? = null
@@ -2143,7 +2147,8 @@ class HomeViewModel @Inject constructor(
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { homePersonalMixes.value = it }
                 }
-                quickPicks.value = HomeCache.quickPicks
+                quickPicks.value = HomeCache.quickPicks?.take(QUICK_PICKS_TARGET_COUNT)
+                HomeCache.quickPicks = quickPicks.value
                 keepListening.value = HomeCache.keepListening
                 forgottenFavorites.value = HomeCache.forgottenFavorites
                 explorePage.value = HomeCache.explorePage

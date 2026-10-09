@@ -7,10 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 
@@ -19,7 +18,7 @@ fun IridePageTitle(
     @StringRes titleRes: Int,
     modifier: Modifier = Modifier,
     monospace: Boolean = false,
-    maxLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
 ) {
     IridePageTitle(
         title = stringResource(titleRes).lowercase().replaceFirstChar { it.titlecase() },
@@ -35,7 +34,7 @@ fun IridePageTitle(
     modifier: Modifier = Modifier,
     monospace: Boolean = true,
     color: Color = MaterialTheme.colorScheme.textPrimary,
-    maxLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
 ) {
     Text(
         text = title,
@@ -43,14 +42,16 @@ fun IridePageTitle(
         style = iridePageTitleTextStyle(monospace),
         color = color,
         maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
+        overflow = TextOverflow.Clip,
     )
 }
 
 @Composable
 fun iridePageTitleTextStyle(monospace: Boolean = true): TextStyle =
-    MaterialTheme.typography.headlineLarge.copy(
-        fontSize = 34.sp,
-        lineHeight = 41.sp,
-        fontWeight = FontWeight.Bold,
-    ).let { if (monospace) it.copy(fontFamily = SpaceMonoFontFamily) else it }
+    MaterialTheme.typography.headlineLarge
+        .copy(
+            fontSize = IrideFolio.TitleFontSize,
+            lineHeight = IrideFolio.TitleLineHeight,
+            fontWeight = FontWeight.Bold,
+        )
+        .let { if (monospace) it.copy(fontFamily = SpaceMonoFontFamily) else it }

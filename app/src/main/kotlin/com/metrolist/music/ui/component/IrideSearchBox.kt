@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +41,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
@@ -46,6 +50,8 @@ import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 val IrideSearchBoxHeight = 52.dp
 
@@ -61,18 +67,30 @@ fun IrideSearchBox(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
     showBorder: Boolean = true,
+    animateQueryCorners: Boolean = false,
+    cornerRadius: Dp = 18.dp,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
+    val reducedMotion = rememberReducedMotion()
+    val animatedCornerRadius by animateDpAsState(
+        targetValue = if (animateQueryCorners && query.text.isNotBlank()) 5.dp else cornerRadius,
+        animationSpec = tween(
+            durationMillis = if (reducedMotion) 0 else IrideMotion.Medium,
+            easing = IrideMotion.EaseOutQuart,
+        ),
+        label = "searchBoxCornerRadius",
+    )
+    val shape = RoundedCornerShape(animatedCornerRadius)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(IrideSearchBoxHeight)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(shape)
             .background(MaterialTheme.colorScheme.fillSubtle)
             .then(
                 if (showBorder) {
-                    Modifier.border(1.dp, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(18.dp))
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.strokeCard, shape)
                 } else {
                     Modifier
                 },

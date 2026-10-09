@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.menu
 
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -13,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -75,8 +78,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -167,14 +168,9 @@ fun AddToPlaylistDialogOnline(
                     ),
                     label = "buttonScale"
                 )
-                FilledTonalButton(
+                IrideFolioPrimaryButton(
                     onClick = { showCreatePlaylistDialog = true },
-                    shape = RoundedCornerShape(50),
                     interactionSource = interactionSource,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -187,8 +183,6 @@ fun AddToPlaylistDialogOnline(
                     )
                     Text(
                         text = stringResource(R.string.create_playlist),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
@@ -447,7 +441,7 @@ fun AddToPlaylistDialogOnline(
         DefaultDialog(
             title = { Text(stringResource(R.string.duplicates)) },
             buttons = {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = {
                         showDuplicateDialog = false
                         onDismiss()
@@ -464,7 +458,7 @@ fun AddToPlaylistDialogOnline(
                     Text(stringResource(R.string.skip_duplicates))
                 }
 
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = {
                         showDuplicateDialog = false
                         onDismiss()
@@ -476,7 +470,7 @@ fun AddToPlaylistDialogOnline(
                     Text(stringResource(R.string.add_anyway))
                 }
 
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = {
                         showDuplicateDialog = false
                     }

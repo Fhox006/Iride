@@ -30,8 +30,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -60,12 +58,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -205,6 +200,8 @@ fun OriginalLyrics(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
     showLyrics: Boolean,
+    pillsController: LyricsPillController? = null,
+    textScale: Float = 1f,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
@@ -226,7 +223,8 @@ fun OriginalLyrics(
     var romanizeToggleEnabled by rememberPreference(LyricsRomanizeToggleKey, false)
     val lyricsGlowEffect by rememberPreference(LyricsGlowEffectKey, false)
     val lyricsAnimationStyle by rememberEnumPreference(LyricsAnimationStyleKey, LyricsAnimationStyle.APPLE)
-    val lyricsTextSize by rememberPreference(LyricsTextSizeKey, 24f)
+    val preferredTextSize by rememberPreference(LyricsTextSizeKey, 24f)
+    val lyricsTextSize = preferredTextSize * textScale
     val lyricsLineSpacing by rememberPreference(LyricsLineSpacingKey, 1.05f)
 
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
@@ -629,6 +627,22 @@ fun OriginalLyrics(
             isAnimating = false
         }
     }
+    androidx.compose.runtime.SideEffect {
+        pillsController?.scrollAction = { direction ->
+            val layout = lazyListState.layoutInfo
+            val center = (layout.viewportStartOffset + layout.viewportEndOffset) / 2
+            val nearest = layout.visibleItemsInfo.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }
+            if (nearest != null && layout.totalItemsCount > 0) {
+                val target = (nearest.index + direction).coerceIn(0, layout.totalItemsCount - 1)
+                isAutoScrollEnabled = false
+                lastPreviewTime = System.currentTimeMillis()
+                scope.launch {
+                    lazyListState.animateScrollToItem(target, -center + nearest.size / 2)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(currentLineIndex, lastPreviewTime, initialScrollDone, isAutoScrollEnabled) {
         if (!isSynced) return@LaunchedEffect
         if (isAutoScrollEnabled) {
@@ -1795,7 +1809,7 @@ fun OriginalLyrics(
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                FilledTonalButton(onClick = {
+                IrideFolioPrimaryButton(onClick = {
                     scope.launch {
                         performSmoothPageScroll(currentLineIndex, 800)
                     }
@@ -1820,7 +1834,7 @@ fun OriginalLyrics(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledTonalButton(
+                    IrideFolioPrimaryButton(
                         onClick = {
                             isSelectionModeActive = false
                             selectedIndices.clear()
@@ -1832,7 +1846,7 @@ fun OriginalLyrics(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    Button(
+                    IrideFolioPrimaryButton(
                         onClick = {
                             if (selectedIndices.isNotEmpty()) {
                                 val sortedIndices = selectedIndices.sorted()
@@ -1867,7 +1881,7 @@ fun OriginalLyrics(
         }
 
         if (showProgressDialog) {
-            BasicAlertDialog(onDismissRequest = { /* Don't dismiss */ }) {
+            IrideFolioDialog(onDismissRequest = { /* Don't dismiss */ }) {
                 Card( // Use Card for better styling
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

@@ -6,6 +6,9 @@
 package com.metrolist.music.ui.screens.library
 
 
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
@@ -14,12 +17,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.Box
@@ -54,8 +55,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -65,7 +64,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
@@ -82,10 +80,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -102,7 +100,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -116,8 +113,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.offline.Download
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavController
+import androidx.navigation.NavBackStackEntry
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.metrolist.innertube.utils.completed
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.innertube.YouTube
@@ -175,7 +173,6 @@ import com.metrolist.music.R
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EmptyPlaceholder
@@ -191,11 +188,10 @@ import com.metrolist.music.ui.component.LibraryArtistGridItem
 import com.metrolist.music.ui.component.LibraryArtistListItem
 import com.metrolist.music.ui.component.LibraryContinueListeningAlbumItem
 import com.metrolist.music.ui.component.LibraryFooterCount
+import com.metrolist.music.ui.component.LibraryEmptyState
 import com.metrolist.music.ui.component.LibraryGridPage
-import com.metrolist.music.ui.component.LibraryHeroTitle
 import com.metrolist.music.ui.component.LibraryListPage
 import com.metrolist.music.ui.component.LibraryPageMenuAction
-import com.metrolist.music.ui.component.LibraryPageTopBar
 import com.metrolist.music.ui.component.LibraryPlaybackActions
 import com.metrolist.music.ui.component.LibraryPlaylistGridItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
@@ -207,11 +203,10 @@ import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistItem
 import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistListItem
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalLibraryTextColor
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
-import com.metrolist.music.ui.component.rememberLibraryPageRevealState
-import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
@@ -296,6 +291,17 @@ fun LibraryScreen(
 ) {
     var category by rememberSaveable { mutableStateOf(if (initialCache) LibraryCategory.CACHE else initialCategory) }
     var isOffline by rememberSaveable { mutableStateOf(initialOffline || initialCache) }
+    val categoryStateHolder = rememberSaveableStateHolder()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
+    val resetLibrary = backStackEntry?.savedStateHandle
+        ?.getStateFlow("resetLibrary", false)?.collectAsState()
+    LaunchedEffect(resetLibrary?.value) {
+        if (resetLibrary?.value == true) {
+            category = LibraryCategory.HOME
+            backStackEntry.savedStateHandle.set("scrollLibraryRootToTop", true)
+            backStackEntry.savedStateHandle.set("resetLibrary", false)
+        }
+    }
 
     val onSelectCategory: (LibraryCategory, Boolean) -> Unit = { selected, offline ->
         category = selected
@@ -306,49 +312,51 @@ fun LibraryScreen(
         category = LibraryCategory.HOME
     }
 
-    when (category) {
-        LibraryCategory.HOME -> LibraryMixScreen(
-            navController = navController,
-            initialOffline = isOffline,
-            onSelectCategory = onSelectCategory,
-        )
-        LibraryCategory.ALBUMS -> LibraryAlbumsScreen(
-            navController = navController,
-            isOffline = isOffline,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
-        LibraryCategory.PLAYLISTS -> LibraryPlaylistsScreen(
-            navController = navController,
-            isOffline = isOffline,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
-        LibraryCategory.ARTISTS -> LibraryArtistsScreen(
-            navController = navController,
-            isOffline = isOffline,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
-        LibraryCategory.SONGS -> LibrarySongsScreen(
-            navController = navController,
-            isOffline = isOffline,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
-        LibraryCategory.LOCAL_SONGS -> LibrarySongsScreen(
-            navController = navController,
-            isLocal = true,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
-        LibraryCategory.CACHE -> LibrarySongsScreen(
-            navController = navController,
-            isOffline = isOffline,
-            isCache = true,
-            onSelectCategory = onSelectCategory,
-            onReturnToLibrary = { category = LibraryCategory.HOME },
-        )
+    categoryStateHolder.SaveableStateProvider("${category.name}:$isOffline") {
+        when (category) {
+            LibraryCategory.HOME -> LibraryMixScreen(
+                navController = navController,
+                initialOffline = isOffline,
+                onSelectCategory = onSelectCategory,
+            )
+            LibraryCategory.ALBUMS -> LibraryAlbumsScreen(
+                navController = navController,
+                isOffline = isOffline,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+            LibraryCategory.PLAYLISTS -> LibraryPlaylistsScreen(
+                navController = navController,
+                isOffline = isOffline,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+            LibraryCategory.ARTISTS -> LibraryArtistsScreen(
+                navController = navController,
+                isOffline = isOffline,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+            LibraryCategory.SONGS -> LibrarySongsScreen(
+                navController = navController,
+                isOffline = isOffline,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+            LibraryCategory.LOCAL_SONGS -> LibrarySongsScreen(
+                navController = navController,
+                isLocal = true,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+            LibraryCategory.CACHE -> LibrarySongsScreen(
+                navController = navController,
+                isOffline = isOffline,
+                isCache = true,
+                onSelectCategory = onSelectCategory,
+                onReturnToLibrary = { category = LibraryCategory.HOME },
+            )
+        }
     }
 }
 
@@ -502,10 +510,10 @@ fun LibraryAlbumsScreen(
                 )
             },
             buttons = {
-                TextButton(onClick = { showRemoveDownloadDialog = false }) {
+                IrideFolioSecondaryButton(onClick = { showRemoveDownloadDialog = false }) {
                     Text(text = stringResource(R.string.cancel))
                 }
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         showRemoveDownloadDialog = false
                         viewModel.removeAllFavoriteAlbumsDownloads()
@@ -530,23 +538,15 @@ fun LibraryAlbumsScreen(
     val albumsQueueTitle = stringResource(R.string.albums)
 
     val lazyGridState = rememberLazyGridState()
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
             lazyGridState.animateScrollToItem(0)
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
         }
-    }
-
-    val scrollBehavior = if (betterLibraryBeta) {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    } else {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-            snapAnimationSpec = tween(durationMillis = 200),
-        )
     }
 
     val continueListeningTitle: @Composable () -> Unit = {
@@ -613,7 +613,7 @@ fun LibraryAlbumsScreen(
                             libraryGridMenuActions(gridViewType) { viewType = it },
                             librarySortMenuActions(sortOptions, sortType, onSortTypeChange),
                         ),
-                        menuActions = listOf(
+                        menuActions = if (filteredAlbums.isNotEmpty()) listOf(
                             LibraryPageMenuAction(
                                 label = stringResource(
                                     if (downloadState == Download.STATE_STOPPED) R.string.download_all_albums else R.string.remove_download,
@@ -621,9 +621,10 @@ fun LibraryAlbumsScreen(
                                 icon = R.drawable.download,
                                 onClick = onDownloadAllClick,
                             ),
-                        ),
+                        ) else emptyList(),
                     ) {
                         item(key = "library_search_actions", span = { GridItemSpan(maxLineSpan) }) {
+                            if (filteredAlbums.isNotEmpty() || searchQuery.isNotBlank()) {
                             LibrarySearchAndActions(
                                 query = searchFieldValue,
                                 onQueryChange = { value ->
@@ -675,7 +676,9 @@ fun LibraryAlbumsScreen(
                                 },
                                     )
                                 },
+                                showActions = filteredAlbums.isNotEmpty(),
                             )
+                            }
                         }
 
                         if (!continueListeningHidden && continueListeningAlbums.isNotEmpty()) {
@@ -683,17 +686,15 @@ fun LibraryAlbumsScreen(
                             item(key = "continue_listening_row", span = { GridItemSpan(maxLineSpan) }) { continueListeningRow() }
                         }
 
-
                             filteredAlbums.let { albums ->
                                 if (albums.isEmpty()) {
                                     item(span = { GridItemSpan(maxLineSpan) }) {
                                         if (searchQuery.isNotBlank()) {
                                             LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
                                         } else {
-                                            EmptyPlaceholder(
-                                                icon = R.drawable.album,
-                                                text = stringResource(R.string.library_album_empty),
-                                                modifier = Modifier.animateItem(),
+                                            LibraryEmptyState(
+                                                text = stringResource(R.string.library_empty_albums),
+                                                modifier = Modifier.fillMaxWidth().heightIn(min = 480.dp).animateItem(),
                                             )
                                         }
                                     }
@@ -714,7 +715,7 @@ fun LibraryAlbumsScreen(
                                     )
                                 }
                             }
-                        item(
+                        if (filteredAlbums.isNotEmpty()) item(
                             key = "footer",
                             span = { GridItemSpan(maxLineSpan) },
                         ) {
@@ -796,14 +797,14 @@ fun LibraryArtistsScreen(
     val showSuggestedFollow = !isOffline && searchQuery.isBlank() && suggestedFollowArtists.isNotEmpty()
 
     val lazyGridState = rememberLazyGridState()
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
             lazyGridState.animateScrollToItem(0)
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
         }
     }
 
@@ -837,6 +838,7 @@ fun LibraryArtistsScreen(
                     ),
                 ) {
                     item(key = "library_search_actions", span = { GridItemSpan(maxLineSpan) }) {
+                        if (filteredArtists.isNotEmpty() || searchQuery.isNotBlank()) {
                         LibrarySearchAndActions(
                             query = searchFieldValue,
                             onQueryChange = { value ->
@@ -894,6 +896,7 @@ fun LibraryArtistsScreen(
                                 )
                             },
                         )
+                        }
                     }
 
                     if (filteredArtists.isEmpty()) {
@@ -905,10 +908,9 @@ fun LibraryArtistsScreen(
                                     modifier = Modifier.animateItem(),
                                 )
                             } else {
-                                LibrarySearchEmptyPlaceholder(
-                                    icon = R.drawable.artist,
-                                    text = stringResource(R.string.library_artist_empty),
-                                    modifier = Modifier.animateItem(),
+                                LibraryEmptyState(
+                                    text = stringResource(R.string.library_empty_artists),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 480.dp).animateItem(),
                                 )
                             }
                         }
@@ -944,7 +946,7 @@ fun LibraryArtistsScreen(
                         }
                     }
 
-                    item(key = "footer", span = { GridItemSpan(maxLineSpan) }) {
+                    if (filteredArtists.isNotEmpty()) item(key = "footer", span = { GridItemSpan(maxLineSpan) }) {
                         LibraryFooterCount(text = itemCountText)
                     }
                 }
@@ -1050,7 +1052,7 @@ fun LibraryPlaylistsScreen(
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
 
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
@@ -1075,7 +1077,7 @@ fun LibraryPlaylistsScreen(
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
                 else -> lazyGridState.animateScrollToItem(0)
             }
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
         }
     }
 
@@ -1093,23 +1095,6 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    val scrollBehavior = if (betterLibraryBeta) {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    } else {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-            snapAnimationSpec = tween(durationMillis = 200),
-        )
-    }
-
-    val revealState = rememberLibraryPageRevealState()
-    val topBarRevealProgress = rememberLibraryTopBarProgress(
-        state = revealState,
-        scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
-            lazyListState.firstVisibleItemIndex > 0
-        } else {
-            lazyGridState.firstVisibleItemIndex > 0
-        },
-    )
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1158,6 +1143,7 @@ fun LibraryPlaylistsScreen(
                         },
                     ) {
                         item(key = "library_search_actions", span = { GridItemSpan(maxLineSpan) }) {
+                            if (visibleResults.isNotEmpty() || searchQuery.isNotBlank()) {
                             LibrarySearchAndActions(
                                 query = searchFieldValue,
                                 onQueryChange = { value ->
@@ -1189,9 +1175,10 @@ fun LibraryPlaylistsScreen(
                                 },
                                     )
                                 },
+                                showActions = visibleResults.isNotEmpty(),
                             )
+                            }
                         }
-
 
                         item(key = "liked_pinned", contentType = { CONTENT_TYPE_PLAYLIST }) {
                             PlaylistGridItem(
@@ -1212,10 +1199,9 @@ fun LibraryPlaylistsScreen(
                                 if (searchQuery.isNotBlank()) {
                                     LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
                                 } else {
-                                    LibrarySearchEmptyPlaceholder(
-                                        modifier = Modifier.animateItem(),
-                                        icon = R.drawable.playlist_play,
-                                        text = stringResource(R.string.library_playlist_empty),
+                                    LibraryEmptyState(
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 480.dp).animateItem(),
+                                        text = stringResource(R.string.library_empty_playlists),
                                     )
                                 }
                             }
@@ -1252,7 +1238,7 @@ fun LibraryPlaylistsScreen(
                             }
                         }
 
-                        item(
+                        if (visibleResults.isNotEmpty()) item(
                             key = "footer",
                             span = { GridItemSpan(maxLineSpan) },
                         ) {
@@ -1368,13 +1354,13 @@ fun LibrarySongsScreen(
     }
 
     val lazyListState = rememberLazyListState()
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop = backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
             lazyListState.animateScrollToItem(0)
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
         }
     }
 
@@ -1397,10 +1383,10 @@ fun LibrarySongsScreen(
                         }
                     },
                 )
-                IconButton(
+                SongMenuIconButton(
                     enabled = selection.isNotEmpty(),
                     onClick = {
-                        menuState.show {
+                        menuState.show(anchored = true) {
                             SelectionSongMenu(
                                 songSelection = filteredSongs.filter { it.id in selection },
                                 onDismiss = menuState::dismiss,
@@ -1435,7 +1421,7 @@ fun LibrarySongsScreen(
         emptyMessageRes = when {
             isCache -> R.string.playlist_is_empty
             isOffline -> R.string.no_downloads_yet
-            else -> null
+            else -> R.string.library_empty_songs
         },
         modifier = Modifier
             .fillMaxSize()
@@ -1470,8 +1456,8 @@ fun LibrarySongsScreen(
                         onCheckedChange = onCheckedChange,
                     )
                 } else {
-                    IconButton(onClick = {
-                        menuState.show {
+                    SongMenuIconButton(onClick = {
+                        menuState.show(anchored = true) {
                             SongMenu(
                                 originalSong = song,
                                 navController = navController,
@@ -1572,6 +1558,7 @@ fun LibraryTracksPage(
             overlay = overlay,
         ) {
             item(key = "library_search_actions", contentType = CONTENT_TYPE_HEADER) {
+                if (songs.isNotEmpty() || query.text.isNotBlank()) {
                 LibrarySearchAndActions(
                     query = query,
                     onQueryChange = onQueryChange,
@@ -1580,15 +1567,16 @@ fun LibraryTracksPage(
                     onSearch = { keyboardController?.hide() },
                     onClear = { onQueryChange(TextFieldValue()) },
                     bottomContentSpacing = 8.dp,
+                    showActions = songs.isNotEmpty(),
                     actions = { LibraryPlaybackActions(onShuffle, onRotation) },
                 )
+                }
             }
             if (songs.isEmpty() && query.text.isBlank() && emptyMessageRes != null) {
                 item(key = "empty_tracks") {
-                    EmptyPlaceholder(
-                        icon = if (emptyMessageRes == R.string.no_downloads_yet) R.drawable.check else R.drawable.music_note,
+                    LibraryEmptyState(
                         text = stringResource(emptyMessageRes),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 480.dp),
                     )
                 }
             } else if (songs.isEmpty() && query.text.isNotBlank()) {
@@ -1599,7 +1587,7 @@ fun LibraryTracksPage(
             itemsIndexed(songs, key = { _, song -> song.id }, contentType = { _, _ -> CONTENT_TYPE_SONG }) { index, song ->
                 rowContent(song, index)
             }
-            item(key = "footer") { LibraryFooterCount(text = itemCountText) }
+            if (songs.isNotEmpty()) item(key = "footer") { LibraryFooterCount(text = itemCountText) }
         }
     }
 }
@@ -1638,11 +1626,8 @@ fun LibraryMixScreen(
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
-    var isLibraryFilter by viewModel.isLibraryMode
+    var isLibraryFilter by rememberSaveable(initialOffline) { mutableStateOf(!initialOffline) }
     val isOffline = !isLibraryFilter
-    LaunchedEffect(initialOffline) {
-        isLibraryFilter = !initialOffline
-    }
     val libraryTabKey = "library_$isLibraryFilter"
     val screenProgress = if (IrideTabEntrance.wasRevealed(libraryTabKey)) {
         1f
@@ -1749,7 +1734,6 @@ fun LibraryMixScreen(
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
     val showCachedPlaylists = isOffline && !isLibraryFilter && showCached && cachedSongs.isNotEmpty() &&
         matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
-
 
     val albums = viewModel.albums.collectAsState()
     val artist = viewModel.artists.collectAsState()
@@ -1875,19 +1859,29 @@ fun LibraryMixScreen(
         }
     }
 
+    val hasRecentItems = filteredItems.isNotEmpty() || showDownloadedPlaylist || showCachedPlaylists ||
+        showTopPlaylists || showUploadedPlaylists
+
     val coroutineScope = rememberCoroutineScope()
 
     val lazyGridState = rememberLazyGridState()
     val lazyListState = rememberLazyListState()
     val reducedMotion = rememberReducedMotion()
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
-    LaunchedEffect(scrollToTop?.value) {
-        if (scrollToTop?.value == true) {
-            if (isListView) lazyListState.animateScrollToItem(0) else lazyGridState.animateScrollToItem(0)
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+    val scrollLibraryRootToTop = backStackEntry?.savedStateHandle
+        ?.getStateFlow("scrollLibraryRootToTop", false)?.collectAsState()
+    LaunchedEffect(scrollToTop?.value, scrollLibraryRootToTop?.value) {
+        if (scrollToTop?.value == true || scrollLibraryRootToTop?.value == true) {
+            if (reducedMotion) {
+                if (isListView) lazyListState.scrollToItem(0) else lazyGridState.scrollToItem(0)
+            } else {
+                if (isListView) lazyListState.animateScrollToItem(0) else lazyGridState.animateScrollToItem(0)
+            }
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
+            backStackEntry.savedStateHandle.set("scrollLibraryRootToTop", false)
         }
     }
 
@@ -1963,7 +1957,7 @@ fun LibraryMixScreen(
                                 useIrideStyle = true,
                             )
                         }
-                        if (normalizedQuery.isBlank()) {
+                        if (normalizedQuery.isBlank() && hasRecentItems) {
                             item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                 LibrarySectionLabel(
                                     text = if (isOffline && downloadedSongs.isEmpty() && localSongs.isEmpty()) {
@@ -2053,7 +2047,7 @@ fun LibraryMixScreen(
                                             onClick = onClick,
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = item,
                                                         navController = navController,
@@ -2065,13 +2059,6 @@ fun LibraryMixScreen(
                                     )
                                 }
                             }
-                        }
-                        if (isLibraryFilter && normalizedQuery.isBlank()) item(key = "manual_refresh") {
-                            LibraryRefreshButton(
-                                isRefreshing = isRefreshing,
-                                useIrideStyle = true,
-                                onClick = { viewModel.refresh() },
-                            )
                         }
                         if (filteredItems.isEmpty() && !showDownloadedPlaylist && !showCachedPlaylists &&
                             !showTopPlaylists && !showUploadedPlaylists && searchQuery.isNotBlank()
@@ -2129,7 +2116,7 @@ fun LibraryMixScreen(
                         )
                     }
 
-                    if (normalizedQuery.isBlank()) {
+                    if (normalizedQuery.isBlank() && hasRecentItems) {
                         item(
                             key = "recently_added_label",
                             span = { GridItemSpan(maxLineSpan) },
@@ -2343,7 +2330,7 @@ fun LibraryMixScreen(
                                                     onLongClick = {
                                                         if (item.id != PlaylistEntity.LIKED_PLAYLIST_ID) {
                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            menuState.show {
+                                                            menuState.show(anchored = true) {
                                                                 PlaylistMenu(
                                                                     playlist = item,
                                                                     coroutineScope = coroutineScope,
@@ -2375,7 +2362,7 @@ fun LibraryMixScreen(
                                     }
                                     val onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             SongMenu(
                                                 originalSong = item,
                                                 navController = navController,
@@ -2440,7 +2427,7 @@ fun LibraryMixScreen(
                                                     onClick = { navController.navigate("album/${item.id}") },
                                                     onLongClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
+                                                        menuState.show(anchored = true) {
                                                             AlbumMenu(
                                                                 originalAlbum = item,
                                                                 navController = navController,
@@ -2466,7 +2453,7 @@ fun LibraryMixScreen(
                                                     onClick = { navController.navigate("artist/${item.id}") },
                                                     onLongClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
+                                                        menuState.show(anchored = true) {
                                                             ArtistMenu(
                                                                 originalArtist = item,
                                                                 coroutineScope = coroutineScope,
@@ -2480,17 +2467,6 @@ fun LibraryMixScreen(
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    if (isLibraryFilter && normalizedQuery.isBlank()) {
-                        item(key = "manual_refresh", span = { GridItemSpan(maxLineSpan) }) {
-                            LibraryRefreshButton(
-                                isRefreshing = isRefreshing,
-                                useIrideStyle = true,
-                                onClick = { viewModel.refresh() },
-                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
-                            )
                         }
                     }
 
@@ -2519,50 +2495,6 @@ fun LibraryMixScreen(
         }
     }
     }
-    }
-}
-
-@Composable
-private fun LibraryRefreshButton(
-    isRefreshing: Boolean,
-    useIrideStyle: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(if (isRefreshing) R.string.library_refreshing else R.string.library_refresh)
-    val contentColor = if (useIrideStyle) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !isRefreshing, role = Role.Button, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(vertical = 14.dp)
-            .semantics { contentDescription = label },
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.refresh),
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = label,
-            style = if (useIrideStyle) {
-                MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 13.sp,
-                    letterSpacing = 0.2.sp,
-                )
-            } else {
-                MaterialTheme.typography.labelLarge
-            },
-            color = contentColor,
-        )
     }
 }
 

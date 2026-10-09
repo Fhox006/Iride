@@ -5,6 +5,7 @@
 
 package com.metrolist.music.data.remote
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -76,13 +77,16 @@ class MusicBrainzRepository @Inject constructor() {
             }
 
             bestDate
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    private fun makeGetRequest(url: URL): String? {
+    private suspend fun makeGetRequest(url: URL): String? {
+        MusicBrainzRequestThrottle.awaitTurn()
         var connection: HttpURLConnection? = null
         return try {
             connection = url.openConnection() as HttpURLConnection

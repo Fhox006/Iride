@@ -95,6 +95,7 @@ import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
@@ -489,9 +490,9 @@ fun LibraryPodcastsScreen(
                             showDownloadIcon = true,
                             subtitleOverride = subtitle.ifEmpty { null },
                             trailingContent = {
-                                IconButton(
+                                SongMenuIconButton(
                                     onClick = {
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             SongMenu(
                                                 originalSong = episode,
                                                 navController = navController,

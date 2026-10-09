@@ -37,6 +37,9 @@ fun BetterAnimatedGradientBackground(
     modifier: Modifier = Modifier,
     incomingThumbnail: Bitmap? = null,
     crossfadeProgress: Float = 0f,
+    saturation: Float = 1.60f,
+    artworkOpacity: Float = 1f,
+    grainOpacity: Float = IrideFolio.BackgroundGrainOpacity,
 ) {
     val albumImage = remember(thumbnail) { thumbnail?.asImageBitmap() }
     val incomingAlbumImage = remember(incomingThumbnail) { incomingThumbnail?.asImageBitmap() }
@@ -74,11 +77,12 @@ fun BetterAnimatedGradientBackground(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
-                alpha = resumeFadeAlpha
+                alpha = resumeFadeAlpha * artworkOpacity
                 colorFilter = ColorFilter.colorMatrix(
-                    ColorMatrix().apply { setToSaturation(1.60f) }
+                    ColorMatrix().apply { setToSaturation(saturation) }
                 )
-            },
+            }
+            .irideBackgroundGrain(opacity = grainOpacity),
     ) {
         Canvas(
             modifier = Modifier

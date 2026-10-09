@@ -1,25 +1,21 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.WindowInsetsSides
-import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageFrame
-import com.metrolist.music.ui.component.IrideSwitch
+
+import com.metrolist.music.ui.component.IrideFolioAlertDialog
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -27,14 +23,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -58,18 +51,18 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AndroidAutoSectionsOrderKey
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AndroidAutoYouTubePlaylistsKey
-import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.PreferenceEntry
-import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,13 +79,14 @@ enum class AndroidAutoSection(val id: String) {
 }
 
 @Composable
-fun AndroidAutoSection.label(): String = when (this) {
-    AndroidAutoSection.LIKED -> stringResource(R.string.liked_songs)
-    AndroidAutoSection.SONGS -> stringResource(R.string.songs)
-    AndroidAutoSection.ARTISTS -> stringResource(R.string.artists)
-    AndroidAutoSection.ALBUMS -> stringResource(R.string.albums)
-    AndroidAutoSection.PLAYLISTS -> stringResource(R.string.playlists)
-}
+fun AndroidAutoSection.label(): String =
+    when (this) {
+        AndroidAutoSection.LIKED -> stringResource(R.string.liked_songs)
+        AndroidAutoSection.SONGS -> stringResource(R.string.songs)
+        AndroidAutoSection.ARTISTS -> stringResource(R.string.artists)
+        AndroidAutoSection.ALBUMS -> stringResource(R.string.albums)
+        AndroidAutoSection.PLAYLISTS -> stringResource(R.string.playlists)
+    }
 
 fun serializeSections(sections: List<Pair<AndroidAutoSection, Boolean>>): String =
     sections.joinToString(",") { (section, enabled) -> "${section.id}:$enabled" }
@@ -102,7 +96,8 @@ fun deserializeSections(raw: String): List<Pair<AndroidAutoSection, Boolean>> {
     return raw.split(",").mapNotNull { token ->
         val parts = token.split(":")
         if (parts.size != 2) return@mapNotNull null
-        val section = AndroidAutoSection.values().find { it.id == parts[0] } ?: return@mapNotNull null
+        val section =
+            AndroidAutoSection.values().find { it.id == parts[0] } ?: return@mapNotNull null
         val enabled = parts[1].toBooleanStrictOrNull() ?: true
         section to enabled
     }
@@ -117,44 +112,54 @@ fun AndroidAutoSettings(
     val haptic = LocalHapticFeedback.current
     val database = LocalDatabase.current
 
-    val userPlaylists by remember {
-        database.playlistsByCreateDateAsc().map { list -> list.map { it.playlist } }
-    }.collectAsState(initial = emptyList())
+    val userPlaylists by
+        remember {
+                database.playlistsByCreateDateAsc().map { list -> list.map { it.playlist } }
+            }
+            .collectAsState(initial = emptyList())
 
-    val (youtubePlaylistsEnabled, onYoutubePlaylistsChange) = rememberPreference(
-        key = AndroidAutoYouTubePlaylistsKey,
-        defaultValue = false
-    )
+    val (youtubePlaylistsEnabled, onYoutubePlaylistsChange) =
+        rememberPreference(
+            key = AndroidAutoYouTubePlaylistsKey,
+            defaultValue = false,
+        )
 
-    val (sectionsRaw, onSectionsChange) = rememberPreference(
-        key = AndroidAutoSectionsOrderKey,
-        defaultValue = serializeSections(AndroidAutoSection.values().map { it to true })
-    )
+    val (sectionsRaw, onSectionsChange) =
+        rememberPreference(
+            key = AndroidAutoSectionsOrderKey,
+            defaultValue = serializeSections(AndroidAutoSection.values().map { it to true }),
+        )
 
-    val (targetPlaylist, onTargetPlaylistChange) = rememberPreference(
-        key = AndroidAutoTargetPlaylistKey,
-        defaultValue = MediaSessionConstants.TARGET_PLAYLIST_AUTO
-    )
+    val (targetPlaylist, onTargetPlaylistChange) =
+        rememberPreference(
+            key = AndroidAutoTargetPlaylistKey,
+            defaultValue = MediaSessionConstants.TARGET_PLAYLIST_AUTO,
+        )
 
-    var sections by remember(sectionsRaw) {
-        mutableStateOf(deserializeSections(sectionsRaw))
-    }
+    var sections by
+        remember(sectionsRaw) {
+            mutableStateOf(deserializeSections(sectionsRaw))
+        }
 
     val lazyListState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val fromReal = from.index
-        val toReal = to.index
-        if (fromReal >= 0 && toReal >= 0 && fromReal < sections.size && toReal < sections.size) {
-            sections = sections.toMutableList().apply {
-                add(toReal, removeAt(fromReal))
+    val reorderableState =
+        rememberReorderableLazyListState(lazyListState) { from, to ->
+            val fromReal = from.index
+            val toReal = to.index
+            if (
+                fromReal >= 0 && toReal >= 0 && fromReal < sections.size && toReal < sections.size
+            ) {
+                sections =
+                    sections.toMutableList().apply {
+                        add(toReal, removeAt(fromReal))
+                    }
+                onSectionsChange(serializeSections(sections))
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
-            onSectionsChange(serializeSections(sections))
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
-    }
 
-    val playlistOptions = listOf(MediaSessionConstants.TARGET_PLAYLIST_AUTO) +
-            userPlaylists.map { it.id }
+    val playlistOptions =
+        listOf(MediaSessionConstants.TARGET_PLAYLIST_AUTO) + userPlaylists.map { it.id }
 
     val playlistLabels: @Composable (String) -> String = { id ->
         if (id == MediaSessionConstants.TARGET_PLAYLIST_AUTO) {
@@ -166,54 +171,61 @@ fun AndroidAutoSettings(
 
     val settingsScrollState = rememberScrollState()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
     IridePageFrame(
         title = stringResource(R.string.android_auto),
         scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        background = {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
                     mediaMetadata = mediaMetadata,
                     playerBackground = playerBackgroundStyle,
                 )
             } else {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                )
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .verticalScroll(settingsScrollState)
-                    .padding(horizontal = 16.dp)
+                modifier =
+                    Modifier.windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current.only(
+                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                            )
+                        )
+                        .padding(horizontal = 16.dp)
             ) {
                 Material3SettingsGroup(
                     title = stringResource(R.string.android_auto_visible_sections),
-                    items = listOf(
-                        Material3SettingsItem(
-                            title = {},
-                            description = { Text(stringResource(R.string.android_auto_reorder_hint)) },
-                            onClick = null
-                        )
-                    )
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = {},
+                                description = {
+                                    Text(stringResource(R.string.android_auto_reorder_hint))
+                                },
+                                onClick = null,
+                            )
+                        ),
                 )
 
                 LazyColumn(
                     state = lazyListState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height((sections.size * 80).dp),
+                    modifier = Modifier.fillMaxWidth().height((sections.size * 80).dp),
                     userScrollEnabled = false,
                 ) {
                     items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
@@ -222,15 +234,18 @@ fun AndroidAutoSettings(
                                 modifier = Modifier.fillMaxWidth(),
                                 icon = {
                                     Icon(
-                                        painter = painterResource(
-                                            when (section) {
-                                                AndroidAutoSection.LIKED -> R.drawable.favorite
-                                                AndroidAutoSection.SONGS -> R.drawable.music_note
-                                                AndroidAutoSection.ARTISTS -> R.drawable.artist
-                                                AndroidAutoSection.ALBUMS -> R.drawable.album
-                                                AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
-                                            }
-                                        ),
+                                        painter =
+                                            painterResource(
+                                                when (section) {
+                                                    AndroidAutoSection.LIKED -> R.drawable.favorite
+                                                    AndroidAutoSection.SONGS ->
+                                                        R.drawable.music_note
+                                                    AndroidAutoSection.ARTISTS -> R.drawable.artist
+                                                    AndroidAutoSection.ALBUMS -> R.drawable.album
+                                                    AndroidAutoSection.PLAYLISTS ->
+                                                        R.drawable.queue_music
+                                                }
+                                            ),
                                         contentDescription = null,
                                     )
                                 },
@@ -240,13 +255,15 @@ fun AndroidAutoSettings(
                                         Icon(
                                             painter = painterResource(R.drawable.drag_handle),
                                             contentDescription = null,
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .longPressDraggableHandle(
-                                                    onDragStarted = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    }
-                                                ),
+                                            modifier =
+                                                Modifier.size(24.dp)
+                                                    .longPressDraggableHandle(
+                                                        onDragStarted = {
+                                                            haptic.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress
+                                                            )
+                                                        }
+                                                    ),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         Spacer(Modifier.width(12.dp))
@@ -260,13 +277,16 @@ fun AndroidAutoSettings(
                                             },
                                             thumbContent = {
                                                 Icon(
-                                                    painter = painterResource(
-                                                        if (enabled) R.drawable.check else R.drawable.close
-                                                    ),
+                                                    painter =
+                                                        painterResource(
+                                                            if (enabled) R.drawable.check
+                                                            else R.drawable.close
+                                                        ),
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    modifier =
+                                                        Modifier.size(SwitchDefaults.IconSize),
                                                 )
-                                            }
+                                            },
                                         )
                                     }
                                 },
@@ -286,7 +306,7 @@ fun AndroidAutoSettings(
                 var showTargetPlaylistDialog by remember { mutableStateOf(false) }
 
                 if (showTargetPlaylistDialog) {
-                    androidx.compose.material3.AlertDialog(
+                    IrideFolioAlertDialog(
                         onDismissRequest = { showTargetPlaylistDialog = false },
                         title = { Text(stringResource(R.string.android_auto_target_playlist)) },
                         text = {
@@ -294,13 +314,13 @@ fun AndroidAutoSettings(
                                 items(playlistOptions) { value ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                showTargetPlaylistDialog = false
-                                                onTargetPlaylistChange(value)
-                                            }
-                                            .padding(vertical = 12.dp),
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .clickable {
+                                                    showTargetPlaylistDialog = false
+                                                    onTargetPlaylistChange(value)
+                                                }
+                                                .padding(vertical = 12.dp),
                                     ) {
                                         androidx.compose.material3.RadioButton(
                                             selected = value == targetPlaylist,
@@ -316,59 +336,71 @@ fun AndroidAutoSettings(
                             }
                         },
                         confirmButton = {
-                            androidx.compose.material3.TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = { showTargetPlaylistDialog = false }
                             ) {
                                 Text(stringResource(android.R.string.cancel))
                             }
-                        }
+                        },
                     )
                 }
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.android_auto_target_playlist),
-                    items = listOf(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.playlist_add),
-                            title = { Text(stringResource(R.string.android_auto_target_playlist)) },
-                            description = { Text(playlistLabels(targetPlaylist)) },
-                            onClick = { showTargetPlaylistDialog = true }
-                        )
-                    )
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.playlist_add),
+                                title = {
+                                    Text(stringResource(R.string.android_auto_target_playlist))
+                                },
+                                description = { Text(playlistLabels(targetPlaylist)) },
+                                onClick = { showTargetPlaylistDialog = true },
+                            )
+                        ),
                 )
 
                 Spacer(Modifier.height(27.dp))
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.your_youtube_playlists),
-                    items = listOf(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.queue_music),
-                            title = { Text(stringResource(R.string.android_auto_youtube_playlists)) },
-                            description = { Text(stringResource(R.string.android_auto_youtube_playlists_desc)) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = youtubePlaylistsEnabled,
-                                    onCheckedChange = onYoutubePlaylistsChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                if (youtubePlaylistsEnabled) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    }
-                                )
-                            },
-                            onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) }
-                        )
-                    )
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.queue_music),
+                                title = {
+                                    Text(stringResource(R.string.android_auto_youtube_playlists))
+                                },
+                                description = {
+                                    Text(
+                                        stringResource(R.string.android_auto_youtube_playlists_desc)
+                                    )
+                                },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = youtubePlaylistsEnabled,
+                                        onCheckedChange = onYoutubePlaylistsChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        if (youtubePlaylistsEnabled)
+                                                            R.drawable.check
+                                                        else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) },
+                            )
+                        ),
                 )
 
                 Spacer(Modifier.height(27.dp))
             }
         }
-
     }
 }

@@ -56,6 +56,7 @@ data class SpotifyImportPlaylist(
     val unmatched: Int = 0,
     val failed: Int = 0,
     val thumbnail: String? = null,
+    val thumbnails: List<String> = emptyList(),
     val phase: SpotifyImportPhase = SpotifyImportPhase.PENDING,
     val savedPlaylistId: String? = null,
 )
@@ -144,7 +145,9 @@ class SpotifyImportViewModel @Inject constructor(
                     staged[id] = StagedPlaylist(export, MutableList(export.tracks.size) { null })
                     SpotifyImportPlaylist(
                         id = id,
-                        name = export.name,
+                        name = if (export.name.trim().equals("Liked", ignoreCase = true)) {
+                            context.getString(com.metrolist.music.R.string.spotify_exportify_liked_playlist_name)
+                        } else export.name,
                         total = export.tracks.size,
                         phase = if (export.invalid) SpotifyImportPhase.FAILED else SpotifyImportPhase.PENDING,
                     )
@@ -199,6 +202,11 @@ class SpotifyImportViewModel @Inject constructor(
                             unmatched = it.unmatched + if (outcome == TrackOutcome.Unmatched) 1 else 0,
                             failed = it.failed + if (outcome == TrackOutcome.Failed) 1 else 0,
                             thumbnail = it.thumbnail ?: (outcome as? TrackOutcome.Matched)?.song?.thumbnail,
+                            thumbnails =
+                                playlist.outcomes
+                                    .filterIsInstance<TrackOutcome.Matched>()
+                                    .mapNotNull { matched -> matched.song.thumbnail }
+                                    .take(4),
                         )
                     }
                 }
@@ -216,6 +224,10 @@ class SpotifyImportViewModel @Inject constructor(
                 unmatched = outcomes.count { outcome -> outcome == TrackOutcome.Unmatched },
                 failed = outcomes.count { outcome -> outcome == TrackOutcome.Failed },
                 thumbnail = outcomes.firstNotNullOfOrNull { outcome -> (outcome as? TrackOutcome.Matched)?.song?.thumbnail },
+                thumbnails =
+                    outcomes.filterIsInstance<TrackOutcome.Matched>()
+                        .mapNotNull { outcome -> outcome.song.thumbnail }
+                        .take(4),
             )
         }
     }

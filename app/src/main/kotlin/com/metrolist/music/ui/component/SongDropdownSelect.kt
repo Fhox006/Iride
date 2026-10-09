@@ -73,63 +73,12 @@ fun SongSelectDropdown(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.width(with(density) { textFieldWidthPx.toDp() }),
-            properties = PopupProperties(focusable = false)
-        ) {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 160.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                visibleSongs.forEach { song ->
-                    val scrollState = rememberScrollState()
-                    DropdownMenuItem(
-                        onClick = {
-                            searchText = song.title
-                            selectedSong.value = song
-                            expanded = false
-                        },
-                        text = {
-                            Row (modifier = Modifier.horizontalScroll(scrollState)) {
-                                Text(
-                                    text = song.title,
-                                    maxLines = 1,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                val displayArtists = song.artists.joinToString(", ") { it.name }.ifBlank { song.artistName }
-                                displayArtists?.let {
-                                    Text(
-                                        text = it,
-                                        maxLines = 1,
-                                        color = androidx.compose.ui.graphics.Color.Gray,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                if (remainingCount > 0) {
-                    DropdownMenuItem(
-                        onClick = {  },
-                        enabled = false,
-                        text = {
-                            Text(
-                                text = stringResource(
-                                    R.string.song_dropdown_more_results,
-                                    remainingCount,
-                                ),
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
+        IrideFolioChoiceMenu(
+            expanded = expanded, onDismissRequest = { expanded = false }, focusable = false,
+            actions = visibleSongs.map { song ->
+                IrideFolioMenuAction(label = song.title, selected = selectedSong.value?.id == song.id,
+                    onClick = { searchText = song.title; selectedSong.value = song })
+            },
+        )
     }
 }

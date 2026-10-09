@@ -69,7 +69,7 @@ private val HeroScrimColor = Color(0xFF1C1C1E)
 @Composable
 fun HeroCarouselSection(
     items: List<HeroCarouselItem.ArtistRadio>,
-    onRadioClick: (String) -> Unit,
+    onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     pagerState: PagerState? = null,
     onCoverError: (String) -> Unit = {},
@@ -88,7 +88,7 @@ fun HeroCarouselSection(
             modifier = Modifier.fillMaxWidth(),
         ) { page ->
             items.getOrNull(page)?.let { item ->
-                HeroCard(item, onRadioClick, onCoverError)
+                HeroCard(item, onArtistClick, onCoverError)
             }
         }
         Row(
@@ -114,7 +114,7 @@ fun HeroCarouselSection(
 @Composable
 private fun RadioSectionTitle() {
     NavigationTitle(
-        title = stringResource(R.string.home_radios_for_you),
+        title = stringResource(R.string.folio_artists_for_you),
         useIrideStyle = true,
         sentenceCaseTitle = true,
         showDivider = false,
@@ -145,11 +145,11 @@ fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
 @Composable
 private fun HeroCard(
     item: HeroCarouselItem.ArtistRadio,
-    onRadioClick: (String) -> Unit,
+    onArtistClick: (String) -> Unit,
     onCoverError: (String) -> Unit,
 ) {
-    val title = stringResource(R.string.home_artist_radio_title, item.artistName)
-    val subtitle = stringResource(R.string.home_artist_radio_subtitle)
+    val title = item.artistName
+    val subtitle = stringResource(R.string.folio_explore_artist)
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     Box(
@@ -157,7 +157,7 @@ private fun HeroCard(
             .height(148.dp)
             .clip(cardShape)
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
-            .clickable(role = Role.Button, onClickLabel = title) { onRadioClick(item.artistId) },
+            .clickable(role = Role.Button, onClickLabel = title) { onArtistClick(item.artistId) },
     ) {
         RadioCover(item, Modifier.fillMaxSize(), onCoverError)
         Box(
@@ -182,8 +182,8 @@ private fun HeroCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.radio),
-                    contentDescription = stringResource(R.string.home_radio_badge),
+                    painter = painterResource(R.drawable.artist),
+                    contentDescription = stringResource(R.string.view_artist),
                     tint = Color.White,
                     modifier = Modifier.size(18.dp),
                 )

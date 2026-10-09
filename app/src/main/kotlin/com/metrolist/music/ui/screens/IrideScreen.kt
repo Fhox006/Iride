@@ -12,13 +12,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,41 +26,39 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import com.metrolist.music.LocalPlayerConnection
-import com.metrolist.music.R
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.component.IrideAdaptiveTopBar
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 
-private val IrideFallbackColors = listOf(
-    Color(0xFF6A0DAD),
-    Color(0xFF4B0082),
-    Color(0xFF8B00FF),
-    Color(0xFF9400D3),
-    Color(0xFF7B2FBE)
-)
+private val IrideFallbackColors =
+    listOf(
+        Color(0xFF6A0DAD),
+        Color(0xFF4B0082),
+        Color(0xFF8B00FF),
+        Color(0xFF9400D3),
+        Color(0xFF7B2FBE),
+    )
 
 private data class IrideExtractedSwatch(
     val color: Color,
-    val population: Int
+    val population: Int,
 )
 
 private fun irideColorToHSL(c: Color): Triple<Float, Float, Float> {
@@ -77,11 +71,16 @@ private fun irideColorToHSL(c: Color): Triple<Float, Float, Float> {
     val d = max - min
     if (d < 0.001f) return Triple(0f, 0f, l)
     val s = if (l > 0.5f) d / (2f - max - min) else d / (max + min)
-    val h = when {
-        max == r -> { var sector = (g - b) / d; if (sector < 0f) sector += 6f; sector / 6f }
-        max == g -> ((b - r) / d + 2f) / 6f
-        else -> ((r - g) / d + 4f) / 6f
-    }
+    val h =
+        when {
+            max == r -> {
+                var sector = (g - b) / d
+                if (sector < 0f) sector += 6f
+                sector / 6f
+            }
+            max == g -> ((b - r) / d + 2f) / 6f
+            else -> ((r - g) / d + 4f) / 6f
+        }
     return Triple(h.coerceIn(0f, 1f), s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
 }
 
@@ -91,12 +90,21 @@ private fun irideHslToColor(h: Float, s: Float, l: Float): Color {
     val c = (1f - abs(2f * l - 1f)) * s
     val x = c * (1f - abs(h6 % 2f - 1f))
     val m = l - c / 2f
-    val (r1, g1, b1) = when {
-        h6 < 1f -> Triple(c, x, 0f); h6 < 2f -> Triple(x, c, 0f)
-        h6 < 3f -> Triple(0f, c, x); h6 < 4f -> Triple(0f, x, c)
-        h6 < 5f -> Triple(x, 0f, c); else -> Triple(c, 0f, x)
-    }
-    return Color((r1 + m).coerceIn(0f, 1f), (g1 + m).coerceIn(0f, 1f), (b1 + m).coerceIn(0f, 1f), 1f)
+    val (r1, g1, b1) =
+        when {
+            h6 < 1f -> Triple(c, x, 0f)
+            h6 < 2f -> Triple(x, c, 0f)
+            h6 < 3f -> Triple(0f, c, x)
+            h6 < 4f -> Triple(0f, x, c)
+            h6 < 5f -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+    return Color(
+        (r1 + m).coerceIn(0f, 1f),
+        (g1 + m).coerceIn(0f, 1f),
+        (b1 + m).coerceIn(0f, 1f),
+        1f,
+    )
 }
 
 private fun irideHueTargetL(h: Float, s: Float): ClosedFloatingPointRange<Float> {
@@ -115,23 +123,35 @@ private fun irideNormalizeColor(c: Color): Color {
     if (s < 0.12f && l > 0.65f) return irideHslToColor(h, s, 0.25f)
     if (l < 0.20f) return irideHslToColor(h, s, 0.23f)
     val range = irideHueTargetL(h, s)
-    var targetL = when {
-        l > 0.55f -> range.start + (l - range.endInclusive) * 0.38f
-        l > range.endInclusive -> range.endInclusive - 0.04f
-        else -> l - 0.045f
-    }.coerceIn(range.start - 0.05f, range.endInclusive - 0.02f)
+    var targetL =
+        when {
+            l > 0.55f -> range.start + (l - range.endInclusive) * 0.38f
+            l > range.endInclusive -> range.endInclusive - 0.04f
+            else -> l - 0.045f
+        }.coerceIn(range.start - 0.05f, range.endInclusive - 0.02f)
     val result = irideHslToColor(h, s.coerceAtLeast(0.28f), targetL)
     val (_, rs, _) = irideColorToHSL(result)
     return if (s > 0.30f && rs < 0.20f) {
         val factor = (targetL / l.coerceAtLeast(0.15f)).coerceAtMost(0.93f)
-        Color((c.red * factor).coerceIn(0.05f, 0.95f), (c.green * factor).coerceIn(0.05f, 0.95f), (c.blue * factor).coerceIn(0.05f, 0.95f), 1f)
+        Color(
+            (c.red * factor).coerceIn(0.05f, 0.95f),
+            (c.green * factor).coerceIn(0.05f, 0.95f),
+            (c.blue * factor).coerceIn(0.05f, 0.95f),
+            1f,
+        )
     } else result
 }
 
 private fun irideCalculateDistance(c1: Color, c2: Color): Double {
-    val r1 = c1.red * 255; val g1 = c1.green * 255; val b1 = c1.blue * 255
-    val r2 = c2.red * 255; val g2 = c2.green * 255; val b2 = c2.blue * 255
-    return sqrt((r1 - r2).toDouble().pow(2) + (g1 - g2).toDouble().pow(2) + (b1 - b2).toDouble().pow(2))
+    val r1 = c1.red * 255
+    val g1 = c1.green * 255
+    val b1 = c1.blue * 255
+    val r2 = c2.red * 255
+    val g2 = c2.green * 255
+    val b2 = c2.blue * 255
+    return sqrt(
+        (r1 - r2).toDouble().pow(2) + (g1 - g2).toDouble().pow(2) + (b1 - b2).toDouble().pow(2)
+    )
 }
 
 private fun Color.irideIsVibrant(): Boolean {
@@ -158,34 +178,43 @@ fun IrideScreen(
             swatches = emptyList()
             return@LaunchedEffect
         }
-        val result = withContext(Dispatchers.IO) {
-            val palette = Palette.from(thumbnail).generate()
-            val candidates = listOfNotNull(
-                palette.vibrantSwatch, palette.darkVibrantSwatch, palette.mutedSwatch,
-                palette.darkMutedSwatch, palette.dominantSwatch, palette.lightVibrantSwatch
-            )
-            if (candidates.isEmpty()) return@withContext emptyList()
-            val sorted = candidates
-                .map { IrideExtractedSwatch(Color(it.rgb), it.population) }
-                .sortedWith(compareByDescending { swatch ->
-                    when {
-                        swatch.color.irideIsVibrant() -> 1000 + swatch.population
-                        swatch.color.irideIsDarkVibrant() -> 800 + swatch.population
-                        else -> swatch.population
+        val result =
+            withContext(Dispatchers.IO) {
+                val palette = Palette.from(thumbnail).generate()
+                val candidates =
+                    listOfNotNull(
+                        palette.vibrantSwatch,
+                        palette.darkVibrantSwatch,
+                        palette.mutedSwatch,
+                        palette.darkMutedSwatch,
+                        palette.dominantSwatch,
+                        palette.lightVibrantSwatch,
+                    )
+                if (candidates.isEmpty()) return@withContext emptyList()
+                val sorted =
+                    candidates
+                        .map { IrideExtractedSwatch(Color(it.rgb), it.population) }
+                        .sortedWith(
+                            compareByDescending { swatch ->
+                                when {
+                                    swatch.color.irideIsVibrant() -> 1000 + swatch.population
+                                    swatch.color.irideIsDarkVibrant() -> 800 + swatch.population
+                                    else -> swatch.population
+                                }
+                            }
+                        )
+                val totalPop = sorted.sumOf { it.population }.toFloat()
+                val minThreshold = (totalPop * 0.025f).toInt()
+                val filtered = sorted.filter { it.population >= minThreshold }.take(6)
+                val distinct = mutableListOf<IrideExtractedSwatch>()
+                filtered.forEach { candidate ->
+                    if (distinct.size >= 5) return@forEach
+                    if (distinct.none { irideCalculateDistance(candidate.color, it.color) < 55 }) {
+                        distinct.add(candidate)
                     }
-                })
-            val totalPop = sorted.sumOf { it.population }.toFloat()
-            val minThreshold = (totalPop * 0.025f).toInt()
-            val filtered = sorted.filter { it.population >= minThreshold }.take(6)
-            val distinct = mutableListOf<IrideExtractedSwatch>()
-            filtered.forEach { candidate ->
-                if (distinct.size >= 5) return@forEach
-                if (distinct.none { irideCalculateDistance(candidate.color, it.color) < 55 }) {
-                    distinct.add(candidate)
                 }
+                distinct.map { it.copy(color = irideNormalizeColor(it.color)) }
             }
-            distinct.map { it.copy(color = irideNormalizeColor(it.color)) }
-        }
         swatches = result
     }
 
@@ -205,16 +234,23 @@ fun IrideScreen(
     val o3 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(17000, easing = LinearEasing), RepeatMode.Reverse), label = "o3")
 
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
-    val frostBackdrop = rememberFrostBackdrop()
-
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop),
+        IridePageFrame(
+            title = "Iride",
+            scrollState = rememberScrollState(),
+            navigationIcon = { IridePageBackButton(navController) },
+            modifier = Modifier.fillMaxSize(),
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -225,39 +261,51 @@ fun IrideScreen(
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
             Canvas(modifier = Modifier.fillMaxSize().graphicsLayer {}) {
-            val w = size.width; val h = size.height; val md = max(w, h)
-            val totalPop = populations.sum().toFloat()
-            fun getRadius(i: Int): Float {
-                if (populations.isEmpty()) return 0.95f * md
-                val pop = populations.getOrNull(i)?.toFloat() ?: 0f
-                val ratio = if (totalPop > 0) pop / totalPop else 0f
-                return (md * (0.60f + 0.70f * ratio)).coerceIn(0.55f * md, 1.35f * md)
-            }
-
-            val animColors = listOf(c1, c2, c3, c4, c5)
-            val positions = listOf(
-                Offset(w * (0.15f + 0.18f * (o1 * 2 - 1)), h * (0.20f + 0.18f * (o2 * 2 - 1))),
-                Offset(w * (0.85f + 0.18f * (o2 * 2 - 1)), h * (0.80f + 0.18f * (o3 * 2 - 1))),
-                Offset(w * (0.80f + 0.18f * (o3 * 2 - 1)), h * (0.15f + 0.18f * (o1 * 2 - 1))),
-                Offset(w * (0.20f + 0.18f * ((1f - o1) * 2 - 1)), h * (0.85f + 0.18f * ((1f - o2) * 2 - 1))),
-                Offset(w * (0.50f + 0.18f * (o2 * 2 - 1)), h * (0.50f + 0.18f * (o3 * 2 - 1)))
-            )
-            positions.forEachIndexed { i, pos ->
-                val r = getRadius(i)
-                drawCircle(brush = Brush.radialGradient(listOf(animColors[i], Color.Transparent), pos, r), radius = r, center = pos)
-            }
-        }
-        }
-
-        IrideAdaptiveTopBar(
-            title = { Text("Iride") },
-            navigationIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                val w = size.width
+                val h = size.height
+                val md = max(w, h)
+                val totalPop = populations.sum().toFloat()
+                fun getRadius(i: Int): Float {
+                    if (populations.isEmpty()) return 0.95f * md
+                    val pop = populations.getOrNull(i)?.toFloat() ?: 0f
+                    val ratio = if (totalPop > 0) pop / totalPop else 0f
+                    return (md * (0.60f + 0.70f * ratio)).coerceIn(0.55f * md, 1.35f * md)
                 }
-            },
-            transparent = true,
-            backdrop = frostBackdrop,
-        )
+
+                val animColors = listOf(c1, c2, c3, c4, c5)
+                val positions =
+                    listOf(
+                        Offset(
+                            w * (0.15f + 0.18f * (o1 * 2 - 1)),
+                            h * (0.20f + 0.18f * (o2 * 2 - 1)),
+                        ),
+                        Offset(
+                            w * (0.85f + 0.18f * (o2 * 2 - 1)),
+                            h * (0.80f + 0.18f * (o3 * 2 - 1)),
+                        ),
+                        Offset(
+                            w * (0.80f + 0.18f * (o3 * 2 - 1)),
+                            h * (0.15f + 0.18f * (o1 * 2 - 1)),
+                        ),
+                        Offset(
+                            w * (0.20f + 0.18f * ((1f - o1) * 2 - 1)),
+                            h * (0.85f + 0.18f * ((1f - o2) * 2 - 1)),
+                        ),
+                        Offset(
+                            w * (0.50f + 0.18f * (o2 * 2 - 1)),
+                            h * (0.50f + 0.18f * (o3 * 2 - 1)),
+                        ),
+                    )
+                positions.forEachIndexed { i, pos ->
+                    val r = getRadius(i)
+                    drawCircle(
+                        brush =
+                            Brush.radialGradient(listOf(animColors[i], Color.Transparent), pos, r),
+                        radius = r,
+                        center = pos,
+                    )
+                }
+            }
+        }
     }
 }

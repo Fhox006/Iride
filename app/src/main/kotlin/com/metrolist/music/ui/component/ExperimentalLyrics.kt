@@ -30,6 +30,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.animateTo
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.exponentialDecay
@@ -57,7 +58,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -160,8 +160,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.lazy.LazyColumn
@@ -176,6 +174,7 @@ class LyricsPillController {
     var translateAction: () -> Unit = {}
     var selectionAction: () -> Unit = {}
     var romanizeAction: () -> Unit = {}
+    var scrollAction: (Int) -> Unit = {}
 }
 
 @Composable
@@ -882,6 +881,27 @@ fun ExperimentalLyrics(
         val safeMinOffset = minOf(minOffset, maxOffset - maxHeightPx) - constraintBuffer
         val safeMaxOffset = maxOf(maxOffset, 0f) + constraintBuffer
 
+        SideEffect {
+            pillsController?.scrollAction = { direction ->
+                val lineIndices = mergedLyricsList.indices.filter { mergedLyricsList[it] is LyricsListItem.Line }
+                val nearest = lineIndices.indices.minByOrNull { index ->
+                    abs(positions.getOrDefault(lineIndices[index], 0f) + userManualOffset)
+                }
+                if (nearest != null) {
+                    val target = lineIndices[(nearest + direction).coerceIn(lineIndices.indices)]
+                    val offset = -positions.getOrDefault(target, 0f)
+                    flingJob?.cancel()
+                    isAutoScrollEnabled = false
+                    lastPreviewTime = System.currentTimeMillis()
+                    flingJob = scope.launch {
+                        AnimationState(initialValue = userManualOffset).animateTo(
+                            offset.coerceIn(safeMinOffset, safeMaxOffset), tween(220, easing = FastOutSlowInEasing),
+                        ) { userManualOffset = value }
+                    }
+                }
+            }
+        }
+
         LaunchedEffect(isAutoScrollEnabled, lines) {
             if (isAutoScrollEnabled) {
                 val start = userManualOffset
@@ -948,7 +968,6 @@ fun ExperimentalLyrics(
             PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onPrimary
             else -> Color.Black
         }
-
 
         AnimatedVisibility(
             visible = effectivePillsVisible && (!isFullScreen || isSelectionModeActive),
@@ -1425,7 +1444,7 @@ fun ExperimentalLyrics(
         }
 
         if (showProgressDialog) {
-            BasicAlertDialog(onDismissRequest = {}) {
+            IrideFolioDialog(onDismissRequest = {}) {
                 Card(
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

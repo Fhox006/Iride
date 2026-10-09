@@ -1,28 +1,26 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
-import android.content.Context
+import com.metrolist.music.ui.component.rememberMenuActionScope
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import android.content.Intent
-import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,9 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,23 +36,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -81,7 +74,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -110,9 +102,11 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.PlaylistSong
@@ -123,10 +117,13 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
-import com.metrolist.music.ui.component.LocalBottomSheetPageState
-import com.metrolist.music.ui.component.Material3MenuGroup
-import com.metrolist.music.ui.component.NewAction
-import com.metrolist.music.ui.component.NewActionGrid
+import com.metrolist.music.ui.component.IrideAnchoredSongMenu
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.IrideFolioScrollbar
+import com.metrolist.music.ui.component.IrideFolioMenuDivider
+import com.metrolist.music.ui.component.IrideFolioMenuItem
+import com.metrolist.music.ui.component.irideFolioGestures
+import com.metrolist.music.ui.component.LocalSongMenuPopupState
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -135,18 +132,18 @@ import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
-import com.metrolist.music.ui.utils.ShowMediaInfo
+import com.metrolist.music.utils.ArtistMetadataResolver
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.CachePlaylistViewModel
-import kotlinx.coroutines.CoroutineScope
+import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sv.lib.squircleshape.SquircleShape
 import timber.log.Timber
-import java.time.LocalDateTime
 
 @Composable
 fun SongMenu(
@@ -161,46 +158,90 @@ fun SongMenu(
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
+    val popupState = LocalSongMenuPopupState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
-    val song = songState.value ?: originalSong
-    val download by LocalDownloadUtil.current
-        .getDownload(originalSong.id)
-        .collectAsState(initial = null)
-    val coroutineScope = rememberCoroutineScope()
+    val sourceSong = songState.value ?: originalSong
+    val autoLinkFeaturedArtists by
+        rememberPreference(AutoLinkFeaturedArtistsKey, defaultValue = true)
+    val song by
+        produceState(initialValue = sourceSong, sourceSong, autoLinkFeaturedArtists) {
+            value = sourceSong
+            if (autoLinkFeaturedArtists)
+                value = ArtistMetadataResolver.withFeaturedArtists(database, sourceSong)
+        }
+    val download by
+        LocalDownloadUtil.current.getDownload(originalSong.id).collectAsState(initial = null)
+    val coroutineScope = rememberMenuActionScope()
     val syncUtils = LocalSyncUtils.current
     val listenTogetherManager = LocalListenTogetherManager.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberMenuActionScope()
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
 
     val cacheViewModel = hiltViewModel<CachePlaylistViewModel>()
 
-    val rotationAnimation by animateFloatAsState(
-        targetValue = refetchIconDegree,
-        animationSpec = tween(durationMillis = 800),
-        label = "",
-    )
+    val rotationAnimation by
+        animateFloatAsState(
+            targetValue = refetchIconDegree,
+            animationSpec = tween(durationMillis = 800),
+            label = "",
+        )
 
     val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
 
-    val podcastEntity by produceState<PodcastEntity?>(initialValue = null, song) {
-        val podcastId = song.song.albumId
-        if (song.song.isEpisode && podcastId != null) {
-            database.podcast(podcastId).collect { value = it }
+    val podcastEntity by
+        produceState<PodcastEntity?>(initialValue = null, song) {
+            val podcastId = song.song.albumId
+            if (song.song.isEpisode && podcastId != null) {
+                database.podcast(podcastId).collect { value = it }
+            }
         }
-    }
     val isPodcastSubscribed = podcastEntity?.bookmarkedAt != null
 
-    val orderedArtists by produceState(initialValue = emptyList<ArtistEntity>(), song) {
-        withContext(Dispatchers.IO) {
-            val artistMaps = database.songArtistMap(song.id).sortedBy { it.position }
-            val sorted =
-                artistMaps.mapNotNull { map ->
-                    song.artists.firstOrNull { it.id == map.artistId }
+    val sourceArtists = song.orderedArtists
+    val orderedArtists by
+        produceState(initialValue = sourceArtists, sourceArtists) {
+            value = sourceArtists
+            coroutineScope {
+                sourceArtists.forEach { artist ->
+                    launch {
+                        val loaded = ArtistMetadataResolver.withArtwork(database, artist)
+                        value = value.map { if (it.id == loaded.id) loaded else it }
+                    }
                 }
-            value = sorted
+            }
         }
+    val menuArtists = orderedArtists.filterIndexed { index, artist ->
+        index == 0 || artist.isYouTubeArtist || artist.isLocal || song.song.isLocal
     }
+
+    val currentEntry = navController.currentBackStackEntry
+    val currentRoute = currentEntry?.destination?.route.orEmpty()
+    val currentArtistId = if (currentRoute.startsWith("artist/")) {
+        currentEntry?.arguments?.getString("artistId")
+    } else null
+    val currentAlbumId = if (currentRoute.startsWith("album/")) {
+        currentEntry?.arguments?.getString("albumId")
+    } else null
+    val contextAlbum by produceState<Album?>(initialValue = null, currentAlbumId) {
+        currentAlbumId?.let { id -> database.album(id).collect { value = it } }
+    }
+    val albumArtists = contextAlbum?.artists.orEmpty()
+    val albumArtistIds = buildSet {
+        addAll(albumArtists.map { it.id })
+        // Local and online metadata can give the same credited artist different IDs.
+        addAll(menuArtists.filter { artist ->
+            albumArtists.any { it.name.equals(artist.name, ignoreCase = true) }
+        }.map { it.id })
+    }
+    val navigation = songMenuNavigation(
+        artistIds = menuArtists.map { it.id },
+        songAlbumId = song.song.albumId,
+        currentArtistId = currentArtistId,
+        currentAlbumId = currentAlbumId,
+        albumArtistIds = albumArtistIds,
+    )
+    val navigationArtists = menuArtists.distinctBy { it.id }.filter { it.id in navigation.artistIds }
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -226,6 +267,7 @@ fun SongMenu(
         onGetSongIds = { listOf(song.id) },
         onDismiss = {
             showChoosePlaylistDialog = false
+            if (popupState != null) onDismiss()
         },
     )
 
@@ -234,7 +276,7 @@ fun SongMenu(
             onDismiss = {
                 showErrorPlaylistAddDialog = false
                 onDismiss()
-            },
+            }
         ) {
             item {
                 ListItem(
@@ -278,52 +320,52 @@ fun SongMenu(
             },
             title = { Text(stringResource(R.string.delete_uploaded_song)) },
             buttons = {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = { showDeleteUploadedDialog = false },
                     enabled = !isDeleting,
                 ) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         val entityId = song.song.uploadEntityId
                         if (entityId == null) {
-                            Toast
-                                .makeText(
+                            Toast.makeText(
                                     context,
                                     R.string.delete_uploaded_song_failed,
                                     Toast.LENGTH_SHORT,
-                                ).show()
+                                )
+                                .show()
                             showDeleteUploadedDialog = false
-                            return@TextButton
+                            return@IrideFolioPrimaryButton
                         }
                         isDeleting = true
                         coroutineScope.launch(Dispatchers.IO) {
-                            YouTube
-                                .deleteUploadedSong(entityId)
+                            YouTube.deleteUploadedSong(entityId)
                                 .onSuccess {
                                     database.query {
                                         delete(song.song)
                                     }
                                     withContext(Dispatchers.Main) {
-                                        Toast
-                                            .makeText(
+                                        Toast.makeText(
                                                 context,
                                                 R.string.delete_uploaded_song_success,
                                                 Toast.LENGTH_SHORT,
-                                            ).show()
+                                            )
+                                            .show()
                                         isDeleting = false
                                         showDeleteUploadedDialog = false
                                         onDismiss()
                                     }
-                                }.onFailure {
+                                }
+                                .onFailure {
                                     withContext(Dispatchers.Main) {
-                                        Toast
-                                            .makeText(
+                                        Toast.makeText(
                                                 context,
                                                 R.string.delete_uploaded_song_failed,
                                                 Toast.LENGTH_SHORT,
-                                            ).show()
+                                            )
+                                            .show()
                                         isDeleting = false
                                         showDeleteUploadedDialog = false
                                     }
@@ -340,7 +382,6 @@ fun SongMenu(
                     } else {
                         Text(
                             text = stringResource(R.string.delete),
-                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
@@ -354,23 +395,24 @@ fun SongMenu(
     }
 
     if (showSelectArtistDialog) {
-        ListDialog(
-            onDismiss = { showSelectArtistDialog = false },
-        ) {
+        ListDialog(onDismiss = {
+            showSelectArtistDialog = false
+            if (popupState != null) onDismiss()
+        }) {
             items(
-                items = song.artists.distinctBy { it.id },
+                items = navigationArtists,
                 key = { "menu_song_artist_${it.id}" },
             ) { artist ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =
-                        Modifier
-                            .height(ListItemHeight)
+                        Modifier.height(ListItemHeight)
                             .clickable {
                                 navController.navigate("artist/${artist.id}")
                                 showSelectArtistDialog = false
                                 onDismiss()
-                            }.padding(horizontal = 12.dp),
+                            }
+                            .padding(horizontal = 12.dp),
                 ) {
                     Box(
                         modifier = Modifier.padding(8.dp),
@@ -378,11 +420,12 @@ fun SongMenu(
                     ) {
                         AsyncImage(
                             model = artist.thumbnailUrl,
+                            placeholder = painterResource(R.drawable.artist),
+                            error = painterResource(R.drawable.artist),
+                            fallback = painterResource(R.drawable.artist),
                             contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(ListThumbnailSize)
-                                    .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
                         )
                     }
                     Text(
@@ -391,69 +434,41 @@ fun SongMenu(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     )
                 }
             }
         }
     }
 
-    val bottomSheetPageState = LocalBottomSheetPageState.current
-    val configuration = LocalConfiguration.current
-    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
 
-    val primaryActions =
-        listOf(
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.playlist_play),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.textPrimary,
-                    )
-                },
-                text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
-                onClick = {
-                    onDismiss()
-                    playerConnection.playNext(song.toMediaItem())
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.queue_music),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.textPrimary,
-                    )
-                },
-                text = stringResource(R.string.swipe_label_queue).lowercase().replaceFirstChar { it.uppercase() },
-                onClick = {
-                    onDismiss()
-                    playerConnection.addToQueue(song.toMediaItem())
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.radio),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.textPrimary,
-                    )
-                },
-                text = stringResource(R.string.radio),
-                onClick = {
-                    onDismiss()
-                    playerConnection.startRadioForSong(song.toMediaMetadata())
-                },
-            ),
-        )
+    val primaryActions = listOf(
+        Material3MenuItemData(
+            title = { Text(stringResource(R.string.play_next)) },
+            icon = { Icon(painterResource(R.drawable.playlist_play), null) },
+            onClick = {
+                onDismiss()
+                playerConnection.playNext(song.toMediaItem())
+            },
+        ),
+        Material3MenuItemData(
+            title = { Text(stringResource(R.string.add_to_queue)) },
+            icon = { Icon(painterResource(R.drawable.queue_music), null) },
+            onClick = {
+                onDismiss()
+                playerConnection.addToQueue(song.toMediaItem())
+            },
+        ),
+        Material3MenuItemData(
+            title = { Text(stringResource(R.string.radio)) },
+            icon = { Icon(painterResource(R.drawable.radio), null) },
+            onClick = {
+                onDismiss()
+                playerConnection.startRadioForSong(song.toMediaMetadata())
+            },
+        ),
+    )
 
     val suggestToHostItem =
         Material3MenuItemData(
@@ -465,7 +480,8 @@ fun SongMenu(
                 )
             },
             onClick = {
-                val durationMs = if (song.song.duration > 0) song.song.duration.toLong() * 1000 else 180000L
+                val durationMs =
+                    if (song.song.duration > 0) song.song.duration.toLong() * 1000 else 180000L
                 val trackInfo =
                     com.metrolist.music.listentogether.TrackInfo(
                         id = song.id,
@@ -502,9 +518,10 @@ fun SongMenu(
                 )
             }
 
-            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+            Download.STATE_QUEUED,
+            Download.STATE_DOWNLOADING -> {
                 Material3MenuItemData(
-                    title = { Text(text = stringResource(R.string.downloading)) },
+                    title = { Text(text = stringResource(R.string.folio_cancel_download)) },
                     icon = {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
@@ -534,8 +551,7 @@ fun SongMenu(
                     },
                     onClick = {
                         val downloadRequest =
-                            DownloadRequest
-                                .Builder(song.id, song.id.toUri())
+                            DownloadRequest.Builder(song.id, song.id.toUri())
                                 .setCustomCacheKey(song.id)
                                 .setData(song.song.title.toByteArray())
                                 .build()
@@ -564,17 +580,22 @@ fun SongMenu(
 
     val viewArtistItem =
         Material3MenuItemData(
-            title = { Text(text = stringResource(R.string.view_artist)) },
-            description = { Text(text = song.artists.joinToString { it.name }) },
+            title = {
+                Text(stringResource(when (navigation.artistLabel) {
+                    SongMenuArtistLabel.Artist -> R.string.view_artist
+                    SongMenuArtistLabel.Artists -> R.string.song_menu_view_artists
+                    SongMenuArtistLabel.Collaborators -> R.string.song_menu_view_collaborators
+                }))
+            },
+            description = { Text(text = navigationArtists.joinToString { it.name }) },
             icon = {
-                val artistThumbnail = song.artists.firstOrNull()?.thumbnailUrl
+                val artistThumbnail = navigationArtists.firstOrNull()?.thumbnailUrl
                 if (artistThumbnail != null) {
                     AsyncImage(
                         model = artistThumbnail,
+                        contentScale = ContentScale.Crop,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape),
+                        modifier = Modifier.size(28.dp).clip(CircleShape),
                     )
                 } else {
                     Icon(
@@ -584,8 +605,8 @@ fun SongMenu(
                 }
             },
             onClick = {
-                if (song.artists.size == 1) {
-                    navController.navigate("artist/${song.artists[0].id}")
+                if (navigationArtists.size == 1) {
+                    navController.navigate("artist/${navigationArtists[0].id}")
                     onDismiss()
                 } else {
                     showSelectArtistDialog = true
@@ -597,24 +618,36 @@ fun SongMenu(
 
     val viewAlbumItem =
         Material3MenuItemData(
-            title = { Text(text = stringResource(if (isPodcast) R.string.view_podcast else R.string.view_album)) },
+            title = {
+                Text(
+                    text =
+                        stringResource(
+                            when {
+                                isPodcast -> R.string.view_podcast
+                                song.album?.songCount == 1 -> R.string.view_single
+                                song.album?.songCount?.let { it in 2..6 } == true -> R.string.view_ep
+                                else -> R.string.view_album
+                            }
+                        )
+                )
+            },
             description = {
                 song.song.albumName?.let {
                     Text(text = it)
                 }
             },
             icon = {
-                if (song.thumbnailUrl != null) {
+                if ((song.album?.thumbnailUrl ?: song.thumbnailUrl) != null) {
                     AsyncImage(
-                        model = song.thumbnailUrl,
+                        model = song.album?.thumbnailUrl ?: song.thumbnailUrl,
+                        contentScale = ContentScale.Crop,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(4.dp)),
+                        modifier = Modifier.size(28.dp).clip(RoundedCornerShape(4.dp)),
                     )
                 } else {
                     Icon(
-                        painter = painterResource(if (isPodcast) R.drawable.mic else R.drawable.album),
+                        painter =
+                            painterResource(if (isPodcast) R.drawable.mic else R.drawable.album),
                         contentDescription = null,
                     )
                 }
@@ -629,9 +662,10 @@ fun SongMenu(
             },
         )
 
-    val subscribeRefetchItems =
-        buildList {
-            song.song.albumId?.takeIf { song.song.isEpisode }?.let { podcastId ->
+    val subscribeRefetchItems = buildList {
+        song.song.albumId
+            ?.takeIf { song.song.isEpisode }
+            ?.let { podcastId ->
                 add(
                     Material3MenuItemData(
                         title = {
@@ -642,8 +676,8 @@ fun SongMenu(
                                             R.string.subscribed
                                         } else {
                                             R.string.subscribe_to_podcast
-                                        },
-                                    ),
+                                        }
+                                    )
                             )
                         },
                         description = {
@@ -659,7 +693,7 @@ fun SongMenu(
                                             R.drawable.library_add_check
                                         } else {
                                             R.drawable.library_add
-                                        },
+                                        }
                                     ),
                                 contentDescription = null,
                             )
@@ -670,11 +704,11 @@ fun SongMenu(
                                 val existingPodcast = podcastEntity
                                 val isCurrentlySaved = existingPodcast?.bookmarkedAt != null
 
-                                YouTube
-                                    .savePodcast(podcastId, !isCurrentlySaved)
+                                YouTube.savePodcast(podcastId, !isCurrentlySaved)
                                     .onSuccess {
                                         Timber.d("[PODCAST_LIB] savePodcast API success!")
-                                    }.onFailure { e ->
+                                    }
+                                    .onFailure { e ->
                                         Timber.e(e, "[PODCAST_LIB] savePodcast API failed")
                                     }
 
@@ -688,424 +722,309 @@ fun SongMenu(
                                     database.query {
                                         insert(
                                             PodcastEntity(
-                                                id = podcastId,
-                                                title = song.song.albumName ?: "Unknown Podcast",
-                                                author = song.artists.firstOrNull()?.name,
-                                                thumbnailUrl = song.song.thumbnailUrl,
-                                            ).toggleBookmark(),
+                                                    id = podcastId,
+                                                    title =
+                                                        song.song.albumName ?: "Unknown Podcast",
+                                                    author = song.artists.firstOrNull()?.name,
+                                                    thumbnailUrl = song.song.thumbnailUrl,
+                                                )
+                                                .toggleBookmark()
                                         )
                                     }
                                 }
                             }
                             onDismiss()
                         },
-                    ),
+                    )
                 )
             }
-            if (advancedMode) {
-                add(
-                    Material3MenuItemData(
-                        title = { Text(text = stringResource(R.string.refetch)) },
-                        description = { Text(text = stringResource(R.string.refetch_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.sync),
-                                contentDescription = null,
-                                modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
-                            )
-                        },
-                        onClick = {
-                            refetchIconDegree -= 360
-                            scope.launch(Dispatchers.IO) {
-                                YouTube.queue(listOf(song.id)).onSuccess {
-                                    val newSong = it.firstOrNull()
-                                    if (newSong != null) {
-                                        database.transaction {
-                                            update(song, newSong.toMediaMetadata())
-                                        }
+        if (advancedMode) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(text = stringResource(R.string.refetch)) },
+                    description = { Text(text = stringResource(R.string.refetch_desc)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.sync),
+                            contentDescription = null,
+                            modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
+                        )
+                    },
+                    onClick = {
+                        refetchIconDegree -= 360
+                        scope.launch(Dispatchers.IO) {
+                            YouTube.queue(listOf(song.id)).onSuccess {
+                                val newSong = it.firstOrNull()
+                                if (newSong != null) {
+                                    database.transaction {
+                                        update(song, newSong.toMediaMetadata())
                                     }
                                 }
                             }
-                        },
-                    ),
-                )
-            }
-        }
-
-    val detailsItem =
-        Material3MenuItemData(
-            title = { Text(text = stringResource(R.string.details)) },
-            description = { Text(text = stringResource(R.string.details_desc)) },
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.info),
-                    contentDescription = null,
-                )
-            },
-            onClick = {
-                onDismiss()
-                bottomSheetPageState.show {
-                    ShowMediaInfo(song.id)
-                }
-            },
-        )
-
-    val destructiveItems =
-        buildList {
-            if (song.song.isEpisode) {
-                    val isEpisodeSaved = song.song.inLibrary != null
-                    add(
-                        Material3MenuItemData(
-                            title = {
-                                Text(
-                                    text =
-                                        stringResource(
-                                            if (isEpisodeSaved) {
-                                                R.string.remove_episode_from_saved
-                                            } else {
-                                                R.string.save_episode_for_later
-                                            },
-                                        ),
-                                )
-                            },
-                            description = { Text(text = stringResource(R.string.episodes_for_later)) },
-                            icon = {
-                                Icon(
-                                    painter =
-                                        painterResource(
-                                            if (isEpisodeSaved) {
-                                                R.drawable.library_add_check
-                                            } else {
-                                                R.drawable.library_add
-                                            },
-                                        ),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    val shouldBeSaved = !isEpisodeSaved
-
-                                    database.query {
-                                        update(
-                                            song.song.copy(
-                                                inLibrary = if (shouldBeSaved) LocalDateTime.now() else null,
-                                                isEpisode = true,
-                                            ),
-                                        )
-                                    }
-
-                                    val setVideoId = if (isEpisodeSaved) database.getSetVideoId(song.id)?.setVideoId else null
-                                    syncUtils.saveEpisode(song.id, shouldBeSaved, setVideoId)
-                                }
-                                onDismiss()
-                            },
-                        ),
-                    )
-                }
-                if (event != null) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.remove_from_history)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.delete),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        onDismiss()
-                                        database.query {
-                                            delete(event)
-                                        }
-                                        onHistoryRemoved()
-                                    },
-                                ),
-                            )
                         }
-                        if (playlistSong != null) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.remove_from_playlist)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.delete),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        playlistSong.let { ps ->
-                                            val capturedSetVideoId = ps.map.setVideoId
-                                            database.transaction {
-                                                move(
-                                                    ps.map.playlistId,
-                                                    ps.map.position,
-                                                    Int.MAX_VALUE
-                                                )
-                                                delete(ps.map.copy(position = Int.MAX_VALUE))
-                                            }
-                                            playlistBrowseId?.let { browseId ->
-                                                syncUtils.scheduleRemoveFromPlaylist(
-                                                    browseId,
-                                                    ps.map.songId,
-                                                    ps.map.playlistId
-                                                ) {
-                                                    capturedSetVideoId
-                                                }
-                                            }
-                                            onDismiss()
-                                        }
-                                    },
-                                ),
-                            )
-                        }
-                        if (isFromCache) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.remove_from_cache)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.delete),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        onDismiss()
-                                        cacheViewModel.removeSongFromCache(song.id)
-                                    },
-                                ),
-                            )
-                        }
-                        if (song.song.isUploaded) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.delete_uploaded_song)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.delete),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        showDeleteUploadedDialog = true
-                                    },
-                                ),
-                    )
-                }
-            }
-
-    LazyColumn(
-        contentPadding =
-            PaddingValues(
-                start = 0.dp,
-                top = 0.dp,
-                end = 0.dp,
-                bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-            ),
-    ) {
-        item {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                NewIrideSongMenuHeader(
-                    song = song,
-                    database = database,
-                    syncUtils = syncUtils,
-                    context = context,
-                    onDismiss = onDismiss,
+                    },
                 )
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(20.dp)) }
-
-        if (!isGuest) {
-            item {
-                NewActionGrid(
-                    actions = primaryActions,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-        }
-
-        if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
-            item { Material3MenuGroup(items = listOf(suggestToHostItem)) }
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-        }
-
-        if (destructiveItems.isNotEmpty()) {
-            item { Material3MenuGroup(items = destructiveItems) }
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-        }
-
-        item {
-            ProminentActionRow(
-                icon = R.drawable.playlist_add,
-                label = stringResource(R.string.add_to_playlist),
-                onClick = { showChoosePlaylistDialog = true },
-                modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
-        item { Spacer(modifier = Modifier.height(14.dp)) }
-
-        item {
-            ArtistAlbumSwitchRow(
-                song = song,
-                orderedArtists = orderedArtists,
-                onArtistClick = viewArtistItem.onClick ?: {},
-                onAlbumClick = viewAlbumItem.onClick ?: {},
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-        item { Spacer(modifier = Modifier.height(10.dp)) }
-
-        item { Material3MenuGroup(items = listOf(downloadItem)) }
-
-        if (subscribeRefetchItems.isNotEmpty()) {
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-            item { Material3MenuGroup(items = subscribeRefetchItems) }
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-        item { Material3MenuGroup(items = listOf(detailsItem)) }
     }
-}
 
+    val destructiveItems = buildList {
+        if (song.song.isEpisode) {
+            val isEpisodeSaved = song.song.inLibrary != null
+            add(
+                Material3MenuItemData(
+                    title = {
+                        Text(
+                            text =
+                                stringResource(
+                                    if (isEpisodeSaved) {
+                                        R.string.remove_episode_from_saved
+                                    } else {
+                                        R.string.save_episode_for_later
+                                    }
+                                )
+                        )
+                    },
+                    description = { Text(text = stringResource(R.string.episodes_for_later)) },
+                    icon = {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (isEpisodeSaved) {
+                                        R.drawable.library_add_check
+                                    } else {
+                                        R.drawable.library_add
+                                    }
+                                ),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val shouldBeSaved = !isEpisodeSaved
 
-@Composable
-private fun FavoriteIconButton(
-    song: Song,
-    database: MusicDatabase,
-    syncUtils: SyncUtils,
-    coroutineScope: CoroutineScope,
-    context: Context,
-    tint: Color = LocalContentColor.current,
-    selectedTint: Color = Color(0xFFE53E45),
-) {
-    val isEpisode = song.song.isEpisode
-    val isFavorite = if (isEpisode) song.song.inLibrary != null else song.song.liked
-    var optimisticFavorite by remember(isFavorite) { mutableStateOf(isFavorite) }
+                            database.query {
+                                update(
+                                    song.song.copy(
+                                        inLibrary =
+                                            if (shouldBeSaved) LocalDateTime.now() else null,
+                                        isEpisode = true,
+                                    )
+                                )
+                            }
 
-    IconButton(
+                            val setVideoId =
+                                if (isEpisodeSaved) database.getSetVideoId(song.id)?.setVideoId
+                                else null
+                            syncUtils.saveEpisode(song.id, shouldBeSaved, setVideoId)
+                        }
+                        onDismiss()
+                    },
+                )
+            )
+        }
+        if (event != null) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(text = stringResource(R.string.remove_from_history)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        onDismiss()
+                        database.query {
+                            delete(event)
+                        }
+                        onHistoryRemoved()
+                    },
+                )
+            )
+        }
+        if (playlistSong != null) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(text = stringResource(R.string.remove_from_playlist)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        playlistSong.let { ps ->
+                            val capturedSetVideoId = ps.map.setVideoId
+                            database.transaction {
+                                move(
+                                    ps.map.playlistId,
+                                    ps.map.position,
+                                    Int.MAX_VALUE,
+                                )
+                                delete(ps.map.copy(position = Int.MAX_VALUE))
+                            }
+                            playlistBrowseId?.let { browseId ->
+                                syncUtils.scheduleRemoveFromPlaylist(
+                                    browseId,
+                                    ps.map.songId,
+                                    ps.map.playlistId,
+                                ) {
+                                    capturedSetVideoId
+                                }
+                            }
+                            onDismiss()
+                        }
+                    },
+                )
+            )
+        }
+        if (isFromCache) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(text = stringResource(R.string.remove_from_cache)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        onDismiss()
+                        cacheViewModel.removeSongFromCache(song.id)
+                    },
+                )
+            )
+        }
+        if (song.song.isUploaded) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(text = stringResource(R.string.delete_uploaded_song)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        showDeleteUploadedDialog = true
+                    },
+                )
+            )
+        }
+    }
+
+    val favoriteItem = favoriteMenuItem(song, database, syncUtils, onDismiss)
+    val shareItem = Material3MenuItemData(
+        title = { Text(stringResource(R.string.share)) },
+        icon = { Icon(painterResource(R.drawable.share), null) },
         onClick = {
-            if (isEpisode) {
-                val isCurrentlySaved = song.song.inLibrary != null
-                optimisticFavorite = !isCurrentlySaved
-                database.query {
-                    update(
-                        song.song.copy(
-                            inLibrary = if (isCurrentlySaved) null else LocalDateTime.now(),
-                            isEpisode = true,
-                        ),
-                    )
-                }
-                coroutineScope.launch(Dispatchers.IO) {
-                    if (isCurrentlySaved) {
-                        val setVideoIdEntity = database.getSetVideoId(song.id)
-                        val setVideoId = setVideoIdEntity?.setVideoId
-                        if (setVideoId != null) {
-                            YouTube
-                                .removeEpisodeFromSavedEpisodes(song.id, setVideoId)
-                                .onSuccess {
-                                    Timber.d("[EPISODE_SAVE] Removed episode from Episodes for Later: ${song.id}")
-                                }.onFailure { e ->
-                                    Timber.e(e, "[EPISODE_SAVE] Failed to remove episode: ${song.id}")
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, R.string.error_episode_remove, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                        }
-                    } else {
-                        YouTube
-                            .addEpisodeToSavedEpisodes(song.id)
-                            .onSuccess {
-                                Timber.d("[EPISODE_SAVE] Saved episode to Episodes for Later: ${song.id}")
-                            }.onFailure { e ->
-                                Timber.e(e, "[EPISODE_SAVE] Failed to save episode: ${song.id}")
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, R.string.error_episode_save, Toast.LENGTH_SHORT).show()
-                                }
-                            }
+            onDismiss()
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
+            }
+            context.startActivity(Intent.createChooser(intent, null))
+        },
+    )
+    val sections = buildList {
+        add(if (isGuest) listOf(suggestToHostItem) else primaryActions)
+        add(buildList {
+            if (!song.song.isEpisode) add(favoriteItem)
+            add(addToPlaylistItem)
+            if (!song.song.isLocal) add(downloadItem.copy(onClick = {
+                downloadItem.onClick?.invoke()
+                onDismiss()
+            }))
+        })
+        add(buildList {
+            if (!song.song.isEpisode && navigationArtists.isNotEmpty()) add(viewArtistItem)
+            if (navigation.showAlbum) add(viewAlbumItem)
+        })
+        add(listOf(shareItem))
+        if (subscribeRefetchItems.isNotEmpty()) add(subscribeRefetchItems)
+        if (destructiveItems.isNotEmpty()) add(destructiveItems)
+    }.filter { it.isNotEmpty() }
+
+    val menuScrollState = rememberLazyListState()
+    val density = LocalDensity.current
+    val menuContentHeight = with(density) {
+        sections.sumOf { it.size } * IrideFolio.MenuItemHeight.roundToPx() +
+            (sections.size - 1).coerceAtLeast(0) * (
+                IrideFolio.MenuSectionVerticalPadding.roundToPx() * 2 + IrideFolio.MenuDividerThickness.roundToPx()
+            ) + (IrideFolio.MenuVerticalPadding.roundToPx() + IrideFolio.MenuBorderWidth.roundToPx()) * 2
+    }
+    val menuContent: @Composable (Boolean) -> Unit = { constrained ->
+        Box {
+            LazyColumn(
+                state = menuScrollState,
+                overscrollEffect = null,
+                modifier = Modifier
+                    .padding(end = if (constrained) IrideFolio.ScrollbarTouchTargetWidth else 0.dp)
+                    .irideFolioGestures(menuScrollState),
+                contentPadding = PaddingValues(
+                    vertical = IrideFolio.MenuVerticalPadding,
+                    horizontal = IrideFolio.MenuContentPadding,
+                ),
+            ) {
+                sections.forEachIndexed { index, section ->
+                    if (index > 0) item { IrideFolioMenuDivider() }
+                    items(section) { action ->
+                        IrideFolioMenuItem(
+                            text = action.title,
+                            leadingIcon = action.icon?.let { icon ->
+                                { Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() } }
+                            },
+                            onClick = { action.onClick?.invoke() },
+                        )
                     }
                 }
-            } else {
-                optimisticFavorite = !optimisticFavorite
-                val s = song.song.toggleLike(syncToYouTube = false)
-                database.query { update(s) }
-                if (!song.song.isLocal) syncUtils.likeSong(s)
             }
-        },
-    ) {
-        Icon(
-            painter = painterResource(if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border),
-            tint = if (optimisticFavorite) selectedTint else tint,
-            contentDescription = null,
-        )
+            if (constrained) {
+                Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+                    IrideFolioScrollbar(menuScrollState, Modifier.fillMaxHeight())
+                }
+            }
+        }
+    }
+    // Dialogs live outside the popup so closing it does not dispose their state or coroutines.
+    if (popupState != null) {
+        if (!showChoosePlaylistDialog && !showErrorPlaylistAddDialog &&
+            !showSelectArtistDialog && !showDeleteUploadedDialog
+        ) {
+            IrideAnchoredSongMenu(popupState, menuContentHeight) { constrained -> menuContent(constrained) }
+        }
+    } else {
+        menuContent(false)
     }
 }
 
 @Composable
-private fun NewIrideSongMenuHeader(
+private fun favoriteMenuItem(
     song: Song,
     database: MusicDatabase,
     syncUtils: SyncUtils,
-    context: Context,
     onDismiss: () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = song.song.title,
-                style =
-                    MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.2).sp,
-                    ),
-                color = MaterialTheme.colorScheme.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
-            )
-            if (song.artists.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = song.artists.joinToString(", ") { it.name },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        FavoriteIconButton(
-            song = song,
-            database = database,
-            syncUtils = syncUtils,
-            coroutineScope = coroutineScope,
-            context = context,
-            tint = MaterialTheme.colorScheme.textPrimary,
-            selectedTint = MaterialTheme.colorScheme.textPrimary,
-        )
-        IconButton(
-            onClick = {
-                onDismiss()
-                val intent =
-                    Intent().apply {
-                        action = Intent.ACTION_SEND
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
-                    }
-                context.startActivity(Intent.createChooser(intent, null))
-            },
-        ) {
+): Material3MenuItemData {
+    var optimisticFavorite by remember(song.id, song.song.liked) { mutableStateOf(song.song.liked) }
+    return Material3MenuItemData(
+        title = {
+            Text(stringResource(if (optimisticFavorite) R.string.mp3_remove_favorite else R.string.mp3_add_favorite))
+        },
+        icon = {
             Icon(
-                painter = painterResource(R.drawable.share),
-                tint = MaterialTheme.colorScheme.textPrimary,
+                painterResource(if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border),
                 contentDescription = null,
             )
-        }
-    }
+        },
+        onClick = {
+            optimisticFavorite = !optimisticFavorite
+            val updatedSong = song.song.toggleLike(syncToYouTube = false)
+            database.query { update(updatedSong) }
+            if (!song.song.isLocal) syncUtils.likeSong(updatedSong)
+            onDismiss()
+        },
+    )
 }
 
 @Composable
@@ -1132,10 +1051,13 @@ internal fun StackedArtistAvatars(
         for (i in visible.indices.reversed()) {
             AsyncImage(
                 model = visible[i].thumbnailUrl,
+                placeholder = painterResource(R.drawable.artist),
+                error = painterResource(R.drawable.artist),
+                fallback = painterResource(R.drawable.artist),
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier =
-                    Modifier
-                        .offset(x = step * i)
+                    Modifier.offset(x = step * i)
                         .size(size)
                         .clip(CircleShape)
                         .border(1.5.dp, Color.Black.copy(alpha = 0.5f), CircleShape),
@@ -1165,7 +1087,11 @@ internal fun SwitchTile(
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
+            style =
+                MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                ),
             color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1194,11 +1120,11 @@ internal fun ArtistAlbumSwitchRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (!isPodcast) {
+        if (!isPodcast && orderedArtists.isNotEmpty()) {
             SwitchTile(
                 label = stringResource(R.string.view_artist),
                 onClick = onArtistClick,
-                leading = { StackedArtistAvatars(orderedArtists.ifEmpty { song.artists }) },
+                leading = { StackedArtistAvatars(orderedArtists) },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1210,7 +1136,9 @@ internal fun ArtistAlbumSwitchRow(
                     AsyncImage(
                         model = song.thumbnailUrl,
                         contentDescription = null,
-                        modifier = Modifier.size(30.dp).clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
+                        modifier =
+                            Modifier.size(30.dp)
+                                .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
                     )
                 },
                 modifier = Modifier.weight(1f),
@@ -1245,7 +1173,11 @@ internal fun ProminentActionRow(
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
+            style =
+                MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                ),
             color = MaterialTheme.colorScheme.textPrimary,
         )
     }
@@ -1265,19 +1197,20 @@ internal fun NoteRatingStars(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
-                    Modifier
-                        .size(if (interactive) 28.dp else iconSize)
+                    Modifier.size(if (interactive) 28.dp else iconSize)
                         .then(
                             if (interactive) {
                                 Modifier.pointerInput(star) {
                                     detectTapGestures { offset ->
-                                        val newRating = (star - 1) + if (offset.x < size.width / 2f) 0.5f else 1f
+                                        val newRating =
+                                            (star - 1) +
+                                                if (offset.x < size.width / 2f) 0.5f else 1f
                                         onRatingChange(newRating)
                                     }
                                 }
                             } else {
                                 Modifier
-                            },
+                            }
                         ),
             ) {
                 Box(modifier = Modifier.size(iconSize)) {
@@ -1289,7 +1222,8 @@ internal fun NoteRatingStars(
                     )
                     if (fillFraction > 0f) {
                         Box(
-                            modifier = Modifier.fillMaxHeight().fillMaxWidth(fillFraction).clipToBounds(),
+                            modifier =
+                                Modifier.fillMaxHeight().fillMaxWidth(fillFraction).clipToBounds()
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.favorite),
@@ -1347,32 +1281,36 @@ internal fun CoverNoteRow(
                                 text = AnnotatedString(noteTitle),
                                 style = titleMeasureStyle,
                                 maxLines = 1,
-                            ).size.width
+                            )
+                            .size
+                            .width
                             .toFloat()
                     val spacingPx = with(density) { 14.dp.toPx() }
                     val innerPaddingPx = with(density) { 32.dp.toPx() }
                     var fraction = standardCoverFraction
                     while (fraction > minCoverFraction) {
-                        val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
+                        val noteBoxWidthPx =
+                            totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
                         if (titleWidthPx <= noteBoxWidthPx) break
                         fraction -= 0.04f
                     }
                     fraction.coerceAtLeast(minCoverFraction)
                 }
             }
-        val coverWeight by animateFloatAsState(
-            targetValue = if (isEditingNote) 0.0001f else coverFraction,
-            animationSpec = tween(280),
-            label = "coverWeight",
-        )
-        val noteWeight by animateFloatAsState(
-            targetValue = if (isEditingNote) 1f else (1f - coverFraction),
-            animationSpec = tween(280),
-            label = "noteWeight",
-        )
+        val coverWeight by
+            animateFloatAsState(
+                targetValue = if (isEditingNote) 0.0001f else coverFraction,
+                animationSpec = tween(280),
+                label = "coverWeight",
+            )
+        val noteWeight by
+            animateFloatAsState(
+                targetValue = if (isEditingNote) 1f else (1f - coverFraction),
+                animationSpec = tween(280),
+                label = "noteWeight",
+            )
         val spacingPx = with(density) { 14.dp.toPx() }
-        val coverHeightDp =
-            with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
+        val coverHeightDp = with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -1388,8 +1326,7 @@ internal fun CoverNoteRow(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
+                        Modifier.fillMaxWidth()
                             .aspectRatio(1f)
                             .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
                 )
@@ -1406,15 +1343,14 @@ internal fun CoverNoteRow(
                                 noteTitle = noteTitleValue.trim().ifBlank { null },
                                 noteRating = noteRatingValue,
                                 noteText = noteTextValue.trim().ifBlank { null },
-                            ),
+                            )
                         )
                     }
                 },
                 isEditing = isEditingNote,
                 onEditingChange = { isEditingNote = it },
                 modifier =
-                    Modifier
-                        .weight(noteWeight)
+                    Modifier.weight(noteWeight)
                         .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
             )
         }
@@ -1446,11 +1382,13 @@ internal fun AddNoteBox(
         delay(150)
         titleFlashActive = false
     }
-    val titleColor by animateColorAsState(
-        targetValue = if (titleFlashActive) Color.Red else MaterialTheme.colorScheme.textPrimary,
-        animationSpec = tween(if (titleFlashActive) 60 else 300),
-        label = "titleFlashColor",
-    )
+    val titleColor by
+        animateColorAsState(
+            targetValue =
+                if (titleFlashActive) Color.Red else MaterialTheme.colorScheme.textPrimary,
+            animationSpec = tween(if (titleFlashActive) 60 else 300),
+            label = "titleFlashColor",
+        )
 
     fun persist() {
         onPersist(title, rating, description)
@@ -1469,7 +1407,8 @@ internal fun AddNoteBox(
                 .animateContentSize()
                 .padding(16.dp),
         verticalArrangement = if (centerEmptyState) Arrangement.Center else Arrangement.Top,
-        horizontalAlignment = if (centerEmptyState) Alignment.CenterHorizontally else Alignment.Start,
+        horizontalAlignment =
+            if (centerEmptyState) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         when {
             isEditing -> {
@@ -1486,7 +1425,10 @@ internal fun AddNoteBox(
                         }
                     },
                     placeholder = {
-                        Text(stringResource(R.string.note_title_placeholder), color = MaterialTheme.colorScheme.textTertiary)
+                        Text(
+                            stringResource(R.string.note_title_placeholder),
+                            color = MaterialTheme.colorScheme.textTertiary,
+                        )
                     },
                     singleLine = true,
                     colors =
@@ -1523,17 +1465,18 @@ internal fun AddNoteBox(
                         onValueChange = { input ->
                             val filtered =
                                 buildString {
-                                    var dotUsed = false
-                                    for (c in input) {
-                                        when {
-                                            c.isDigit() -> append(c)
-                                            c == '.' && !dotUsed && isNotEmpty() -> {
-                                                append(c)
-                                                dotUsed = true
+                                        var dotUsed = false
+                                        for (c in input) {
+                                            when {
+                                                c.isDigit() -> append(c)
+                                                c == '.' && !dotUsed && isNotEmpty() -> {
+                                                    append(c)
+                                                    dotUsed = true
+                                                }
                                             }
                                         }
                                     }
-                                }.take(4)
+                                    .take(4)
                             ratingText = filtered
                             filtered.toFloatOrNull()?.let {
                                 rating = it.coerceIn(0f, 5f)
@@ -1542,7 +1485,11 @@ internal fun AddNoteBox(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.textPrimary, fontFamily = SpaceMonoFontFamily),
+                        textStyle =
+                            MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.textPrimary,
+                                fontFamily = SpaceMonoFontFamily,
+                            ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
                         modifier = Modifier.width(34.dp),
                     )
@@ -1555,12 +1502,21 @@ internal fun AddNoteBox(
                 Spacer(modifier = Modifier.height(6.dp))
                 TextField(
                     value = description,
-                    onValueChange = { description = it; persist() },
+                    onValueChange = {
+                        description = it
+                        persist()
+                    },
                     placeholder = {
-                        Text(stringResource(R.string.note_description_placeholder), color = MaterialTheme.colorScheme.textTertiary)
+                        Text(
+                            stringResource(R.string.note_description_placeholder),
+                            color = MaterialTheme.colorScheme.textTertiary,
+                        )
                     },
                     colors = noteFieldColors(),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.textPrimary),
+                    textStyle =
+                        MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.textPrimary
+                        ),
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -1587,7 +1543,11 @@ internal fun AddNoteBox(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.add_note),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
+                    style =
+                        MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        ),
                     color = MaterialTheme.colorScheme.textSecondary,
                     textAlign = TextAlign.Center,
                 )
@@ -1596,20 +1556,27 @@ internal fun AddNoteBox(
             else -> {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val density = LocalDensity.current
-                    val titleStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
+                    val titleStyle =
+                        MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
                     val descriptionStyle = MaterialTheme.typography.bodyMedium
                     val availableHeightPx = with(density) { maxHeight.toPx() }
                     val titleMaxLines = if (title.isNotBlank()) 2 else 0
                     val titleBlockPx =
                         if (title.isNotBlank()) {
-                            with(density) { titleStyle.lineHeight.toPx() * titleMaxLines + 6.dp.toPx() }
+                            with(density) {
+                                titleStyle.lineHeight.toPx() * titleMaxLines + 6.dp.toPx()
+                            }
                         } else {
                             0f
                         }
                     val ratingBlockPx = if (rating != null) with(density) { 22.dp.toPx() } else 0f
                     val descriptionMaxLines =
                         with(density) {
-                            ((availableHeightPx - titleBlockPx - ratingBlockPx) / descriptionStyle.lineHeight.toPx())
+                            ((availableHeightPx - titleBlockPx - ratingBlockPx) /
+                                    descriptionStyle.lineHeight.toPx())
                                 .toInt()
                                 .coerceAtLeast(1)
                         }

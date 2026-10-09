@@ -1,7 +1,4 @@
-/**
- * Iride Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+/** Iride Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
 import android.net.Uri
@@ -44,11 +41,11 @@ import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.navigation.NavController
 import com.metrolist.innertube.YouTube
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.IrideAdaptiveTopBar
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.utils.YTPlayerUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,19 +53,22 @@ import okhttp3.OkHttpClient
 
 private sealed interface VideoLoadState {
     data object Loading : VideoLoadState
+
     data class Error(val message: String) : VideoLoadState
+
     data object Ready : VideoLoadState
 }
 
 /**
- * Fullscreen video playback for the Artist screen "Video"/"Performance" shelf. Those items used
- * to just queue the videoId's audio track (thumbnail shown, nothing visually played) — this
- * resolves an actual video+audio stream pair via [YTPlayerUtils.resolveVideoStreams] (ported
- * from Flow's NewPipeExtractor approach, github.com/A-EDev/Flow) and renders it.
+ * Fullscreen video playback for the Artist screen "Video"/"Performance" shelf. Those items used to
+ * just queue the videoId's audio track (thumbnail shown, nothing visually played) — this resolves
+ * an actual video+audio stream pair via [YTPlayerUtils.resolveVideoStreams] (ported from Flow's
+ * NewPipeExtractor approach, github.com/A-EDev/Flow) and renders it.
  *
- * Runs its own isolated [ExoPlayer] (same pattern as [com.metrolist.music.ui.screens.artist.ArtistGameAudioService])
- * rather than reusing [com.metrolist.music.playback.MusicService]'s queue player, since that
- * player is audio-only and deeply wired into the app's queue/download/precache pipeline.
+ * Runs its own isolated [ExoPlayer] (same pattern as
+ * [com.metrolist.music.ui.screens.artist.ArtistGameAudioService]) rather than reusing
+ * [com.metrolist.music.playback.MusicService]'s queue player, since that player is audio-only and
+ * deeply wired into the app's queue/download/precache pipeline.
  */
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,19 +111,16 @@ fun VideoPlayerScreen(
         data.title?.let { title = it }
 
         withContext(Dispatchers.Main) {
-            val dataSourceFactory = DefaultDataSource.Factory(
-                context,
-                OkHttpDataSource.Factory(
-                    OkHttpClient.Builder().proxy(YouTube.proxy).build(),
-                ),
-            )
+            val dataSourceFactory =
+                DefaultDataSource.Factory(
+                    context,
+                    OkHttpDataSource.Factory(OkHttpClient.Builder().proxy(YouTube.proxy).build()),
+                )
             val mediaSourceFactory = ProgressiveMediaSource.Factory(dataSourceFactory)
-            val videoSource = mediaSourceFactory.createMediaSource(
-                MediaItem.fromUri(Uri.parse(data.videoUrl)),
-            )
-            val audioSource = mediaSourceFactory.createMediaSource(
-                MediaItem.fromUri(Uri.parse(data.audioUrl)),
-            )
+            val videoSource =
+                mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(data.videoUrl)))
+            val audioSource =
+                mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(data.audioUrl)))
             exoPlayer.setMediaSource(MergingMediaSource(videoSource, audioSource))
             exoPlayer.playWhenReady = true
             exoPlayer.prepare()
@@ -131,17 +128,23 @@ fun VideoPlayerScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
+    IridePageHeaderLayout(
+        title = title.orEmpty(),
+        navigationIcon = {
+            IconButton(
+                onClick = navController::navigateUp,
+                onLongClick = navController::backToMain,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_back),
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize().background(Color.Black),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .align(Alignment.Center),
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).align(Alignment.Center)) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -151,52 +154,44 @@ fun VideoPlayerScreen(
         }
 
         when (val state = loadState) {
-            is VideoLoadState.Loading -> CircularProgressIndicator(
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center),
-            )
-
-            is VideoLoadState.Error -> Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.error),
-                    contentDescription = null,
-                    tint = Color.White,
-                )
-                Text(
-                    text = state.message,
+            is VideoLoadState.Loading ->
+                CircularProgressIndicator(
                     color = Color.White,
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center),
                 )
-                IconButton(onClick = { title = initialTitle; retryKey++ }, onLongClick = {}) {
-                    Icon(
-                        painter = painterResource(R.drawable.refresh),
-                        contentDescription = stringResource(R.string.retry),
-                        tint = Color.White,
-                    )
-                }
-            }
 
-            is VideoLoadState.Ready -> {}
-        }
-
-        IrideAdaptiveTopBar(
-            title = { Text(title ?: "") },
-            navigationIcon = {
-                IconButton(onClick = navController::navigateUp, onLongClick = navController::backToMain) {
+            is VideoLoadState.Error ->
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     Icon(
-                        painter = painterResource(R.drawable.arrow_back),
+                        painter = painterResource(R.drawable.error),
                         contentDescription = null,
                         tint = Color.White,
                     )
+                    Text(
+                        text = state.message,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                    IconButton(
+                        onClick = {
+                            title = initialTitle
+                            retryKey++
+                        },
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.refresh),
+                            contentDescription = stringResource(R.string.retry),
+                            tint = Color.White,
+                        )
+                    }
                 }
-            },
-            transparent = true,
-        )
+
+            is VideoLoadState.Ready -> {}
+        }
     }
 }

@@ -1,8 +1,4 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.component
 
 import androidx.activity.compose.BackHandler
@@ -78,9 +74,10 @@ fun TopSearch(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     shape: Shape? = null,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    ),
+    colors: TopAppBarColors =
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
     windowInsets: WindowInsets = WindowInsets.systemBars,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -100,16 +97,17 @@ fun TopSearch(
                     placeholder = placeholder,
                     leadingIcon = null,
                     trailingIcon = null,
-                    colors = TextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
+                    colors =
+                        TextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
                     interactionSource = interactionSource,
                     focusRequester = focusRequester,
                 )
@@ -124,20 +122,27 @@ fun TopSearch(
                     trailingIcon()
                 }
             },
-            colors = colors,
+            colors =
+                colors.copy(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
             scrollBehavior = scrollBehavior,
-            windowInsets = windowInsets
+            windowInsets = windowInsets,
         )
         if (active) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = AppBarHeight + windowInsets.asPaddingValues().calculateTopPadding())
-                    .background(MaterialTheme.colorScheme.surface)
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(
+                            top =
+                                AppBarHeight + windowInsets.asPaddingValues().calculateTopPadding()
+                        )
+                        .background(MaterialTheme.colorScheme.surface)
             ) {
-                 Column {
+                Column {
                     content()
-                 }
+                }
             }
             BackHandler(enabled = active) {
                 onActiveChange(false)
@@ -164,15 +169,14 @@ private fun SearchBarInputField(
     focusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val focused = interactionSource.collectIsFocusedAsState().value
-    val textColor = LocalTextStyle.current.color.takeOrElse {
-        if (focused) colors.focusedTextColor else colors.unfocusedTextColor
-    }
+    val textColor =
+        LocalTextStyle.current.color.takeOrElse {
+            if (focused) colors.focusedTextColor else colors.unfocusedTextColor
+        }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(InputFieldHeight),
+        modifier = modifier.fillMaxWidth().height(InputFieldHeight),
     ) {
         if (leadingIcon != null) {
             Spacer(Modifier.width(SearchBarIconOffsetX))
@@ -182,31 +186,31 @@ private fun SearchBarInputField(
         BasicTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier
-                .weight(1f)
-                .focusRequester(focusRequester)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        awaitFirstDown(pass = PointerEventPass.Initial)
-                        val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
-                        if (upEvent != null) {
-                            onActiveChange(true)
+            modifier =
+                Modifier.weight(1f)
+                    .focusRequester(focusRequester)
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(pass = PointerEventPass.Initial)
+                            val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                            if (upEvent != null) {
+                                onActiveChange(true)
+                            }
                         }
                     }
-                }
-                .semantics {
-                    contentDescription = "Search"
-                    if (active) {
-                        stateDescription = "Suggestions available"
+                    .semantics {
+                        contentDescription = "Search"
+                        if (active) {
+                            stateDescription = "Suggestions available"
+                        }
                     }
-                }
-                .onKeyEvent {
-                    if (it.key == Key.Enter) {
-                        onSearch(query.text)
-                        return@onKeyEvent true
-                    }
-                    false
-                },
+                    .onKeyEvent {
+                        if (it.key == Key.Enter) {
+                            onSearch(query.text)
+                            return@onKeyEvent true
+                        }
+                        false
+                    },
             enabled = enabled,
             singleLine = true,
             textStyle = LocalTextStyle.current.merge(TextStyle(color = textColor)),
@@ -214,21 +218,22 @@ private fun SearchBarInputField(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
             interactionSource = interactionSource,
-            decorationBox = @Composable { innerTextField ->
-                TextFieldDefaults.DecorationBox(
-                    value = query.text,
-                    innerTextField = innerTextField,
-                    enabled = enabled,
-                    singleLine = true,
-                    visualTransformation = VisualTransformation.None,
-                    interactionSource = interactionSource,
-                    placeholder = placeholder,
-                    shape = RoundedCornerShape(0.dp),
-                    colors = colors,
-                    contentPadding = PaddingValues(),
-                    container = {},
-                )
-            },
+            decorationBox =
+                @Composable { innerTextField ->
+                    TextFieldDefaults.DecorationBox(
+                        value = query.text,
+                        innerTextField = innerTextField,
+                        enabled = enabled,
+                        singleLine = true,
+                        visualTransformation = VisualTransformation.None,
+                        interactionSource = interactionSource,
+                        placeholder = placeholder,
+                        shape = RoundedCornerShape(0.dp),
+                        colors = colors,
+                        contentPadding = PaddingValues(),
+                        container = {},
+                    )
+                },
         )
 
         if (trailingIcon != null) {

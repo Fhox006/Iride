@@ -1,8 +1,4 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -10,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,30 +14,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyListScope
-import com.metrolist.music.LocalPlayerAwareWindowInsets
-import com.metrolist.music.ui.component.LibraryListPage
-import com.metrolist.music.ui.component.LibraryPageMenuAction
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -64,11 +53,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -77,8 +69,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -92,6 +82,7 @@ import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.ListThumbnailSize
@@ -99,8 +90,13 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SuggestionItemHeight
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.LibraryListPage
+import com.metrolist.music.ui.component.LocalArtworkBackgroundColor
+import com.metrolist.music.ui.component.LibraryPageMenuAction
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
@@ -108,35 +104,37 @@ import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
-import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.resize
-import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.utils.recordSearchHistoryOpen
-import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
+import com.metrolist.music.utils.recordSearchHistoryOpen
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
-import kotlinx.coroutines.async
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.net.URLEncoder
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalComposeUiApi::class,
+    ExperimentalMaterial3Api::class,
+    FlowPreview::class,
+)
 @Composable
 fun OnlineSearchScreen(
     query: String,
@@ -147,6 +145,7 @@ fun OnlineSearchScreen(
     pureBlack: Boolean,
     isFocused: Boolean = false,
     header: (@Composable () -> Unit)? = null,
+    resultsContent: LazyListScope.() -> Unit = {},
     onScrollChanged: (Boolean) -> Unit = {},
     pageMenuSections: List<List<LibraryPageMenuAction>> = emptyList(),
     lazyListState: LazyListState = rememberLazyListState(),
@@ -154,7 +153,6 @@ fun OnlineSearchScreen(
 ) {
     val database = LocalDatabase.current
     val context = LocalContext.current
-    val keyboardController = LocalSoftwareKeyboardController.current
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
 
@@ -165,76 +163,87 @@ fun OnlineSearchScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
 
-    var listeningGenreScores by remember(context) {
-        mutableStateOf(decodeGenreListeningScores(context.dataStore[SearchGenrePersonalization.listeningScoresKey]))
-    }
-    var tappedGenreScores by remember(context) {
-        mutableStateOf(decodeGenreTapScores(context.dataStore[SearchGenrePersonalization.tapScoresKey]))
-    }
-    val searchGenres = remember(listeningGenreScores, tappedGenreScores) {
-        SearchGenrePersonalization.rank(listeningGenreScores, tappedGenreScores)
-    }
+    var listeningGenreScores by
+        remember(context) {
+            mutableStateOf(
+                decodeGenreListeningScores(
+                    context.dataStore[SearchGenrePersonalization.listeningScoresKey]
+                )
+            )
+        }
+    var tappedGenreScores by
+        remember(context) {
+            mutableStateOf(
+                decodeGenreTapScores(context.dataStore[SearchGenrePersonalization.tapScoresKey])
+            )
+        }
+    val searchGenres =
+        remember(listeningGenreScores, tappedGenreScores) {
+            SearchGenrePersonalization.rank(listeningGenreScores, tappedGenreScores)
+        }
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
-
     LaunchedEffect(lazyListState) {
-        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
-            .collect(onScrollChanged)
-    }
-
-    LaunchedEffect(Unit) {
-        snapshotFlow { lazyListState.firstVisibleItemScrollOffset }
-            .drop(1)
-            .collect {
-                keyboardController?.hide()
-            }
+        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }.collect(onScrollChanged)
     }
 
     LaunchedEffect(query) {
-        snapshotFlow { query }.debounce(300L).collectLatest {
-            viewModel.query.value = it
-        }
+        snapshotFlow { query }
+            .debounce(300L)
+            .collectLatest {
+                viewModel.query.value = it
+            }
     }
 
     LaunchedEffect(database, query.isEmpty(), isFocused) {
         if (query.isNotEmpty() || isFocused) return@LaunchedEffect
         val preferences = context.dataStore.data.first()
-        tappedGenreScores = decodeGenreTapScores(preferences[SearchGenrePersonalization.tapScoresKey])
-        listeningGenreScores = decodeGenreListeningScores(preferences[SearchGenrePersonalization.listeningScoresKey])
+        tappedGenreScores =
+            decodeGenreTapScores(preferences[SearchGenrePersonalization.tapScoresKey])
+        listeningGenreScores =
+            decodeGenreListeningScores(preferences[SearchGenrePersonalization.listeningScoresKey])
 
-        val songs = runCatching {
-            database.mostPlayedSongs(0L, limit = SearchGenrePersonalization.MAX_LISTENING_SEEDS).first()
-        }.getOrDefault(emptyList())
+        val songs =
+            runCatching {
+                    database
+                        .mostPlayedSongs(0L, limit = SearchGenrePersonalization.MAX_LISTENING_SEEDS)
+                        .first()
+                }
+                .getOrDefault(emptyList())
         if (songs.isEmpty()) return@LaunchedEffect
         val semaphore = Semaphore(3)
         val listening = coroutineScope {
-            songs.map { song ->
-                async {
-                    val tags = try {
-                        semaphore.withPermit {
-                            GenreProvider.getGenres(
-                                songId = song.id,
-                                title = song.title,
-                                artist = song.orderedArtists.firstOrNull()?.name,
-                            )
-                        }
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Exception) {
-                        emptyList()
+            songs
+                .map { song ->
+                    async {
+                        val tags =
+                            try {
+                                semaphore.withPermit {
+                                    GenreProvider.getGenres(
+                                        songId = song.id,
+                                        title = song.title,
+                                        artist = song.orderedArtists.firstOrNull()?.name,
+                                    )
+                                }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                        SearchGenreListening(tags, song.song.totalPlayTime)
                     }
-                    SearchGenreListening(tags, song.song.totalPlayTime)
                 }
-            }.map { it.await() }
+                .map { it.await() }
         }
         val freshScores = SearchGenrePersonalization.listeningScores(listening)
         if (freshScores.isNotEmpty()) {
             listeningGenreScores = freshScores
             runCatching {
                 context.dataStore.edit {
-                    it[SearchGenrePersonalization.listeningScoresKey] = JSONObject(freshScores).toString()
+                    it[SearchGenrePersonalization.listeningScoresKey] =
+                        JSONObject(freshScores).toString()
                 }
             }
         }
@@ -244,20 +253,22 @@ fun OnlineSearchScreen(
         if (header != null) {
             item(key = "search_header") { header() }
         }
-        if (query.isEmpty() && !isFocused) {
+        if (query.isNotEmpty() && !viewState.isUrlQuery) {
+            resultsContent()
+        } else if (query.isEmpty() && !isFocused) {
             val gridRows = searchGenres.chunked(2)
             itemsIndexed(
                 items = gridRows,
                 key = { _, row -> "genre_row_${row.firstOrNull()?.name.orEmpty()}" },
             ) { _, row ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = 20.dp,
-                            vertical = 4.dp,
-                        )
-                        .animateItem(),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 4.dp,
+                            )
+                            .animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     row.forEach { genre ->
@@ -267,12 +278,19 @@ fun OnlineSearchScreen(
                                 coroutineScope.launch {
                                     var updated = tappedGenreScores
                                     context.dataStore.edit {
-                                        val latest = decodeGenreTapScores(it[SearchGenrePersonalization.tapScoresKey])
-                                        updated = latest + (genre.name to ((latest[genre.name] ?: 0) + 1))
-                                        it[SearchGenrePersonalization.tapScoresKey] = JSONObject(updated).toString()
+                                        val latest =
+                                            decodeGenreTapScores(
+                                                it[SearchGenrePersonalization.tapScoresKey]
+                                            )
+                                        updated =
+                                            latest + (genre.name to ((latest[genre.name] ?: 0) + 1))
+                                        it[SearchGenrePersonalization.tapScoresKey] =
+                                            JSONObject(updated).toString()
                                     }
                                     tappedGenreScores = updated
-                                    onQueryChange(TextFieldValue(genre.name, TextRange(genre.name.length)))
+                                    onQueryChange(
+                                        TextFieldValue(genre.name, TextRange(genre.name.length))
+                                    )
                                     onSearch(genre.name)
                                 }
                             },
@@ -284,16 +302,13 @@ fun OnlineSearchScreen(
                     }
                 }
             }
-
         } else {
 
             if (viewState.isUrlQuery && viewState.parsedUrlItem != null) {
                 item(key = "parsed_url_header") {
                     Column(
                         modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.parsed_from_link),
@@ -317,9 +332,11 @@ fun OnlineSearchScreen(
                             },
                         isPlaying = isPlaying,
                         trailingContent = {
-                            IconButton(
+                            SongMenuIconButton(
                                 onClick = {
-                                    menuState.show {
+                                    menuState.show(
+                                        anchored = true,
+                                    ) {
                                         when (item) {
                                             is SongItem -> {
                                                 YouTubeSongMenu(
@@ -387,7 +404,7 @@ fun OnlineSearchScreen(
                                             }
                                         }
                                     }
-                                },
+                                }
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.more_vert),
@@ -396,16 +413,18 @@ fun OnlineSearchScreen(
                             }
                         },
                         modifier =
-                            Modifier
-                                .combinedClickable(
+                            Modifier.combinedClickable(
                                     onClick = {
-                                        if (!pauseSearchHistory) database.recordSearchHistoryOpen(query, item)
+                                        if (!pauseSearchHistory)
+                                            database.recordSearchHistoryOpen(query, item)
                                         when (item) {
                                             is SongItem -> {
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+                                                    playerConnection.playQueue(
+                                                        YouTubeQueue.radio(item.toMediaMetadata())
+                                                    )
                                                     onDismiss()
                                                 }
                                             }
@@ -434,7 +453,9 @@ fun OnlineSearchScreen(
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+                                                    playerConnection.playQueue(
+                                                        YouTubeQueue.radio(item.toMediaMetadata())
+                                                    )
                                                     onDismiss()
                                                 }
                                             }
@@ -442,7 +463,9 @@ fun OnlineSearchScreen(
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(
+                                            anchored = true,
+                                        ) {
                                             when (item) {
                                                 is SongItem -> {
                                                     YouTubeSongMenu(
@@ -511,7 +534,11 @@ fun OnlineSearchScreen(
                                             }
                                         }
                                     },
-                                ).background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                                )
+                                .background(
+                                    if (pureBlack) Color.Black
+                                    else MaterialTheme.colorScheme.surface
+                                )
                                 .animateItem(),
                     )
                 }
@@ -519,10 +546,7 @@ fun OnlineSearchScreen(
                 item(key = "parsed_url_divider") {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.strokeHairline,
-                        modifier =
-                            Modifier
-                                .padding(vertical = 8.dp)
-                                .animateItem(),
+                        modifier = Modifier.padding(vertical = 8.dp).animateItem(),
                     )
                 }
             }
@@ -539,13 +563,24 @@ fun OnlineSearchScreen(
                                 if (history.itemId == mediaMetadata?.id) {
                                     playerConnection.togglePlayPause()
                                 } else {
-                                    playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = history.itemId!!)))
+                                    playerConnection.playQueue(
+                                        YouTubeQueue(WatchEndpoint(videoId = history.itemId!!))
+                                    )
                                 }
                                 onDismiss()
                             }
-                            "album" -> { navController.navigate("album/${history.itemId}"); onDismiss() }
-                            "artist" -> { navController.navigate("artist/${history.itemId}"); onDismiss() }
-                            "playlist" -> { navController.navigate("online_playlist/${history.itemId}"); onDismiss() }
+                            "album" -> {
+                                navController.navigate("album/${history.itemId}")
+                                onDismiss()
+                            }
+                            "artist" -> {
+                                navController.navigate("artist/${history.itemId}")
+                                onDismiss()
+                            }
+                            "playlist" -> {
+                                navController.navigate("online_playlist/${history.itemId}")
+                                onDismiss()
+                            }
                             else -> {
                                 onSearch(history.query)
                                 onDismiss()
@@ -558,7 +593,9 @@ fun OnlineSearchScreen(
                         }
                     },
                     onFillTextField = {
-                        onQueryChange(TextFieldValue(history.query, TextRange(history.query.length)))
+                        onQueryChange(
+                            TextFieldValue(history.query, TextRange(history.query.length))
+                        )
                     },
                     modifier = Modifier.animateItem(),
                     pureBlack = pureBlack,
@@ -583,7 +620,10 @@ fun OnlineSearchScreen(
                 )
             }
 
-            if (viewState.items.isNotEmpty() && viewState.history.size + viewState.suggestions.size > 0) {
+            if (
+                viewState.items.isNotEmpty() &&
+                    viewState.history.size + viewState.suggestions.size > 0
+            ) {
                 item(key = "search_divider") {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.strokeHairline,
@@ -607,9 +647,11 @@ fun OnlineSearchScreen(
                         },
                     isPlaying = isPlaying,
                     trailingContent = {
-                        IconButton(
+                        SongMenuIconButton(
                             onClick = {
-                                menuState.show {
+                                menuState.show(
+                                    anchored = true,
+                                ) {
                                     when (item) {
                                         is SongItem -> {
                                             YouTubeSongMenu(
@@ -677,7 +719,7 @@ fun OnlineSearchScreen(
                                         }
                                     }
                                 }
-                            },
+                            }
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.more_vert),
@@ -686,16 +728,18 @@ fun OnlineSearchScreen(
                         }
                     },
                     modifier =
-                        Modifier
-                            .combinedClickable(
+                        Modifier.combinedClickable(
                                 onClick = {
-                                    if (!pauseSearchHistory) database.recordSearchHistoryOpen(query, item)
+                                    if (!pauseSearchHistory)
+                                        database.recordSearchHistoryOpen(query, item)
                                     when (item) {
                                         is SongItem -> {
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+                                                playerConnection.playQueue(
+                                                    YouTubeQueue.radio(item.toMediaMetadata())
+                                                )
                                                 onDismiss()
                                             }
                                         }
@@ -724,7 +768,9 @@ fun OnlineSearchScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+                                                playerConnection.playQueue(
+                                                    YouTubeQueue.radio(item.toMediaMetadata())
+                                                )
                                                 onDismiss()
                                             }
                                         }
@@ -732,7 +778,9 @@ fun OnlineSearchScreen(
                                 },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
+                                    menuState.show(
+                                        anchored = true,
+                                    ) {
                                         when (item) {
                                             is SongItem -> {
                                                 YouTubeSongMenu(
@@ -801,7 +849,10 @@ fun OnlineSearchScreen(
                                         }
                                     }
                                 },
-                            ).background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                            )
+                            .background(
+                                if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface
+                            )
                             .animateItem(),
                 )
             }
@@ -813,29 +864,35 @@ fun OnlineSearchScreen(
             }
         }
     }
-    val pageModifier = Modifier.fillMaxSize().background(
-        when {
-            pureBlack -> Color.Black
-            mainTopGradient -> Color.Transparent
-            else -> MaterialTheme.colorScheme.background
-        },
-    )
+    val pageModifier =
+        Modifier.fillMaxSize()
+            .background(
+                when {
+                        header != null && LocalArtworkBackgroundColor.current != null -> Color.Transparent
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                }
+            )
     if (header != null) {
-        LibraryListPage(
+        IridePageLayout(
             titleRes = R.string.search,
             state = lazyListState,
-            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-            onNavigateUp = { navController.navigateUp() },
+            bottomPadding =
+                LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            showTopBar = true,
             modifier = pageModifier,
             contentHorizontalPadding = 0.dp,
             menuSections = pageMenuSections,
             content = suggestionContent,
         )
     } else {
-        LazyColumn(
+        IridePageLayout(
+            titleRes = R.string.search,
             state = lazyListState,
-            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
-            modifier = pageModifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
+            bottomPadding =
+                LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            modifier = pageModifier,
             content = suggestionContent,
         )
     }
@@ -851,20 +908,22 @@ private fun SearchGenreCard(
 ) {
     Box(
         contentAlignment = Alignment.BottomStart,
-        modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.fillSubtle)
-            .clickable(onClick = onClick)
-            .padding(12.dp),
+        modifier =
+            modifier
+                .height(72.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.fillSubtle)
+                .clickable(onClick = onClick)
+                .padding(12.dp),
     ) {
         Text(
             text = genre.name,
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontFamily = SpaceMonoFontFamily,
-                fontSize = 13.sp,
-                letterSpacing = (-0.1).sp,
-            ),
+            style =
+                MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 13.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 2,
@@ -873,15 +932,19 @@ private fun SearchGenreCard(
     }
 }
 
-private fun decodeGenreListeningScores(encoded: String?): Map<String, Float> = runCatching {
-    val json = JSONObject(encoded ?: "{}")
-    json.keys().asSequence().associateWith { json.optDouble(it).toFloat() }
-}.getOrDefault(emptyMap())
+private fun decodeGenreListeningScores(encoded: String?): Map<String, Float> =
+    runCatching {
+            val json = JSONObject(encoded ?: "{}")
+            json.keys().asSequence().associateWith { json.optDouble(it).toFloat() }
+        }
+        .getOrDefault(emptyMap())
 
-private fun decodeGenreTapScores(encoded: String?): Map<String, Int> = runCatching {
-    val json = JSONObject(encoded ?: "{}")
-    json.keys().asSequence().associateWith { json.optInt(it) }
-}.getOrDefault(emptyMap())
+private fun decodeGenreTapScores(encoded: String?): Map<String, Int> =
+    runCatching {
+            val json = JSONObject(encoded ?: "{}")
+            json.keys().asSequence().associateWith { json.optInt(it) }
+        }
+        .getOrDefault(emptyMap())
 
 @Composable
 private fun DiscoveryWeeklyCard(
@@ -895,21 +958,31 @@ private fun DiscoveryWeeklyCard(
     val height = if (useIrideStyle) 72.dp else 80.dp
 
     Box(
-        modifier = modifier
-            .height(height)
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (useIrideStyle) MaterialTheme.colorScheme.fillSubtle else MaterialTheme.colorScheme.secondaryContainer)
-            .then(
-                if (useIrideStyle) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(18.dp)),
-            )
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .height(height)
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    if (useIrideStyle) MaterialTheme.colorScheme.fillSubtle
+                    else MaterialTheme.colorScheme.secondaryContainer
+                )
+                .then(
+                    if (useIrideStyle) Modifier
+                    else
+                        Modifier.border(
+                            1.dp,
+                            MaterialTheme.colorScheme.strokeCard,
+                            RoundedCornerShape(18.dp),
+                        )
+                )
+                .clickable(onClick = onClick)
     ) {
         if (mosaicThumbnails.isNotEmpty()) {
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
-                    .blur(height * 0.25f),
+                modifier =
+                    Modifier.matchParentSize()
+                        .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
+                        .blur(height * 0.25f)
             ) {
                 if (mosaicThumbnails.size == 1) {
                     AsyncImage(
@@ -954,54 +1027,55 @@ private fun DiscoveryWeeklyCard(
             Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
         }
 
-        val onCardColor = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) {
-            Color.White
-        } else {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        }
+        val onCardColor =
+            if (mosaicThumbnails.isNotEmpty() || useIrideStyle) {
+                Color.White
+            } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            }
 
         if (pendingLabel != null) {
             CircularProgressIndicator(
                 color = onCardColor.copy(alpha = 0.7f),
                 strokeWidth = 2.dp,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(if (useIrideStyle) 18.dp else 22.dp),
+                modifier =
+                    Modifier.align(Alignment.Center).size(if (useIrideStyle) 18.dp else 22.dp),
             )
         } else {
             Icon(
                 painter = painterResource(R.drawable.language),
                 contentDescription = null,
-                tint = onCardColor.copy(alpha = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) 0.9f else 1f),
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = 10.dp)
-                    .size(if (useIrideStyle) 22.dp else 26.dp),
+                tint =
+                    onCardColor.copy(
+                        alpha = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) 0.9f else 1f
+                    ),
+                modifier =
+                    Modifier.align(Alignment.Center)
+                        .offset(x = 10.dp)
+                        .size(if (useIrideStyle) 22.dp else 26.dp),
             )
         }
 
         Text(
             text = pendingLabel ?: stringResource(R.string.discovery_weekly),
-            style = if (useIrideStyle) {
-                MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 13.sp,
-                    letterSpacing = (-0.1).sp,
-                )
-            } else {
-                MaterialTheme.typography.titleSmall
-            },
+            style =
+                if (useIrideStyle) {
+                    MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontSize = 13.sp,
+                        letterSpacing = (-0.1).sp,
+                    )
+                } else {
+                    MaterialTheme.typography.titleSmall
+                },
             fontWeight = FontWeight.Bold,
             color = onCardColor,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp),
+            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
         )
     }
 }
-
 
 @Composable
 fun SuggestionItem(
@@ -1015,6 +1089,7 @@ fun SuggestionItem(
     useIrideStyle: Boolean = false,
     thumbnailUrl: String? = null,
     isArtistThumbnail: Boolean = false,
+    showDelete: Boolean = !online && !useIrideStyle,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1027,25 +1102,26 @@ fun SuggestionItem(
                         pureBlack -> Color.Black
                         useIrideStyle -> Color.Transparent
                         else -> MaterialTheme.colorScheme.surface
-                    },
+                    }
                 )
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl.resize(192, 192))
-                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .build(),
+                model =
+                    ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl.resize(192, 192))
+                        .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
-                    .size(ListThumbnailSize)
-                    .clip(if (isArtistThumbnail) CircleShape else RoundedCornerShape(4.dp)),
+                modifier =
+                    Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
+                        .size(ListThumbnailSize)
+                        .clip(if (isArtistThumbnail) CircleShape else RoundedCornerShape(4.dp)),
             )
         } else if (useIrideStyle) {
             Spacer(modifier = Modifier.width(20.dp))
@@ -1062,16 +1138,22 @@ fun SuggestionItem(
             text = query,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = if (useIrideStyle) {
-                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp)
-            } else {
-                MaterialTheme.typography.bodyLarge
-            },
-            color = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.onSurface,
+            style =
+                if (useIrideStyle) {
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontSize = 13.sp,
+                    )
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                },
+            color =
+                if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
+                else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).padding(end = if (useIrideStyle) 12.dp else 0.dp),
         )
 
-        if (!online) {
+        if (showDelete) {
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.alpha(if (useIrideStyle) 1f else 0.5f),
@@ -1079,7 +1161,9 @@ fun SuggestionItem(
                 Icon(
                     painter = painterResource(R.drawable.close),
                     contentDescription = null,
-                    tint = if (useIrideStyle) MaterialTheme.colorScheme.textTertiary else LocalContentColor.current,
+                    tint =
+                        if (useIrideStyle) MaterialTheme.colorScheme.textTertiary
+                        else LocalContentColor.current,
                 )
             }
         }
@@ -1091,7 +1175,9 @@ fun SuggestionItem(
             Icon(
                 painter = painterResource(R.drawable.arrow_top_left),
                 contentDescription = null,
-                tint = if (useIrideStyle) MaterialTheme.colorScheme.textTertiary else LocalContentColor.current,
+                tint =
+                    if (useIrideStyle) MaterialTheme.colorScheme.textTertiary
+                    else LocalContentColor.current,
             )
         }
     }

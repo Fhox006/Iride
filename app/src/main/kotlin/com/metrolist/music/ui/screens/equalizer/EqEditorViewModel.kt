@@ -79,7 +79,15 @@ class EqEditorViewModel @Inject constructor(
         }
         viewModelScope.launch {
             audioDeviceMonitor.current.collect { output ->
-                _state.update { old -> old.copy(output = output) }
+                _state.update { old ->
+                    val working =
+                        ensureWorkingForKnownDevices(
+                            old.working,
+                            old.bindings,
+                            output?.deviceKey,
+                        )
+                    old.copy(output = output, working = working)
+                }
                 applyEffectiveToAudio()
             }
         }
@@ -147,7 +155,8 @@ class EqEditorViewModel @Inject constructor(
 
     private fun ensureWorkingForKnownDevices(
         existing: Map<String, WorkingProfile>,
-        bindings: Map<String, String>
+        bindings: Map<String, String>,
+        currentDeviceKey: String? = _state.value.output?.deviceKey,
     ): Map<String, WorkingProfile> {
         val profiles = eqProfileRepository.getAllProfiles().associateBy { it.id }
         val updated = existing.toMutableMap()
@@ -156,16 +165,21 @@ class EqEditorViewModel @Inject constructor(
                 profiles[pid]?.let { p -> updated[key] = workingFromProfile(p) }
             }
         }
-        val currentKey = _state.value.output?.deviceKey
+        val currentKey = currentDeviceKey
         if (currentKey != null && updated[currentKey] == null) {
             val seedId = DEFAULT_EDITOR_PROFILE_ID + "_" + currentKey.hashCode()
-            val seed = profiles[seedId] ?: profiles[DEFAULT_EDITOR_PROFILE_ID] ?: eqProfileRepository
-                .getAllProfiles()
-                .firstOrNull()
-                ?.let { workingFromProfile(it) }
-            if (seed != null) {
-                updated[currentKey] = WorkingProfile(id = seedId, name = "Custom", bands = EQPreset.defaultBands())
-            }
+            val seed =
+                (profiles[seedId]
+                        ?: profiles[DEFAULT_EDITOR_PROFILE_ID]
+                        ?: eqProfileRepository.getAllProfiles().firstOrNull())
+                    ?.let(::workingFromProfile)
+            updated[currentKey] =
+                seed?.copy(id = seedId, name = "Custom")
+                    ?: WorkingProfile(
+                        id = seedId,
+                        name = "Custom",
+                        bands = EQPreset.defaultBands(),
+                    )
         }
         return updated
     }

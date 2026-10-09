@@ -44,6 +44,9 @@ import com.metrolist.music.utils.keepPreferencesWarm
 import com.metrolist.music.utils.preferencesSnapshot
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.ui.component.dismissedAnchor
+import com.metrolist.music.ui.component.ArtistArtworkEntryPoint
+import com.metrolist.music.ui.component.persistablePlayerAnchor
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +93,12 @@ class App :
 
         dataStore.keepPreferencesWarm(applicationScope)
 
-        playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
+        applicationScope.launch(Dispatchers.IO) {
+            EntryPointAccessors.fromApplication(this@App, ArtistArtworkEntryPoint::class.java)
+                .artistArtworkLoader().restoreSelections()
+        }
+
+        playerAnchorCache = persistablePlayerAnchor(dataStore.get(PlayerAnchorKey, dismissedAnchor))
         MiniPlayerSnapshotStore.initialize(this)
         if (!dataStore.get(PersistentQueueKey, true)) MiniPlayerSnapshotStore.update(null)
 
@@ -112,6 +120,8 @@ class App :
         super.onTrimMemory(level)
         if (level >= TRIM_MEMORY_MODERATE) {
             coil3.SingletonImageLoader.get(this).memoryCache?.clear()
+            EntryPointAccessors.fromApplication(this, ArtistArtworkEntryPoint::class.java)
+                .artistArtworkLoader().clearMemory()
         }
     }
 
@@ -227,16 +237,18 @@ class App :
 
         YouTube.useLoginForBrowse = settings[UseLoginForBrowse] ?: true
 
-        val channel =
-            NotificationChannel(
-                "updates",
-                getString(R.string.update_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply {
-                description = getString(R.string.update_channel_desc)
-            }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(channel)
+        if (OptionalNotificationsEnabled) {
+            val channel =
+                NotificationChannel(
+                    "updates",
+                    getString(R.string.update_channel_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = getString(R.string.update_channel_desc)
+                }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
+        }
     }
 
     private fun observeSettingsChanges() {

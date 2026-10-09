@@ -73,6 +73,7 @@ fun NavigationTitle(
     bottomPadding: Dp? = null,
     showDivider: Boolean = true,
     prominentTitle: Boolean = false,
+    titleMaxLines: Int = 1,
 ) {
     val headerInteractionSource = remember { MutableInteractionSource() }
     val hairlineColor = MaterialTheme.colorScheme.strokeHairline
@@ -162,7 +163,7 @@ fun NavigationTitle(
                 fontWeight = FontWeight.Bold,
                 color = if (useIrideStyle) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
-                maxLines = 1,
+                maxLines = titleMaxLines,
             )
         }
 

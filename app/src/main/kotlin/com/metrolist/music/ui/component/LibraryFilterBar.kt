@@ -77,42 +77,13 @@ fun <T> LibrarySortRow(
                 expanded = menuExpanded,
                 onClick = { menuExpanded = true },
             )
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                sortOptions.forEach { (type, label) ->
-                    val isSelected = type == currentSort
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontFamily = SpaceMonoFontFamily,
-                                ),
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = Color.White,
-                            )
-                        },
-                        trailingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        } else null,
-                        onClick = {
-                            onSortChange(type)
-                            menuExpanded = false
-                        },
-                    )
-                }
-            }
+            IrideFolioChoiceMenu(
+                expanded = menuExpanded, onDismissRequest = { menuExpanded = false },
+                actions = sortOptions.map { (type, label) ->
+                    IrideFolioMenuAction(label = label, selected = type == currentSort,
+                        onClick = { onSortChange(type) })
+                },
+            )
         }
 
         if (showDescending) {

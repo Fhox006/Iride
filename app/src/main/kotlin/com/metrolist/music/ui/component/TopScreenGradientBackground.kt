@@ -23,16 +23,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -41,7 +42,6 @@ import coil3.toBitmap
 import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -65,8 +65,26 @@ fun TopScreenGradientBackground(
     mediaMetadata: MediaMetadata?,
     playerBackground: PlayerBackgroundStyle,
     modifier: Modifier = Modifier,
+    onTopColorChanged: (Color) -> Unit = {},
+    emphasizeArtwork: Boolean = false,
+    backgroundColor: Color = MaterialTheme.colorScheme.background,
+    artworkTint: Color? = null,
+    artworkGradientHeight: Dp = IrideFolio.ArtworkGradientHeight,
 ) {
     if (playerBackground == PlayerBackgroundStyle.DEFAULT || playerBackground == PlayerBackgroundStyle.BLUR) {
+        return
+    }
+
+    if (emphasizeArtwork) {
+        ArtworkHeaderGradientBackground(
+            mediaMetadata = mediaMetadata,
+            playerBackground = playerBackground,
+            backgroundColor = backgroundColor,
+            modifier = modifier,
+            onTopColorChanged = onTopColorChanged,
+            artworkTint = artworkTint,
+            gradientHeight = artworkGradientHeight,
+        )
         return
     }
 
@@ -76,16 +94,19 @@ fun TopScreenGradientBackground(
     var incomingThumbnail by remember { mutableStateOf<Bitmap?>(null) }
     val crossfadeProgress = remember { Animatable(0f) }
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    val bgColor = MaterialTheme.colorScheme.background
+    var artworkAverage by remember { mutableStateOf(bgColor) }
+    val onTopColorChangedState by rememberUpdatedState(onTopColorChanged)
     val colorCache = remember { mutableMapOf<String, List<Color>>() }
-    val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
+    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, bgColor) {
         val url = mediaMetadata?.thumbnailUrl
         if (url == null) {
             displayedThumbnail = null
             incomingThumbnail = null
             crossfadeProgress.snapTo(0f)
             gradientColors = emptyList()
+            artworkAverage = bgColor
             return@LaunchedEffect
         }
         // Retry a few times: right after reboot the disk cache may be cold and
@@ -120,25 +141,44 @@ fun TopScreenGradientBackground(
             displayedThumbnail = bitmap
         }
 
-        val id = mediaMetadata.id
-        if (bitmap != null && id != null) {
-            val cached = colorCache[id]
+        val loadedBitmap = bitmap
+        if (loadedBitmap != null) {
+            val cached = colorCache[url]
             val colors = cached ?: withContext(Dispatchers.IO) {
-                val palette = Palette.from(bitmap).maximumColorCount(8).generate()
-                PlayerColorExtractor.extractGradientColors(palette, fallbackColor)
-            }.also { colorCache[id] = it }
+                val tint = loadedBitmap.irideArtworkTint(bgColor)
+                listOf(tint, tint.irideDimmed(0.6f), Color.Black)
+            }.also { colorCache[url] = it }
+            artworkAverage = withContext(Dispatchers.IO) { loadedBitmap.irideAverageColor(bgColor) }
             gradientColors = colors
         } else {
             gradientColors = emptyList()
+            artworkAverage = bgColor
         }
     }
 
-    val bgColor = MaterialTheme.colorScheme.background
+    // The zoomed animation can magnify a bright face/detail in an otherwise dark cover.
+    // Let the whole image set its intensity instead of whichever pixels happen to be enlarged.
+    val artworkOpacity = maxOf(artworkAverage.red, artworkAverage.green, artworkAverage.blue) *
+        IrideFolio.ArtworkBackgroundBrightness
+    val topColor = when (playerBackground) {
+        PlayerBackgroundStyle.GRADIENT ->
+            gradientColors.firstOrNull()?.copy(alpha = TopGradientOpacity)?.compositeOver(bgColor) ?: bgColor
+        PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT ->
+            Color.Black.copy(alpha = 0.3f).compositeOver(artworkAverage)
+                .irideDimmed(artworkOpacity)
+                .copy(alpha = TopGradientOpacity).compositeOver(bgColor)
+        else ->
+            gradientColors.firstOrNull()?.copy(alpha = TopGradientOpacity)?.compositeOver(bgColor) ?: bgColor
+    }
+    LaunchedEffect(topColor, mediaMetadata?.id, mediaMetadata?.thumbnailUrl, playerBackground) {
+        onTopColorChangedState(topColor)
+    }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(TopGradientHeight),
+            .height(TopGradientHeight)
+            .irideBackgroundGrain(fadeOut = true),
     ) {
         when (playerBackground) {
             PlayerBackgroundStyle.GRADIENT -> {
@@ -176,6 +216,9 @@ fun TopScreenGradientBackground(
                         thumbnail = displayedThumbnail,
                         incomingThumbnail = incomingThumbnail,
                         crossfadeProgress = crossfadeProgress.value,
+                        saturation = 1f,
+                        artworkOpacity = artworkOpacity,
+                        grainOpacity = 0f,
                         modifier = Modifier.fillMaxWidth().height(TopGradientHeight),
                     )
                     Box(
@@ -201,7 +244,7 @@ fun TopScreenGradientBackground(
 @Composable
 private fun TopGradientBlobs(colors: List<Color>, bgColor: Color) {
     val safeColors = colors.ifEmpty {
-        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+        listOf(bgColor, bgColor)
     }
     val c0 by androidx.compose.animation.animateColorAsState(safeColors[0], tween(1400), label = "tgb_c0")
     val c1 by androidx.compose.animation.animateColorAsState(

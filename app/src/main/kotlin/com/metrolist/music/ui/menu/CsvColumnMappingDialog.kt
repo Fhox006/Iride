@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.menu
 
+import com.metrolist.music.ui.component.IrideFolioDialog
+import com.metrolist.music.ui.component.IrideFolio
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,15 +25,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,7 +42,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
 import com.metrolist.music.viewmodels.ConvertedSongLog
@@ -61,17 +61,14 @@ fun CsvColumnMappingDialog(
     var urlColumnIndex by remember { mutableIntStateOf(csvState.urlColumnIndex) }
     var hasHeader by remember { mutableStateOf(csvState.hasHeader) }
 
-    Dialog(
+    IrideFolioDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Column(
             modifier =
                 Modifier
-                    .fillMaxWidth(0.95f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp)
+                    .padding(IrideFolio.DialogContentPadding)
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -186,10 +183,10 @@ fun CsvColumnMappingDialog(
                         .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                OutlinedButton(onClick = onDismiss) {
+                IrideFolioSecondaryButton(onClick = onDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
-                Button(
+                IrideFolioPrimaryButton(
                     onClick = {
                         onConfirm(
                             CsvImportState(
@@ -236,41 +233,39 @@ private fun ColumnSelector(
         ) {
             if (allowNone) {
                 if (selectedIndex == -1) {
-                    Button(
+                    IrideFolioPrimaryButton(
                         onClick = { onSelected(-1) },
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier,
                     ) {
-                        Text(stringResource(R.string.none), style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.none),)
                     }
                 } else {
-                    OutlinedButton(
+                    IrideFolioSecondaryButton(
                         onClick = { onSelected(-1) },
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier,
                     ) {
-                        Text(stringResource(R.string.none), style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.none),)
                     }
                 }
             }
 
             repeat(maxColumns) { index ->
                 if (selectedIndex == index) {
-                    Button(
+                    IrideFolioPrimaryButton(
                         onClick = { onSelected(index) },
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier,
                     ) {
                         Text(
                             stringResource(R.string.column_label, index + 1),
-                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                 } else {
-                    OutlinedButton(
+                    IrideFolioSecondaryButton(
                         onClick = { onSelected(index) },
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier,
                     ) {
                         Text(
                             stringResource(R.string.column_label, index + 1),
-                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                 }
@@ -288,17 +283,14 @@ fun CsvImportProgressDialog(
 ) {
     if (!isVisible) return
 
-    Dialog(
+    IrideFolioDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {
         Column(
             modifier =
                 Modifier
-                    .fillMaxWidth(0.85f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp),
+                    .padding(IrideFolio.DialogContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(

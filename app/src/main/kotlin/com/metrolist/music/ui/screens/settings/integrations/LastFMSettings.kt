@@ -1,14 +1,11 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings.integrations
-import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageFrame
-import com.metrolist.music.ui.component.IrideSlider
-import com.metrolist.music.ui.component.IrideSwitch
 
+import com.metrolist.music.ui.component.IrideFolioAlertDialog
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,19 +23,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -50,7 +42,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.widget.Toast
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -79,26 +70,25 @@ import com.metrolist.music.constants.ScrobbleDelaySecondsKey
 import com.metrolist.music.constants.ScrobbleMinSongDurationKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LastFMSettings(
-    navController: NavController
-) {
+fun LastFMSettings(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -110,35 +100,41 @@ fun LastFMSettings(
             lastfmSession != ""
         }
 
-    val (useNowPlaying, onUseNowPlayingChange) = rememberPreference(
-        key = LastFMUseNowPlaying,
-        defaultValue = false
-    )
+    val (useNowPlaying, onUseNowPlayingChange) =
+        rememberPreference(
+            key = LastFMUseNowPlaying,
+            defaultValue = false,
+        )
 
-    val (useSendLikes, onUseSendLikes) = rememberPreference(
-        key = LastFMUseSendLikes,
-        defaultValue = false
-    )
+    val (useSendLikes, onUseSendLikes) =
+        rememberPreference(
+            key = LastFMUseSendLikes,
+            defaultValue = false,
+        )
 
-    val (lastfmScrobbling, onlastfmScrobblingChange) = rememberPreference(
-        key = EnableLastFMScrobblingKey,
-        defaultValue = false
-    )
+    val (lastfmScrobbling, onlastfmScrobblingChange) =
+        rememberPreference(
+            key = EnableLastFMScrobblingKey,
+            defaultValue = false,
+        )
 
-    val (scrobbleDelayPercent, onScrobbleDelayPercentChange) = rememberPreference(
-        ScrobbleDelayPercentKey,
-        defaultValue = LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT
-    )
+    val (scrobbleDelayPercent, onScrobbleDelayPercentChange) =
+        rememberPreference(
+            ScrobbleDelayPercentKey,
+            defaultValue = LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT,
+        )
 
-    val (minTrackDuration, onMinTrackDurationChange) = rememberPreference(
-        ScrobbleMinSongDurationKey,
-        defaultValue = LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION
-    )
+    val (minTrackDuration, onMinTrackDurationChange) =
+        rememberPreference(
+            ScrobbleMinSongDurationKey,
+            defaultValue = LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION,
+        )
 
-    val (scrobbleDelaySeconds, onScrobbleDelaySecondsChange) = rememberPreference(
-        ScrobbleDelaySecondsKey,
-        defaultValue = LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
-    )
+    val (scrobbleDelaySeconds, onScrobbleDelaySecondsChange) =
+        rememberPreference(
+            ScrobbleDelaySecondsKey,
+            defaultValue = LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS,
+        )
 
     var showLoginDialog by rememberSaveable { mutableStateOf(false) }
     var isLoggingIn by rememberSaveable { mutableStateOf(false) }
@@ -148,7 +144,7 @@ fun LastFMSettings(
         var tempUsername by rememberSaveable { mutableStateOf("") }
         var tempPassword by rememberSaveable { mutableStateOf("") }
 
-        AlertDialog(
+        IrideFolioAlertDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false),
             onDismissRequest = {
                 if (!isLoggingIn) {
@@ -159,9 +155,8 @@ fun LastFMSettings(
             title = { Text(stringResource(R.string.login)) },
             text = {
                 Column(
-                    modifier = Modifier
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     OutlinedTextField(
                         value = tempUsername,
@@ -191,7 +186,7 @@ fun LastFMSettings(
                             text = error,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
 
@@ -199,26 +194,24 @@ fun LastFMSettings(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp)
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.size(8.dp))
                             Text(
                                 text = stringResource(R.string.logging_in),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         if (tempUsername.isBlank() || tempPassword.isBlank()) {
                             loginError = "Please enter both username and password"
-                            return@TextButton
+                            return@IrideFolioPrimaryButton
                         }
 
                         isLoggingIn = true
@@ -241,21 +234,24 @@ fun LastFMSettings(
                                     .onFailure { exception ->
                                         coroutineScope.launch(Dispatchers.Main) {
                                             isLoggingIn = false
-                                            loginError = when (exception) {
-                                                is LastFM.LastFmException -> {
-                                                    when (exception.code) {
-                                                        4 -> "Invalid username or password"
-                                                        6 -> "Invalid parameters"
-                                                        9 -> "Invalid session key"
-                                                        10 -> "Invalid API key"
-                                                        13 -> "Invalid method signature"
-                                                        14 -> "Unauthorized token"
-                                                        15 -> "Service temporarily unavailable"
-                                                        else -> "Login failed: ${exception.message}"
+                                            loginError =
+                                                when (exception) {
+                                                    is LastFM.LastFmException -> {
+                                                        when (exception.code) {
+                                                            4 -> "Invalid username or password"
+                                                            6 -> "Invalid parameters"
+                                                            9 -> "Invalid session key"
+                                                            10 -> "Invalid API key"
+                                                            13 -> "Invalid method signature"
+                                                            14 -> "Unauthorized token"
+                                                            15 -> "Service temporarily unavailable"
+                                                            else ->
+                                                                "Login failed: ${exception.message}"
+                                                        }
                                                     }
+                                                    else ->
+                                                        "Network error. Please check your connection."
                                                 }
-                                                else -> "Network error. Please check your connection."
-                                            }
                                         }
                                         reportException(exception)
                                     }
@@ -268,178 +264,195 @@ fun LastFMSettings(
                             }
                         }
                     },
-                    enabled = !isLoggingIn
+                    enabled = !isLoggingIn,
                 ) {
                     Text(stringResource(R.string.login))
                 }
             },
             dismissButton = {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = {
                         if (!isLoggingIn) {
                             showLoginDialog = false
                             loginError = null
                         }
                     },
-                    enabled = !isLoggingIn
+                    enabled = !isLoggingIn,
                 ) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
+            },
         )
     }
 
     val settingsScrollState = rememberScrollState()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(
-        PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
-    )
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) {
-        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
-    }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
     IridePageFrame(
         title = stringResource(R.string.lastfm_integration),
         scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        background = {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
                     mediaMetadata = mediaMetadata,
                     playerBackground = playerBackgroundStyle,
                 )
             } else {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                )
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                Modifier
-                    .windowInsetsPadding(
+                Modifier.windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
                     )
-                    .verticalScroll(settingsScrollState)
                     .padding(horizontal = 16.dp)
             ) {
-
                 Material3SettingsGroup(
                     title = stringResource(R.string.account),
-                    items = listOf(
-                        Material3SettingsItem(
-                            title = {
-                                Text(
-                                    text = if (isLoggedIn) lastfmUsername else stringResource(R.string.not_logged_in),
-                                    modifier = Modifier.alpha(if (isLoggedIn) 1f else 0.5f),
-                                )
-                            },
-                            trailingContent = {
-                                if (isLoggedIn) {
-                                    OutlinedButton(onClick = {
-                                        lastfmSession = ""
-                                        lastfmUsername = ""
-                                    }) {
-                                        Text(stringResource(R.string.action_logout))
-                                    }
-                                } else {
-                                    OutlinedButton(onClick = {
-                                        if (BuildConfig.LASTFM_API_KEY.isBlank()) {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.lastfm_api_not_configured),
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        } else {
-                                            showLoginDialog = true
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = {
+                                    Text(
+                                        text =
+                                            if (isLoggedIn) lastfmUsername
+                                            else stringResource(R.string.not_logged_in),
+                                        modifier = Modifier.alpha(if (isLoggedIn) 1f else 0.5f),
+                                    )
+                                },
+                                trailingContent = {
+                                    if (isLoggedIn) {
+                                        IrideFolioSecondaryButton(
+                                            onClick = {
+                                                lastfmSession = ""
+                                                lastfmUsername = ""
+                                            }
+                                        ) {
+                                            Text(stringResource(R.string.action_logout))
                                         }
-                                    }) {
-                                        Text(stringResource(R.string.action_login))
+                                    } else {
+                                        IrideFolioSecondaryButton(
+                                            onClick = {
+                                                if (BuildConfig.LASTFM_API_KEY.isBlank()) {
+                                                    Toast.makeText(
+                                                            context,
+                                                            context.getString(
+                                                                R.string.lastfm_api_not_configured
+                                                            ),
+                                                            Toast.LENGTH_LONG,
+                                                        )
+                                                        .show()
+                                                } else {
+                                                    showLoginDialog = true
+                                                }
+                                            }
+                                        ) {
+                                            Text(stringResource(R.string.action_login))
+                                        }
                                     }
-                                }
-                            },
-                            icon = painterResource(R.drawable.music_note)
+                                },
+                                icon = painterResource(R.drawable.music_note),
+                            )
                         ),
-                    )
                 )
 
                 Spacer(Modifier.height(8.dp))
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.options),
-                    items = listOf(
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.enable_scrobbling)) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = lastfmScrobbling,
-                                    onCheckedChange = onlastfmScrobblingChange,
-                                    enabled = isLoggedIn,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = if (lastfmScrobbling) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    }
-                                )
-                            },
-                            enabled = isLoggedIn,
-                            icon = painterResource(R.drawable.queue_music)
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.enable_scrobbling)) },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = lastfmScrobbling,
+                                        onCheckedChange = onlastfmScrobblingChange,
+                                        enabled = isLoggedIn,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (lastfmScrobbling) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn,
+                                icon = painterResource(R.drawable.queue_music),
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.lastfm_now_playing)) },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = useNowPlaying,
+                                        onCheckedChange = onUseNowPlayingChange,
+                                        enabled = isLoggedIn && lastfmScrobbling,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (useNowPlaying) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn && lastfmScrobbling,
+                                icon = painterResource(R.drawable.play),
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.last_fm_send_likes)) },
+                                description = {
+                                    stringResource(R.string.last_fm_send_likes_description)
+                                },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = useSendLikes,
+                                        onCheckedChange = onUseSendLikes,
+                                        enabled = isLoggedIn,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (useSendLikes) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn,
+                                icon = painterResource(R.drawable.media3_icon_thumb_up_unfilled),
+                            ),
                         ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.lastfm_now_playing)) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = useNowPlaying,
-                                    onCheckedChange = onUseNowPlayingChange,
-                                    enabled = isLoggedIn && lastfmScrobbling,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = if (useNowPlaying) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    }
-                                )
-                            },
-                            enabled = isLoggedIn && lastfmScrobbling,
-                            icon = painterResource(R.drawable.play)
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.last_fm_send_likes)) },
-                            description = { stringResource(R.string.last_fm_send_likes_description) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = useSendLikes,
-                                    onCheckedChange = onUseSendLikes,
-                                    enabled = isLoggedIn,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = if (useSendLikes) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    }
-                                )
-                            },
-                            enabled = isLoggedIn,
-                            icon = painterResource(R.drawable.media3_icon_thumb_up_unfilled)
-                        )
-                    )
                 )
 
                 var showMinTrackDurationDialog by rememberSaveable { mutableStateOf(false) }
@@ -453,7 +466,7 @@ fun LastFMSettings(
                             showMinTrackDurationDialog = false
                         },
                         buttons = {
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempMinTrackDuration = LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION
                                 }
@@ -463,7 +476,7 @@ fun LastFMSettings(
 
                             Spacer(modifier = Modifier.weight(1f))
 
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempMinTrackDuration = minTrackDuration
                                     showMinTrackDurationDialog = false
@@ -471,7 +484,7 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.cancel))
                             }
-                            TextButton(
+                            IrideFolioPrimaryButton(
                                 onClick = {
                                     onMinTrackDurationChange(tempMinTrackDuration)
                                     showMinTrackDurationDialog = false
@@ -479,29 +492,29 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.ok))
                             }
-                        }
+                        },
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.scrobble_min_track_duration),
                                 style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             Text(
                                 text = makeTimeString((tempMinTrackDuration * 1000).toLong()),
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             IrideSlider(
                                 value = tempMinTrackDuration.toFloat(),
                                 onValueChange = { tempMinTrackDuration = it.toInt() },
                                 valueRange = 10f..60f,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -510,7 +523,9 @@ fun LastFMSettings(
                 var showScrobbleDelayPercentDialog by rememberSaveable { mutableStateOf(false) }
 
                 if (showScrobbleDelayPercentDialog) {
-                    var tempScrobbleDelayPercent by remember { mutableFloatStateOf(scrobbleDelayPercent) }
+                    var tempScrobbleDelayPercent by remember {
+                        mutableFloatStateOf(scrobbleDelayPercent)
+                    }
 
                     DefaultDialog(
                         onDismiss = {
@@ -518,7 +533,7 @@ fun LastFMSettings(
                             showScrobbleDelayPercentDialog = false
                         },
                         buttons = {
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempScrobbleDelayPercent = LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT
                                 }
@@ -528,7 +543,7 @@ fun LastFMSettings(
 
                             Spacer(modifier = Modifier.weight(1f))
 
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempScrobbleDelayPercent = scrobbleDelayPercent
                                     showScrobbleDelayPercentDialog = false
@@ -536,7 +551,7 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.cancel))
                             }
-                            TextButton(
+                            IrideFolioPrimaryButton(
                                 onClick = {
                                     onScrobbleDelayPercentChange(tempScrobbleDelayPercent)
                                     showScrobbleDelayPercentDialog = false
@@ -544,29 +559,33 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.ok))
                             }
-                        }
+                        },
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.scrobble_delay_percent),
                                 style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             Text(
-                                text = stringResource(R.string.sensitivity_percentage, (tempScrobbleDelayPercent * 100).roundToInt()),
+                                text =
+                                    stringResource(
+                                        R.string.sensitivity_percentage,
+                                        (tempScrobbleDelayPercent * 100).roundToInt(),
+                                    ),
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             IrideSlider(
                                 value = tempScrobbleDelayPercent,
                                 onValueChange = { tempScrobbleDelayPercent = it },
                                 valueRange = 0.3f..0.95f,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -575,7 +594,9 @@ fun LastFMSettings(
                 var showScrobbleDelaySecondsDialog by rememberSaveable { mutableStateOf(false) }
 
                 if (showScrobbleDelaySecondsDialog) {
-                    var tempScrobbleDelaySeconds by remember { mutableIntStateOf(scrobbleDelaySeconds) }
+                    var tempScrobbleDelaySeconds by remember {
+                        mutableIntStateOf(scrobbleDelaySeconds)
+                    }
 
                     DefaultDialog(
                         onDismiss = {
@@ -583,7 +604,7 @@ fun LastFMSettings(
                             showScrobbleDelaySecondsDialog = false
                         },
                         buttons = {
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempScrobbleDelaySeconds = LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
                                 }
@@ -593,7 +614,7 @@ fun LastFMSettings(
 
                             Spacer(modifier = Modifier.weight(1f))
 
-                            TextButton(
+                            IrideFolioSecondaryButton(
                                 onClick = {
                                     tempScrobbleDelaySeconds = scrobbleDelaySeconds
                                     showScrobbleDelaySecondsDialog = false
@@ -601,7 +622,7 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.cancel))
                             }
-                            TextButton(
+                            IrideFolioPrimaryButton(
                                 onClick = {
                                     onScrobbleDelaySecondsChange(tempScrobbleDelaySeconds)
                                     showScrobbleDelaySecondsDialog = false
@@ -609,29 +630,29 @@ fun LastFMSettings(
                             ) {
                                 Text(stringResource(android.R.string.ok))
                             }
-                        }
+                        },
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.scrobble_delay_minutes),
                                 style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             Text(
                                 text = makeTimeString((tempScrobbleDelaySeconds * 1000).toLong()),
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 16.dp),
                             )
 
                             IrideSlider(
                                 value = tempScrobbleDelaySeconds.toFloat(),
                                 onValueChange = { tempScrobbleDelaySeconds = it.toInt() },
                                 valueRange = 30f..360f,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -641,29 +662,42 @@ fun LastFMSettings(
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.scrobbling_configuration),
-                    items = listOf(
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.scrobble_min_track_duration)) },
-                            description = { Text(makeTimeString((minTrackDuration * 1000).toLong())) },
-                            onClick = { showMinTrackDurationDialog = true },
-                            icon = painterResource(R.drawable.timer)
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = {
+                                    Text(stringResource(R.string.scrobble_min_track_duration))
+                                },
+                                description = {
+                                    Text(makeTimeString((minTrackDuration * 1000).toLong()))
+                                },
+                                onClick = { showMinTrackDurationDialog = true },
+                                icon = painterResource(R.drawable.timer),
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.scrobble_delay_percent)) },
+                                description = {
+                                    Text(
+                                        stringResource(
+                                            R.string.sensitivity_percentage,
+                                            (scrobbleDelayPercent * 100).roundToInt(),
+                                        )
+                                    )
+                                },
+                                onClick = { showScrobbleDelayPercentDialog = true },
+                                icon = painterResource(R.drawable.timer),
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.scrobble_delay_minutes)) },
+                                description = {
+                                    Text(makeTimeString((scrobbleDelaySeconds * 1000).toLong()))
+                                },
+                                onClick = { showScrobbleDelaySecondsDialog = true },
+                                icon = painterResource(R.drawable.timer),
+                            ),
                         ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.scrobble_delay_percent)) },
-                            description = { Text(stringResource(R.string.sensitivity_percentage, (scrobbleDelayPercent * 100).roundToInt())) },
-                            onClick = { showScrobbleDelayPercentDialog = true },
-                            icon = painterResource(R.drawable.timer)
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.scrobble_delay_minutes)) },
-                            description = { Text(makeTimeString((scrobbleDelaySeconds * 1000).toLong())) },
-                            onClick = { showScrobbleDelaySecondsDialog = true },
-                            icon = painterResource(R.drawable.timer)
-                        ),
-                    )
                 )
             }
         }
-
     }
 }

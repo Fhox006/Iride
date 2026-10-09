@@ -59,16 +59,22 @@ private const val SPOTIFY_LOGOUT_URL = "https://accounts.spotify.com/logout"
 private const val MAX_EXPORT_BYTES = 128L * 1024 * 1024
 private const val EXPORT_CHUNK_BYTES = 48 * 1024
 
-private enum class ExportifyAccountChangeStage { IDLE, SPOTIFY_LOGOUT, EXPORTIFY_LOGOUT, RESTART }
+private enum class ExportifyAccountChangeStage {
+    IDLE,
+    SPOTIFY_LOGOUT,
+    EXPORTIFY_LOGOUT,
+    RESTART,
+}
 
 sealed interface ExportifyPageError {
     data class Http(val statusCode: Int) : ExportifyPageError
+
     data object Connection : ExportifyPageError
 }
 
 /**
- * Hosts the official service; the caller supplies the size and surrounding app chrome.
- * [onExport] receives a cache file whose contents and empty parent directory the recipient owns.
+ * Hosts the official service; the caller supplies the size and surrounding app chrome. [onExport]
+ * receives a cache file whose contents and empty parent directory the recipient owns.
  */
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
@@ -132,50 +138,71 @@ fun ExportifyWebView(
         }
     }
 
-    BackHandler(enabled = handleBackNavigation && canGoBack && accountChangeStage == ExportifyAccountChangeStage.IDLE) { browser?.goBack() }
+    BackHandler(
+        enabled =
+            handleBackNavigation &&
+                canGoBack &&
+                accountChangeStage == ExportifyAccountChangeStage.IDLE
+    ) {
+        browser?.goBack()
+    }
 
     LaunchedEffect(reloadRequest) {
-        if (reloadRequest > 0) browser?.let { view ->
-            if (accountChangeStage != ExportifyAccountChangeStage.IDLE) {
+        if (reloadRequest > 0)
+            browser?.let { view ->
+                if (accountChangeStage != ExportifyAccountChangeStage.IDLE) {
+                    accountChangeFailed = false
+                    accountChangeStage = ExportifyAccountChangeStage.SPOTIFY_LOGOUT
+                    accountChangeCallback(true)
+                    loadingCallback(true)
+                    view.loadUrl(SPOTIFY_LOGOUT_URL)
+                } else view.reload()
+            }
+    }
+
+    LaunchedEffect(changeAccountRequest) {
+        if (changeAccountRequest > 0)
+            browser?.let { view ->
+                view.stopLoading()
+                bridge?.close()
+                bridge = null
+                popups.forEach { it.destroy() }
+                popups.clear()
+                canGoBack = false
                 accountChangeFailed = false
                 accountChangeStage = ExportifyAccountChangeStage.SPOTIFY_LOGOUT
                 accountChangeCallback(true)
                 loadingCallback(true)
+                // Spotify owns its login cookies. Its logout endpoint avoids clearing other Iride
+                // logins.
                 view.loadUrl(SPOTIFY_LOGOUT_URL)
-            } else view.reload()
-        }
-    }
-
-    LaunchedEffect(changeAccountRequest) {
-        if (changeAccountRequest > 0) browser?.let { view ->
-            view.stopLoading()
-            bridge?.close()
-            bridge = null
-            popups.forEach { it.destroy() }
-            popups.clear()
-            canGoBack = false
-            accountChangeFailed = false
-            accountChangeStage = ExportifyAccountChangeStage.SPOTIFY_LOGOUT
-            accountChangeCallback(true)
-            loadingCallback(true)
-            // Spotify owns its login cookies. Its logout endpoint avoids clearing other Iride logins.
-            view.loadUrl(SPOTIFY_LOGOUT_URL)
-        }
+            }
     }
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            WebView(context).apply {
+            IrideFolioWebView(context).apply {
                 browser = this
                 // WRAP_CONTENT makes Chromium resolve viewport-relative CSS heights to zero.
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                layoutParams =
+                    ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
                 // Clip the Android view itself rather than rendering it through a Compose mask.
-                outlineProvider = object : ViewOutlineProvider() {
-                    override fun getOutline(view: View, outline: Outline) {
-                        outline.setRoundRect(0, 0, view.width, view.height, 16 * resources.displayMetrics.density)
+                outlineProvider =
+                    object : ViewOutlineProvider() {
+                        override fun getOutline(view: View, outline: Outline) {
+                            outline.setRoundRect(
+                                0,
+                                0,
+                                view.width,
+                                view.height,
+                                16 * resources.displayMetrics.density,
+                            )
+                        }
                     }
-                }
                 clipToOutline = true
                 settings.apply {
                     javaScriptEnabled = true
@@ -195,170 +222,229 @@ fun ExportifyWebView(
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 setOnTouchListener { view, event ->
                     when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> view.parent?.requestDisallowInterceptTouchEvent(true)
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        MotionEvent.ACTION_DOWN ->
+                            view.parent?.requestDisallowInterceptTouchEvent(true)
+                        MotionEvent.ACTION_UP,
+                        MotionEvent.ACTION_CANCEL ->
                             view.parent?.requestDisallowInterceptTouchEvent(false)
                     }
                     false
                 }
-                webViewClient = object : WebViewClient() {
-                    private var navigationId = 0L
-                    private var navigationUrl: String? = null
+                webViewClient =
+                    object : WebViewClient() {
+                        private var navigationId = 0L
+                        private var navigationUrl: String? = null
 
-                    private fun revealFrame(view: WebView, url: String?) {
-                        // Exportify removes the authorization query with history.replaceState.
-                        if (url != navigationUrl && url != view.url) return
-                        val requestId = navigationId
-                        view.postVisualStateCallback(requestId, object : WebView.VisualStateCallback() {
-                            override fun onComplete(requestId: Long) {
-                                if (!disposed && requestId == navigationId) {
-                                    view.requestLayout()
-                                    view.invalidate()
-                                    loadingCallback(false)
+                        private fun revealFrame(view: WebView, url: String?) {
+                            // Exportify removes the authorization query with history.replaceState.
+                            if (url != navigationUrl && url != view.url) return
+                            val requestId = navigationId
+                            view.postVisualStateCallback(
+                                requestId,
+                                object : WebView.VisualStateCallback() {
+                                    override fun onComplete(requestId: Long) {
+                                        if (!disposed && requestId == navigationId) {
+                                            view.requestLayout()
+                                            view.invalidate()
+                                            loadingCallback(false)
+                                        }
+                                    }
+                                },
+                            )
+                        }
+
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): Boolean {
+                            if (!request.isForMainFrame) return false
+                            return request.url.scheme != "https"
+                        }
+
+                        override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                            navigationId++
+                            navigationUrl = url
+                            bridge?.close()
+                            bridge = null
+                            loadingCallback(true)
+                            pageHostCallback(url?.let { Uri.parse(it).host })
+                        }
+
+                        override fun onPageFinished(view: WebView, url: String?) {
+                            if (accountChangeFailed) return
+                            when (accountChangeStage) {
+                                ExportifyAccountChangeStage.SPOTIFY_LOGOUT -> {
+                                    val uri = url?.let(Uri::parse)
+                                    if (
+                                        uri?.scheme == "https" &&
+                                            uri.host == "accounts.spotify.com" &&
+                                            uri.path in listOf("/logout", "/status") &&
+                                            view.url == url
+                                    ) {
+                                        CookieManager.getInstance().flush()
+                                        accountChangeStage =
+                                            ExportifyAccountChangeStage.EXPORTIFY_LOGOUT
+                                        view.loadUrl(EXPORTIFY_URL)
+                                    }
+                                    return
                                 }
-                            }
-                        })
-                    }
-
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        if (!request.isForMainFrame) return false
-                        return request.url.scheme != "https"
-                    }
-
-                    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-                        navigationId++
-                        navigationUrl = url
-                        bridge?.close()
-                        bridge = null
-                        loadingCallback(true)
-                        pageHostCallback(url?.let { Uri.parse(it).host })
-                    }
-
-                    override fun onPageFinished(view: WebView, url: String?) {
-                        if (accountChangeFailed) return
-                        when (accountChangeStage) {
-                            ExportifyAccountChangeStage.SPOTIFY_LOGOUT -> {
-                                val uri = url?.let(Uri::parse)
-                                if (uri?.scheme == "https" && uri.host == "accounts.spotify.com" &&
-                                    uri.path in listOf("/logout", "/status") && view.url == url
-                                ) {
-                                    CookieManager.getInstance().flush()
-                                    accountChangeStage = ExportifyAccountChangeStage.EXPORTIFY_LOGOUT
-                                    view.loadUrl(EXPORTIFY_URL)
-                                }
-                                return
-                            }
-                            ExportifyAccountChangeStage.EXPORTIFY_LOGOUT -> {
-                                if (isExportifyUrl(url) && isExportifyUrl(view.url)) {
-                                    view.evaluateJavascript(
-                                        "(() => { if (location.origin !== 'https://exportify.app') return false; " +
-                                            "localStorage.removeItem('access_token'); localStorage.removeItem('code_verifier'); " +
-                                            "return true; })()",
-                                    ) { cleared ->
-                                        if (!disposed && accountChangeStage == ExportifyAccountChangeStage.EXPORTIFY_LOGOUT && isExportifyUrl(view.url)) {
-                                            if (cleared == "true") {
-                                                accountChangeStage = ExportifyAccountChangeStage.RESTART
-                                                view.loadUrl("${EXPORTIFY_URL}?change_user=true")
-                                            } else {
-                                                accountChangeStage = ExportifyAccountChangeStage.IDLE
-                                                accountChangeCallback(false)
-                                                loadingCallback(false)
-                                                errorCallback("Exportify account could not be changed")
+                                ExportifyAccountChangeStage.EXPORTIFY_LOGOUT -> {
+                                    if (isExportifyUrl(url) && isExportifyUrl(view.url)) {
+                                        view.evaluateJavascript(
+                                            "(() => { if (location.origin !== 'https://exportify.app') return false; " +
+                                                "localStorage.removeItem('access_token'); localStorage.removeItem('code_verifier'); " +
+                                                "return true; })()"
+                                        ) { cleared ->
+                                            if (
+                                                !disposed &&
+                                                    accountChangeStage ==
+                                                        ExportifyAccountChangeStage
+                                                            .EXPORTIFY_LOGOUT &&
+                                                    isExportifyUrl(view.url)
+                                            ) {
+                                                if (cleared == "true") {
+                                                    accountChangeStage =
+                                                        ExportifyAccountChangeStage.RESTART
+                                                    view.loadUrl(
+                                                        "${EXPORTIFY_URL}?change_user=true"
+                                                    )
+                                                } else {
+                                                    accountChangeStage =
+                                                        ExportifyAccountChangeStage.IDLE
+                                                    accountChangeCallback(false)
+                                                    loadingCallback(false)
+                                                    errorCallback(
+                                                        "Exportify account could not be changed"
+                                                    )
+                                                }
                                             }
                                         }
                                     }
+                                    return
                                 }
-                                return
+                                ExportifyAccountChangeStage.RESTART -> {
+                                    if (!isExportifyUrl(url) || !isExportifyUrl(view.url)) return
+                                    accountChangeStage = ExportifyAccountChangeStage.IDLE
+                                    view.clearHistory()
+                                    accountChangeCallback(false)
+                                }
+                                ExportifyAccountChangeStage.IDLE -> Unit
                             }
-                            ExportifyAccountChangeStage.RESTART -> {
-                                if (!isExportifyUrl(url) || !isExportifyUrl(view.url)) return
-                                accountChangeStage = ExportifyAccountChangeStage.IDLE
-                                view.clearHistory()
+                            // Navigation completion does not guarantee that Chromium has drawn its
+                            // frame.
+                            revealFrame(view, url)
+                            canGoBack = view.canGoBack()
+                            CookieManager.getInstance().flush()
+                            if (isExportifyUrl(url) && isExportifyUrl(view.url) && bridge == null) {
+                                val newBridge =
+                                    ExportifyDownloadBridge(
+                                        view,
+                                        onExport = { if (!disposed) exportCallback(it) },
+                                        onError = { if (!disposed) errorCallback(it) },
+                                        onStarted = { if (!disposed) downloadCallback() },
+                                    )
+                                bridge = newBridge
+                                try {
+                                    newBridge.connect()
+                                } catch (_: Exception) {
+                                    newBridge.close()
+                                    bridge = null
+                                    errorCallback("Exportify download capture is unavailable")
+                                }
+                            }
+                        }
+
+                        override fun onPageCommitVisible(view: WebView, url: String?) {
+                            if (accountChangeStage == ExportifyAccountChangeStage.IDLE)
+                                revealFrame(view, url)
+                        }
+
+                        override fun doUpdateVisitedHistory(
+                            view: WebView,
+                            url: String?,
+                            isReload: Boolean,
+                        ) {
+                            canGoBack = view.canGoBack()
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView,
+                            request: WebResourceRequest,
+                            error: WebResourceError,
+                        ) {
+                            if (request.isForMainFrame) {
+                                accountChangeFailed =
+                                    accountChangeStage != ExportifyAccountChangeStage.IDLE
                                 accountChangeCallback(false)
-                            }
-                            ExportifyAccountChangeStage.IDLE -> Unit
-                        }
-                        // Navigation completion does not guarantee that Chromium has drawn its frame.
-                        revealFrame(view, url)
-                        canGoBack = view.canGoBack()
-                        CookieManager.getInstance().flush()
-                        if (isExportifyUrl(url) && isExportifyUrl(view.url) && bridge == null) {
-                            val newBridge = ExportifyDownloadBridge(
-                                view,
-                                onExport = { if (!disposed) exportCallback(it) },
-                                onError = { if (!disposed) errorCallback(it) },
-                                onStarted = { if (!disposed) downloadCallback() },
-                            )
-                            bridge = newBridge
-                            try {
-                                newBridge.connect()
-                            } catch (_: Exception) {
-                                newBridge.close()
-                                bridge = null
-                                errorCallback("Exportify download capture is unavailable")
+                                loadingCallback(false)
+                                pageErrorCallback(ExportifyPageError.Connection)
                             }
                         }
-                    }
 
-                    override fun onPageCommitVisible(view: WebView, url: String?) {
-                        if (accountChangeStage == ExportifyAccountChangeStage.IDLE) revealFrame(view, url)
-                    }
-
-                    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
-                        canGoBack = view.canGoBack()
-                    }
-
-                    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                        if (request.isForMainFrame) {
-                            accountChangeFailed = accountChangeStage != ExportifyAccountChangeStage.IDLE
-                            accountChangeCallback(false)
-                            loadingCallback(false)
-                            pageErrorCallback(ExportifyPageError.Connection)
-                        }
-                    }
-
-                    override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
-                        if (request.isForMainFrame) {
-                            accountChangeFailed = accountChangeStage != ExportifyAccountChangeStage.IDLE
-                            accountChangeCallback(false)
-                            loadingCallback(false)
-                            pageErrorCallback(ExportifyPageError.Http(errorResponse.statusCode))
-                        }
-                    }
-
-                    override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
-                        handler.cancel()
-                        // SSL callbacks can also concern images/scripts: only obscure a failed page.
-                        if (error.url == view.url) {
-                            accountChangeFailed = accountChangeStage != ExportifyAccountChangeStage.IDLE
-                            accountChangeCallback(false)
-                            loadingCallback(false)
-                            pageErrorCallback(ExportifyPageError.Connection)
-                        }
-                    }
-                }
-                webChromeClient = object : WebChromeClient() {
-                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                        callback?.onCustomViewHidden()
-                    }
-
-                    override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
-                        if (!isUserGesture || popups.size >= 2) return false
-                        val popup = WebView(context)
-                        popups.add(popup)
-                        popup.webViewClient = object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(popupView: WebView, request: WebResourceRequest): Boolean {
-                                if (request.url.scheme == "https") view.loadUrl(request.url.toString())
-                                popups.remove(popupView)
-                                popupView.post { popupView.destroy() }
-                                return true
+                        override fun onReceivedHttpError(
+                            view: WebView,
+                            request: WebResourceRequest,
+                            errorResponse: WebResourceResponse,
+                        ) {
+                            if (request.isForMainFrame) {
+                                accountChangeFailed =
+                                    accountChangeStage != ExportifyAccountChangeStage.IDLE
+                                accountChangeCallback(false)
+                                loadingCallback(false)
+                                pageErrorCallback(ExportifyPageError.Http(errorResponse.statusCode))
                             }
                         }
-                        (resultMsg.obj as WebView.WebViewTransport).webView = popup
-                        resultMsg.sendToTarget()
-                        return true
+
+                        override fun onReceivedSslError(
+                            view: WebView,
+                            handler: SslErrorHandler,
+                            error: SslError,
+                        ) {
+                            handler.cancel()
+                            // SSL callbacks can also concern images/scripts: only obscure a failed
+                            // page.
+                            if (error.url == view.url) {
+                                accountChangeFailed =
+                                    accountChangeStage != ExportifyAccountChangeStage.IDLE
+                                accountChangeCallback(false)
+                                loadingCallback(false)
+                                pageErrorCallback(ExportifyPageError.Connection)
+                            }
+                        }
                     }
-                }
+                webChromeClient =
+                    object : WebChromeClient() {
+                        override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                            callback?.onCustomViewHidden()
+                        }
+
+                        override fun onCreateWindow(
+                            view: WebView,
+                            isDialog: Boolean,
+                            isUserGesture: Boolean,
+                            resultMsg: Message,
+                        ): Boolean {
+                            if (!isUserGesture || popups.size >= 2) return false
+                            val popup = WebView(context)
+                            popups.add(popup)
+                            popup.webViewClient =
+                                object : WebViewClient() {
+                                    override fun shouldOverrideUrlLoading(
+                                        popupView: WebView,
+                                        request: WebResourceRequest,
+                                    ): Boolean {
+                                        if (request.url.scheme == "https")
+                                            view.loadUrl(request.url.toString())
+                                        popups.remove(popupView)
+                                        popupView.post { popupView.destroy() }
+                                        return true
+                                    }
+                                }
+                            (resultMsg.obj as WebView.WebViewTransport).webView = popup
+                            resultMsg.sendToTarget()
+                            return true
+                        }
+                    }
                 setDownloadListener { url, userAgent, disposition, mimeType, _ ->
                     if (!isExportifyUrl(this.url)) return@setDownloadListener
                     val name = URLUtil.guessFileName(url, disposition, mimeType)
@@ -370,7 +456,8 @@ fun ExportifyWebView(
                         downloadScope.launch {
                             var downloaded: File? = null
                             try {
-                                val file = downloadExport(context.cacheDir, url, name, userAgent, cookie)
+                                val file =
+                                    downloadExport(context.cacheDir, url, name, userAgent, cookie)
                                 downloaded = file
                                 withContext(Dispatchers.Main) {
                                     if (!disposed) {
@@ -382,7 +469,8 @@ fun ExportifyWebView(
                                 throw exception
                             } catch (_: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    if (!disposed) errorCallback("Exportify download could not be received")
+                                    if (!disposed)
+                                        errorCallback("Exportify download could not be received")
                                 }
                             } finally {
                                 downloaded?.delete()
@@ -399,15 +487,22 @@ fun ExportifyWebView(
 
 private fun isExportifyUrl(url: String?): Boolean {
     val uri = url?.let(Uri::parse) ?: return false
-    return uri.scheme == "https" && uri.host == "exportify.app" && uri.port in listOf(-1, 443) && uri.userInfo == null
+    return uri.scheme == "https" &&
+        uri.host == "exportify.app" &&
+        uri.port in listOf(-1, 443) &&
+        uri.userInfo == null
 }
 
 private fun exportFile(cacheDir: File, name: String): File {
-    val safeName = name.substringAfterLast('/').substringAfterLast('\\')
-        .replace(Regex("[\\x00-\\x1f\\x7f]"), "_")
+    val safeName =
+        name
+            .substringAfterLast('/')
+            .substringAfterLast('\\')
+            .replace(Regex("[\\x00-\\x1f\\x7f]"), "_")
     require(safeName.endsWith(".csv", true) || safeName.endsWith(".zip", true))
     var stem = safeName.dropLast(4).ifBlank { "playlist" }
-    // Android filenames are limited by UTF-8 bytes, so truncate without splitting Unicode characters.
+    // Android filenames are limited by UTF-8 bytes, so truncate without splitting Unicode
+    // characters.
     while (stem.toByteArray(Charsets.UTF_8).size > 220) {
         stem = stem.substring(0, stem.offsetByCodePoints(stem.length, -1))
     }
@@ -432,20 +527,22 @@ private class ExportifyDownloadBridge(
     fun connect() {
         val ports = view.createWebMessageChannel()
         port = ports[0]
-        ports[0].setWebMessageCallback(object : WebMessagePort.WebMessageCallback() {
-            override fun onMessage(port: WebMessagePort, message: WebMessage) {
-                val data = message.data ?: return
-                if (closed || !isExportifyUrl(view.url)) return
-                if (data == "{\"type\":\"started\"}") {
-                    onStarted()
-                    return
-                }
-                if (data.length > EXPORT_CHUNK_BYTES * 2 || !messages.trySend(data).isSuccess) {
-                    onError("Exportify download could not be received")
-                    close()
+        ports[0].setWebMessageCallback(
+            object : WebMessagePort.WebMessageCallback() {
+                override fun onMessage(port: WebMessagePort, message: WebMessage) {
+                    val data = message.data ?: return
+                    if (closed || !isExportifyUrl(view.url)) return
+                    if (data == "{\"type\":\"started\"}") {
+                        onStarted()
+                        return
+                    }
+                    if (data.length > EXPORT_CHUNK_BYTES * 2 || !messages.trySend(data).isSuccess) {
+                        onError("Exportify download could not be received")
+                        close()
+                    }
                 }
             }
-        })
+        )
         scope.launch {
             var file: File? = null
             var output: FileOutputStream? = null
@@ -522,9 +619,14 @@ private class ExportifyDownloadBridge(
                 file?.parentFile?.delete()
             }
         }
-        view.evaluateJavascript(EXPORT_CAPTURE_SCRIPT.replace("__IRIDE_PORT_TOKEN__", connectionToken)) { result ->
+        view.evaluateJavascript(
+            EXPORT_CAPTURE_SCRIPT.replace("__IRIDE_PORT_TOKEN__", connectionToken)
+        ) { result ->
             if (!closed && isExportifyUrl(view.url) && result == "true") {
-                view.postWebMessage(WebMessage(connectionToken, arrayOf(ports[1])), Uri.parse(EXPORTIFY_ORIGIN))
+                view.postWebMessage(
+                    WebMessage(connectionToken, arrayOf(ports[1])),
+                    Uri.parse(EXPORTIFY_ORIGIN),
+                )
             } else if (!closed) {
                 ports[1].close()
                 onError("Exportify download capture is unavailable")
@@ -541,14 +643,18 @@ private class ExportifyDownloadBridge(
         }
         view.evaluateJavascript(
             "window.__irideExportCapture && window.__irideExportCapture.capture(" +
-                JSONObject.quote(url) + "," + JSONObject.quote(name) + ")",
+                JSONObject.quote(url) +
+                "," +
+                JSONObject.quote(name) +
+                ")",
             null,
         )
     }
 
-    private suspend fun reply(ok: Boolean) = withContext(Dispatchers.Main) {
-        if (!closed) port?.postMessage(WebMessage(if (ok) "ok" else "error"))
-    }
+    private suspend fun reply(ok: Boolean) =
+        withContext(Dispatchers.Main) {
+            if (!closed) port?.postMessage(WebMessage(if (ok) "ok" else "error"))
+        }
 
     fun close() {
         closed = true
@@ -559,7 +665,13 @@ private class ExportifyDownloadBridge(
     }
 }
 
-private suspend fun downloadExport(cacheDir: File, url: String, name: String, userAgent: String, cookie: String?): File {
+private suspend fun downloadExport(
+    cacheDir: File,
+    url: String,
+    name: String,
+    userAgent: String,
+    cookie: String?,
+): File {
     val file = exportFile(cacheDir, name)
     try {
         var target = url
@@ -574,7 +686,9 @@ private suspend fun downloadExport(cacheDir: File, url: String, name: String, us
                 cookie?.let { connection.setRequestProperty("Cookie", it) }
                 if (connection.responseCode in 300..399) {
                     check(redirectCount < 3)
-                    target = URL(URL(target), checkNotNull(connection.getHeaderField("Location"))).toString()
+                    target =
+                        URL(URL(target), checkNotNull(connection.getHeaderField("Location")))
+                            .toString()
                 } else {
                     check(connection.responseCode in 200..299)
                     require(connection.contentLengthLong <= MAX_EXPORT_BYTES)
@@ -607,7 +721,8 @@ private suspend fun downloadExport(cacheDir: File, url: String, name: String, us
     }
 }
 
-private val EXPORT_CAPTURE_SCRIPT = """
+private val EXPORT_CAPTURE_SCRIPT =
+    """
     (() => {
       if (location.origin !== '$EXPORTIFY_ORIGIN' || window !== window.top) return false;
       const connectionToken = '__IRIDE_PORT_TOKEN__';
@@ -696,4 +811,5 @@ private val EXPORT_CAPTURE_SCRIPT = """
       };
       return true;
     })();
-""".trimIndent()
+"""
+        .trimIndent()

@@ -1,14 +1,6 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
 
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.WindowInsetsSides
-import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
 import android.annotation.SuppressLint
 import android.os.Build
 import android.view.View
@@ -20,20 +12,18 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,9 +36,12 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideFolioWebView
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.component.rememberIrideFolioWebState
+import com.metrolist.music.ui.component.rememberScrollState
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -72,97 +65,106 @@ fun DiscordLoginScreen(navController: NavController) {
     var webView: WebView? = null
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(
-        PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
-    )
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) {
-        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
-    }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
+    val folioWebState = rememberIrideFolioWebState()
     IridePageHeaderLayout(
         title = stringResource(R.string.action_login),
-        initiallyCollapsed = false,
+        scrollState = folioWebState.rememberScrollState(),
+        scrollOffset = { folioWebState.scrollOffset },
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-        if (mainTopGradient) {
-            TopScreenGradientBackground(
-                mediaMetadata = mediaMetadata,
-                playerBackground = playerBackgroundStyle,
-            )
-        } else {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-            )
-        }
-        AndroidView(
-        modifier = Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .fillMaxSize(),
-        factory = { context ->
-            WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
                 )
-
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-
-                if (Build.MANUFACTURER.equals(MOTOROLA, ignoreCase = true)) {
-                    settings.userAgentString = SAMSUNG_USER_AGENT
-                }
-
-                webViewClient = object : WebViewClient() {
-                    @Deprecated("Deprecated in Java")
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView,
-                        url: String,
-                    ): Boolean {
-                        if (url.endsWith("/app")) {
-                            view.stopLoading()
-                            view.loadUrl(JS_SNIPPET)
-                            view.visibility = View.GONE
-                        }
-                        return false
-                    }
-                }
-
-                webChromeClient = object : WebChromeClient() {
-                    override fun onJsAlert(
-                        view: WebView,
-                        url: String,
-                        message: String,
-                        result: JsResult
-                    ): Boolean {
-                        Timber.d("Discord Token received")
-                        if (message.isNotBlank() && message != "null" && message != "undefined") {
-                            discordToken = message
-                            scope.launch(Dispatchers.Main) {
-                                navController.navigateUp()
-                            }
-                        }
-                        view.visibility = View.GONE
-                        result.confirm()
-                        return true
-                    }
-                }
-
-                webView = this
-                loadUrl("https://discord.com/login")
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
-        }
-    )
-        }
+            AndroidView(
+                modifier =
+                    Modifier.windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current.only(
+                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                            )
+                        )
+                        .fillMaxSize(),
+                factory = { context ->
+                    IrideFolioWebView(context).apply {
+                        folioWebState.attach(this)
+                        layoutParams =
+                            ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
 
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+
+                        if (Build.MANUFACTURER.equals(MOTOROLA, ignoreCase = true)) {
+                            settings.userAgentString = SAMSUNG_USER_AGENT
+                        }
+
+                        webViewClient =
+                            object : WebViewClient() {
+                                @Deprecated("Deprecated in Java")
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView,
+                                    url: String,
+                                ): Boolean {
+                                    if (url.endsWith("/app")) {
+                                        view.stopLoading()
+                                        view.loadUrl(JS_SNIPPET)
+                                        view.visibility = View.GONE
+                                    }
+                                    return false
+                                }
+                            }
+
+                        webChromeClient =
+                            object : WebChromeClient() {
+                                override fun onJsAlert(
+                                    view: WebView,
+                                    url: String,
+                                    message: String,
+                                    result: JsResult,
+                                ): Boolean {
+                                    Timber.d("Discord Token received")
+                                    if (
+                                        message.isNotBlank() &&
+                                            message != "null" &&
+                                            message != "undefined"
+                                    ) {
+                                        discordToken = message
+                                        scope.launch(Dispatchers.Main) {
+                                            navController.navigateUp()
+                                        }
+                                    }
+                                    view.visibility = View.GONE
+                                    result.confirm()
+                                    return true
+                                }
+                            }
+
+                        webView = this
+                        loadUrl("https://discord.com/login")
+                    }
+                },
+            )
+        }
     }
 
     BackHandler(enabled = webView?.canGoBack() == true) {

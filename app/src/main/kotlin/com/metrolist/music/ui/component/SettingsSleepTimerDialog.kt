@@ -20,7 +20,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -40,8 +39,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Button
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -49,7 +46,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 
 fun decodeDayTimes(raw: String): MutableMap<Int, Pair<String, String>> {
@@ -441,7 +437,6 @@ fun SleepTimerDialog(
             }
         }
 
-
         item {
             AnimatedVisibility(
                 visible = selectedRepeat == "custom",
@@ -547,14 +542,12 @@ fun SleepTimerDialog(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = onDismiss,
-                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(stringResource(android.R.string.cancel))
                 }
-                androidx.compose.material3.Button(
-                    shapes = ButtonDefaults.shapes(),
+                IrideFolioPrimaryButton(
                     onClick = {
                             val (finalRepeat, finalDayTimes) =
                                 when (selectedRepeat) {
@@ -604,16 +597,16 @@ private fun TimeRangeRow(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FilledTonalButton(onClick = onStartClick, modifier = Modifier.weight(1f)) {
+        IrideFolioPrimaryButton(onClick = onStartClick, modifier = Modifier.weight(1f)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.sleep_timer_start_time), style = MaterialTheme.typography.labelSmall)
-                Text(startTime, style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.sleep_timer_start_time),)
+                Text(startTime,)
             }
         }
-        FilledTonalButton(onClick = onEndClick, modifier = Modifier.weight(1f)) {
+        IrideFolioPrimaryButton(onClick = onEndClick, modifier = Modifier.weight(1f)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.sleep_timer_end_time), style = MaterialTheme.typography.labelSmall)
-                Text(endTime, style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.sleep_timer_end_time),)
+                Text(endTime,)
             }
         }
     }
@@ -644,8 +637,8 @@ fun SleepTimerTimePickerDialog(
         title = { Text(title) },
         onDismiss = onDismiss,
         buttons = {
-            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
-            Button(onClick = {
+            IrideFolioSecondaryButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+            IrideFolioPrimaryButton(onClick = {
                 val hour = timePickerState.hour.toString().padStart(2, '0')
                 val minute = timePickerState.minute.toString().padStart(2, '0')
                 onConfirm("$hour:$minute")

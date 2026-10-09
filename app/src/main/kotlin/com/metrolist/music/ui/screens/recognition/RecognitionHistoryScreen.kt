@@ -1,28 +1,22 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.recognition
 
-import androidx.compose.foundation.border
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -32,8 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,7 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,21 +57,18 @@ import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.SettingsBackTopBar
-import com.metrolist.music.constants.IrideSoftBorderWidth
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
-import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,10 +92,10 @@ fun RecognitionHistoryScreen(navController: NavController) {
             },
             title = { Text(stringResource(R.string.clear_recognition_history)) },
             buttons = {
-                TextButton(onClick = { showClearDialog = false }) {
+                IrideFolioSecondaryButton(onClick = { showClearDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             database.query {
@@ -115,7 +103,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
                             }
                         }
                         showClearDialog = false
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.clear))
                 }
@@ -139,10 +127,10 @@ fun RecognitionHistoryScreen(navController: NavController) {
             },
             title = { Text(stringResource(R.string.delete)) },
             buttons = {
-                TextButton(onClick = { itemToDelete = null }) {
+                IrideFolioSecondaryButton(onClick = { itemToDelete = null }) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             database.query {
@@ -150,7 +138,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
                             }
                         }
                         itemToDelete = null
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.delete))
                 }
@@ -164,61 +152,70 @@ fun RecognitionHistoryScreen(navController: NavController) {
     }
 
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
-    val frostBackdrop = rememberFrostBackdrop()
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val windowInsets = LocalPlayerAwareWindowInsets.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .recordFrostBackdrop(frostBackdrop),
-    ) {
-        if (mainTopGradient) {
-            TopScreenGradientBackground(
-                mediaMetadata = mediaMetadata,
-                playerBackground = playerBackgroundStyle,
-            )
-        } else {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-        }
-        if (historyItems.isEmpty()) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Bottom)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.history),
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+    Box(modifier = Modifier.fillMaxSize()) {
+        IridePageLayout(
+            background = {
+                if (mainTopGradient) {
+                    TopScreenGradientBackground(
+                        mediaMetadata = mediaMetadata,
+                        playerBackground = playerBackgroundStyle,
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No recognition history",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                } else {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Top)),
-                contentPadding =
-                    windowInsets
-                        .only(WindowInsetsSides.Bottom)
-                        .asPaddingValues(),
-            ) {
+            },
+            titleRes = R.string.recognition_history,
+            showTopBar = true,
+            navigationIcon = { IridePageBackButton(navController) },
+            bottomPadding = windowInsets.asPaddingValues().calculateBottomPadding(),
+            actions = {
+                if (historyItems.isNotEmpty()) {
+                    IconButton(onClick = { showClearDialog = true }) {
+                        Icon(
+                            painter = painterResource(R.drawable.clear_all),
+                            contentDescription = stringResource(R.string.clear_recognition_history),
+                        )
+                    }
+                }
+            },
+        ) {
+            if (historyItems.isEmpty()) {
+                item(key = "empty_recognition_history") {
+                    Box(
+                        modifier = Modifier.fillParentMaxHeight(0.75f).fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                painter = painterResource(R.drawable.history),
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint =
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No recognition history",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            } else {
                 items(
                     items = historyItems,
                     key = { "recognition_${it.id}" },
@@ -227,7 +224,9 @@ fun RecognitionHistoryScreen(navController: NavController) {
                         item = item,
                         onClick = {
                             val searchQuery = "${item.title} ${item.artist}"
-                            navController.navigate("search/${java.net.URLEncoder.encode(searchQuery, "UTF-8")}")
+                            navController.navigate(
+                                "search/${java.net.URLEncoder.encode(searchQuery, "UTF-8")}"
+                            )
                         },
                         onDelete = {
                             itemToDelete = item
@@ -237,22 +236,6 @@ fun RecognitionHistoryScreen(navController: NavController) {
             }
         }
     }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.recognition_history),
-        navController = navController,
-        actions = {
-            if (historyItems.isNotEmpty()) {
-                IconButton(onClick = { showClearDialog = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.clear_all),
-                        contentDescription = stringResource(R.string.clear_recognition_history),
-                    )
-                }
-            }
-        },
-        backdrop = frostBackdrop,
-    )
 }
 
 @Composable
@@ -265,39 +248,36 @@ private fun RecognitionHistoryItem(
 
     Card(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .clickable { onClick() },
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clickable {
+                onClick()
+            },
         shape = RoundedCornerShape(ThumbnailCornerRadius),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
                 model = item.coverArtUrl,
                 contentDescription = null,
                 modifier =
-                    Modifier
-                        .size(60.dp)
-                        .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, RoundedCornerShape(ThumbnailCornerRadius))
+                    Modifier.size(60.dp)
+                        .irideArtworkOverlayBorder(
+                            1.dp,
+                            MaterialTheme.colorScheme.strokeItemSoft,
+                            RoundedCornerShape(ThumbnailCornerRadius),
+                        )
                         .clip(RoundedCornerShape(ThumbnailCornerRadius)),
                 contentScale = ContentScale.Crop,
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
-                modifier = Modifier.weight(1f),
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.titleMedium,

@@ -5,6 +5,8 @@
 
 package com.metrolist.music
 
+import com.metrolist.music.ui.component.IrideFolioDialog
+
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -38,6 +40,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -97,10 +101,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
@@ -112,6 +113,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -133,6 +136,7 @@ import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil3.imageLoader
@@ -196,20 +200,29 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.LocalIrideFolioScrimColor
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.LocalPageNavigationAppearance
+import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
+import com.metrolist.music.ui.component.rememberFloatingPanelAppearance
+import com.metrolist.music.ui.component.PageNavigationAppearance
 import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingBottomNavigation
 import com.metrolist.music.ui.component.FloatingBottomNavigationHeight
-import com.metrolist.music.ui.component.FloatingBottomNavigationPillHeight
 import com.metrolist.music.ui.component.FloatingBottomNavigationOffset
-import com.metrolist.music.ui.component.BlackMiniPlayerBackdrop
+import com.metrolist.music.ui.component.FrostedMiniPlayerBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.LocalScreenFrostBackground
 import com.metrolist.music.ui.component.IrideMiniPlayerHeight
 import com.metrolist.music.ui.component.UpdateInterstitialScreen
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
+import com.metrolist.music.ui.component.observeSongMenuAnchor
+import com.metrolist.music.ui.component.LocalScreenFrostBackdrop
+import com.metrolist.music.ui.component.LocalSongMenuFooterHeight
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.collapsedAnchor
 import com.metrolist.music.ui.component.dismissedAnchor
@@ -218,6 +231,7 @@ import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
+import com.metrolist.music.ui.player.IrideMp3PlayerHandle
 import com.metrolist.music.ui.player.IrideBridgeState
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.NavigationBuilder
@@ -374,7 +388,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // The POST_NOTIFICATIONS permission is requested once, from the onboarding flow.
+        // Optional notifications are disabled; do not request notification permission.
         // Re-asking here on every launch would only nag users who deliberately declined:
         // Android silences the prompt after two denials anyway, so the call is dead weight.
 
@@ -907,12 +921,25 @@ class MainActivity : ComponentActivity() {
                             when (screen) {
                                 Screens.Home -> 0
                                 Screens.Library -> 1
-                                Screens.Search -> 2
-                                Screens.Account -> 4
-                                else -> 3
+                                Screens.Account -> 2
+                                Screens.Search -> 3
+                                else -> 4
                             }
                         }
                     }
+                val composeNavigator = remember(navController) {
+                    navController.navigatorProvider.getNavigator<ComposeNavigator>("composable")
+                }
+                // NavHost attaches its navigator later in this composition. Wait for its first
+                // entry before accessing navigator state, including when restoring a saved stack.
+                val navigationBackStack = if (navBackStackEntry != null && composeNavigator.isAttached) {
+                    composeNavigator.backStack.collectAsState().value
+                } else {
+                    emptyList()
+                }
+                val activeNavigationRoute = navigationBackStack.lastOrNull { entry ->
+                    navigationItems.any { it.route == entry.destination.route }
+                }?.destination?.route
                 val defaultOpenTab =
                     remember {
                         dataStore[DefaultOpenTabKey].toEnum(defaultValue = NavigationTab.HOME)
@@ -986,20 +1013,18 @@ class MainActivity : ComponentActivity() {
                     label = "topGradientVisibility",
                 )
 
+                val playerTopPeek = if (curtainMode) maxHeight * 0.14f else 0.dp
+
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        initialAnchor = if (curtainMode) {
-                            if (App.playerAnchorCache == dismissedAnchor) collapsedAnchor else App.playerAnchorCache
-                        } else {
-                            App.playerAnchorCache
-                        },
+                        initialAnchor = persistableAnchor(App.playerAnchorCache),
                         collapsedBound = if (!showRail) {
-                            bottomInset + (if (curtainMode) IrideMiniPlayerHeight + 20.dp else MiniPlayerHeight + FloatingPillBottomSpacing)
+                            bottomInset + (if (curtainMode) IrideMiniPlayerHeight + IrideFolio.MiniPlayerTopSpacing else MiniPlayerHeight + FloatingPillBottomSpacing)
                         } else {
                             bottomInset + MiniPlayerHeight
                         },
-                        expandedBound = maxHeight,
+                        expandedBound = maxHeight - playerTopPeek,
                         preventDismissDrag = curtainMode,
                         onAnchorPersist = { anchor ->
                             App.setPlayerAnchorCache(anchor)
@@ -1020,12 +1045,6 @@ class MainActivity : ComponentActivity() {
                 DisposableEffect(playerBottomSheetState, lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_STOP) {
-                            if (!playerBottomSheetState.isCollapsed &&
-                                !playerBottomSheetState.isDismissed &&
-                                SystemClock.elapsedRealtime() - playerBottomSheetState.lastExpandedAtMs < 1000L
-                            ) {
-                                playerBottomSheetState.collapseSoft()
-                            }
                             lifecycleScope.launch(Dispatchers.IO) {
                                 dataStore.edit {
                                     it[PlayerAnchorKey] = persistableAnchor(App.playerAnchorCache)
@@ -1072,6 +1091,9 @@ class MainActivity : ComponentActivity() {
                     )
 
                 LaunchedEffect(navBackStackEntry) {
+                    if ((currentRoute == Screens.Search.route || inSearchScreen) && playerBottomSheetState.progress > 0f) {
+                        playerBottomSheetState.collapseSoft()
+                    }
                     if (inSearchScreen) {
                         val searchQuery =
                             withContext(Dispatchers.IO) {
@@ -1108,30 +1130,17 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(playerConnection, curtainMode) {
                     val connection = playerConnection ?: return@LaunchedEffect
                     connection.mediaMetadata.collectLatest { metadata ->
-                        if (curtainMode) {
-                            if (playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.collapseSoft()
-                            }
-                        } else if (metadata == null) {
+                        val mediaId = metadata?.id
+                        if (curtainMode && mediaId != null &&
+                            playerBottomSheetState.isDismissed
+                        ) {
+                            playerBottomSheetState.collapseSoft()
+                        } else if (!curtainMode && metadata == null) {
                             if (!playerBottomSheetState.isDismissed) {
                                 playerBottomSheetState.dismiss()
                             }
                         }
                     }
-                }
-
-                var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
-
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
-                    val currentRoute = navBackStackEntry?.destination?.route
-                    val isListenTogetherScreen =
-                        currentRoute == Screens.ListenTogether.route ||
-                            currentRoute == "listen_together_from_topbar"
-                    shouldShowTopBar = currentRoute in topLevelScreens &&
-                        currentRoute != Screens.Library.route &&
-                        currentRoute != "settings" &&
-                        currentRoute != Screens.Home.route &&
-                        !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
                 val coroutineScope = rememberCoroutineScope()
@@ -1163,90 +1172,92 @@ class MainActivity : ComponentActivity() {
                     onDispose { removeOnNewIntentListener(listener) }
                 }
 
-                val currentTitleRes =
-                    remember(navBackStackEntry) {
-                        when (navBackStackEntry?.destination?.route) {
-                            Screens.Search.route -> R.string.search
-                            Screens.Library.route -> R.string.filter_library
-                            Screens.ListenTogether.route -> R.string.together
-                            else -> null
-                        }
-                    }
-
-                val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
-                val eventCount by database.eventCount().collectAsState(initial = 0)
-                val showHistoryButton =
-                    remember(pauseListenHistory, eventCount) {
-                        !(pauseListenHistory && eventCount == 0)
-                    }
-
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
                 val onNavItemClick: (Screens, Boolean) -> Unit =
-                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry) {
-                        nav@{ screen: Screens, isSelected: Boolean ->
+                    remember(navController, composeNavigator, navigationItems, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
+                        navigate@ { screen: Screens, _: Boolean ->
+                            if (!composeNavigator.isAttached) return@navigate
                             if (playerBottomSheetState.isExpanded) {
                                 playerBottomSheetState.collapseSoft()
                             }
-                            val currentRoute = navController.currentDestination?.route
-                            val isAtScreenRoot = currentRoute == screen.route ||
-                                (screen == Screens.Search && currentRoute in setOf("search/{query}", "search_input"))
-                            if (isSelected && isAtScreenRoot) {
-                                val targetEntry = try {
-                                    val route = navController.currentBackStackEntry?.destination?.route
-                                    if (route == "search/{query}" || route == "search_input") {
-                                        navController.getBackStackEntry("search_input")
-                                    } else {
-                                        navController.currentBackStackEntry
+                            val activeRoot = composeNavigator.backStack.value.lastOrNull { entry ->
+                                navigationItems.any { it.route == entry.destination.route }
+                            }?.destination?.route
+                            if (activeRoot == screen.route) {
+                                navController.popBackStack(screen.route, inclusive = false)
+                                val targetEntry = navController.currentBackStackEntry
+                                when (screen) {
+                                    Screens.Search -> {
+                                        val count = targetEntry?.savedStateHandle?.get<Int>("scrollToTopCount") ?: 0
+                                        targetEntry?.savedStateHandle?.set("scrollToTopCount", count + 1)
                                     }
-                                } catch (e: Exception) {
-                                    null
-                                }
-
-                                if (screen == Screens.Search) {
-                                    val current = targetEntry?.savedStateHandle?.get<Int>("scrollToTopCount") ?: 0
-                                    targetEntry?.savedStateHandle?.set("scrollToTopCount", current + 1)
-                                } else {
-                                    targetEntry?.savedStateHandle?.set("scrollToTop", true)
-                                }
-
-                                coroutineScope.launch {
-                                    topAppBarScrollBehavior.state.resetHeightOffset()
+                                    Screens.Library -> targetEntry?.savedStateHandle?.set("resetLibrary", true)
+                                    else -> targetEntry?.savedStateHandle?.set("scrollToTop", true)
                                 }
                             } else {
                                 navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = false
+                                    // Save the root too: Home can own an album/artist stack.
+                                    if (activeRoot != null) {
+                                        popUpTo(activeRoot) {
+                                            inclusive = true
+                                            saveState = true
+                                        }
                                     }
                                     launchSingleTop = true
-                                    restoreState = false
-                                }
-
-                                val newEntry = try {
-                                    navController.currentBackStackEntry
-                                } catch (e: Exception) {
-                                    null
-                                }
-                                newEntry?.savedStateHandle?.set("scrollToTop", true)
-                                coroutineScope.launch {
-                                    topAppBarScrollBehavior.state.resetHeightOffset()
+                                    restoreState = true
                                 }
                             }
+                            coroutineScope.launch { topAppBarScrollBehavior.state.resetHeightOffset() }
                         }
                     }
 
-                val topNavBarController = remember(navigationItems, currentRoute, onNavItemClick, compactTopNavigationBar, accountImageUrl) {
+                val topNavBarController = remember(navigationItems, activeNavigationRoute, currentRoute, onNavItemClick, compactTopNavigationBar, accountImageUrl) {
                     TopNavBarController(
                         navigationItems = navigationItems,
-                        currentRoute = currentRoute,
+                        currentRoute = activeNavigationRoute ?: currentRoute,
                         onItemClick = onNavItemClick,
                         compact = compactTopNavigationBar,
                         accountImageUrl = accountImageUrl,
                     )
                 }
-                val navigationBackdrop = rememberFrostBackdrop()
+                val navigationBackdrop = rememberFrostBackdrop(
+                    blurredSampleHeight = playerBottomSheetState.collapsedBound +
+                        FloatingBottomNavigationHeight + IrideFolio.NavigationFrostBlurRadius * 3f + 2.dp,
+                    blurredScale = 0.5f,
+                    rasterizeContent = true,
+                    stableBlur = true,
+                )
+                val songMenuState = LocalMenuState.current
+                val songMenuBackdrop = rememberFrostBackdrop(
+                    blurredScale = 0.5f,
+                    rasterizeContent = true,
+                    stableBlur = true,
+                )
+                val pageNavigationAppearance = remember(navBackStackEntry) {
+                    PageNavigationAppearance(navBackStackEntry?.id)
+                }
+                val floatingPanelAppearance = rememberFloatingPanelAppearance(pageNavigationAppearance, navigationBackdrop)
+                val pageBackgroundBackdrop = rememberFrostBackdrop(captureOnly = true)
+                // Cache the small blur steps instead of allocating a native effect on each animation frame.
+                val playerPageBlurEffects = remember(density.density) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        List(21) { step ->
+                            if (step == 0) null else {
+                                val radius = with(density) { 5.dp.toPx() } * step / 20f
+                                androidx.compose.ui.graphics.BlurEffect(
+                                    radius, radius, androidx.compose.ui.graphics.TileMode.Clamp,
+                                )
+                            }
+                        }
+                    } else emptyList()
+                }
 
+                var topGradientScrimColor by remember(topGradientMediaMetadata?.thumbnailUrl, playerBackgroundStyle) {
+                    mutableStateOf(Color.Black)
+                }
                 CompositionLocalProvider(
+                    androidx.compose.foundation.LocalOverscrollFactory provides null,
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
                     LocalPlayerConnection provides playerConnection,
@@ -1256,54 +1267,35 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalTopNavBarController provides topNavBarController,
+                    LocalIrideFolioScrimColor provides lerp(Color.Black, topGradientScrimColor, topGradientAlpha),
+                    LocalScreenFrostBackground provides pageBackgroundBackdrop,
+                    LocalPageNavigationAppearance provides pageNavigationAppearance,
+                    LocalFloatingPanelAppearance provides floatingPanelAppearance,
                 ) {
-                    // Capture the page and black fade together, before drawing the floating pills.
-                    Box(Modifier.fillMaxSize().recordFrostBackdrop(navigationBackdrop)) {
+                    // Blur the page itself so its rounded edges and every exposed area stay continuous.
+                    Box(
+                        Modifier.fillMaxSize()
+                            .observeSongMenuAnchor(LocalMenuState.current)
+                            .graphicsLayer {
+                                val progress = if (curtainActive && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                                    playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                } else 0f
+                                renderEffect = playerPageBlurEffects.getOrNull((progress * 20f).toInt())
+                                alpha = 1f - 0.14f * progress
+                            }
+                            .recordFrostBackdrop(navigationBackdrop, trackScroll = true)
+                            .recordFrostBackdrop(
+                                songMenuBackdrop,
+                                enabled = songMenuState.isVisible && songMenuState.anchored,
+                                trackScroll = true,
+                            )
+                    ) {
                         Scaffold(
                             snackbarHost = { SnackbarHost(snackbarHostState) },
-                            topBar = {
-                                Column {
-                                    AnimatedVisibility(
-                                        visible = shouldShowTopBar,
-                                        enter = fadeIn(animationSpec = tween(durationMillis = 200, easing = EaseInOut)) +
-                                            expandVertically(animationSpec = tween(durationMillis = 250, easing = EaseInOut)),
-                                        exit = fadeOut(animationSpec = tween(durationMillis = 160, easing = EaseInOut)) +
-                                            shrinkVertically(animationSpec = tween(durationMillis = 220, easing = EaseInOut)),
-                                    ) {
-                                        Row {
-                                            TopAppBar(
-                                                title = {
-                                                    Text(
-                                                        text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                        style = MaterialTheme.typography.titleLarge,
-                                                    )
-                                                },
-                                                actions = {},
-                                                scrollBehavior = topAppBarScrollBehavior,
-                                                colors =
-                                                    TopAppBarDefaults.topAppBarColors(
-                                                        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                        scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                                                        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    ),
-                                                modifier =
-                                                    Modifier.windowInsetsPadding(
-                                                        if (showRail) {
-                                                            WindowInsets(left = NavigationBarHeight)
-                                                                .add(cutoutInsets.only(WindowInsetsSides.Start))
-                                                        } else {
-                                                            cutoutInsets.only(WindowInsetsSides.Start + WindowInsetsSides.End)
-                                                        },
-                                                    ),
-                                            )
-                                        }
-                                    }
-                                }
-                            },
+                            // Folio pages own their transparent title and controls.
+                            topBar = {},
                             bottomBar = {
-                                if (!curtainMode && currentRoute != "wrapped" && !playerBottomSheetState.isDismissed) {
+                                if (!curtainMode && currentRoute != "wrapped" && currentRoute != "onboarding" && !playerBottomSheetState.isDismissed) {
                                     BottomSheetPlayer(
                                         state = playerBottomSheetState,
                                         navController = navController,
@@ -1313,44 +1305,9 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                                .fillMaxSize(),
                         ) {
                             Row(Modifier.fillMaxSize()) {
-                                val onRailItemClick: (Screens, Boolean) -> Unit =
-                                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
-                                        { screen: Screens, isSelected: Boolean ->
-                                            if (playerBottomSheetState.isExpanded) {
-                                                playerBottomSheetState.collapseSoft()
-                                            }
-
-                                            if (isSelected) {
-                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                                                coroutineScope.launch {
-                                                    topAppBarScrollBehavior.state.resetHeightOffset()
-                                                }
-                                            } else {
-                                                navController.navigate(screen.route) {
-                                                    popUpTo(navController.graph.startDestinationId) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-
-                                                val newEntry = try {
-                                                    navController.currentBackStackEntry
-                                                } catch (e: Exception) {
-                                                    null
-                                                }
-                                                newEntry?.savedStateHandle?.set("scrollToTop", true)
-                                                coroutineScope.launch {
-                                                    topAppBarScrollBehavior.state.resetHeightOffset()
-                                                }
-                                            }
-                                        }
-                                    }
-
                                 val onRailSearchLongClick: () -> Unit =
                                     remember(navController) {
                                         {
@@ -1360,11 +1317,11 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
 
-                                if (showRail && currentRoute != "wrapped") {
+                                if (showRail && currentRoute != "wrapped" && currentRoute != "onboarding") {
                                     AppNavigationRail(
                                         navigationItems = navigationItems,
-                                        currentRoute = currentRoute,
-                                        onItemClick = onRailItemClick,
+                                        currentRoute = activeNavigationRoute ?: currentRoute,
+                                        onItemClick = onNavItemClick,
                                         pureBlack = pureBlack,
                                         onSearchLongClick = onRailSearchLongClick,
                                         accountImageUrl = accountImageUrl,
@@ -1372,32 +1329,26 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Box(
                                     Modifier
-                                        .weight(1f)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = 52.dp.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    colors = listOf(Color.Black, Color.Black.copy(alpha = 0.72f), Color.Transparent),
-                                                    startY = 0f,
-                                                    endY = fadeHeight,
-                                                ),
-                                                topLeft = Offset.Zero,
-                                                size = Size(size.width, fadeHeight),
-                                            )
-                                        },
+                                        .weight(1f),
                                 ) {
                                     val playerCoversScreen by remember(playerBottomSheetState) {
                                         derivedStateOf { playerBottomSheetState.progress >= 0.99f }
                                     }
-                                    if (!playerCoversScreen) {
-                                        TopScreenGradientBackground(
-                                            mediaMetadata = topGradientMediaMetadata,
-                                            playerBackground = playerBackgroundStyle,
-                                            modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .graphicsLayer { alpha = topGradientAlpha },
-                                        )
+                                    Box(
+                                        Modifier.fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .recordFrostBackdrop(pageBackgroundBackdrop),
+                                    ) {
+                                        if (!playerCoversScreen) {
+                                            TopScreenGradientBackground(
+                                                mediaMetadata = topGradientMediaMetadata,
+                                                playerBackground = playerBackgroundStyle,
+                                                onTopColorChanged = { topGradientScrimColor = it },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .graphicsLayer { alpha = topGradientAlpha },
+                                            )
+                                        }
                                     }
 
                                     val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
@@ -1489,63 +1440,108 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-
-                        if (curtainActive && currentRoute != "wrapped") {
-                            val animateMiniPlayerBackdrop by remember(playerBottomSheetState) {
-                                derivedStateOf { playerBottomSheetState.progress < 0.18f }
-                            }
-                            BlackMiniPlayerBackdrop(
-                                height = playerBottomSheetState.collapsedBound + FloatingBottomNavigationHeight -
-                                    FloatingBottomNavigationOffset -
-                                    (FloatingBottomNavigationHeight - FloatingBottomNavigationPillHeight) / 2,
-                                fadeHeight = FloatingBottomNavigationPillHeight,
-                                mediaMetadata = topGradientMediaMetadata,
-                                animated = animateMiniPlayerBackdrop,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .graphicsLayer {
-                                        alpha = (1f - playerBottomSheetState.progress / 0.18f).coerceIn(0f, 1f)
-                                    },
-                            )
-                        }
                     }
 
-                    val floatingNavigationSettled by remember(playerBottomSheetState) {
-                        derivedStateOf { playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed }
+                    val floatingNavigationAlpha by remember(playerBottomSheetState) {
+                        derivedStateOf { (1f - playerBottomSheetState.progress / 0.35f).coerceIn(0f, 1f) }
                     }
+                    // Both surfaces sample the page before either panel is drawn and fade together.
+                    if (curtainActive && floatingNavigationAlpha > 0f && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                        FrostedMiniPlayerBackdrop(
+                            collapsedHeight = playerBottomSheetState.collapsedBound,
+                            backdrop = navigationBackdrop,
+                            contentColor = floatingPanelAppearance.contentColor,
+                            backgroundColor = floatingPanelAppearance.backgroundColor,
+                            surfaceAlpha = floatingPanelAppearance.surfaceAlpha,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .graphicsLayer {
+                                    alpha = floatingNavigationAlpha
+                                },
+                        )
+                    }
+
                     val floatingNavigationVisible = currentRoute != "wrapped" &&
-                        currentRoute != "onboarding" && floatingNavigationSettled
-                    FloatingBottomNavigation(
-                        navigationItems = navigationItems,
-                        currentRoute = currentRoute,
-                        onItemClick = onNavItemClick,
-                        backdrop = navigationBackdrop,
-                        visible = floatingNavigationVisible,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = if (playerBottomSheetState.isDismissed) bottomInset else playerBottomSheetState.collapsedBound)
-                            .offset(y = FloatingBottomNavigationOffset)
-                            .height(FloatingBottomNavigationHeight)
-                            .graphicsLayer {
-                                alpha = if (currentRoute == "wrapped" || currentRoute == "onboarding") 0f else
-                                    (1f - playerBottomSheetState.progress / 0.05f).coerceIn(0f, 1f)
-                            },
-                    )
+                        currentRoute != "onboarding" && floatingNavigationAlpha > 0f
 
-                    if (curtainActive && currentRoute != "wrapped") {
+                    if (curtainActive && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                        if (playerBottomSheetState.progress > 0f) {
+                            val closePlayerDescription = stringResource(R.string.mp3_close)
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(playerTopPeek)
+                                    .semantics { contentDescription = closePlayerDescription }
+                                    .draggable(
+                                        state = playerBottomSheetState,
+                                        orientation = Orientation.Vertical,
+                                        enabled = playerBottomSheetState.progress > 0f,
+                                        onDragStopped = { velocity -> playerBottomSheetState.performFling(-velocity, null) },
+                                    )
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        enabled = playerBottomSheetState.progress > 0f,
+                                        onClick = playerBottomSheetState::collapseSoft,
+                                    ),
+                                contentAlignment = Alignment.BottomCenter,
+                            ) {}
+                        }
                         BottomSheetPlayer(
                             state = playerBottomSheetState,
                             navController = navController,
                             pureBlack = pureBlack,
                             showPeekContent = showRail,
                             bridgeState = irideBridgeState,
+                            expandedTopInset = playerTopPeek,
+                        )
+                        IrideMp3PlayerHandle(
+                            state = playerBottomSheetState,
+                            screenHeight = maxHeight,
+                            isExpandable = topGradientMediaMetadata != null,
+                            contentColor = floatingPanelAppearance.contentColor,
                         )
                     }
 
-                    BottomSheetMenu(
-                        state = LocalMenuState.current,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
+                    // Navigation stays above the collapsed player's touch layer; menus stay above both.
+                    if (currentRoute != "onboarding") {
+                        FloatingBottomNavigation(
+                            navigationItems = navigationItems,
+                            currentRoute = activeNavigationRoute ?: currentRoute,
+                            onItemClick = onNavItemClick,
+                            backdrop = navigationBackdrop,
+                            contentColor = floatingPanelAppearance.contentColor,
+                            backgroundColor = floatingPanelAppearance.backgroundColor,
+                            surfaceAlpha = floatingPanelAppearance.surfaceAlpha,
+                            visible = floatingNavigationVisible,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (playerBottomSheetState.isDismissed) bottomInset else playerBottomSheetState.collapsedBound)
+                                .offset(y = FloatingBottomNavigationOffset)
+                                .height(FloatingBottomNavigationHeight)
+                                .graphicsLayer {
+                                    alpha = floatingNavigationAlpha
+                                },
+                        )
+                    }
+
+
+                    val playerFooterHeight = if (playerBottomSheetState.isDismissed) {
+                        bottomInset
+                    } else playerBottomSheetState.collapsedBound
+                    val songMenuFooterHeight = if (floatingNavigationVisible) {
+                        maxOf(
+                            playerFooterHeight,
+                            playerFooterHeight + FloatingBottomNavigationHeight - FloatingBottomNavigationOffset,
+                        )
+                    } else playerFooterHeight
+                    CompositionLocalProvider(
+                        LocalScreenFrostBackdrop provides songMenuBackdrop,
+                        LocalSongMenuFooterHeight provides songMenuFooterHeight,
+                    ) {
+                        BottomSheetMenu(
+                            state = LocalMenuState.current,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
 
                     BottomSheetPage(
                         state = LocalBottomSheetPageState.current,
@@ -1554,16 +1550,8 @@ class MainActivity : ComponentActivity() {
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
-                            Dialog(
-                                onDismissRequest = { sharedSong = null },
-                                properties = DialogProperties(usePlatformDefaultWidth = false),
-                            ) {
-                                Surface(
-                                    modifier = Modifier.padding(24.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = AlertDialogDefaults.containerColor,
-                                    tonalElevation = AlertDialogDefaults.TonalElevation,
-                                ) {
+                            IrideFolioDialog(onDismissRequest = { sharedSong = null }) {
+
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
@@ -1573,7 +1561,7 @@ class MainActivity : ComponentActivity() {
                                             onDismiss = { sharedSong = null },
                                         )
                                     }
-                                }
+
                             }
                         }
                     }

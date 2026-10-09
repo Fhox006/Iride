@@ -33,8 +33,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 27
-        versionName = "0.1.0-alpha27"
+        versionCode = 28
+        versionName = "0.1.0-alpha28"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -206,6 +206,12 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         )
         suppressWarnings.set(false)
     }
+}
+
+// Keep the workspace's compile-only verification command meaningful for the flavored app.
+// Without this alias, `compileDebugKotlin` selects only library modules and skips all app UI.
+tasks.register("compileDebugKotlin") {
+    dependsOn("compileFossDebugKotlin")
 }
 
 configurations.configureEach {

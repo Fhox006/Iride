@@ -5,23 +5,15 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,15 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -76,151 +64,130 @@ fun AppUpdateDialog(
         }
     }
 
-    Dialog(
+    IrideFolioDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 0.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
-        ) {
-            val titleColor = MaterialTheme.colorScheme.textPrimary
-            val bodyColor = MaterialTheme.colorScheme.textPrimary
-            val mutedColor = MaterialTheme.colorScheme.textSecondary
-            val titleStyle =
-                MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
-            val bodyStyle =
-                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            val smallStyle =
-                MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
+        val titleColor = MaterialTheme.colorScheme.textPrimary
+        val bodyColor = MaterialTheme.colorScheme.textPrimary
+        val mutedColor = MaterialTheme.colorScheme.textSecondary
+        val titleStyle =
+            MaterialTheme.typography.headlineSmall
+        val bodyStyle =
+            MaterialTheme.typography.bodyMedium
+        val smallStyle =
+            MaterialTheme.typography.bodySmall
 
-            Column(
-                modifier = Modifier.padding(24.dp),
-            ) {
+        Column(
+            modifier = Modifier.padding(IrideFolio.DialogContentPadding),
+        ) {
+            Text(
+                text = stringResource(R.string.update_dialog_title_new_version),
+                style = MaterialTheme.typography.headlineSmall,
+                color = titleColor,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.update_dialog_version_available, releaseInfo.versionName),
+                style = bodyStyle,
+                color = bodyColor,
+            )
+            if (releaseInfo.isPreviewBuild()) {
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = stringResource(R.string.update_dialog_title_new_version),
-                    style = titleStyle,
-                    color = titleColor,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.update_dialog_version_available, releaseInfo.versionName),
-                    style = bodyStyle,
+                    text = stringResource(R.string.update_dialog_experimental_build),
+                    style = smallStyle,
                     color = bodyColor,
                 )
-                if (releaseInfo.isPreviewBuild()) {
+            }
+            when (val state = downloadState) {
+                is UpdateDownloadState.Downloading -> {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.update_dialog_experimental_build),
+                        text = stringResource(R.string.update_state_downloading_percent, state.progressPercent),
                         style = smallStyle,
                         color = bodyColor,
                     )
                 }
-                when (val state = downloadState) {
-                    is UpdateDownloadState.Downloading -> {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.update_state_downloading_percent, state.progressPercent),
-                            style = smallStyle,
-                            color = bodyColor,
-                        )
-                    }
-                    is UpdateDownloadState.Failed -> {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = state.reason ?: stringResource(R.string.update_download_failed),
-                            style = smallStyle,
-                            color = bodyColor,
-                        )
-                    }
-                    is UpdateDownloadState.ReadyToInstall -> {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.update_state_ready_to_install),
-                            style = smallStyle,
-                            color = bodyColor,
-                        )
-                        if (!canInstallPackages) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.update_permission_explanation),
-                                style = smallStyle,
-                                color = mutedColor,
-                            )
-                        }
-                    }
-                    is UpdateDownloadState.Idle -> Unit
-                }
-                if (downloadUrl == null && downloadState != UpdateDownloadState.ReadyToInstall) {
+                is UpdateDownloadState.Failed -> {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.update_dialog_no_compatible_package),
+                        text = state.reason ?: stringResource(R.string.update_download_failed),
                         style = smallStyle,
-                        color = mutedColor,
+                        color = bodyColor,
                     )
                 }
-                Spacer(Modifier.height(20.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+                is UpdateDownloadState.ReadyToInstall -> {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.update_state_ready_to_install),
+                        style = smallStyle,
+                        color = bodyColor,
+                    )
+                    if (!canInstallPackages) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.update_permission_explanation),
+                            style = smallStyle,
+                            color = mutedColor,
+                        )
+                    }
+                }
+                is UpdateDownloadState.Idle -> Unit
+            }
+            if (downloadUrl == null && downloadState != UpdateDownloadState.ReadyToInstall) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.update_dialog_no_compatible_package),
+                    style = smallStyle,
+                    color = mutedColor,
+                )
+            }
+            Spacer(Modifier.height(IrideFolio.DialogActionsTopSpacing))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(IrideFolio.DialogActionSpacing, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(IrideFolio.DialogActionSpacing),
+            ) {
+                IrideFolioSecondaryButton(
+                    onClick = onDismiss,
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.textSecondary),
-                    ) {
-                        Text(
-                            stringResource(R.string.update_dialog_back),
-                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    val actionEnabled = when (downloadState) {
-                        is UpdateDownloadState.ReadyToInstall -> true
-                        is UpdateDownloadState.Downloading -> false
-                        else -> downloadUrl != null
-                    }
-                    Button(
-                        onClick = {
-                            when {
-                                downloadState is UpdateDownloadState.ReadyToInstall && canInstallPackages ->
-                                    UpdateDownloader.promptInstall(context)
-                                downloadState is UpdateDownloadState.ReadyToInstall ->
-                                    UpdateDownloader.openInstallPermissionSettings(context)
-                                downloadState is UpdateDownloadState.Downloading -> Unit
-                                else -> onStartDownload()
-                            }
+                    Text(
+                        stringResource(R.string.update_dialog_back),
+                    )
+                }
+                val actionEnabled = when (downloadState) {
+                    is UpdateDownloadState.ReadyToInstall -> true
+                    is UpdateDownloadState.Downloading -> false
+                    else -> downloadUrl != null
+                }
+                IrideFolioPrimaryButton(
+                    onClick = {
+                        when {
+                            downloadState is UpdateDownloadState.ReadyToInstall && canInstallPackages ->
+                                UpdateDownloader.promptInstall(context)
+                            downloadState is UpdateDownloadState.ReadyToInstall ->
+                                UpdateDownloader.openInstallPermissionSettings(context)
+                            downloadState is UpdateDownloadState.Downloading -> Unit
+                            else -> onStartDownload()
+                        }
+                    },
+                    enabled = actionEnabled,
+                ) {
+                    Text(
+                        text = when (val state = downloadState) {
+                            is UpdateDownloadState.ReadyToInstall ->
+                                if (canInstallPackages) {
+                                    stringResource(R.string.update_action_install)
+                                } else {
+                                    stringResource(R.string.update_action_allow)
+                                }
+                            is UpdateDownloadState.Downloading ->
+                                stringResource(R.string.update_state_downloading_percent, state.progressPercent)
+                            is UpdateDownloadState.Failed -> stringResource(R.string.update_action_retry)
+                            is UpdateDownloadState.Idle -> stringResource(R.string.update_action_download)
                         },
-                        enabled = actionEnabled,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.textPrimary,
-                            contentColor = MaterialTheme.colorScheme.background,
-                            disabledContainerColor = MaterialTheme.colorScheme.fillSelected,
-                            disabledContentColor = Color.Black.copy(alpha = 0.4f),
-                        ),
-                    ) {
-                        Text(
-                            text = when (val state = downloadState) {
-                                is UpdateDownloadState.ReadyToInstall ->
-                                    if (canInstallPackages) {
-                                        stringResource(R.string.update_action_install)
-                                    } else {
-                                        stringResource(R.string.update_action_allow)
-                                    }
-                                is UpdateDownloadState.Downloading ->
-                                    stringResource(R.string.update_state_downloading_percent, state.progressPercent)
-                                is UpdateDownloadState.Failed -> stringResource(R.string.update_action_retry)
-                                is UpdateDownloadState.Idle -> stringResource(R.string.update_action_download)
-                            },
-                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                        )
-                    }
+                    )
                 }
             }
         }

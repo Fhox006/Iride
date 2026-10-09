@@ -21,6 +21,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import androidx.datastore.preferences.core.edit
 import com.metrolist.music.R
+import com.metrolist.music.constants.OptionalNotificationsEnabled
 import com.metrolist.music.constants.ListenTogetherAutoApprovalKey
 import com.metrolist.music.constants.ListenTogetherAutoApproveSuggestionsKey
 import com.metrolist.music.constants.ListenTogetherIsHostKey
@@ -685,6 +686,8 @@ class ListenTogetherClient
         }
 
         private fun ensureNotificationChannel() {
+            if (!OptionalNotificationsEnabled) return
+
             try {
                 val nm = context.getSystemService(NotificationManager::class.java)
                 val existing = nm?.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
@@ -705,6 +708,8 @@ class ListenTogetherClient
 
         @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
         private fun showJoinRequestNotification(payload: JoinRequestPayload) {
+            if (!OptionalNotificationsEnabled) return
+
             val notifId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
 
             joinRequestNotifications[payload.userId] = notifId
@@ -757,6 +762,8 @@ class ListenTogetherClient
 
         @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
         private fun showSuggestionNotification(payload: SuggestionReceivedPayload) {
+            if (!OptionalNotificationsEnabled) return
+
             val notifId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
 
             suggestionNotifications[payload.suggestionId] = notifId

@@ -138,7 +138,7 @@ val FloatingPillBottomSpacing = 0.dp
 // New Iride UI miniplayer: compact height achieved by cutting the box margins
 // (vertical padding + cover size), not the text content. Used only when
 // PillPlayerRow runs in isIrideStyle (curtain peek); the classic pill keeps MiniPlayerHeight.
-internal val IrideMiniPlayerHeight = 52.dp
+internal val IrideMiniPlayerHeight = 48.dp
 
 // Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
 // outline — kept as one constant so the progress ring always matches the cover's actual shape
@@ -309,26 +309,37 @@ internal fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
 }
 
 @Composable
-internal fun IrideMiniPlayerPreview(metadata: MediaMetadata?) {
+internal fun IrideMiniPlayerPreview(
+    metadata: MediaMetadata?,
+    contentColor: Color = Color.White,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IrideMiniPlayerHeight)
-            .padding(horizontal = 42.dp, vertical = 2.dp),
+            .padding(horizontal = 42.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+            PillCoverArtwork(
+                mediaMetadata = metadata,
+                outlineColor = contentColor,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+        Spacer(Modifier.width(8.dp))
         if (metadata != null) {
             PillSongInfo(
                 mediaMetadata = metadata,
-                onSurfaceColor = Color.White,
-                errorColor = Color(0xFFFF6B6B),
+                onSurfaceColor = contentColor,
+                errorColor = if (contentColor == Color.Black) Color(0xFFB3261E) else Color(0xFFFF6B6B),
                 isIrideStyle = true,
                 modifier = Modifier.weight(1f),
             )
         } else {
             Spacer(
                 Modifier.weight(1f).height(18.dp).shimmer()
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp)),
+                    .background(contentColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)),
             )
         }
         Spacer(Modifier.width(2.dp))
@@ -342,7 +353,7 @@ internal fun IrideMiniPlayerPreview(metadata: MediaMetadata?) {
                 Icon(
                     painter = painterResource(icon),
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.6f),
+                    tint = contentColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(iconSize),
                 )
             }
@@ -618,21 +629,19 @@ fun PillPlayerRow(
                     // rounded smusso / corner-reveal gap below is untouched (see Player.kt
                     // collapsedContent, which keeps its own insets).
                     horizontal = if (isIrideStyle) 42.dp else 6.dp,
-                    vertical = if (isIrideStyle) 2.dp else 8.dp,
+                    vertical = if (isIrideStyle) 0.dp else 8.dp,
                 ),
         ) {
-            if (!isIrideStyle) {
-                PillPlayButton(
-                    progressState = progressState,
-                    mediaMetadata = displayMetadata,
-                    primaryColor = primaryColor,
-                    outlineColor = outlineColor,
-                    isIrideStyle = false,
-                    onArtPositioned = onArtPositioned,
-                    onProgressChanged = onProgressChanged,
-                )
-                Spacer(Modifier.width(12.dp))
-            }
+            PillPlayButton(
+                progressState = progressState,
+                mediaMetadata = displayMetadata,
+                primaryColor = primaryColor,
+                outlineColor = outlineColor,
+                isIrideStyle = isIrideStyle,
+                onArtPositioned = onArtPositioned,
+                onProgressChanged = onProgressChanged,
+            )
+            Spacer(Modifier.width(if (isIrideStyle) 8.dp else 12.dp))
 
             PillSongInfo(
                 mediaMetadata = displayMetadata,
@@ -797,8 +806,7 @@ private fun PillPlayButton(
                 // New Iride UI curtain: the bridge overlay draws its own copy of this ring on the
                 // moving cover (see IrideMiniPlayerBridgeOverlay) — drawing it here too would double
                 // it up while the player is expanding/collapsing, so this static copy only owns the
-                // ring at rest (onArtPositioned == null means the classic FloatingPill, which has no
-                // bridge overlay and always owns its own ring).
+                // ring at rest. Rows without an art-position callback draw their own cover and ring.
                 if (onArtPositioned == null) {
                     Modifier.drawWithContent {
                         drawContent()
@@ -809,9 +817,9 @@ private fun PillPlayButton(
                 },
             ),
     ) {
-        val imageShape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
-        Box(
-            contentAlignment = Alignment.Center,
+        PillCoverArtwork(
+            mediaMetadata = mediaMetadata,
+            outlineColor = outlineColor,
             modifier = Modifier
                 .size(innerSize)
                 .then(
@@ -820,17 +828,36 @@ private fun PillPlayButton(
                     } else {
                         Modifier
                     },
-                )
-                .clip(imageShape)
-                .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
-        ) {
-            val thumbnailUrl = remember(mediaMetadata.thumbnailUrl) { mediaMetadata.thumbnailUrl?.resize(120, 120) }
+                ),
+        )
+    }
+}
+
+@Composable
+private fun PillCoverArtwork(
+    mediaMetadata: MediaMetadata?,
+    outlineColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val imageShape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(imageShape)
+            .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
+    ) {
+        if (mediaMetadata != null) {
+            val thumbnailUrl = remember(mediaMetadata.thumbnailUrl) {
+                mediaMetadata.thumbnailUrl?.resize(120, 120)
+            }
             AsyncImage(
                 model = thumbnailUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().clip(imageShape),
             )
+        } else {
+            Box(Modifier.fillMaxSize().shimmer().background(outlineColor.copy(alpha = 0.1f)))
         }
     }
 }

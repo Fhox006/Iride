@@ -1,8 +1,4 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -10,13 +6,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,11 +22,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,19 +65,18 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.IrideAdaptiveTopBar
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.SelectionMediaMetadataMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.DateAgo
@@ -115,17 +104,20 @@ fun HistoryScreen(
                 listSaver<MutableList<Long>, Long>(
                     save = { it.toList() },
                     restore = { it.toMutableStateList() },
-                ),
-        ) { mutableStateListOf() }
+                )
+        ) {
+            mutableStateListOf()
+        }
     val onExitSelectionMode = {
         inSelectMode = false
         selection.clear()
     }
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue())
-    }
+    var query by
+        rememberSaveable(stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(TextFieldValue())
+        }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(isSearching) {
         if (isSearching) {
@@ -171,8 +163,7 @@ fun HistoryScreen(
                 events
                     .mapValues { (_, songs) ->
                         songs.filter { event ->
-                            event.song.song.title
-                                .contains(query.text, ignoreCase = true) ||
+                            event.song.song.title.contains(query.text, ignoreCase = true) ||
                                 event.song.artists.any {
                                     it.name.contains(
                                         query.text,
@@ -180,7 +171,8 @@ fun HistoryScreen(
                                     )
                                 }
                         }
-                    }.filterValues { it.isNotEmpty() }
+                    }
+                    .filterValues { it.isNotEmpty() }
             }
         }
 
@@ -196,10 +188,13 @@ fun HistoryScreen(
                             songs =
                                 section.songs.filter { song ->
                                     song.title.contains(query.text, ignoreCase = true) ||
-                                        song.artists.any { it.name.contains(query.text, ignoreCase = true) }
-                                },
+                                        song.artists.any {
+                                            it.name.contains(query.text, ignoreCase = true)
+                                        }
+                                }
                         )
-                    }?.filter { it.songs.isNotEmpty() }
+                    }
+                    ?.filter { it.songs.isNotEmpty() }
             }
         }
 
@@ -219,116 +214,194 @@ fun HistoryScreen(
     val lazyListState = rememberLazyListState()
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
-    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
-    val headerScrolled by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 8
-        }
-    }
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
     val frostBackdrop = rememberFrostBackdrop()
 
     Box(Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop),
-        ) {
-            if (mainTopGradient) {
-                TopScreenGradientBackground(
-                    mediaMetadata = mediaMetadata,
-                    playerBackground = playerBackgroundStyle,
-                )
-            } else {
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-            }
-            LazyColumn(
-            state = lazyListState,
-            contentPadding =
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                    .asPaddingValues(),
-            modifier =
-                Modifier.windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Top,
-                    ),
-                ),
-        ) {
-            item(key = "chips_row") {
-                ChipsRow(
-                    chips =
-                        if (isLoggedIn) {
-                            listOf(
-                                HistorySource.LOCAL to stringResource(R.string.local_history),
-                                HistorySource.REMOTE to stringResource(R.string.remote_history),
-                            )
-                        } else {
-                            listOf(HistorySource.LOCAL to stringResource(R.string.local_history))
-                        },
-                    currentValue = historySource,
-                    onValueUpdate = {
-                        viewModel.historySource.value = it
-                        if (it == HistorySource.REMOTE) {
-                            viewModel.fetchRemoteHistory()
-                        }
-                    },
-                )
-            }
-
-            if (historySource == HistorySource.REMOTE && isLoggedIn) {
-                filteredRemoteContent?.forEach { section ->
-                    stickyHeader {
-                        NavigationTitle(
-                            title = section.title,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.background),
+        Box(modifier = Modifier.fillMaxSize()) {
+            IridePageLayout(
+                background = {
+                    if (mainTopGradient) {
+                        TopScreenGradientBackground(
+                            mediaMetadata = mediaMetadata,
+                            playerBackground = playerBackgroundStyle,
                         )
+                    } else {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                     }
-
-                    items(
-                        items = section.songs,
-                        key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" },
-                    ) { song ->
-                        YouTubeListItem(
-                            item = song,
-                            isActive = song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                                onHistoryRemoved = {
-                                                    viewModel.fetchRemoteHistory()
-                                                },
-                                            )
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null,
+                },
+                titleRes = R.string.history,
+                state = lazyListState,
+                showTopBar = true,
+                bottomPadding =
+                    LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                navigationIcon = {
+                    if (inSelectMode) {
+                        IconButton(onClick = onExitSelectionMode) {
+                            Icon(
+                                painter = painterResource(R.drawable.close),
+                                contentDescription = null,
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = {
+                                if (isSearching) {
+                                    isSearching = false
+                                    query = TextFieldValue()
+                                } else {
+                                    navController.navigateUp()
+                                }
+                            },
+                            onLongClick = {
+                                if (!isSearching) {
+                                    navController.backToMain()
+                                }
+                            },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    if (inSelectMode) {
+                        Checkbox(
+                            checked = selection.size == allEvents.size && selection.isNotEmpty(),
+                            onCheckedChange = {
+                                if (selection.size == allEvents.size) {
+                                    selection.clear()
+                                } else {
+                                    selection.clear()
+                                    selection.addAll(allEvents.map { it.event.id })
+                                }
+                            },
+                        )
+                        IconButton(
+                            enabled = selection.isNotEmpty(),
+                            onClick = {
+                                menuState.show {
+                                    SelectionMediaMetadataMenu(
+                                        songSelection =
+                                            selection.mapNotNull { eventId ->
+                                                allEvents
+                                                    .find { it.event.id == eventId }
+                                                    ?.song
+                                                    ?.toMediaItem()
+                                                    ?.metadata
+                                            },
+                                        onDismiss = menuState::dismiss,
+                                        clearAction = onExitSelectionMode,
+                                        currentItems = emptyList(),
                                     )
                                 }
                             },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null,
+                            )
+                        }
+                    } else if (!isSearching) {
+                        IconButton(onClick = { isSearching = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.search),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
+                topBarContent =
+                    if (inSelectMode || isSearching)
+                        ({
+                            if (inSelectMode) {
+                                Text(
+                                    pluralStringResource(
+                                        R.plurals.n_selected,
+                                        selection.size,
+                                        selection.size,
+                                    )
+                                )
+                            } else if (isSearching) {
+                                TextField(
+                                    value = query,
+                                    onValueChange = { query = it },
+                                    placeholder = {
+                                        Text(
+                                            text = stringResource(R.string.search),
+                                            style = LocalTextStyle.current,
+                                        )
+                                    },
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    colors =
+                                        TextFieldDefaults.colors(
+                                            focusedContainerColor = Color.Transparent,
+                                            unfocusedContainerColor = Color.Transparent,
+                                            focusedIndicatorColor = Color.Transparent,
+                                            unfocusedIndicatorColor = Color.Transparent,
+                                            disabledIndicatorColor = Color.Transparent,
+                                        ),
+                                    modifier =
+                                        Modifier.fillMaxWidth().focusRequester(focusRequester),
+                                )
+                            }
+                        })
+                    else null,
+            ) {
+                item(key = "chips_row") {
+                    ChipsRow(
+                        chips =
+                            if (isLoggedIn) {
+                                listOf(
+                                    HistorySource.LOCAL to stringResource(R.string.local_history),
+                                    HistorySource.REMOTE to stringResource(R.string.remote_history),
+                                )
+                            } else {
+                                listOf(
+                                    HistorySource.LOCAL to stringResource(R.string.local_history)
+                                )
+                            },
+                        currentValue = historySource,
+                        onValueUpdate = {
+                            viewModel.historySource.value = it
+                            if (it == HistorySource.REMOTE) {
+                                viewModel.fetchRemoteHistory()
+                            }
+                        },
+                    )
+                }
+
+                if (historySource == HistorySource.REMOTE && isLoggedIn) {
+                    filteredRemoteContent?.forEach { section ->
+                        stickyHeader {
+                            NavigationTitle(
+                                title = section.title,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.background),
+                            )
+                        }
+
+                        items(
+                            items = section.songs,
+                            key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" },
+                        ) { song ->
+                            YouTubeListItem(
+                                item = song,
+                                isActive = song.id == mediaMetadata?.id,
+                                isPlaying = isPlaying,
+                                trailingContent = {
+                                    SongMenuIconButton(
                                         onClick = {
-                                            if (song.id == mediaMetadata?.id) {
-                                                playerConnection.togglePlayPause()
-                                            } else {
-                                                playerConnection.startRadioForSong(song.toMediaMetadata())
-                                            }
-                                        },
-                                        onLongClick = {
-                                            menuState.show {
+                                            menuState.show(anchored = true) {
                                                 YouTubeSongMenu(
                                                     song = song,
                                                     navController = navController,
@@ -338,98 +411,134 @@ fun HistoryScreen(
                                                     },
                                                 )
                                             }
-                                        },
-                                    ).animateItem(),
-                        )
-                    }
-                }
-            } else {
-                filteredEvents.forEach { (dateAgo, dateEvents) ->
-                    stickyHeader {
-                        NavigationTitle(
-                            title = dateAgoToString(dateAgo),
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface),
-                        )
-                    }
-
-                    itemsIndexed(
-                        items = dateEvents,
-                        key = { index, event -> "${dateAgo}_${event.event.id}_$index" },
-                    ) { index, event ->
-                        val onCheckedChange: (Boolean) -> Unit = {
-                            if (it) {
-                                selection.add(event.event.id)
-                            } else {
-                                selection.remove(event.event.id)
-                            }
-                        }
-                        val dateTitle = dateAgoToString(dateAgo)
-
-                        SongListItem(
-                            song = event.song,
-                            isActive = event.song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            trailingContent = {
-                                if (inSelectMode) {
-                                    Checkbox(
-                                        checked = event.event.id in selection,
-                                        onCheckedChange = onCheckedChange,
-                                    )
-                                } else {
-                                    IconButton(
-                                        onClick = {
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = event.song,
-                                                    event = event.event,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.more_vert),
                                             contentDescription = null,
                                         )
                                     }
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (song.id == mediaMetadata?.id) {
+                                                    playerConnection.togglePlayPause()
+                                                } else {
+                                                    playerConnection.startRadioForSong(
+                                                        song.toMediaMetadata()
+                                                    )
+                                                }
+                                            },
+                                            onLongClick = {
+                                                menuState.show(anchored = true) {
+                                                    YouTubeSongMenu(
+                                                        song = song,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                        onHistoryRemoved = {
+                                                            viewModel.fetchRemoteHistory()
+                                                        },
+                                                    )
+                                                }
+                                            },
+                                        )
+                                        .animateItem(),
+                            )
+                        }
+                    }
+                } else {
+                    filteredEvents.forEach { (dateAgo, dateEvents) ->
+                        stickyHeader {
+                            NavigationTitle(
+                                title = dateAgoToString(dateAgo),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface),
+                            )
+                        }
+
+                        itemsIndexed(
+                            items = dateEvents,
+                            key = { index, event -> "${dateAgo}_${event.event.id}_$index" },
+                        ) { index, event ->
+                            val onCheckedChange: (Boolean) -> Unit = {
+                                if (it) {
+                                    selection.add(event.event.id)
+                                } else {
+                                    selection.remove(event.event.id)
                                 }
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (inSelectMode) {
-                                                onCheckedChange(event.event.id !in selection)
-                                            } else if (event.song.id == mediaMetadata?.id) {
-                                                playerConnection.togglePlayPause()
-                                            } else {
-                                                playerConnection.playQueue(
-                                                    ListQueue(
-                                                        title = dateTitle,
-                                                        items = dateEvents.map { it.song.toMediaItem() },
-                                                        startIndex = index,
-                                                    ),
-                                                )
+                            }
+                            val dateTitle = dateAgoToString(dateAgo)
+
+                            SongListItem(
+                                song = event.song,
+                                isActive = event.song.id == mediaMetadata?.id,
+                                isPlaying = isPlaying,
+                                trailingContent = {
+                                    if (inSelectMode) {
+                                        Checkbox(
+                                            checked = event.event.id in selection,
+                                            onCheckedChange = onCheckedChange,
+                                        )
+                                    } else {
+                                        SongMenuIconButton(
+                                            onClick = {
+                                                menuState.show(anchored = true) {
+                                                    SongMenu(
+                                                        originalSong = event.song,
+                                                        event = event.event,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
                                             }
-                                        },
-                                        onLongClick = {
-                                            if (!inSelectMode) {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                inSelectMode = true
-                                                onCheckedChange(true)
-                                            }
-                                        },
-                                    ).animateItem(),
-                        )
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.more_vert),
+                                                contentDescription = null,
+                                            )
+                                        }
+                                    }
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (inSelectMode) {
+                                                    onCheckedChange(event.event.id !in selection)
+                                                } else if (event.song.id == mediaMetadata?.id) {
+                                                    playerConnection.togglePlayPause()
+                                                } else {
+                                                    playerConnection.playQueue(
+                                                        ListQueue(
+                                                            title = dateTitle,
+                                                            items =
+                                                                dateEvents.map {
+                                                                    it.song.toMediaItem()
+                                                                },
+                                                            startIndex = index,
+                                                        )
+                                                    )
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!inSelectMode) {
+                                                    haptic.performHapticFeedback(
+                                                        HapticFeedbackType.LongPress
+                                                    )
+                                                    inSelectMode = true
+                                                    onCheckedChange(true)
+                                                }
+                                            },
+                                        )
+                                        .animateItem(),
+                            )
+                        }
                     }
                 }
             }
-        }
         }
 
         val historyTitle = stringResource(R.string.history)
@@ -451,7 +560,7 @@ fun HistoryScreen(
                             ListQueue(
                                 title = historyTitle,
                                 items = songs.map { it.toMediaItem() }.shuffled(),
-                            ),
+                            )
                         )
                     }
                 } else {
@@ -459,128 +568,10 @@ fun HistoryScreen(
                         ListQueue(
                             title = historyTitle,
                             items = allEvents.map { it.song.toMediaItem() }.shuffled(),
-                        ),
+                        )
                     )
                 }
             },
         )
     }
-
-    IrideAdaptiveTopBar(
-        title = {
-            if (inSelectMode) {
-                Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
-            } else if (isSearching) {
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.search),
-                            style = LocalTextStyle.current,
-                        )
-                    },
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    colors =
-                        TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                        ),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
-                )
-            } else {
-                Text(stringResource(R.string.history))
-            }
-        },
-        navigationIcon = {
-            if (inSelectMode) {
-                IconButton(onClick = onExitSelectionMode) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = null,
-                    )
-                }
-            } else {
-                IconButton(
-                    onClick = {
-                        if (isSearching) {
-                            isSearching = false
-                            query = TextFieldValue()
-                        } else {
-                            navController.navigateUp()
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSearching) {
-                            navController.backToMain()
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            }
-        },
-        actions = {
-            if (inSelectMode) {
-                Checkbox(
-                    checked = selection.size == allEvents.size && selection.isNotEmpty(),
-                    onCheckedChange = {
-                        if (selection.size == allEvents.size) {
-                            selection.clear()
-                        } else {
-                            selection.clear()
-                            selection.addAll(allEvents.map { it.event.id })
-                        }
-                    },
-                )
-                IconButton(
-                    enabled = selection.isNotEmpty(),
-                    onClick = {
-                        menuState.show {
-                            SelectionMediaMetadataMenu(
-                                songSelection =
-                                    selection.mapNotNull { eventId ->
-                                        allEvents
-                                            .find { it.event.id == eventId }
-                                            ?.song
-                                            ?.toMediaItem()
-                                            ?.metadata
-                                    },
-                                onDismiss = menuState::dismiss,
-                                clearAction = onExitSelectionMode,
-                                currentItems = emptyList(),
-                            )
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                    )
-                }
-            } else if (!isSearching) {
-                IconButton(
-                    onClick = { isSearching = true },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = null,
-                    )
-                }
-            }
-        },
-        backdrop = frostBackdrop,
-        revealProgress = rememberDiscreteProgress(headerScrolled),
-    )
 }

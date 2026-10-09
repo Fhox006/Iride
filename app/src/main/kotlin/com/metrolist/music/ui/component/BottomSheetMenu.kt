@@ -25,6 +25,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
@@ -42,6 +43,14 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.theme.textPrimary
 
 val LocalMenuState = compositionLocalOf { MenuState() }
+internal val LocalSongMenuPopupState = compositionLocalOf<MenuState?> { null }
+internal val LocalMenuActionScope = compositionLocalOf<kotlinx.coroutines.CoroutineScope?> { null }
+
+@Composable
+internal fun rememberMenuActionScope(): kotlinx.coroutines.CoroutineScope {
+    val fallback = androidx.compose.runtime.rememberCoroutineScope()
+    return LocalMenuActionScope.current ?: fallback
+}
 
 @Stable
 class MenuState(
@@ -50,8 +59,18 @@ class MenuState(
 ) {
     var isVisible by mutableStateOf(isVisible)
     var content by mutableStateOf(content)
+    var anchored by mutableStateOf(false)
+        private set
+    internal var pointerAnchor: androidx.compose.ui.geometry.Rect? = null
+    internal var popupAnchor by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+        private set
 
-    fun show(content: @Composable ColumnScope.() -> Unit) {
+    fun show(content: @Composable ColumnScope.() -> Unit) = show(anchored = false, content = content)
+
+    fun show(anchored: Boolean, content: @Composable ColumnScope.() -> Unit) {
+        this.anchored = anchored
+        popupAnchor = pointerAnchor
+        pointerAnchor = null
         isVisible = true
         this.content = content
     }
@@ -124,6 +143,15 @@ fun BottomSheetMenu(
     background: Color = MaterialTheme.colorScheme.surface,
 ) {
     val focusManager = LocalFocusManager.current
+    val actionScope = androidx.compose.runtime.rememberCoroutineScope()
+    if (state.anchored) {
+        if (state.isVisible) {
+            CompositionLocalProvider(LocalSongMenuPopupState provides state, LocalMenuActionScope provides actionScope) {
+                Column(content = state.content)
+            }
+        }
+        return
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     AnimatedBottomSheet(

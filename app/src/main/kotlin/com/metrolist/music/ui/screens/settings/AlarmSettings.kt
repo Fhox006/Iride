@@ -1,4 +1,8 @@
-﻿package com.metrolist.music.ui.screens.settings
+package com.metrolist.music.ui.screens.settings
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import com.metrolist.music.ui.component.IrideSwitch
 import android.app.AlarmManager
@@ -23,16 +27,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -299,10 +300,10 @@ private fun AlarmTimePickerDialog(
         title = { Text(title) },
         onDismiss = onDismiss,
         buttons = {
-            TextButton(onClick = onDismiss) {
+            IrideFolioSecondaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
-            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+            IrideFolioPrimaryButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
                 Text(stringResource(android.R.string.ok))
             }
         }
@@ -378,7 +379,7 @@ private fun AlarmEditorDialog(
             onDismiss = { showPlaylistDialog = false },
             title = { Text(stringResource(R.string.alarm_playlist)) },
             buttons = {
-                TextButton(onClick = { showPlaylistDialog = false }) {
+                IrideFolioPrimaryButton(onClick = { showPlaylistDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }
@@ -457,18 +458,18 @@ private fun AlarmEditorDialog(
             )
         },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            IrideFolioSecondaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
-            TextButton(
+            IrideFolioPrimaryButton(
                 enabled = !hasSameTimeAlarm && hasValidPlaylist,
                 onClick = {
                     if (hasSameTimeAlarm) {
-                        return@TextButton
+                        return@IrideFolioPrimaryButton
                     }
                     if (!hasValidPlaylist) {
                         Toast.makeText(context, selectPlaylistText, Toast.LENGTH_SHORT).show()
-                        return@TextButton
+                        return@IrideFolioPrimaryButton
                     }
                     onSave(
                         (existing ?: MusicAlarmStore.createEmpty()).copy(
@@ -497,7 +498,7 @@ private fun AlarmEditorDialog(
                 AlarmSwitch(checked = enabled, onCheckedChange = { enabled = it })
             }
 
-            FilledTonalButton(
+            IrideFolioPrimaryButton(
                 onClick = { showTimePickerDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -511,7 +512,7 @@ private fun AlarmEditorDialog(
 
             HorizontalDivider()
 
-            OutlinedButton(
+            IrideFolioSecondaryButton(
                 onClick = {
                     if (playlists.isEmpty()) {
                         Toast.makeText(context, noPlaylistsText, Toast.LENGTH_SHORT).show()

@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
@@ -14,7 +16,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -36,16 +37,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,9 +62,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -80,7 +81,6 @@ import coil3.compose.AsyncImage
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
-import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
@@ -88,7 +88,7 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideFolioMenuAction
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.IrideIconTile
@@ -98,7 +98,6 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,46 +118,6 @@ fun SettingsScreen(
     }
 
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
-    var showAdvancedMenu by remember { mutableStateOf(false) }
-    val topNavBarController = LocalTopNavBarController.current
-    val advancedMenuButton: @Composable () -> Unit = {
-        Box {
-            IconButton(
-                onClick = { showAdvancedMenu = true },
-                onLongClick = {}
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = stringResource(R.string.advanced_mode)
-                )
-            }
-            DropdownMenu(
-                expanded = showAdvancedMenu,
-                onDismissRequest = { showAdvancedMenu = false },
-                shape = RoundedCornerShape(16.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            ) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(
-                                if (advancedMode) R.string.disable_advanced_settings
-                                else R.string.enable_advanced_settings
-                            ),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
-                    colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface),
-                    onClick = {
-                        onAdvancedModeChange(!advancedMode)
-                        showAdvancedMenu = false
-                    }
-                )
-            }
-        }
-    }
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
     val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
     val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
@@ -179,12 +138,17 @@ fun SettingsScreen(
         state = settingsListState,
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-        // PageFrame guidance: keep this off for Account settings. Enabling the fixed top bar adds a black panel above the expanded title; showTopBar = false removes it and keeps the Home-style title presentation.
-        showTopBar = false,
-        topBarStrokeColor = Color.Transparent,
-        actions = {
-            if (topNavBarController != null) advancedMenuButton()
-        },
+        menuSections = listOf(
+            listOf(
+                IrideFolioMenuAction(
+                    label = stringResource(
+                        if (advancedMode) R.string.disable_advanced_settings
+                        else R.string.enable_advanced_settings,
+                    ),
+                    onClick = { onAdvancedModeChange(!advancedMode) },
+                ),
+            ),
+        ),
     ) {
         item(key = "settings_content") {
             Column(
@@ -193,107 +157,14 @@ fun SettingsScreen(
                     .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val avatarSize = 84.dp
-            val avatarBorder = Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), CircleShape)
-            val avatarFallbackBg = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
-            val primaryTextColor = MaterialTheme.colorScheme.onSurface
-            val secondaryTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            val fallbackIconTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            val nameStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.2).sp)
-
-            if (isLoggedIn) {
-                if (accountImageUrl != null) {
-                    AsyncImage(
-                        model = accountImageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(avatarSize)
-                            .clip(CircleShape)
-                            .then(avatarBorder)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(avatarSize)
-                            .clip(CircleShape)
-                            .background(avatarFallbackBg)
-                            .then(avatarBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.person),
-                            contentDescription = null,
-                            modifier = Modifier.size(44.dp),
-                            tint = fallbackIconTint
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = accountName.ifEmpty { stringResource(R.string.my_account) },
-                    style = nameStyle,
-                    fontWeight = FontWeight.Bold,
-                    color = primaryTextColor
-                )
-                val handle = accountChannelHandle.takeIf { it.isNotEmpty() }
-                    ?: accountEmail.takeIf { it.isNotEmpty() }
-                if (handle != null) {
-                    Text(
-                        text = handle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = secondaryTextColor
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .clip(CircleShape)
-                        .background(avatarFallbackBg)
-                        .then(avatarBorder),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.person),
-                        contentDescription = null,
-                        modifier = Modifier.size(44.dp),
-                        tint = fallbackIconTint
-                    )
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = stringResource(R.string.login),
-                    style = nameStyle,
-                    fontWeight = FontWeight.Bold,
-                    color = primaryTextColor
-                )
-                Text(
-                    text = stringResource(R.string.sign_in_desc),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
-                    color = secondaryTextColor
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedButton(
-                    onClick = { navController.navigate("login") },
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-                ) {
-                    Text(
-                        text = stringResource(R.string.login),
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
+        AccountProfileHeader(
+            isLoggedIn = isLoggedIn,
+            accountImageUrl = accountImageUrl,
+            accountName = accountName,
+            accountHandle = accountChannelHandle.takeIf { it.isNotEmpty() }
+                ?: accountEmail.takeIf { it.isNotEmpty() },
+            onLogin = { navController.navigate("login") },
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -387,14 +258,6 @@ fun SettingsScreen(
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/backup_restore") }
                 ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.download),
-                    iconContainerColor = Color(0xFF47766D),
-                    title = { Text(stringResource(R.string.spotify_exportify_title)) },
-                    description = { Text(stringResource(R.string.spotify_exportify_description), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("spotify_import") }
-                ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
@@ -466,4 +329,93 @@ private fun DonationIconBounce() {
             .size(22.dp)
             .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
     )
+}
+
+@Composable
+private fun AccountProfileHeader(
+    isLoggedIn: Boolean,
+    accountImageUrl: String?,
+    accountName: String,
+    accountHandle: String?,
+    onLogin: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val avatarShape = CircleShape
+        val avatarModifier = Modifier
+            .size(88.dp)
+            .clip(avatarShape)
+            .background(MaterialTheme.colorScheme.fillSubtle)
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, avatarShape)
+        if (isLoggedIn && accountImageUrl != null) {
+            AsyncImage(
+                model = accountImageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = avatarModifier,
+            )
+        } else {
+            Box(modifier = avatarModifier, contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(R.drawable.person),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.textSecondary,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            if (isLoggedIn) {
+                Text(
+                    text = accountName.ifEmpty { stringResource(R.string.my_account) },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.2).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.textPrimary,
+                    textAlign = TextAlign.Start,
+                )
+                if (accountHandle != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = accountHandle,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                        color = MaterialTheme.colorScheme.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Start,
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.sign_in_desc),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        lineHeight = 22.sp,
+                        letterSpacing = 0.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.textSecondary,
+                    textAlign = TextAlign.Start,
+                )
+                Spacer(Modifier.height(16.dp))
+                IrideFolioPrimaryButton(
+                    onClick = onLogin,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.login),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.login),
+                    )
+                }
+            }
+        }
+    }
 }

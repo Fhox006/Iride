@@ -1,69 +1,49 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
 import android.content.Context
-import android.content.Intent
-import android.content.res.Configuration
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -75,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
+import androidx.datastore.preferences.core.edit
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.offline.Download
@@ -98,26 +79,25 @@ import com.metrolist.music.listentogether.ListenTogetherEvent
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.IrideFolioAlertDialog
+import com.metrolist.music.ui.component.IrideFolioContextMenu
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.ListDialog
-import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
-import com.metrolist.music.ui.component.NewAction
-import com.metrolist.music.ui.component.NewActionGrid
-import com.metrolist.music.ui.component.VolumeSlider
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.textPrimary
-import com.metrolist.music.ui.theme.textSecondary
-import androidx.datastore.preferences.core.edit
+import com.metrolist.music.ui.component.folioMenuAction
+import com.metrolist.music.ui.component.folioMenuArtwork
+import com.metrolist.music.ui.component.rememberMenuActionScope
 import com.metrolist.music.utils.SharePlatform
 import com.metrolist.music.utils.SongLinkResolver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.rememberPreference
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerMenu(
@@ -143,64 +123,62 @@ fun PlayerMenu(
             }
         }
     val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
-    val castVolume by castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
-    val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
+    val castVolume by
+        castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
+    val castDeviceName by
+        castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
     val repeatMode by playerConnection.repeatMode.collectAsState()
     val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
 
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberMenuActionScope()
 
     var showSleepTimerDialog by rememberSaveable { mutableStateOf(false) }
     val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
     var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
-    val isAtDefault by remember { derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() } }
-    val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
+    val isAtDefault by remember {
+        derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
+    }
+    val sleepTimerStopAfterCurrentSong by
+        rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
     val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
     val sleepTimerDefaultSetTemplate = stringResource(R.string.sleep_timer_default_set)
 
-    val download by LocalDownloadUtil.current
-        .getDownload(mediaMetadata.id)
-        .collectAsState(initial = null)
+    val download by
+        LocalDownloadUtil.current.getDownload(mediaMetadata.id).collectAsState(initial = null)
 
     val albumData by database.album(mediaMetadata.album?.id ?: "").collectAsState(initial = null)
 
-    val artists =
-        remember(mediaMetadata.artists) {
-            mediaMetadata.artists.filter { it.id != null }
-        }
+    val artists = remember(mediaMetadata.artists) { mediaMetadata.artists.filter { it.id != null } }
 
-    var showChoosePlaylistDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showChoosePlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
-    var showListenTogetherDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showListenTogetherDialog by rememberSaveable { mutableStateOf(false) }
 
     val listenTogetherManager = LocalListenTogetherManager.current
-    val listenTogetherRoleState = listenTogetherManager?.role?.collectAsState(initial = com.metrolist.music.listentogether.RoomRole.NONE)
-    val isListenTogetherGuest = listenTogetherRoleState?.value == com.metrolist.music.listentogether.RoomRole.GUEST
-    val pendingSuggestions by listenTogetherManager?.pendingSuggestions?.collectAsState(initial = emptyList())
-        ?: remember { mutableStateOf(emptyList()) }
+    val listenTogetherRoleState =
+        listenTogetherManager
+            ?.role
+            ?.collectAsState(initial = com.metrolist.music.listentogether.RoomRole.NONE)
+    val isListenTogetherGuest =
+        listenTogetherRoleState?.value == com.metrolist.music.listentogether.RoomRole.GUEST
+    val pendingSuggestions by
+        listenTogetherManager?.pendingSuggestions?.collectAsState(initial = emptyList())
+            ?: remember { mutableStateOf(emptyList()) }
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
         onGetSong = { playlist ->
-            database.withTransaction {
-                insert(mediaMetadata)
-            }
+            database.withTransaction { insert(mediaMetadata) }
             coroutineScope.launch(Dispatchers.IO) {
                 playlist.playlist.browseId?.let { YouTube.addToPlaylist(it, mediaMetadata.id) }
             }
             listOf(mediaMetadata.id)
         },
         onGetSongIds = { listOf(mediaMetadata.id) },
-        onDismiss = {
-            showChoosePlaylistDialog = false
-        },
+        onDismiss = { showChoosePlaylistDialog = false },
     )
 
     ListenTogetherDialog(
@@ -209,27 +187,23 @@ fun PlayerMenu(
         onDismiss = { showListenTogetherDialog = false },
     )
 
-    var showSelectArtistDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showSelectArtistDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showSelectArtistDialog) {
-        ListDialog(
-            onDismiss = { showSelectArtistDialog = false },
-        ) {
+        ListDialog(onDismiss = { showSelectArtistDialog = false }) {
             items(artists) { artist ->
                 Box(
                     contentAlignment = Alignment.CenterStart,
                     modifier =
-                        Modifier
-                            .fillParentMaxWidth()
+                        Modifier.fillParentMaxWidth()
                             .height(ListItemHeight)
                             .clickable {
                                 navController.navigate("artist/${artist.id}")
                                 showSelectArtistDialog = false
                                 playerBottomSheetState.collapseSoft()
                                 onDismiss()
-                            }.padding(horizontal = 24.dp),
+                            }
+                            .padding(horizontal = 24.dp),
                 ) {
                     Text(
                         text = artist.name,
@@ -243,9 +217,7 @@ fun PlayerMenu(
         }
     }
 
-    var showSharePlatformDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showSharePlatformDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showSharePlatformDialog) {
         val sharePlatforms =
@@ -257,9 +229,7 @@ fun PlayerMenu(
             )
         val notFoundMessage = stringResource(R.string.share_link_not_found)
 
-        ListDialog(
-            onDismiss = { showSharePlatformDialog = false },
-        ) {
+        ListDialog(onDismiss = { showSharePlatformDialog = false }) {
             item {
                 Text(
                     text = stringResource(R.string.share_choose_platform),
@@ -271,14 +241,17 @@ fun PlayerMenu(
                 Box(
                     contentAlignment = Alignment.CenterStart,
                     modifier =
-                        Modifier
-                            .fillParentMaxWidth()
+                        Modifier.fillParentMaxWidth()
                             .height(ListItemHeight)
                             .clickable {
                                 showSharePlatformDialog = false
-                                val youtubeMusicUrl = "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                val youtubeMusicUrl =
+                                    "https://music.youtube.com/watch?v=${mediaMetadata.id}"
                                 val fallbackQuery =
-                                    listOf(mediaMetadata.title, mediaMetadata.artists.firstOrNull()?.name)
+                                    listOf(
+                                            mediaMetadata.title,
+                                            mediaMetadata.artists.firstOrNull()?.name,
+                                        )
                                         .filterNotNull()
                                         .joinToString(" ")
                                 SongLinkResolver.shareLink(
@@ -289,50 +262,37 @@ fun PlayerMenu(
                                     notFoundMessage = notFoundMessage,
                                 )
                                 onDismiss()
-                            }.padding(horizontal = 24.dp),
+                            }
+                            .padding(horizontal = 24.dp),
                 ) {
-                    Text(
-                        text = stringResource(labelRes),
-                        fontSize = 18.sp,
-                    )
+                    Text(text = stringResource(labelRes), fontSize = 18.sp)
                 }
             }
         }
     }
 
-    var showPitchTempoDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showPitchTempoDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showPitchTempoDialog) {
-        TempoPitchDialog(
-            onDismiss = { showPitchTempoDialog = false },
-        )
+        TempoPitchDialog(onDismiss = { showPitchTempoDialog = false })
     }
 
-    var showSpeedDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var showSpeedDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showSpeedDialog) {
-        SpeedDialog(
-            onDismiss = { showSpeedDialog = false },
-        )
+        SpeedDialog(onDismiss = { showSpeedDialog = false })
     }
 
     if (showSleepTimerDialog) {
-        AlertDialog(
+        IrideFolioAlertDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false),
             onDismissRequest = { showSleepTimerDialog = false },
             icon = {
-                Icon(
-                    painter = painterResource(R.drawable.bedtime),
-                    contentDescription = null,
-                )
+                Icon(painter = painterResource(R.drawable.bedtime), contentDescription = null)
             },
             title = { Text(stringResource(R.string.sleep_timer)) },
             confirmButton = {
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         showSleepTimerDialog = false
                         playerConnection.service.sleepTimer.start(
@@ -340,26 +300,25 @@ fun PlayerMenu(
                             stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
                             fadeOut = sleepTimerFadeOut,
                         )
-                    },
+                    }
                 ) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showSleepTimerDialog = false },
-                ) {
+                IrideFolioSecondaryButton(onClick = { showSleepTimerDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = pluralStringResource(
-                            R.plurals.minute,
-                            sleepTimerValue.roundToInt(),
-                            sleepTimerValue.roundToInt(),
-                        ),
+                        text =
+                            pluralStringResource(
+                                R.plurals.minute,
+                                sleepTimerValue.roundToInt(),
+                                sleepTimerValue.roundToInt(),
+                            ),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Slider(
@@ -379,27 +338,31 @@ fun PlayerMenu(
                                 }
                             }
                             Toast.makeText(
-                                context,
-                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                                    context,
+                                    String.format(
+                                        sleepTimerDefaultSetTemplate,
+                                        sleepTimerValue.roundToInt(),
+                                    ),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                         }
                         if (isAtDefault) {
-                            Button(
+                            IrideFolioPrimaryButton(
                                 onClick = setDefaultClick,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(stringResource(R.string.set_as_default))
                             }
                         } else {
-                            OutlinedButton(
+                            IrideFolioSecondaryButton(
                                 onClick = setDefaultClick,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(stringResource(R.string.set_as_default))
                             }
                         }
-                        OutlinedButton(
+                        IrideFolioSecondaryButton(
                             onClick = {
                                 showSleepTimerDialog = false
                                 playerConnection.service.sleepTimer.start(minute = -1)
@@ -414,185 +377,18 @@ fun PlayerMenu(
         )
     }
 
-
-    LazyColumn(
-        contentPadding =
-            PaddingValues(
-                start = 0.dp,
-                top = 0.dp,
-                end = 0.dp,
-                bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-            ),
-    ) {
-        item {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = mediaMetadata.title,
-                            style =
-                                MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-0.2).sp,
-                                ),
-                            color = MaterialTheme.colorScheme.textPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee(),
-                        )
-                        if (mediaMetadata.artists.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = mediaMetadata.artists.joinToString(", ") { it.name },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.textSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    IconButton(onClick = { showSharePlatformDialog = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.share),
-                            tint = MaterialTheme.colorScheme.textPrimary,
-                            contentDescription = null,
-                        )
-                    }
-                }
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(20.dp)) }
-
-        if (!isListenTogetherGuest) {
-            item {
-                NewActionGrid(
-                    actions =
-                        listOf(
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bedtime),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.textPrimary,
-                                    )
-                                },
-                                text = stringResource(R.string.sleep_timer),
-                                onClick = { showSleepTimerDialog = true },
-                            ),
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint =
-                                            if (repeatMode == Player.REPEAT_MODE_ONE) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.textPrimary
-                                            },
-                                    )
-                                },
-                                text = stringResource(R.string.repeat_one),
-                                onClick = {
-                                    playerConnection.player.repeatMode =
-                                        if (repeatMode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
-                                },
-                            ),
-                            NewAction(
-                                icon = {
-                                    Box {
-                                        Icon(
-                                            painter = painterResource(R.drawable.group),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = MaterialTheme.colorScheme.textPrimary,
-                                        )
-                                        if (pendingSuggestions.isNotEmpty()) {
-                                            Surface(
-                                                shape = RoundedCornerShape(12.dp),
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier =
-                                                    Modifier
-                                                        .offset(x = 8.dp, y = (-6).dp)
-                                                        .align(Alignment.TopEnd),
-                                            ) {
-                                                Text(
-                                                    text = pendingSuggestions.size.toString(),
-                                                    color = MaterialTheme.colorScheme.onPrimary,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                )
-                                            }
-                                        }
-                                    }
-                                },
-                                text = stringResource(R.string.listen_together),
-                                onClick = { showListenTogetherDialog = true },
-                            ),
-                        ),
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-        }
-
-        item {
-            ProminentActionRow(
-                icon = R.drawable.playlist_add,
-                label = stringResource(R.string.add_to_playlist),
-                onClick = { showChoosePlaylistDialog = true },
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-        item { Spacer(modifier = Modifier.height(14.dp)) }
-
-        librarySong?.let { song ->
-            item {
-                ArtistAlbumSwitchRow(
-                    song = song,
-                    orderedArtists = emptyList(),
-                    onArtistClick = {
-                        if (artists.size == 1) {
-                            navController.navigate("artist/${artists[0].id}")
-                            playerBottomSheetState.collapseSoft()
-                            onDismiss()
-                        } else {
-                            showSelectArtistDialog = true
-                        }
-                    },
-                    onAlbumClick = {
-                        mediaMetadata.album?.let { album ->
-                            val isPodcast = !album.id.startsWith("MPREb_")
-                            if (isPodcast) {
-                                navController.navigate("online_podcast/${album.id}")
-                            } else {
-                                navController.navigate("album/${album.id}")
-                            }
-                            playerBottomSheetState.collapseSoft()
-                            onDismiss()
-                        }
-                    },
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-            item { Spacer(modifier = Modifier.height(10.dp)) }
-        }
-
-        item {
-            Material3MenuGroup(
-                items =
+    IrideFolioContextMenu(
+        items =
+            buildList {
+                addAll(
                     listOf(
                         when (download?.state) {
                             Download.STATE_COMPLETED ->
                                 Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.remove_download)) },
+                                    actionId = R.string.remove_download,
+                                    title = {
+                                        Text(text = stringResource(R.string.remove_download))
+                                    },
                                     icon = {
                                         Icon(
                                             painter = painterResource(R.drawable.offline),
@@ -602,13 +398,20 @@ fun PlayerMenu(
                                     },
                                     onClick = {
                                         DownloadService.sendRemoveDownload(
-                                            context, ExoDownloadService::class.java, mediaMetadata.id, false,
+                                            context,
+                                            ExoDownloadService::class.java,
+                                            mediaMetadata.id,
+                                            false,
                                         )
                                     },
                                 )
-                            Download.STATE_QUEUED, Download.STATE_DOWNLOADING ->
+                            Download.STATE_QUEUED,
+                            Download.STATE_DOWNLOADING ->
                                 Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.downloading)) },
+                                    actionId = R.string.downloading,
+                                    title = {
+                                        Text(text = stringResource(R.string.folio_cancel_download))
+                                    },
                                     icon = {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
@@ -617,14 +420,22 @@ fun PlayerMenu(
                                     },
                                     onClick = {
                                         DownloadService.sendRemoveDownload(
-                                            context, ExoDownloadService::class.java, mediaMetadata.id, false,
+                                            context,
+                                            ExoDownloadService::class.java,
+                                            mediaMetadata.id,
+                                            false,
                                         )
                                     },
                                 )
                             else ->
                                 Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.action_download)) },
-                                    description = { Text(text = stringResource(R.string.download_desc)) },
+                                    actionId = R.string.action_download,
+                                    title = {
+                                        Text(text = stringResource(R.string.action_download))
+                                    },
+                                    description = {
+                                        Text(text = stringResource(R.string.download_desc))
+                                    },
                                     icon = {
                                         Icon(
                                             painter = painterResource(R.drawable.download),
@@ -635,31 +446,131 @@ fun PlayerMenu(
                                     onClick = {
                                         database.transaction { insert(mediaMetadata) }
                                         val downloadRequest =
-                                            DownloadRequest
-                                                .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                            DownloadRequest.Builder(
+                                                    mediaMetadata.id,
+                                                    mediaMetadata.id.toUri(),
+                                                )
                                                 .setCustomCacheKey(mediaMetadata.id)
                                                 .setData(mediaMetadata.title.toByteArray())
                                                 .build()
                                         DownloadService.sendAddDownload(
-                                            context, ExoDownloadService::class.java, downloadRequest, false,
+                                            context,
+                                            ExoDownloadService::class.java,
+                                            downloadRequest,
+                                            false,
                                         )
                                     },
                                 )
-                        },
-                    ),
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items =
+                        }
+                    )
+                )
+                add(
+                    folioMenuAction(
+                        R.string.add_to_playlist,
+                        R.drawable.playlist_add,
+                        { showChoosePlaylistDialog = true },
+                    )
+                )
+                if (artists.isNotEmpty())
+                    add(
+                        folioMenuAction(
+                                R.string.view_artist,
+                                R.drawable.artist,
+                                {
+                                    if (artists.size == 1) {
+                                        navController.navigate("artist/${artists[0].id}")
+                                        playerBottomSheetState.collapseSoft()
+                                        onDismiss()
+                                    } else showSelectArtistDialog = true
+                                },
+                                text =
+                                    stringResource(
+                                        if (artists.size > 1) R.string.song_menu_view_artists
+                                        else R.string.view_artist
+                                    ),
+                            )
+                            .copy(
+                                icon = {
+                                    folioMenuArtwork(
+                                        librarySong?.artists?.firstOrNull()?.thumbnailUrl,
+                                        true,
+                                        R.drawable.artist,
+                                    )
+                                }
+                            )
+                    )
+                mediaMetadata.album?.let { album ->
+                    add(
+                        folioMenuAction(
+                                R.string.view_album,
+                                R.drawable.album,
+                                {
+                                    navController.navigate(
+                                        if (album.id.startsWith("MPREb_")) "album/${album.id}"
+                                        else "online_podcast/${album.id}"
+                                    )
+                                    playerBottomSheetState.collapseSoft()
+                                },
+                            )
+                            .copy(
+                                icon = {
+                                    folioMenuArtwork(
+                                        albumData?.album?.thumbnailUrl
+                                            ?: mediaMetadata.thumbnailUrl,
+                                        false,
+                                        R.drawable.album,
+                                    )
+                                }
+                            )
+                    )
+                }
+                add(
+                    folioMenuAction(
+                        R.string.share,
+                        R.drawable.share,
+                        { showSharePlatformDialog = true },
+                    )
+                )
+                if (!isListenTogetherGuest) {
+                    add(
+                        folioMenuAction(
+                            R.string.sleep_timer,
+                            R.drawable.bedtime,
+                            { showSleepTimerDialog = true },
+                        )
+                    )
+                    add(
+                        folioMenuAction(
+                                R.string.repeat_one,
+                                if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one
+                                else R.drawable.repeat,
+                                {
+                                    playerConnection.player.repeatMode =
+                                        if (repeatMode == Player.REPEAT_MODE_ONE)
+                                            Player.REPEAT_MODE_OFF
+                                        else Player.REPEAT_MODE_ONE
+                                },
+                            )
+                            .copy(selected = repeatMode == Player.REPEAT_MODE_ONE)
+                    )
+                }
+                if (listenTogetherManager?.isInRoom == true)
+                    add(
+                        folioMenuAction(
+                            R.string.listen_together,
+                            R.drawable.group,
+                            { showListenTogetherDialog = true },
+                        )
+                    )
+                addAll(
                     buildList {
                         add(
                             Material3MenuItemData(
+                                actionId = R.string.details,
                                 title = { Text(text = stringResource(R.string.details)) },
-                                description = { Text(text = stringResource(R.string.details_desc)) },
+                                description = {
+                                    Text(text = stringResource(R.string.details_desc))
+                                },
                                 icon = {
                                     Icon(
                                         painter = painterResource(R.drawable.info),
@@ -671,13 +582,16 @@ fun PlayerMenu(
                                     onShowDetailsDialog()
                                     onDismiss()
                                 },
-                            ),
+                            )
                         )
                         if (isQueueTrigger != true && advancedMode) {
                             add(
                                 Material3MenuItemData(
+                                    actionId = R.string.advanced,
                                     title = { Text(text = stringResource(R.string.advanced)) },
-                                    description = { Text(text = stringResource(R.string.advanced_desc)) },
+                                    description = {
+                                        Text(text = stringResource(R.string.advanced_desc))
+                                    },
                                     icon = {
                                         Icon(
                                             painter = painterResource(R.drawable.tune),
@@ -689,24 +603,41 @@ fun PlayerMenu(
                                         if (!varispeedMode) showPitchTempoDialog = true
                                         else showSpeedDialog = true
                                     },
-                                ),
+                                )
                             )
                         }
-                    },
-            )
-        }
-    }
-
+                    }
+                )
+            },
+        visible =
+            !showChoosePlaylistDialog &&
+                !showSelectArtistDialog &&
+                !showSharePlatformDialog &&
+                !showSleepTimerDialog &&
+                !showListenTogetherDialog &&
+                !showPitchTempoDialog &&
+                !showSpeedDialog,
+        onDismiss = onDismiss,
+        retainOpenActions =
+            setOf(
+                R.string.add_to_playlist,
+                R.string.view_artist,
+                R.string.share,
+                R.string.sleep_timer,
+                R.string.listen_together,
+                R.string.advanced,
+            ),
+    )
 }
 
 @Composable
 fun TempoPitchDialog(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    var tempo by remember {
-        mutableFloatStateOf(playerConnection.player.playbackParameters.speed)
-    }
+    var tempo by remember { mutableFloatStateOf(playerConnection.player.playbackParameters.speed) }
     var transposeValue by remember {
-        mutableIntStateOf(round(12 * log2(playerConnection.player.playbackParameters.pitch)).toInt())
+        mutableIntStateOf(
+            round(12 * log2(playerConnection.player.playbackParameters.pitch)).toInt()
+        )
     }
     val updatePlaybackParameters = {
         playerConnection.player.playbackParameters =
@@ -715,27 +646,23 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
     val isInRoom = listenTogetherManager?.isInRoom ?: false
 
-    AlertDialog(
+    IrideFolioAlertDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.tempo_and_pitch))
-        },
+        title = { Text(stringResource(R.string.tempo_and_pitch)) },
         dismissButton = {
-            TextButton(
+            IrideFolioSecondaryButton(
                 onClick = {
                     tempo = 1f
                     transposeValue = 0
                     updatePlaybackParameters()
-                },
+                }
             ) {
                 Text(stringResource(R.string.reset))
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
+            IrideFolioPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -772,35 +699,28 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
 @Composable
 fun SpeedDialog(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    var speed by remember {
-        mutableFloatStateOf(playerConnection.player.playbackParameters.speed)
-    }
+    var speed by remember { mutableFloatStateOf(playerConnection.player.playbackParameters.speed) }
     val updatePlaybackParameters = {
-        playerConnection.player.playbackParameters =
-            PlaybackParameters(speed, speed)
+        playerConnection.player.playbackParameters = PlaybackParameters(speed, speed)
     }
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
 
-    AlertDialog(
+    IrideFolioAlertDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.speed))
-        },
+        title = { Text(stringResource(R.string.speed)) },
         dismissButton = {
-            TextButton(
+            IrideFolioSecondaryButton(
                 onClick = {
                     speed = 1f
                     updatePlaybackParameters()
-                },
+                }
             ) {
                 Text(stringResource(R.string.reset))
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
+            IrideFolioPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -821,6 +741,7 @@ fun SpeedDialog(onDismiss: () -> Unit) {
         },
     )
 }
+
 @Composable
 fun <T> ValueAdjuster(
     @DrawableRes icon: Int,
@@ -843,14 +764,9 @@ fun <T> ValueAdjuster(
 
         IconButton(
             enabled = currentValue != values.first(),
-            onClick = {
-                onValueUpdate(values[values.indexOf(currentValue) - 1])
-            },
+            onClick = { onValueUpdate(values[values.indexOf(currentValue) - 1]) },
         ) {
-            Icon(
-                painter = painterResource(R.drawable.remove),
-                contentDescription = null,
-            )
+            Icon(painter = painterResource(R.drawable.remove), contentDescription = null)
         }
 
         Text(
@@ -862,24 +778,15 @@ fun <T> ValueAdjuster(
 
         IconButton(
             enabled = currentValue != values.last(),
-            onClick = {
-                onValueUpdate(values[values.indexOf(currentValue) + 1])
-            },
+            onClick = { onValueUpdate(values[values.indexOf(currentValue) + 1]) },
         ) {
-            Icon(
-                painter = painterResource(R.drawable.add),
-                contentDescription = null,
-            )
+            Icon(painter = painterResource(R.drawable.add), contentDescription = null)
         }
     }
 }
 
 @Composable
-fun ListenTogetherDialog(
-    visible: Boolean,
-    mediaMetadata: MediaMetadata?,
-    onDismiss: () -> Unit,
-) {
+fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDismiss: () -> Unit) {
     if (!visible) return
 
     val context = LocalContext.current
@@ -890,10 +797,7 @@ fun ListenTogetherDialog(
         ListDialog(onDismiss = onDismiss) {
             item {
                 Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
@@ -917,13 +821,7 @@ fun ListenTogetherDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onDismiss,
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                            ),
-                    ) {
+                    IrideFolioPrimaryButton(onClick = onDismiss) {
                         Text(stringResource(android.R.string.ok))
                     }
                 }
@@ -938,7 +836,8 @@ fun ListenTogetherDialog(
     val pendingJoinRequests by listenTogetherManager.pendingJoinRequests.collectAsState()
     val pendingSuggestions by listenTogetherManager.pendingSuggestions.collectAsState()
 
-    var savedUsername by rememberPreference(com.metrolist.music.constants.ListenTogetherUsernameKey, "")
+    var savedUsername by
+        rememberPreference(com.metrolist.music.constants.ListenTogetherUsernameKey, "")
     var roomCodeInput by rememberSaveable { mutableStateOf("") }
     var usernameInput by rememberSaveable { mutableStateOf(savedUsername) }
 
@@ -958,14 +857,12 @@ fun ListenTogetherDialog(
             onDismiss = {
                 selectedUserForMenu = null
                 selectedUsername = null
-            },
+            }
         ) {
             item {
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start,
                 ) {
@@ -997,16 +894,13 @@ fun ListenTogetherDialog(
             item {
                 Surface(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .clickable {
-                                selectedUserForMenu?.let {
-                                    listenTogetherManager.kickUser(it, "Removed by host")
-                                }
-                                selectedUserForMenu = null
-                                selectedUsername = null
-                            },
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp).clickable {
+                            selectedUserForMenu?.let {
+                                listenTogetherManager.kickUser(it, "Removed by host")
+                            }
+                            selectedUserForMenu = null
+                            selectedUsername = null
+                        },
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.errorContainer,
                 ) {
@@ -1043,19 +937,19 @@ fun ListenTogetherDialog(
             item {
                 Surface(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .clickable {
-                                selectedUserForMenu?.let { userId ->
-                                    selectedUsername?.let { username ->
-                                        listenTogetherManager.blockUser(username)
-                                        listenTogetherManager.kickUser(userId, R.string.user_blocked_by_host.toString())
-                                    }
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp).clickable {
+                            selectedUserForMenu?.let { userId ->
+                                selectedUsername?.let { username ->
+                                    listenTogetherManager.blockUser(username)
+                                    listenTogetherManager.kickUser(
+                                        userId,
+                                        R.string.user_blocked_by_host.toString(),
+                                    )
                                 }
-                                selectedUserForMenu = null
-                                selectedUsername = null
-                            },
+                            }
+                            selectedUserForMenu = null
+                            selectedUsername = null
+                        },
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                 ) {
@@ -1092,16 +986,11 @@ fun ListenTogetherDialog(
             item {
                 Surface(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .clickable {
-                                selectedUserForMenu?.let {
-                                    listenTogetherManager.transferHost(it)
-                                }
-                                selectedUserForMenu = null
-                                selectedUsername = null
-                            },
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp).clickable {
+                            selectedUserForMenu?.let { listenTogetherManager.transferHost(it) }
+                            selectedUserForMenu = null
+                            selectedUsername = null
+                        },
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
@@ -1152,7 +1041,8 @@ fun ListenTogetherDialog(
                     joinErrorMessage =
                         when {
                             reason.isNullOrBlank() -> joinRequestDeniedText
-                            reason.contains("invalid", ignoreCase = true) == true -> invalidRoomCodeText
+                            reason.contains("invalid", ignoreCase = true) == true ->
+                                invalidRoomCodeText
                             else -> "$joinRequestDeniedText: $reason"
                         }
                     isJoiningRoom = false
@@ -1167,12 +1057,14 @@ fun ListenTogetherDialog(
                 is ListenTogetherEvent.RoomCreated -> {
                     isCreatingRoom = false
                     val clipboard =
-                        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText("ListenTogetherRoom", event.roomCode)
+                        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    val clip =
+                        android.content.ClipData.newPlainText("ListenTogetherRoom", event.roomCode)
                     clipboard.setPrimaryClip(clip)
                 }
 
-                else -> {  }
+                else -> {}
             }
         }
     }
@@ -1183,10 +1075,7 @@ fun ListenTogetherDialog(
     ListDialog(onDismiss = onDismiss) {
         item {
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start,
             ) {
@@ -1200,7 +1089,8 @@ fun ListenTogetherDialog(
                 Text(
                     text =
                         if (isInRoom) {
-                            if (isHost) stringResource(R.string.hosting_room) else stringResource(R.string.in_room)
+                            if (isHost) stringResource(R.string.hosting_room)
+                            else stringResource(R.string.in_room)
                         } else {
                             stringResource(R.string.listen_together)
                         },
@@ -1213,15 +1103,15 @@ fun ListenTogetherDialog(
 
         item {
             Surface(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 color =
                     when (connectionState) {
-                        ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                        ConnectionState.CONNECTED ->
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        ConnectionState.CONNECTING,
+                        ConnectionState.RECONNECTING ->
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                         ConnectionState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                         ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.surfaceVariant
                     },
@@ -1236,42 +1126,57 @@ fun ListenTogetherDialog(
                     ) {
                         Box(
                             modifier =
-                                Modifier
-                                    .size(10.dp)
+                                Modifier.size(10.dp)
                                     .background(
                                         color =
                                             when (connectionState) {
-                                                ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
-                                                ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary
-                                                ConnectionState.ERROR -> MaterialTheme.colorScheme.error
-                                                ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.outline
+                                                ConnectionState.CONNECTED ->
+                                                    MaterialTheme.colorScheme.primary
+                                                ConnectionState.CONNECTING,
+                                                ConnectionState.RECONNECTING ->
+                                                    MaterialTheme.colorScheme.secondary
+                                                ConnectionState.ERROR ->
+                                                    MaterialTheme.colorScheme.error
+                                                ConnectionState.DISCONNECTED ->
+                                                    MaterialTheme.colorScheme.outline
                                             },
                                         shape = RoundedCornerShape(50),
-                                    ),
+                                    )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text =
                                 when (connectionState) {
-                                    ConnectionState.CONNECTED -> stringResource(R.string.listen_together_connected)
-                                    ConnectionState.CONNECTING -> stringResource(R.string.listen_together_connecting)
-                                    ConnectionState.RECONNECTING -> stringResource(R.string.listen_together_reconnecting)
-                                    ConnectionState.ERROR -> stringResource(R.string.listen_together_error)
-                                    ConnectionState.DISCONNECTED -> stringResource(R.string.listen_together_disconnected)
+                                    ConnectionState.CONNECTED ->
+                                        stringResource(R.string.listen_together_connected)
+                                    ConnectionState.CONNECTING ->
+                                        stringResource(R.string.listen_together_connecting)
+                                    ConnectionState.RECONNECTING ->
+                                        stringResource(R.string.listen_together_reconnecting)
+                                    ConnectionState.ERROR ->
+                                        stringResource(R.string.listen_together_error)
+                                    ConnectionState.DISCONNECTED ->
+                                        stringResource(R.string.listen_together_disconnected)
                                 },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color =
                                 when (connectionState) {
                                     ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
-                                    ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary
+                                    ConnectionState.CONNECTING,
+                                    ConnectionState.RECONNECTING ->
+                                        MaterialTheme.colorScheme.secondary
                                     ConnectionState.ERROR -> MaterialTheme.colorScheme.error
-                                    ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    ConnectionState.DISCONNECTED ->
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                         )
                     }
 
-                    if (connectionState == ConnectionState.CONNECTING || connectionState == ConnectionState.RECONNECTING) {
+                    if (
+                        connectionState == ConnectionState.CONNECTING ||
+                            connectionState == ConnectionState.RECONNECTING
+                    ) {
                         Spacer(modifier = Modifier.height(12.dp))
                         LinearProgressIndicator(
                             modifier = Modifier.fillMaxWidth(),
@@ -1285,33 +1190,28 @@ fun ListenTogetherDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        if (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR) {
-                            Button(
+                        if (
+                            connectionState == ConnectionState.DISCONNECTED ||
+                                connectionState == ConnectionState.ERROR
+                        ) {
+                            IrideFolioPrimaryButton(
                                 onClick = { listenTogetherManager.connect() },
                                 modifier = Modifier.weight(1f),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                    ),
                             ) {
-                                Text(stringResource(R.string.connect), fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.connect))
                             }
                         } else {
-                            Button(
+                            IrideFolioPrimaryButton(
                                 onClick = { listenTogetherManager.disconnect() },
                                 modifier = Modifier.weight(1f),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                    ),
                             ) {
-                                Text(stringResource(R.string.disconnect), fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.disconnect))
                             }
-                            FilledTonalButton(
+                            IrideFolioPrimaryButton(
                                 onClick = { listenTogetherManager.forceReconnect() },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("Reconnect", fontWeight = FontWeight.SemiBold)
+                                Text("Reconnect")
                             }
                         }
                     }
@@ -1338,10 +1238,7 @@ fun ListenTogetherDialog(
             roomState?.let { room ->
                 item {
                     Surface(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     ) {
@@ -1377,16 +1274,24 @@ fun ListenTogetherDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
-                                    FilledTonalButton(
+                                    IrideFolioPrimaryButton(
                                         onClick = {
                                             val clipboard =
-                                                context.getSystemService(
-                                                    Context.CLIPBOARD_SERVICE,
-                                                ) as android.content.ClipboardManager
-                                            val clip = android.content.ClipData.newPlainText("Listen Together Link", inviteLink)
+                                                context.getSystemService(Context.CLIPBOARD_SERVICE)
+                                                    as android.content.ClipboardManager
+                                            val clip =
+                                                android.content.ClipData.newPlainText(
+                                                    "Listen Together Link",
+                                                    inviteLink,
+                                                )
                                             clipboard.setPrimaryClip(clip)
-                                            Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                                        },
+                                            Toast.makeText(
+                                                    context,
+                                                    R.string.copied_to_clipboard,
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.link),
@@ -1399,16 +1304,24 @@ fun ListenTogetherDialog(
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    FilledTonalButton(
+                                    IrideFolioPrimaryButton(
                                         onClick = {
                                             val clipboard =
-                                                context.getSystemService(
-                                                    Context.CLIPBOARD_SERVICE,
-                                                ) as android.content.ClipboardManager
-                                            val clip = android.content.ClipData.newPlainText("Room Code", room.roomCode)
+                                                context.getSystemService(Context.CLIPBOARD_SERVICE)
+                                                    as android.content.ClipboardManager
+                                            val clip =
+                                                android.content.ClipData.newPlainText(
+                                                    "Room Code",
+                                                    room.roomCode,
+                                                )
                                             clipboard.setPrimaryClip(clip)
-                                            Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                                        },
+                                            Toast.makeText(
+                                                    context,
+                                                    R.string.copied_to_clipboard,
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.content_copy),
@@ -1429,12 +1342,7 @@ fun ListenTogetherDialog(
                 val connectedUsers = room.users.filter { it.isConnected }
 
                 item {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Text(
                             text = stringResource(R.string.connected_users, connectedUsers.size),
                             style = MaterialTheme.typography.titleSmall,
@@ -1451,8 +1359,7 @@ fun ListenTogetherDialog(
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier =
-                                        Modifier
-                                            .width(72.dp)
+                                        Modifier.width(72.dp)
                                             .clickable(
                                                 enabled = isHost && user.userId != userId,
                                                 onClick = {
@@ -1461,9 +1368,7 @@ fun ListenTogetherDialog(
                                                 },
                                             ),
                                 ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                    ) {
+                                    Box(contentAlignment = Alignment.Center) {
                                         Surface(
                                             modifier = Modifier.size(52.dp),
                                             shape = RoundedCornerShape(50),
@@ -1490,7 +1395,8 @@ fun ListenTogetherDialog(
                                                         } else if (user.userId == userId) {
                                                             MaterialTheme.colorScheme.onSecondary
                                                         } else {
-                                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                                            MaterialTheme.colorScheme
+                                                                .onSurfaceVariant
                                                         },
                                                 )
                                             }
@@ -1499,12 +1405,14 @@ fun ListenTogetherDialog(
                                         if (user.isHost || user.userId == userId) {
                                             Surface(
                                                 modifier =
-                                                    Modifier
-                                                        .align(Alignment.BottomEnd)
+                                                    Modifier.align(Alignment.BottomEnd)
                                                         .offset(x = 4.dp, y = 4.dp)
                                                         .size(18.dp),
                                                 shape = RoundedCornerShape(50),
-                                                color = if (user.isHost) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                                color =
+                                                    if (user.isHost)
+                                                        MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.secondary,
                                             ) {
                                                 Box(
                                                     contentAlignment = Alignment.Center,
@@ -1513,7 +1421,8 @@ fun ListenTogetherDialog(
                                                     Icon(
                                                         painter =
                                                             painterResource(
-                                                                if (user.isHost) R.drawable.crown else R.drawable.person,
+                                                                if (user.isHost) R.drawable.crown
+                                                                else R.drawable.person
                                                             ),
                                                         contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.onPrimary,
@@ -1529,7 +1438,9 @@ fun ListenTogetherDialog(
                                     Text(
                                         text = user.username,
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (user.userId == userId) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight =
+                                            if (user.userId == userId) FontWeight.Bold
+                                            else FontWeight.Medium,
                                         color =
                                             if (user.isHost) {
                                                 MaterialTheme.colorScheme.primary
@@ -1545,13 +1456,17 @@ fun ListenTogetherDialog(
                                         Text(
                                             text = stringResource(R.string.host_label),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                            color =
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                                         )
                                     } else if (user.userId == userId) {
                                         Text(
                                             text = stringResource(R.string.you_label),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                                            color =
+                                                MaterialTheme.colorScheme.secondary.copy(
+                                                    alpha = 0.8f
+                                                ),
                                         )
                                     }
                                 }
@@ -1578,8 +1493,7 @@ fun ListenTogetherDialog(
                     items(pendingJoinRequests) { request ->
                         Surface(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
+                                Modifier.fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
@@ -1621,7 +1535,9 @@ fun ListenTogetherDialog(
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     IconButton(
-                                        onClick = { listenTogetherManager.approveJoin(request.userId) },
+                                        onClick = {
+                                            listenTogetherManager.approveJoin(request.userId)
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.check),
@@ -1631,7 +1547,12 @@ fun ListenTogetherDialog(
                                         )
                                     }
                                     IconButton(
-                                        onClick = { listenTogetherManager.rejectJoin(request.userId, "Rejected by host") },
+                                        onClick = {
+                                            listenTogetherManager.rejectJoin(
+                                                request.userId,
+                                                "Rejected by host",
+                                            )
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.close),
@@ -1664,8 +1585,7 @@ fun ListenTogetherDialog(
                     items(pendingSuggestions) { suggestion ->
                         Surface(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
+                                Modifier.fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
@@ -1707,7 +1627,11 @@ fun ListenTogetherDialog(
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     IconButton(
-                                        onClick = { listenTogetherManager.approveSuggestion(suggestion.suggestionId) },
+                                        onClick = {
+                                            listenTogetherManager.approveSuggestion(
+                                                suggestion.suggestionId
+                                            )
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.check),
@@ -1717,7 +1641,12 @@ fun ListenTogetherDialog(
                                         )
                                     }
                                     IconButton(
-                                        onClick = { listenTogetherManager.rejectSuggestion(suggestion.suggestionId, "Rejected by host") },
+                                        onClick = {
+                                            listenTogetherManager.rejectSuggestion(
+                                                suggestion.suggestionId,
+                                                "Rejected by host",
+                                            )
+                                        }
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.close),
@@ -1735,31 +1664,21 @@ fun ListenTogetherDialog(
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        TextButton(
+                        IrideFolioSecondaryButton(
                             onClick = onDismiss,
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(
-                                stringResource(R.string.cancel),
-                                fontWeight = FontWeight.Medium,
-                            )
+                            Text(stringResource(R.string.cancel))
                         }
-                        Button(
+                        IrideFolioPrimaryButton(
                             onClick = {
                                 listenTogetherManager.leaveRoom()
                                 onDismiss()
                             },
                             modifier = Modifier.weight(1f),
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                ),
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.logout),
@@ -1767,7 +1686,7 @@ fun ListenTogetherDialog(
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.leave_room), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.leave_room))
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1776,10 +1695,7 @@ fun ListenTogetherDialog(
         } else {
             item {
                 Surface(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 ) {
@@ -1835,7 +1751,10 @@ fun ListenTogetherDialog(
 
                         OutlinedTextField(
                             value = roomCodeInput,
-                            onValueChange = { roomCodeInput = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
+                            onValueChange = {
+                                roomCodeInput =
+                                    it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8)
+                            },
                             label = { Text(stringResource(R.string.room_code)) },
                             placeholder = { Text("ABCD1234") },
                             supportingText = {
@@ -1918,38 +1837,43 @@ fun ListenTogetherDialog(
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Button(
+                        IrideFolioPrimaryButton(
                             onClick = {
-                                val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
+                                val username =
+                                    usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
                                 val finalUsername = username.trim()
                                 if (finalUsername.isNotBlank()) {
                                     savedUsername = finalUsername
-                                    Toast.makeText(context, R.string.creating_room, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                            context,
+                                            R.string.creating_room,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
                                     isCreatingRoom = true
                                     isJoiningRoom = false
                                     joinErrorMessage = null
                                     listenTogetherManager.connect()
                                     listenTogetherManager.createRoom(finalUsername)
                                 } else {
-                                    Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                            context,
+                                            R.string.error_username_empty,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()),
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                ),
+                            enabled =
+                                (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()),
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.add),
@@ -1957,37 +1881,41 @@ fun ListenTogetherDialog(
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.create_room), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.create_room))
                         }
 
                         if (roomCodeInput.length == 8) {
-                            Button(
+                            IrideFolioPrimaryButton(
                                 onClick = {
-                                    val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
+                                    val username =
+                                        usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
                                     val finalUsername = username.trim()
                                     if (finalUsername.isNotBlank()) {
                                         savedUsername = finalUsername
-                                        Toast
-                                            .makeText(
+                                        Toast.makeText(
                                                 context,
                                                 String.format(joiningRoomTemplate, roomCodeInput),
                                                 Toast.LENGTH_SHORT,
-                                            ).show()
+                                            )
+                                            .show()
                                         isJoiningRoom = true
                                         isCreatingRoom = false
                                         joinErrorMessage = null
                                         listenTogetherManager.connect()
                                         listenTogetherManager.joinRoom(roomCodeInput, finalUsername)
                                     } else {
-                                        Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                                context,
+                                                R.string.error_username_empty,
+                                                Toast.LENGTH_SHORT,
+                                            )
+                                            .show()
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary,
-                                    ),
+                                enabled =
+                                    (usernameInput.trim().isNotBlank() ||
+                                        savedUsername.isNotBlank()),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.login),
@@ -1995,20 +1923,16 @@ fun ListenTogetherDialog(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.join_room), fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.join_room))
                             }
                         }
                     }
 
-                    TextButton(
+                    IrideFolioSecondaryButton(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(
-                            stringResource(R.string.cancel),
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Text(stringResource(R.string.cancel))
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))

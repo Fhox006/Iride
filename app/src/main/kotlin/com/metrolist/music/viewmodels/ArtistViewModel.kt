@@ -21,6 +21,7 @@ import com.metrolist.innertube.pages.ArtistPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.data.remote.ArtistArtworkRepository
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -61,6 +63,7 @@ class ArtistViewModel @Inject constructor(
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
     private val musicBrainzRepository: MusicBrainzRepository,
+    private val artistArtworkRepository: ArtistArtworkRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
@@ -75,6 +78,16 @@ class ArtistViewModel @Inject constructor(
 
     val libraryArtist = database.artist(artistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    // Collect when artwork selection is shown; retrieving candidates never replaces the current photo.
+    val externalArtistArtworks = kotlinx.coroutines.flow.combine(
+        snapshotFlow { artistPage?.artist },
+        libraryArtist,
+    ) { online, local ->
+        (online?.title ?: local?.artist?.name) to (online?.channelId ?: local?.artist?.channelId ?: artistId)
+    }.distinctUntilChanged().mapLatest { (name, channelId) ->
+        if (name == null || isPodcastChannel) emptyList() else artistArtworkRepository.findArtworks(name, channelId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val isChannelSubscribed = kotlinx.coroutines.flow.combine(
         _apiSubscribed,

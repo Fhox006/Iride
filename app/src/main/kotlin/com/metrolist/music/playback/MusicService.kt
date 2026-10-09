@@ -324,6 +324,7 @@ class MusicService :
     private lateinit var audioQuality: com.metrolist.music.constants.AudioQuality
 
     private var currentQueue: Queue = EmptyQueue
+    private var finiteQueueLoadJob: Job? = null
     var queueTitle: String? = null
 
     val currentMediaMetadata = MutableStateFlow<com.metrolist.music.models.MediaMetadata?>(null)
@@ -443,6 +444,7 @@ class MusicService :
     val promotedRadioItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
     val isAutoMixQueueActive = MutableStateFlow(false)
+    val radioSeedMetadata = MutableStateFlow<MediaMetadata?>(null)
 
     // Bumped whenever the radio state is reset so that in-flight automix fetches
     // (async network calls) are discarded instead of resurrecting a cleared radio.
@@ -1432,6 +1434,8 @@ class MusicService :
             return
         }
 
+        finiteQueueLoadJob?.cancel()
+        finiteQueueLoadJob = null
         currentQueue = queue
         queueTitle = null
         clearRadioState()
@@ -1528,7 +1532,9 @@ class MusicService :
         clearRadioState()
 
         synchronized(automixLock) { radioSeedId = currentMediaId }
+        radioSeedMetadata.value = currentMediaMetadata
         isAutoMixQueueActive.value = true
+        val requestId = automixRequestId.get()
 
         scope.launch(SilentHandler) {
             val radioQueue =
@@ -1548,6 +1554,8 @@ class MusicService :
                             .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
                     }
 
+                if (requestId != automixRequestId.get() || !playerInitialized.value) return@launch
+
                 // The server title for a mix is a generic word like "Radio":
                 // qualify it with the seed song so the queue header can never
                 // be mistaken for a track called "Radio".
@@ -1566,6 +1574,9 @@ class MusicService :
                     }
 
                 if (radioItems.isNotEmpty()) {
+                    // Playback may advance while recommendations are loading.
+                    val currentIndex = player.currentMediaItemIndex
+                    if (currentIndex == C.INDEX_UNSET) return@launch
                     val itemCount = player.mediaItemCount
 
                     if (itemCount > currentIndex + 1) {
@@ -1582,6 +1593,8 @@ class MusicService :
                 currentQueue = radioQueue
                 isAutoMixQueueActive.value = true
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (requestId != automixRequestId.get() || !playerInitialized.value) return@launch
                 try {
                     val nextResult =
                         withContext(Dispatchers.IO) {
@@ -1601,6 +1614,9 @@ class MusicService :
                                     .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
 
                             if (radioItems.isNotEmpty()) {
+                                if (requestId != automixRequestId.get() || !playerInitialized.value) return@launch
+                                val currentIndex = player.currentMediaItemIndex
+                                if (currentIndex == C.INDEX_UNSET) return@launch
                                 val itemCount = player.mediaItemCount
                                 if (itemCount > currentIndex + 1) {
                                     player.removeMediaItems(currentIndex + 1, itemCount)
@@ -1618,6 +1634,7 @@ class MusicService :
                         }
                     }
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     Timber.tag(TAG).w(e, "Failed to extend queue with radio songs")
                 }
             }
@@ -1633,6 +1650,7 @@ class MusicService :
         playQueue(YouTubeQueue.radio(mediaMetadata))
         // playQueue() clears the flag synchronously, re-arm it for the new radio queue.
         synchronized(automixLock) { radioSeedId = mediaMetadata.id }
+        radioSeedMetadata.value = mediaMetadata
         isAutoMixQueueActive.value = true
     }
 
@@ -1649,6 +1667,7 @@ class MusicService :
     fun clearRadioState() {
         automixRequestId.incrementAndGet()
         synchronized(automixLock) { radioSeedId = null }
+        radioSeedMetadata.value = null
         isAutoMixQueueActive.value = false
         automixItems.value = emptyList()
         automixEnsuredAtIndex = C.INDEX_UNSET
@@ -2294,21 +2313,24 @@ class MusicService :
             }
         }
 
-        if (dataStore.get(AutoLoadMoreKey, true) &&
+        if ((currentQueue.requiresPagination || dataStore.get(AutoLoadMoreKey, true)) &&
+            (!currentQueue.requiresPagination || finiteQueueLoadJob?.isActive != true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.mediaItemCount - player.currentMediaItemIndex <= 5 &&
             currentQueue.hasNextPage() &&
-            !(dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL)
+            (currentQueue.requiresPagination ||
+                !(dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL))
         ) {
-            scope.launch(SilentHandler) {
+            val queueToLoad = currentQueue
+            val loadJob = scope.launch(SilentHandler) {
                 val mediaItems =
                     withContext(Dispatchers.IO) {
-                        currentQueue
+                        queueToLoad
                             .nextPage()
                             .filterExplicit(dataStore.get(HideExplicitKey, false))
                             .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
                     }
-                if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
+                if (currentQueue === queueToLoad && player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
                     player.addMediaItems(mediaItems)
                     if (player.shuffleModeEnabled) {
                         val shufflePlaylistFirst = shufflePlaylistFirst
@@ -2316,6 +2338,7 @@ class MusicService :
                     }
                 }
             }
+            if (queueToLoad.requiresPagination) finiteQueueLoadJob = loadJob
         }
 
         // Stable radio continues via currentQueue pagination above; the legacy
@@ -2833,8 +2856,9 @@ class MusicService :
         retryJob =
             scope.launch {
                 try {
-                    player.pause()
-                    Timber.tag(TAG).d("Paused playback due to AudioTrack error")
+                    // ExoPlayer has already stopped the failed renderer. Preserve playWhenReady
+                    // so prepare resumes playback, and a user pause during recovery is respected.
+                    Timber.tag(TAG).d("Recovering from AudioTrack error")
 
                     delay(RETRY_DELAY_MS)
 
@@ -2843,6 +2867,8 @@ class MusicService :
                         return@launch
                     }
 
+                    if (player.currentMediaItem?.mediaId != mediaId) return@launch
+
                     val currentIndex = player.currentMediaItemIndex
                     if (currentIndex != C.INDEX_UNSET) {
                         val currentPosition = player.currentPosition
@@ -2850,20 +2876,12 @@ class MusicService :
                         player.prepare()
 
                         Timber.tag(TAG).d("Retrying playback for $mediaId after AudioTrack error")
-
-                        if (wasPlayingBeforeAudioFocusLoss) {
-                            delay(200)
-                            if (hasAudioFocus && playerInitialized.value) {
-                                if (castConnectionHandler?.isCasting?.value != true) {
-                                    player.play()
-                                }
-                            }
-                        }
                     } else {
                         Timber.tag(TAG).w("Invalid media item index during AudioTrack recovery")
                         handleFinalFailure()
                     }
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     Timber.tag(TAG).e(e, "Error during AudioTrack error recovery")
                     handleFinalFailure()
                 }

@@ -16,7 +16,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,21 +34,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,7 +72,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
@@ -205,7 +195,7 @@ internal fun LyricsActionOverlay(
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()
         ) {
-            FilledTonalButton(onClick = onSyncClick) {
+            IrideFolioPrimaryButton(onClick = onSyncClick) {
                 Icon(painterResource(R.drawable.sync), stringResource(R.string.auto_scroll), Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.auto_scroll))
@@ -221,7 +211,7 @@ internal fun LyricsActionOverlay(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(
+                IrideFolioPrimaryButton(
                     onClick = onShareSelection,
                     enabled = anySelected
                 ) {
@@ -305,118 +295,105 @@ internal fun LyricsColorPickerDialog(
         }
     }
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
-            modifier = Modifier.fillMaxWidth().padding(20.dp)
+    IrideFolioDialog(onDismissRequest = onDismiss) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp)
+            Text(
+                stringResource(R.string.share_as_image),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
             ) {
-                Text(
-                    stringResource(R.string.share_as_image),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                LyricsImageCard(
+                    lyricText = frozenTxt,
+                    mediaMetadata = MediaMetadata(
+                        id = "",
+                        title = frozenTitle,
+                        artists = listOf(MediaMetadata.Artist(name = frozenArts, id = null)),
+                        thumbnailUrl = frozenThumbnailUrl,
+                        duration = 0
+                    ),
+                    darkBackground = true,
+                    backgroundColor = previewBackgroundColor,
+                    backgroundStyle = bgStyle,
+                    textColor = previewTextColor,
+                    secondaryTextColor = previewSecondaryTextColor,
+                    textAlign = align
                 )
-                Spacer(Modifier.height(12.dp))
+            }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IrideFolioChoiceButton(
+                    selected = bgStyle == LyricsBackgroundStyle.SOLID,
+                    onClick = { bgStyle = LyricsBackgroundStyle.SOLID },
+                    modifier = Modifier.weight(1f),
                 ) {
-                    LyricsImageCard(
-                        lyricText = frozenTxt,
-                        mediaMetadata = MediaMetadata(
-                            id = "",
-                            title = frozenTitle,
-                            artists = listOf(MediaMetadata.Artist(name = frozenArts, id = null)),
-                            thumbnailUrl = frozenThumbnailUrl,
-                            duration = 0
-                        ),
-                        darkBackground = true,
-                        backgroundColor = previewBackgroundColor,
-                        backgroundStyle = bgStyle,
-                        textColor = previewTextColor,
-                        secondaryTextColor = previewSecondaryTextColor,
-                        textAlign = align
-                    )
+                    Text("Color")
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                IrideFolioChoiceButton(
+                    selected = bgStyle == LyricsBackgroundStyle.BLUR,
+                    onClick = { bgStyle = LyricsBackgroundStyle.BLUR },
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Button(
-                        onClick = { bgStyle = LyricsBackgroundStyle.SOLID },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(50),
-                        colors = if (bgStyle == LyricsBackgroundStyle.SOLID) androidx.compose.material3.ButtonDefaults.buttonColors() else androidx.compose.material3.ButtonDefaults.filledTonalButtonColors()
-                    ) {
-                        Text("Color")
-                    }
-                    Button(
-                        onClick = { bgStyle = LyricsBackgroundStyle.BLUR },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(50),
-                        colors = if (bgStyle == LyricsBackgroundStyle.BLUR) androidx.compose.material3.ButtonDefaults.buttonColors() else androidx.compose.material3.ButtonDefaults.filledTonalButtonColors()
-                    ) {
-                        Text("Blur")
-                    }
+                    Text("Blur")
                 }
+            }
 
-                AnimatedVisibility(visible = bgStyle == LyricsBackgroundStyle.SOLID) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Spacer(Modifier.height(18.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            paletteColors.forEach { color ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .background(color, RoundedCornerShape(8.dp))
-                                        .clickable { previewBackgroundColor = color }
-                                        .border(
-                                            2.dp,
-                                            if (previewBackgroundColor == color) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                            RoundedCornerShape(8.dp)
-                                        )
-                                )
-                            }
+            AnimatedVisibility(visible = bgStyle == LyricsBackgroundStyle.SOLID) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.height(18.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        paletteColors.forEach { color ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .background(color, RoundedCornerShape(8.dp))
+                                    .clickable { previewBackgroundColor = color }
+                                    .border(
+                                        2.dp,
+                                        if (previewBackgroundColor == color) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                            )
                         }
                     }
                 }
+            }
 
-                Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = { onCopyAsImage(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Icon(painterResource(R.drawable.content_copy), null, Modifier.size(20.dp))
-                    }
-                    Button(
-                        onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Icon(painterResource(R.drawable.share), null, Modifier.size(20.dp))
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                IrideFolioPrimaryButton(
+                    onClick = { onCopyAsImage(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                    modifier = Modifier.weight(1f).height(48.dp),) {
+                    Icon(painterResource(R.drawable.content_copy), null, Modifier.size(20.dp))
+                }
+                IrideFolioPrimaryButton(
+                    onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                    modifier = Modifier.weight(1f),) {
+                    Icon(painterResource(R.drawable.share), null, Modifier.size(20.dp))
                 }
             }
         }
@@ -454,136 +431,132 @@ internal fun LyricsApiSetupDialog(
     val url = providerUrls[provider] ?: ""
     val primaryColor = MaterialTheme.colorScheme.primary
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth(),
+    IrideFolioDialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .padding(IrideFolio.DialogContentPadding)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.key),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text("Translation setup", style = MaterialTheme.typography.headlineSmall)
-                }
-
-                Text(
-                    "Provider: $provider",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Icon(
+                    painterResource(R.drawable.key),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
+                Text("Translation setup",
+                style = MaterialTheme.typography.headlineSmall,)
+            }
 
-                Text(
-                    "To use AI lyrics translation, an API key for the selected provider is required.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            Text(
+                "Provider: $provider",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-                if (url.isNotEmpty()) {
-                    val annotatedString = buildAnnotatedString {
-                        append("Get your API key at ")
-                        val start = length
-                        append(url)
-                        addLink(
-                            LinkAnnotation.Url(
-                                url = url,
-                                styles = TextLinkStyles(
-                                    style = SpanStyle(
-                                        color = primaryColor,
-                                        textDecoration = TextDecoration.Underline,
-                                    ),
+            Text(
+                "To use AI lyrics translation, an API key for the selected provider is required.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            if (url.isNotEmpty()) {
+                val annotatedString = buildAnnotatedString {
+                    append("Get your API key at ")
+                    val start = length
+                    append(url)
+                    addLink(
+                        LinkAnnotation.Url(
+                            url = url,
+                            styles = TextLinkStyles(
+                                style = SpanStyle(
+                                    color = primaryColor,
+                                    textDecoration = TextDecoration.Underline,
                                 ),
                             ),
-                            start = start,
-                            end = length,
-                        )
-                    }
-                    Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
+                        ),
+                        start = start,
+                        end = length,
+                    )
                 }
+                Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
+            }
 
-                OutlinedTextField(
-                    value = keyInput,
-                    onValueChange = { keyInput = it },
-                    label = { Text("API Key") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
-                )
+            OutlinedTextField(
+                value = keyInput,
+                onValueChange = { keyInput = it },
+                label = { Text("API Key") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
+            )
 
-                Text(
-                    "Translation language",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Text(
+                "Translation language",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    sortedLanguages.forEach { entry ->
-                        val code = entry.key
-                        val name = entry.value
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedLanguage = code
-                                    onLanguageSelected(code)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                                color = if (selectedLanguage == code) primaryColor
-                                        else MaterialTheme.colorScheme.onSurface,
-                            )
-                            if (selectedLanguage == code) {
-                                Icon(
-                                    painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = primaryColor,
-                                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                sortedLanguages.forEach { entry ->
+                    val code = entry.key
+                    val name = entry.value
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedLanguage = code
+                                onLanguageSelected(code)
                             }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            color = if (selectedLanguage == code) primaryColor
+                                    else MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (selectedLanguage == code) {
+                            Icon(
+                                painterResource(R.drawable.check),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = primaryColor,
+                            )
                         }
                     }
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IrideFolioSecondaryButton(onClick = onDismiss) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                IrideFolioPrimaryButton(
+                    onClick = {
+                        onSave(keyInput.trim())
+                        onSetupCompleted()
+                    },
+                    enabled = keyInput.trim().isNotBlank(),
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            onSave(keyInput.trim())
-                            onSetupCompleted()
-                        },
-                        enabled = keyInput.trim().isNotBlank(),
-                    ) {
-                        Text(stringResource(android.R.string.ok))
-                    }
+                    Text(stringResource(android.R.string.ok))
                 }
             }
         }
@@ -609,90 +582,85 @@ internal fun LyricsLanguagePickerDialog(
         }
     }
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        painterResource(R.drawable.translate),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = "Translate to",
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                }
-
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search language") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+    IrideFolioDialog(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    painterResource(R.drawable.translate),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
+                Text(
+                    text = "Translate to",
+                style = MaterialTheme.typography.headlineSmall,
+                )
+            }
 
-                androidx.compose.foundation.lazy.LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(filtered.size) { idx ->
-                        val entry = filtered[idx]
-                        val isSelected = entry.key == selected
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                    else androidx.compose.ui.graphics.Color.Transparent
-                                )
-                                .clickable { selected = entry.key }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = entry.value,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search language") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items(filtered.size) { idx ->
+                    val entry = filtered[idx]
+                    val isSelected = entry.key == selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else androidx.compose.ui.graphics.Color.Transparent
                             )
-                            if (isSelected) {
-                                Icon(
-                                    painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            .clickable { selected = entry.key }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = entry.value,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                        if (isSelected) {
+                            Icon(
+                                painterResource(R.drawable.check),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onConfirm(selected) }) {
-                        Text("Translate")
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IrideFolioSecondaryButton(onClick = onDismiss) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                IrideFolioPrimaryButton(onClick = { onConfirm(selected) }) {
+                    Text("Translate")
                 }
             }
         }
@@ -722,168 +690,150 @@ internal fun GeminiSetupDialog(
     }
     val primaryColor = MaterialTheme.colorScheme.textPrimary
 
-    Dialog(
+    IrideFolioDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        val titleStyle = MaterialTheme.typography.headlineSmall.copy(
+            fontFamily = SpaceMonoFontFamily,
+            fontWeight = FontWeight.Bold,
+        )
+        val bodyStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+        val smallStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
+        Column(
             modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = Color.Black,
-            tonalElevation = 0.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
+                .padding(IrideFolio.DialogContentPadding)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val titleStyle = MaterialTheme.typography.headlineSmall.copy(
-                fontFamily = SpaceMonoFontFamily,
-                fontWeight = FontWeight.Bold,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    painterResource(R.drawable.key),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = primaryColor,
+                )
+                Text("AI Translation",
+                style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.textPrimary)
+            }
+
+            val linkUrl = "https://ai.google.dev/gemini-api"
+            val annotatedString = buildAnnotatedString {
+                append("To get started, visit ")
+                val start = length
+                append("ai.google.dev/gemini-api")
+                addLink(
+                    LinkAnnotation.Url(
+                        url = linkUrl,
+            styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
+                    ),
+                    start = start,
+                    end = length,
+                )
+                append(", configure a project, then start creating an API key and paste it below.")
+            }
+            Text(annotatedString, style = bodyStyle, color = MaterialTheme.colorScheme.textPrimary)
+
+            OutlinedTextField(
+                value = keyInput,
+                onValueChange = { value ->
+                    keyInput = value
+                    isApiKeyValid = value.isNotBlank()
+                },
+                label = { Text("Gemini API Key", style = smallStyle) },
+                placeholder = { Text("AIzaSyA0q.....", style = smallStyle) },
+                textStyle = bodyStyle,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.textPrimary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.textSecondary,
+                    focusedLabelColor = MaterialTheme.colorScheme.textPrimary,
+                    cursorColor = MaterialTheme.colorScheme.textPrimary,
+                ),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
             )
-            val bodyStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            val smallStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
+
+            Text(
+                "If something doesn't work, you can explore more in Settings",
+                style = smallStyle,
+                color = MaterialTheme.colorScheme.textSecondary,
+            )
+
+            Text(
+                "Translation language",
+                style = smallStyle,
+                color = MaterialTheme.colorScheme.textSecondary,
+            )
+
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .verticalScroll(rememberScrollState())
+                    .alpha(if (isApiKeyValid) 1f else 0.38f),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.key),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = primaryColor,
-                    )
-                    Text("AI Translation", style = titleStyle, color = MaterialTheme.colorScheme.textPrimary)
-                }
-
-                val linkUrl = "https://ai.google.dev/gemini-api"
-                val annotatedString = buildAnnotatedString {
-                    append("To get started, visit ")
-                    val start = length
-                    append("ai.google.dev/gemini-api")
-                    addLink(
-                        LinkAnnotation.Url(
-                            url = linkUrl,
-                styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
-                        ),
-                        start = start,
-                        end = length,
-                    )
-                    append(", configure a project, then start creating an API key and paste it below.")
-                }
-                Text(annotatedString, style = bodyStyle, color = MaterialTheme.colorScheme.textPrimary)
-
-                OutlinedTextField(
-                    value = keyInput,
-                    onValueChange = { value ->
-                        keyInput = value
-                        isApiKeyValid = value.isNotBlank()
-                    },
-                    label = { Text("Gemini API Key", style = smallStyle) },
-                    placeholder = { Text("AIzaSyA0q.....", style = smallStyle) },
-                    textStyle = bodyStyle,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.textPrimary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.textSecondary,
-                        focusedLabelColor = MaterialTheme.colorScheme.textPrimary,
-                        cursorColor = MaterialTheme.colorScheme.textPrimary,
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
-                )
-
-                Text(
-                    "If something doesn't work, you can explore more in Settings",
-                    style = smallStyle,
-                    color = MaterialTheme.colorScheme.textSecondary,
-                )
-
-                Text(
-                    "Translation language",
-                    style = smallStyle,
-                    color = MaterialTheme.colorScheme.textSecondary,
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .verticalScroll(rememberScrollState())
-                        .alpha(if (isApiKeyValid) 1f else 0.38f),
-                ) {
-                    sortedLanguages.forEach { entry ->
-                        val code = entry.key
-                        val name = entry.value
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (selectedLanguage == code) MaterialTheme.colorScheme.fillSelected
-                                    else Color.Transparent,
-                                )
-                                .clickable(enabled = isApiKeyValid) {
-                                    selectedLanguage = code
-                                    onLanguageSelected(code)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = name,
-                                style = bodyStyle,
-                                modifier = Modifier.weight(1f),
-                                color = if (selectedLanguage == code) MaterialTheme.colorScheme.textPrimary
-                                        else MaterialTheme.colorScheme.onSurface,
+                sortedLanguages.forEach { entry ->
+                    val code = entry.key
+                    val name = entry.value
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (selectedLanguage == code) MaterialTheme.colorScheme.fillSelected
+                                else Color.Transparent,
                             )
-                            if (selectedLanguage == code) {
-                                Icon(
-                                    painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.textPrimary,
-                                )
+                            .clickable(enabled = isApiKeyValid) {
+                                selectedLanguage = code
+                                onLanguageSelected(code)
                             }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = name,
+                            style = bodyStyle,
+                            modifier = Modifier.weight(1f),
+                            color = if (selectedLanguage == code) MaterialTheme.colorScheme.textPrimary
+                                    else MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (selectedLanguage == code) {
+                            Icon(
+                                painterResource(R.drawable.check),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.textPrimary,
+                            )
                         }
                     }
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IrideFolioSecondaryButton(
+                    onClick = onDismiss,
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.textSecondary,
-                        ),
-                    ) {
-                        Text(stringResource(android.R.string.cancel), style = smallStyle)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            onSave(keyInput.trim())
-                            onSetupCompleted()
-                        },
-                        enabled = isApiKeyValid && selectedLanguage.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.textPrimary,
-                            contentColor = Color.Black,
-                            disabledContainerColor = MaterialTheme.colorScheme.fillSelected,
-                            disabledContentColor = MaterialTheme.colorScheme.textSecondary,
-                        ),
-                    ) {
-                        Text("Next", style = smallStyle.copy(fontWeight = FontWeight.Bold))
-                    }
+                    Text(stringResource(android.R.string.cancel),)
+                }
+                Spacer(Modifier.width(8.dp))
+                IrideFolioPrimaryButton(
+                    onClick = {
+                        onSave(keyInput.trim())
+                        onSetupCompleted()
+                    },
+                    enabled = isApiKeyValid && selectedLanguage.isNotBlank(),
+                ) {
+                    Text("Next",)
                 }
             }
         }

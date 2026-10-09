@@ -54,6 +54,10 @@ class LyricsViewModel @Inject constructor(
 
     val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
+    // Keep a known absence through retries until lyrics arrive; scope it to the current song.
+    private val _unavailableLyricsMediaId = MutableStateFlow<String?>(null)
+    val unavailableLyricsMediaId: StateFlow<String?> = _unavailableLyricsMediaId.asStateFlow()
+
     private val _lyricsRevision = MutableStateFlow(0)
     val lyricsRevision: StateFlow<Int> = _lyricsRevision.asStateFlow()
 
@@ -159,6 +163,7 @@ class LyricsViewModel @Inject constructor(
         // lyrics while searching for an upgrade in the background instead of clearing
         // the UI back to shimmer.
         val keepDisplayed = silent && loadedMediaId == mediaMetadata.id && _lines.value.isNotEmpty()
+        if (loadedMediaId != mediaMetadata.id) _unavailableLyricsMediaId.value = null
         loadedMediaId = mediaMetadata.id
         if (!keepDisplayed) {
             lyricsSearchStatus.value = LyricsSearchStatus.Loading
@@ -171,11 +176,15 @@ class LyricsViewModel @Inject constructor(
             val cached = withContext(Dispatchers.IO) {
                 database.lyrics(mediaMetadata.id).first()
             }
-            if (cached != null && cached.lyrics == LYRICS_NOT_FOUND) {
+            val hasCachedLyrics = cached?.lyrics?.let {
+                it.isNotBlank() && it != LYRICS_NOT_FOUND
+            } == true
+            if (cached != null && !hasCachedLyrics) {
+                _unavailableLyricsMediaId.value = mediaMetadata.id
                 database.query { delete(cached) }
             }
 
-            val cachedTier = if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
+            val cachedTier = if (cached != null && hasCachedLyrics) {
                 LyricsUtils.detectTier(cached.lyrics)
             } else LyricsTier.PLAIN
 
@@ -183,7 +192,8 @@ class LyricsViewModel @Inject constructor(
             val preservedTranslationLanguage = cached?.translationLanguage.orEmpty()
             val preservedTranslationMode = cached?.translationMode.orEmpty()
 
-            if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
+            if (cached != null && hasCachedLyrics) {
+                _unavailableLyricsMediaId.value = null
                 processLyrics(cached.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                 lyricsSearchStatus.value = when (cachedTier) {
                     LyricsTier.SYNCED_WORD -> LyricsSearchStatus.FoundWord
@@ -202,6 +212,7 @@ class LyricsViewModel @Inject constructor(
                 delay(3000L)
                 if (lyricsSearchStatus.value == LyricsSearchStatus.Loading) {
                     lyricsSearchStatus.value = LyricsSearchStatus.NotFoundTemporary
+                    _unavailableLyricsMediaId.value = mediaMetadata.id
                 }
             }
 
@@ -209,7 +220,9 @@ class LyricsViewModel @Inject constructor(
             var wordTierLocked = false
 
             lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
-                if (wordTierLocked) return@getLyricsProgressive
+                if (wordTierLocked || result.lyrics.isBlank() || result.lyrics == LYRICS_NOT_FOUND) {
+                    return@getLyricsProgressive
+                }
 
                 val isUpgrade = tier.ordinal > bestTierSaved.ordinal
                 val isFirstResult = bestTierSaved == LyricsTier.PLAIN && lyricsSearchStatus.value == LyricsSearchStatus.Loading
@@ -225,6 +238,7 @@ class LyricsViewModel @Inject constructor(
 
                 if (shouldUpdate) {
                     notFoundJob.cancel()
+                    _unavailableLyricsMediaId.value = null
                     bestTierSaved = tier
                     processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                     database.query {
@@ -254,6 +268,7 @@ class LyricsViewModel @Inject constructor(
             if (lyricsSearchStatus.value == LyricsSearchStatus.Loading ||
                 lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary) {
                 lyricsSearchStatus.value = LyricsSearchStatus.NotFoundFinal
+                _unavailableLyricsMediaId.value = mediaMetadata.id
             }
 
             // One delayed background retry if we settled below word-level: transient

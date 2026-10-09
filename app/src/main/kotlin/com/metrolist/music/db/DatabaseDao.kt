@@ -1857,7 +1857,16 @@ interface DatabaseDao {
     fun insert(map: PlaylistSongMap)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(searchHistory: SearchHistory)
+    fun insertSearchHistoryRow(searchHistory: SearchHistory)
+
+    @Transaction
+    fun insert(searchHistory: SearchHistory) {
+        insertSearchHistoryRow(searchHistory)
+        trimSearchHistory()
+    }
+
+    @Query("DELETE FROM search_history WHERE id NOT IN (SELECT id FROM search_history ORDER BY id DESC LIMIT 15)")
+    fun trimSearchHistory()
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(event: Event)
@@ -1999,29 +2008,42 @@ interface DatabaseDao {
     }
 
     /**
-     * Strips an embedded "feat./featuring/ft." credit out of [song]'s title and,
-     * if the credited artist isn't already linked to the song, creates/finds that
-     * artist and links them via [SongArtistMap]. The title mutation makes this
-     * idempotent: once stripped, the title no longer matches the parser.
+     * Applies resolved YouTube Music credits atomically, replacing legacy
+     * placeholder credits without creating artists with generated local IDs.
      */
     @Transaction
-    fun linkFeaturedArtist(song: Song): Boolean {
+    fun linkFeaturedArtist(song: Song, resolvedArtists: Map<String, ArtistEntity?>): Boolean {
         // The caller may hold a snapshot of a song that has since been removed
         // from the library; song_artist_map's foreign key would reject the link,
         // so bail out when the parent row no longer exists.
         val current = getSongByIdBlocking(song.id) ?: return false
 
-        val (cleanTitle, featuredNames) = TitleFeaturingParser.extract(current.title) ?: return false
-        update(current.song.copy(title = cleanTitle))
+        if (current.title != song.title) return false
+        val extracted = TitleFeaturingParser.extract(current.title)
+        if (extracted != null && extracted.second.all { it in resolvedArtists }) {
+            update(current.song.copy(title = extracted.first))
+        }
 
-        var nextPosition = (songArtistMap(current.id).maxOfOrNull { it.position } ?: -1) + 1
-        for (featuredName in featuredNames) {
-            val alreadyCredited = current.artists.any { it.name.equals(featuredName, ignoreCase = true) }
-            if (alreadyCredited) continue
-            val artistId = artistByName(featuredName)?.id ?: ArtistEntity.generateArtistId()
-            insert(ArtistEntity(id = artistId, name = featuredName))
-            insert(SongArtistMap(songId = current.id, artistId = artistId, position = nextPosition))
-            nextPosition++
+        val maps = songArtistMap(current.id).toMutableList()
+        var nextPosition = (maps.maxOfOrNull { it.position } ?: -1) + 1
+        for ((name, resolved) in resolvedArtists) {
+            if (resolved != null && (!resolved.isYouTubeArtist || resolved.isPrivatelyOwnedArtist)) continue
+            val placeholders = current.orderedArtists.drop(1).filter {
+                !it.isYouTubeArtist && !it.isLocal && it.name.equals(name, ignoreCase = true)
+            }
+            val replacedMaps = maps.filter { map -> placeholders.any { it.id == map.artistId } }
+            replacedMaps.forEach { delete(it); maps.remove(it) }
+            if (resolved == null || maps.any { it.artistId == resolved.id }) continue
+            val existing = getArtistById(resolved.id)
+            if (existing == null) {
+                insert(resolved)
+            } else if (existing.thumbnailUrl.isNullOrBlank() && !resolved.thumbnailUrl.isNullOrBlank()) {
+                update(existing.copy(thumbnailUrl = resolved.thumbnailUrl, channelId = resolved.channelId ?: existing.channelId))
+            }
+            val position = replacedMaps.minOfOrNull { it.position } ?: nextPosition++
+            val map = SongArtistMap(songId = current.id, artistId = resolved.id, position = position)
+            insert(map)
+            maps.add(map)
         }
         return true
     }

@@ -8,7 +8,6 @@ package com.metrolist.music.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -64,7 +63,6 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -88,6 +86,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -118,12 +117,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
 import com.metrolist.music.utils.isInternetAvailable
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavBackStackEntry
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.crossfade
@@ -144,7 +145,6 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.AdvancedAnimationKey
 
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -152,7 +152,6 @@ import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListThumbnailSize
-import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.LocalItem
@@ -167,17 +166,21 @@ import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.IridePageLayout
-import com.metrolist.music.ui.component.HomeFilmViewfinderOverlay
-import com.metrolist.music.ui.component.homeGlobeField
-import com.metrolist.music.ui.component.rememberHomeScrollVelocity
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
-import com.metrolist.music.ui.component.SongCarousel
+import com.metrolist.music.ui.component.CarouselPageIndicator
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
+import com.metrolist.music.ui.component.HomeFollowedReleases
+import com.metrolist.music.ui.component.LocalHomeContentSnapshot
+import com.metrolist.music.ui.component.collectDeferredHomeState
+import com.metrolist.music.ui.screens.playlist.NewReleaseChartsShelf
+import com.metrolist.music.ui.screens.playlist.PreloadHomeCharts
+import com.metrolist.music.viewmodels.ChartDirectoryViewModel
 import com.metrolist.music.ui.component.SharedQuickPicksCarousel
 import com.metrolist.music.ui.component.SharedYouTubePlaylistRow
 import com.metrolist.music.ui.component.rubberBandOverscroll
@@ -330,7 +333,7 @@ private fun HomeSimilarityTitle(
     val shape = if (isArtist) CircleShape else RoundedCornerShape(5.dp)
     NavigationTitle(
         label = stringResource(R.string.home_similar_to),
-        title = name,
+        title = compactHomeTitle(name),
         thumbnail = {
             AsyncImage(
                 model = thumbnailUrl,
@@ -363,7 +366,40 @@ fun HomeScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.contentSnapshot.setVisible(true)
+                Lifecycle.Event.ON_STOP -> viewModel.contentSnapshot.setVisible(false)
+                else -> Unit
+            }
+        }
+        viewModel.contentSnapshot.setVisible(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            viewModel.contentSnapshot.setVisible(false)
+        }
+    }
+    CompositionLocalProvider(LocalHomeContentSnapshot provides viewModel.contentSnapshot) {
+        HomeScreenContent(navController, snackbarHostState, viewModel)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun HomeScreenContent(
+    navController: NavController,
+    snackbarHostState: SnackbarHostState,
+    viewModel: HomeViewModel,
+) {
     val menuState = LocalMenuState.current
+    val chartViewModel: ChartDirectoryViewModel = hiltViewModel()
+    PreloadHomeCharts(chartViewModel)
+    val chartsPosition = rememberSaveable { kotlin.random.Random.nextInt(1, 6) }
+    val followedReleasesPosition = rememberSaveable { kotlin.random.Random.nextInt(1, 6) }
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
     val context = LocalContext.current
@@ -381,27 +417,34 @@ fun HomeScreen(
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
-    val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
+    val speedDialItems by viewModel.speedDialItems.collectDeferredHomeState("speed_dial")
+    val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectDeferredHomeState("pinned_speed_dial")
     val pinnedIds: Set<String> by remember(pinnedSpeedDialItems) {
         derivedStateOf { pinnedSpeedDialItems.map { it.id }.toSet() }
     }
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
     val regeneratingSections by viewModel.regeneratingSections.collectAsStateWithLifecycle()
 
-    val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
-    val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
-    val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
-    val homePersonalMixes by viewModel.homePersonalMixes.collectAsStateWithLifecycle()
-    val starredPlaylistThumbnails by viewModel.starredPlaylistThumbnails.collectAsStateWithLifecycle()
-    val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
-    val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
-    val forYouShelves by viewModel.forYouShelves.collectAsStateWithLifecycle()
-    val homePage by viewModel.homePage.collectAsStateWithLifecycle()
+    val communityPlaylists by viewModel.communityPlaylists.collectDeferredHomeState("community_playlists") {
+        it.orEmpty().distinctBy { item -> item.playlist.id }.size >= 4
+    }
+    val dailyDiscover by viewModel.dailyDiscover.collectDeferredHomeState("daily_discover") {
+        it.orEmpty().distinctBy { item -> item.recommendation.id }.size >= 4
+    }
+    val accountPlaylists by viewModel.accountPlaylists.collectDeferredHomeState("account_playlists") {
+        it.orEmpty().distinctBy { item -> item.id }.size >= 4
+    }
+    val homePersonalMixes by viewModel.homePersonalMixes.collectDeferredHomeState("personal_mixes")
+    val starredPlaylistThumbnails by viewModel.starredPlaylistThumbnails.collectDeferredHomeState("starred_thumbnails")
+    val similarRecommendations by viewModel.similarRecommendations.collectDeferredHomeState("similar_recommendations")
+    val quickPicks by viewModel.quickPicks.collectDeferredHomeState("quick_picks") {
+        it.orEmpty().filterNot { song -> song.song.isVideo || song.song.isEpisode }.distinctBy { song -> song.id }.size >= 4
+    }
+    val forYouShelves by viewModel.forYouShelves.collectDeferredHomeState("for_you") { it.size >= 4 }
+    val homePage by viewModel.homePage.collectDeferredHomeState("feed") { !it?.sections.isNullOrEmpty() }
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
-    val heroCarouselItems by viewModel.heroCarouselItems.collectAsStateWithLifecycle()
-    val smartBootEnabled by rememberPreference(SmartBootKey, defaultValue = true)
+    val heroCarouselItems by viewModel.heroCarouselItems.collectDeferredHomeState("hero_carousel")
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
@@ -424,24 +467,16 @@ fun HomeScreen(
     // Ball effect (Home only, default ON): master switch + reduced motion.
     // When off, the velocity tracker / shader never
     // start, so the cost is zero and the feed renders exactly like before.
-    val advancedAnimation by rememberPreference(AdvancedAnimationKey, defaultValue = true)
     val homeReducedMotion = rememberReducedMotion()
-    val globeOn = advancedAnimation && !homeReducedMotion
-    val homeSignedVelocity = if (advancedAnimation) rememberHomeScrollVelocity(lazyListState) else 0f
-    // Single animated driver: signed lean stretches the feed vertically on a
-    // soft Apple-like spring; |lean| doubles as the motion-blur intensity
-    // above the threshold. One animation total.
-    val homeLean by animateFloatAsState(
-        targetValue = if (globeOn) (homeSignedVelocity / 7000f).coerceIn(-1f, 1f) else 0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 180f),
-        label = "homeLean",
+    val moodContent by viewModel.homeMoodContent.collectDeferredHomeState(
+        "mood", identity = { it.params }, hasContent = { !it.items.isNullOrEmpty() },
     )
-    val moodMixItems by viewModel.moodMixItems.collectAsStateWithLifecycle()
-    val moodPosterUrls by viewModel.moodPosterUrls.collectAsStateWithLifecycle()
+    val moodMixItems = moodContent.items
+    val moodPosterUrls = moodContent.posters
     val moodPosterSize = with(LocalDensity.current) { currentGridHeight.roundToPx() }.coerceIn(128, 768)
     val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
     val isMoodError by viewModel.isMoodError.collectAsStateWithLifecycle()
-    val loadedMoodParams by viewModel.loadedMoodParams.collectAsStateWithLifecycle()
+    val loadedMoodParams = moodContent.params
     val preferredMoodParams by viewModel.preferredMoodParams.collectAsStateWithLifecycle()
     val isMoodPreferenceReady by viewModel.isMoodPreferenceReady.collectAsStateWithLifecycle()
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
@@ -490,7 +525,6 @@ fun HomeScreen(
         rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
             .also { if (it >= 1f) IrideTabEntrance.markRevealed("home") }
     }
-
     @Composable
     fun LazyItemScope.homeTitleMotion(key: String): Modifier = Modifier
         .animateItem(placementSpec = IrideMotion.PlacementSpec)
@@ -503,13 +537,13 @@ fun HomeScreen(
 
     val scope = rememberCoroutineScope()
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
-            lazyListState.animateScrollToItem(0)
-            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+            if (homeReducedMotion) lazyListState.scrollToItem(0) else lazyListState.animateScrollToItem(0)
+            backStackEntry.savedStateHandle.set("scrollToTop", false)
         }
     }
 
@@ -520,7 +554,29 @@ fun HomeScreen(
     }
 
     val shuffledFeedSections = remember(homePage?.sections) {
-        homePage?.sections.orEmpty().withIndex()
+        val sections = homePage?.sections.orEmpty()
+        val selectedTrendingIndex = sections.withIndex()
+            .filter { (_, section) ->
+                val title = section.title.lowercase()
+                val label = section.label.orEmpty().lowercase()
+                (title.contains("trending") || title.contains("top 100")) &&
+                    !listOf("italia", "italy", "italiano", "italian").any { it in title || it in label }
+            }
+            .firstOrNull { (_, section) -> section.title.contains("top 100", ignoreCase = true) }
+            ?.index
+            ?: sections.withIndex().firstOrNull { (_, section) ->
+                val title = section.title.lowercase()
+                val label = section.label.orEmpty().lowercase()
+                title.contains("trending") &&
+                    !listOf("italia", "italy", "italiano", "italian").any { it in title || it in label }
+            }?.index
+
+        sections.withIndex()
+            .filter { (index, section) ->
+                val title = section.title.lowercase()
+                val isTrending = title.contains("trending") || title.contains("top 100")
+                !isTrending || index == selectedTrendingIndex
+            }
             .map { indexed ->
                 IndexedValue(indexed.index, indexed.value.copy(items = indexed.value.items.shuffled()))
             }
@@ -528,7 +584,7 @@ fun HomeScreen(
             .sortedBy { indexed ->
                 val title = indexed.value.title.lowercase()
                 when {
-                    title.contains("trending") -> 0
+                    title.contains("trending") || title.contains("top 100") -> 0
                     title.contains("new release") || title.contains("nuove uscite") -> 1
                     else -> 2
                 }
@@ -587,7 +643,7 @@ fun HomeScreen(
                                 },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
+                                    menuState.show(anchored = true) {
                                         SongMenu(
                                             originalSong = item,
                                             navController = navController,
@@ -610,7 +666,7 @@ fun HomeScreen(
                                 onClick = { navController.navigate("album/${item.id}") },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
+                                    menuState.show(anchored = true) {
                                         AlbumMenu(
                                             originalAlbum = item,
                                             navController = navController,
@@ -628,7 +684,7 @@ fun HomeScreen(
                                 onClick = { navController.navigate("artist/${item.id}") },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
+                                    menuState.show(anchored = true) {
                                         ArtistMenu(
                                             originalArtist = item,
                                             coroutineScope = scope,
@@ -643,80 +699,84 @@ fun HomeScreen(
             }
 
             val ytGridItem: @Composable (YTItem) -> Unit = { item ->
-                YouTubeGridItem(
-                    item = item,
-                    isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
-                    isPlaying = isPlaying,
-                    coroutineScope = scope,
-                    thumbnailRatio = 1f,
-                    size = currentGridHeight,
-                    modifier = Modifier.combinedClickable(
-                        onClick = {
-                            when (item) {
-                                is SongItem -> {
-                                    if (!isListenTogetherGuest) {
-                                        playerConnection?.playQueue(
-                                            YouTubeQueue(
-                                                item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                                item.toMediaMetadata(),
-                                            ),
-                                        )
-                                    }
-                                }
-                                is AlbumItem -> navController.navigate("album/${item.id}")
-                                is ArtistItem -> navController.navigate("artist/${item.id}")
-                                is PlaylistItem -> navController.navigate("online_playlist/${item.id.removePrefix("VL")}")
-                                is PodcastItem -> navController.navigate("online_podcast/${item.id}")
-                                is EpisodeItem -> {
-                                    if (!isListenTogetherGuest) {
-                                        playerConnection?.playQueue(
-                                            ListQueue(
-                                                title = item.title,
-                                                items = listOf(item.toMediaMetadata().toMediaItem()),
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        onLongClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            menuState.show {
+                CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                    YouTubeGridItem(
+                        item = item,
+                        isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
+                        isPlaying = isPlaying,
+                        coroutineScope = scope,
+                        thumbnailRatio = 1f,
+                        size = currentGridHeight,
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
                                 when (item) {
-                                    is SongItem -> YouTubeSongMenu(
-                                        song = item,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                    is AlbumItem -> YouTubeAlbumMenu(
-                                        albumItem = item,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                    is ArtistItem -> YouTubeArtistMenu(
-                                        artist = item,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                    is PlaylistItem -> YouTubePlaylistMenu(
-                                        playlist = item,
-                                        coroutineScope = scope,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                    is PodcastItem -> YouTubePlaylistMenu(
-                                        playlist = item.asPlaylistItem(),
-                                        coroutineScope = scope,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                    is EpisodeItem -> YouTubeSongMenu(
-                                        song = item.asSongItem(),
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
+                                    is SongItem -> {
+                                        if (!isListenTogetherGuest) {
+                                            playerConnection?.playQueue(
+                                                YouTubeQueue(
+                                                    item.endpoint ?: WatchEndpoint(videoId = item.id),
+                                                    item.toMediaMetadata(),
+                                                ),
+                                            )
+                                        }
+                                    }
+                                    is AlbumItem -> navController.navigate("album/${item.id}")
+                                    is ArtistItem -> navController.navigate("artist/${item.id}")
+                                    is PlaylistItem -> navController.navigate("online_playlist/${item.id.removePrefix("VL")}")
+                                    is PodcastItem -> navController.navigate("online_podcast/${item.id}")
+                                    is EpisodeItem -> {
+                                        if (!isListenTogetherGuest) {
+                                            playerConnection?.playQueue(
+                                                ListQueue(
+                                                    title = item.title,
+                                                    items = listOf(item.toMediaMetadata().toMediaItem()),
+                                                ),
+                                            )
+                                        }
+                                    }
                                 }
-                            }
-                        },
-                    ),
-                )
+                            },
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuState.show(
+                                    anchored = true,
+                                ) {
+                                    when (item) {
+                                        is SongItem -> YouTubeSongMenu(
+                                            song = item,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                        is AlbumItem -> YouTubeAlbumMenu(
+                                            albumItem = item,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                        is ArtistItem -> YouTubeArtistMenu(
+                                            artist = item,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                        is PlaylistItem -> YouTubePlaylistMenu(
+                                            playlist = item,
+                                            coroutineScope = scope,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                        is PodcastItem -> YouTubePlaylistMenu(
+                                            playlist = item.asPlaylistItem(),
+                                            coroutineScope = scope,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                        is EpisodeItem -> YouTubeSongMenu(
+                                            song = item.asSongItem(),
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                }
+                            },
+                        ),
+                    )
+                }
             }
 
             val forYouBoxScale = 1.35f
@@ -792,7 +852,7 @@ fun HomeScreen(
             }
             val forYouBlock: @Composable (ForYouShelfItem) -> Unit = { shelf ->
                 val cells: List<Any> = remember(shelf) {
-                    listOf(shelf.artist) + shelf.tiles.shuffled().take(3)
+                    listOf(shelf.artist) + shelf.tiles.shuffled(kotlin.random.Random(shelf.artist.id.hashCode())).take(3)
                 }
                 Column(modifier = Modifier.width(forYouBoxSize)) {
                     Column(verticalArrangement = Arrangement.spacedBy(forYouCellGap)) {
@@ -818,8 +878,9 @@ fun HomeScreen(
                 }
             }
             val forYouLoading = !phase1Complete && forYouShelves.isEmpty()
-            val forYouSection: LazyListScope.() -> Unit = {
+            val forYouSection: LazyListScope.(HomeShelfOrder) -> Unit = { shelfOrder ->
                 if (forYouLoading || forYouShelves.size >= 4) {
+                    shelfOrder.added(hasFourRows = false)
                     item(key = "for_you_title") {
                         NavigationTitle(
                             title = stringResource(R.string.for_you_artists_title),
@@ -848,7 +909,9 @@ fun HomeScreen(
                             LaunchedEffect(forYouState, shelves.size) {
                                 snapshotFlow { forYouState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                                     .collect { lastVisible ->
-                                        if (lastVisible != null && lastVisible >= shelves.size - 3) {
+                                        if (lastVisible != null && lastVisible >= shelves.size - 3 &&
+                                            viewModel.forYouShelves.value.size <= shelves.size
+                                        ) {
                                             viewModel.loadMoreForYouShelves()
                                         }
                                     }
@@ -873,18 +936,9 @@ fun HomeScreen(
                 state = lazyListState,
                 reducedMotion = homeReducedMotion,
                 bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                listModifier = Modifier
-                    .homeGlobeField(
-                        lean = homeLean,
-                        contentAlpha = screenProgress,
-                        enabled = globeOn,
-                    ),
-                overlay = {
-                    if (globeOn) {
-                        HomeFilmViewfinderOverlay()
-                    }
-                },
+                listModifier = Modifier,
             ) {
+                val shelfOrder = HomeShelfOrder()
                 if (isLoading) {
                     item(key = "loading_indicator") {
                         LinearProgressIndicator(
@@ -920,19 +974,7 @@ fun HomeScreen(
                                 items = radioItems,
                                 pagerState = heroPagerState,
                                 onCoverError = viewModel::repairHeroRadioCover,
-                                onRadioClick = { artistId ->
-                                    scope.launch(Dispatchers.IO) {
-                                        val endpoint = viewModel.fetchArtistRadioEndpoint(artistId)
-                                        withContext(Dispatchers.Main) {
-                                            if (endpoint != null) {
-                                                playerConnection?.playQueue(YouTubeQueue(endpoint))
-                                            } else {
-                                                snackbarHostState.showSnackbar(radioUnavailableMessage)
-                                            }
-                                        }
-                                    }
-                                    Unit
-                                },
+                                onArtistClick = { artistId -> navController.navigate("artist/$artistId") },
                                 modifier = homeRowMotion("hero_carousel"),
                             )
                         } else if (!phase1Complete) {
@@ -942,6 +984,7 @@ fun HomeScreen(
                         }
                     }
                 }
+
 
                 val speedDialContent: @Composable LazyItemScope.() -> Unit = {
                         val items = speedDialItems
@@ -1079,7 +1122,9 @@ fun HomeScreen(
                                                                         },
                                                                         onLongClick = {
                                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                            menuState.show {
+                                                                            menuState.show(
+                                                                                anchored = true,
+                                                                            ) {
                                                                                 when (sdItem) {
                                                                                     is SongItem -> YouTubeSongMenu(
                                                                                         song = sdItem,
@@ -1129,36 +1174,16 @@ fun HomeScreen(
                                 val currentRealPage by remember(realPageCount) {
                                     derivedStateOf { pagerState.currentPage % realPageCount }
                                 }
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    repeat(realPageCount) { index ->
-                                        val isSelected = currentRealPage == index
-                                        val dotSize by animateDpAsState(
-                                            targetValue = if (isSelected) 5.dp else 4.dp,
-                                            animationSpec = tween(durationMillis = 180),
-                                            label = "radioPageIndicatorSize",
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(horizontal = 3.dp)
-                                                .size(dotSize)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.textPrimary
-                                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                                ),
-                                        )
-                                    }
-                                }
+                                CarouselPageIndicator(
+                                    pageCount = realPageCount,
+                                    currentPage = currentRealPage,
+                                )
                             }
                         }
                 }
 
                 if (quickPicks == null || pickedSongs.size >= 4) {
+                    shelfOrder.added(hasFourRows = true)
                     item(key = "picked_for_you_title") {
                         SharedHomeSectionTitle(
                             title = stringResource(R.string.quick_picks_section_title),
@@ -1173,7 +1198,7 @@ fun HomeScreen(
                             key = { "picked_${it.id}" },
                             loading = quickPicks == null,
                             contentPadding = irideListItemStart - 4.dp,
-                            gridState = rememberLazyGridState(),
+                            usePager = true,
                             modifier = homeRowMotion("picked_for_you_row"),
                         ) { originalSong, itemWidth ->
                                 val song by database.song(originalSong.id)
@@ -1185,9 +1210,10 @@ fun HomeScreen(
                                         isActive = currentSong.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
                                         isSwipeable = false,
+                                        showDivider = false,
                                         trailingContent = {
-                                            IconButton(onClick = {
-                                                menuState.show {
+                                            SongMenuIconButton(onClick = {
+                                                menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = currentSong,
                                                         navController = navController,
@@ -1218,7 +1244,7 @@ fun HomeScreen(
                                             },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = currentSong,
                                                         navController = navController,
@@ -1242,7 +1268,7 @@ fun HomeScreen(
                     val label = section.label.orEmpty().lowercase()
                     val isSimilar = title.contains("similar to") || title.contains("simile a") ||
                         label.contains("similar to") || label.contains("simile a")
-                    val isTrending = title.contains("trending")
+                    val isTrending = title.contains("trending") || title.contains("top 100")
                     val isNewRelease = title.contains("new release") || title.contains("nuove uscite")
                     if ((!isTrending && !isNewRelease && !isSimilar) ||
                         title.contains("video") || label.contains("video")
@@ -1294,6 +1320,7 @@ fun HomeScreen(
                     val isAlbumSource = title.contains("album:") || label.contains("album") || matchedAlbum != null
                     val sourceThumbnail = section.thumbnail ?: matchedArtist?.thumbnail ?: matchedAlbum?.thumbnail
                     if (isSimilar && (name.isBlank() || sourceThumbnail.isNullOrBlank())) return@feedSection
+                    shelfOrder.added(hasFourRows = false)
                     val onSectionClick = section.endpoint?.let { endpoint ->
                         {
                             when {
@@ -1315,8 +1342,7 @@ fun HomeScreen(
                             )
                         } else {
                             NavigationTitle(
-                                title = section.title,
-                                label = section.label,
+                                title = stringResource(if (isTrending) R.string.home_trending_title else R.string.home_new_albums_title),
                                 sentenceCaseTitle = true,
                                 onClick = onSectionClick,
                                 modifier = homeTitleMotion("home_section_$index"),
@@ -1345,7 +1371,8 @@ fun HomeScreen(
                         }
                     }
                 }
-                if (moodChips.isNotEmpty()) {
+                if (isLoggedIn && moodChips.isNotEmpty()) {
+                    shelfOrder.added(hasFourRows = false)
                     item(key = "your_mood_title") {
                         NavigationTitle(
                             title = stringResource(R.string.home_mood_youtube_music),
@@ -1423,7 +1450,7 @@ fun HomeScreen(
                                                     },
                                                     onLongClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
+                                                        menuState.show(anchored = true) {
                                                             YouTubePlaylistMenu(
                                                                 playlist = mix,
                                                                 coroutineScope = scope,
@@ -1472,8 +1499,9 @@ fun HomeScreen(
                     }
                 }
 
-                forYouSection()
-                item(key = "home_personal_mixes_title") {
+                forYouSection(shelfOrder)
+                if (isLoggedIn) shelfOrder.added(hasFourRows = false)
+                if (isLoggedIn) item(key = "home_personal_mixes_title") {
                     NavigationTitle(
                         title = stringResource(R.string.home_fresh_find_old_favorite),
                         modifier = homeTitleMotion("home_personal_mixes"),
@@ -1485,7 +1513,7 @@ fun HomeScreen(
                         showNavigationArrow = false,
                     )
                 }
-                item(key = "home_personal_mixes_content") {
+                if (isLoggedIn) item(key = "home_personal_mixes_content") {
                     val personalMixesState = rememberLazyListState()
                     val starredPlaylistName = stringResource(R.string.starred)
                     val starredPlaylist = remember(starredPlaylistName, starredPlaylistThumbnails) {
@@ -1530,6 +1558,7 @@ fun HomeScreen(
 
                 val dailySection: LazyListScope.() -> Unit = {
                     dailyDiscover?.distinctBy { it.recommendation.id }?.takeIf { it.size >= 4 }?.let { discoverList ->
+                        shelfOrder.added(hasFourRows = false)
                         item(key = "daily_discover_title") {
                             val title = stringResource(R.string.your_daily_discover)
                             NavigationTitle(
@@ -1582,6 +1611,7 @@ fun HomeScreen(
 
                 val communitySection: LazyListScope.() -> Unit = {
                     communityPlaylists?.distinctBy { it.playlist.id }?.takeIf { it.size >= 4 }?.let { playlists ->
+                        shelfOrder.added(hasFourRows = false)
                         item(key = "community_playlists_title") {
                             NavigationTitle(
                                 title = stringResource(R.string.from_the_community),
@@ -1645,6 +1675,7 @@ fun HomeScreen(
                     if (similarItems.size < 2 ||
                             rec.thumbnailUrl.isNullOrBlank()
                         ) return@forEachIndexed
+                        shelfOrder.added(hasFourRows = false)
                         item(key = "similar_to_title_$index") {
                             HomeSimilarityTitle(
                                 name = rec.title.title,
@@ -1684,6 +1715,7 @@ fun HomeScreen(
 
                 val accountSection: LazyListScope.() -> Unit = {
                     accountPlaylists?.takeIf { it.distinctBy { playlist -> playlist.id }.size >= 4 }?.let { playlists ->
+                        shelfOrder.added(hasFourRows = false)
                         item(key = "account_playlists_title") {
                             SharedHomeSectionTitle(
                                 title = stringResource(R.string.home_youtube_music_playlists),
@@ -1705,11 +1737,42 @@ fun HomeScreen(
 
                 }
 
-                feedSection()
-                dailySection()
-                communitySection()
-                similarSection()
-                accountSection()
+                val addFollowedReleases: LazyListScope.() -> Unit = {
+                    shelfOrder.added(hasFourRows = true)
+                    item(key = "home_followed_releases") {
+                        val isVisible by remember(lazyListState) {
+                            derivedStateOf {
+                                val layout = lazyListState.layoutInfo
+                                layout.visibleItemsInfo.any {
+                                    it.key == "home_followed_releases" &&
+                                        it.offset + it.size > layout.viewportStartOffset &&
+                                        it.offset < layout.viewportEndOffset
+                                }
+                            }
+                        }
+                        HomeFollowedReleases(
+                            navController = navController,
+                            snackbarHostState = snackbarHostState,
+                            isVisible = isVisible && phase1Complete,
+                        )
+                    }
+                }
+                var followedReleasesAdded = false
+                listOf(feedSection, dailySection, communitySection, similarSection, accountSection)
+                    .forEachIndexed { index, section ->
+                        section()
+                        if (index + 1 == chartsPosition) {
+                            item(key = "home_charts") {
+                                NewReleaseChartsShelf(navController, chartViewModel, preload = false)
+                            }
+                        }
+                        if (!followedReleasesAdded && index + 1 >= followedReleasesPosition &&
+                            shelfOrder.canAdd(hasFourRows = true)
+                        ) {
+                            addFollowedReleases()
+                            followedReleasesAdded = true
+                        }
+                    }
 
                 item(key = "iride_features_title") {
                     SharedHomeSectionTitle(
@@ -1746,6 +1809,10 @@ fun HomeScreen(
                         }
                     }
                 }
+                if (!followedReleasesAdded) {
+                    shelfOrder.added(hasFourRows = false)
+                    addFollowedReleases()
+                }
             }
         }
     }
@@ -1763,8 +1830,9 @@ private fun IrideFeatureCard(
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(6.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeCard),
     ) {
         Row(
             modifier = Modifier
@@ -1774,19 +1842,18 @@ private fun IrideFeatureCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.fillSelected,
-                modifier = Modifier.size(56.dp),
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(5.dp)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.textPrimary,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.textPrimary,
+                    modifier = Modifier.size(22.dp),
+                )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -1966,7 +2033,7 @@ private fun IrideDailyDiscoverCard(
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (song != null) {
-                        menuState.show {
+                        menuState.show(anchored = true) {
                             YouTubeSongMenu(song = song, navController = navController, onDismiss = { menuState.dismiss() })
                         }
                     }
@@ -2016,4 +2083,3 @@ private fun IrideDailyDiscoverCard(
         )
     }
 }
-

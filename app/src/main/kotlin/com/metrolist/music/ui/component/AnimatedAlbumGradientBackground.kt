@@ -477,6 +477,7 @@ fun AnimatedAlbumGradientBackground(
     modifier: Modifier = Modifier,
     style: AlbumGradientStyle = AlbumGradientStyle.FULLSCREEN,
     animated: Boolean = true,
+    grainOpacity: Float = IrideFolio.BackgroundGrainOpacity,
 ) {
     var spec by remember { mutableStateOf<BackgroundSpec?>(null) }
 
@@ -512,7 +513,11 @@ fun AnimatedAlbumGradientBackground(
 
     val resumeFadeAlpha = rememberResumeFadeAlpha()
 
-    Box(modifier = modifier.fillMaxSize().graphicsLayer { alpha = resumeFadeAlpha }) {
+    Box(
+        modifier = modifier.fillMaxSize()
+            .graphicsLayer { alpha = resumeFadeAlpha }
+            .irideBackgroundGrain(opacity = grainOpacity),
+    ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val seconds = elapsed.value
             val fullTurn = (Math.PI * 2).toFloat()

@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
@@ -316,70 +318,50 @@ fun TopNavigationBar(
                 .padding(start = horizontalPadding, end = horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            leftItems.forEach { screen ->
-                val isSelected = remember(currentRoute, screen.route) {
-                    isRouteSelected(currentRoute, screen.route, navigationItems)
-                }
-                val currentIsSelected by rememberUpdatedState(isSelected)
-                val titleColor by animateColorAsState(
-                    targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
-                    animationSpec = if (isSelected) tween(220) else snap(),
-                    label = "titleColor"
-                )
-                val titleInteractionSource = remember { MutableInteractionSource() }
-
-                Text(
-                    text = stringResource(screen.titleId),
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        letterSpacing = (-0.1).sp,
-                        color = titleColor
-                    ),
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier
-                        .padding(end = 20.dp)
-                        .pressScale(titleInteractionSource)
-                        .clickable(
-                            interactionSource = titleInteractionSource,
-                            indication = null
-                        ) {
-                            onItemClick(screen, currentIsSelected)
-                        }
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            val searchTint by animateColorAsState(
-                targetValue = if (searchSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
-                animationSpec = if (searchSelected) tween(220) else snap(),
-                label = "searchTint"
-            )
-            val searchInteractionSource = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .pressScale(searchInteractionSource, pressedScale = 0.85f)
-                    .clickable(
-                        interactionSource = searchInteractionSource,
-                        indication = null
-                    ) {
-                        onItemClick(Screens.Search, currentSearchSelected)
-                    },
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    painter = painterResource(id = Screens.Search.iconIdInactive),
-                    contentDescription = stringResource(Screens.Search.titleId),
-                    tint = searchTint,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+                leftItems.forEach { screen ->
+                    val isSelected = remember(currentRoute, screen.route) {
+                        isRouteSelected(currentRoute, screen.route, navigationItems)
+                    }
+                    val currentIsSelected by rememberUpdatedState(isSelected)
+                    val titleColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                        animationSpec = if (isSelected) tween(220) else snap(),
+                        label = "titleColor"
+                    )
+                    val titleInteractionSource = remember { MutableInteractionSource() }
+                    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+                    LaunchedEffect(isSelected) {
+                        if (isSelected) bringIntoViewRequester.bringIntoView()
+                    }
 
-            Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(screen.titleId),
+                        style = TextStyle(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            letterSpacing = (-0.1).sp,
+                            color = titleColor
+                        ),
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier
+                            .bringIntoViewRequester(bringIntoViewRequester)
+                            .padding(end = 20.dp)
+                            .pressScale(titleInteractionSource)
+                            .clickable(
+                                interactionSource = titleInteractionSource,
+                                indication = null
+                            ) {
+                                onItemClick(screen, currentIsSelected)
+                            }
+                    )
+                }
+            }
 
             val accountTint by animateColorAsState(
                 targetValue = if (accountSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
@@ -415,6 +397,34 @@ fun TopNavigationBar(
                         modifier = Modifier.size(28.dp)
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            val searchTint by animateColorAsState(
+                targetValue = if (searchSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                animationSpec = if (searchSelected) tween(220) else snap(),
+                label = "searchTint"
+            )
+            val searchInteractionSource = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .pressScale(searchInteractionSource, pressedScale = 0.85f)
+                    .clickable(
+                        interactionSource = searchInteractionSource,
+                        indication = null
+                    ) {
+                        onItemClick(Screens.Search, currentSearchSelected)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = Screens.Search.iconIdInactive),
+                    contentDescription = stringResource(Screens.Search.titleId),
+                    tint = searchTint,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
         return

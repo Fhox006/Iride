@@ -7,9 +7,14 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.music.constants.ExperimentalLyricsKey
+import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LyricsViewModel
 
@@ -46,10 +51,28 @@ fun Lyrics(
             morphing = morphing,
         )
     } else {
+        if (pillsController != null) {
+            val database = LocalDatabase.current
+            val connection = LocalPlayerConnection.current
+            val entity = connection?.currentLyrics?.collectAsState(initial = null)?.value
+            SideEffect {
+                pillsController.hasTranslations = !entity?.translatedLyrics.isNullOrBlank()
+                pillsController.translateAction = {
+                    if (entity != null && entity.translatedLyrics.isNotBlank()) {
+                        database.query { upsert(LyricsTranslationHelper.clearTranslations(entity)) }
+                        LyricsTranslationHelper.triggerClearTranslations()
+                    } else {
+                        LyricsTranslationHelper.triggerManualTranslation()
+                    }
+                }
+            }
+        }
         OriginalLyrics(
             sliderPositionProvider = sliderPositionProvider,
             modifier = modifier,
-            showLyrics = showLyrics
+            showLyrics = showLyrics,
+            pillsController = pillsController,
+            textScale = textScale,
         )
     }
 }

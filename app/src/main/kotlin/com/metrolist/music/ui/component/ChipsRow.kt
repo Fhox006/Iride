@@ -320,30 +320,14 @@ fun <Int> ChoiceChipsRow(
                     enter = expandIn() + fadeIn(),
                     exit = shrinkOut() + fadeOut(),
                 ) {
-                    DropdownMenu(
-                        modifier = Modifier.padding(start = 12.dp),
+                    IrideFolioChoiceMenu(
                         expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                            expandIconDegree -= 180
+                        onDismissRequest = { expanded = false; expandIconDegree -= 180 },
+                        actions = options.map { option ->
+                            IrideFolioMenuAction(label = option.second, selected = option.first == selectedOption,
+                                onClick = { onSelectionChange(option.first) })
                         },
-                    ) {
-                        options.forEach { option ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = option.second,
-                                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
-                                    )
-                                },
-                                onClick = {
-                                    onSelectionChange(option.first)
-                                    expandIconDegree -= 180
-                                    expanded = false
-                                },
-                            )
-                        }
-                    }
+                    )
                 }
             }
 
@@ -448,25 +432,14 @@ fun <Int> ChoiceChipsRow(
                 enter = expandIn() + fadeIn(),
                 exit = shrinkOut() + fadeOut(),
             ) {
-                DropdownMenu(
-                    modifier = Modifier.padding(start = 12.dp),
-                    expanded = expanded,
-                    onDismissRequest = {
-                        expanded = false
-                        expandIconDegree -= 180
-                    },
-                ) {
-                    options.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(text = option.second) },
-                            onClick = {
-                                onSelectionChange(option.first)
-                                expandIconDegree -= 180
-                                expanded = false
-                            },
-                        )
-                    }
-                }
+                IrideFolioChoiceMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false; expandIconDegree -= 180 },
+                        actions = options.map { option ->
+                            IrideFolioMenuAction(label = option.second, selected = option.first == selectedOption,
+                                onClick = { onSelectionChange(option.first) })
+                        },
+                    )
             }
         }
 

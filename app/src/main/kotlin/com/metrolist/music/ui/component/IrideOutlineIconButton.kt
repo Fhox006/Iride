@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.utils.IrideMotion
@@ -87,6 +88,8 @@ fun IrideOutlineIconButton(
     size: Dp = 48.dp,
     iconSize: Dp = 26.dp,
     pressEffect: IridePressEffect = IridePressEffect.None,
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
 ) {
     val reducedMotion = rememberReducedMotion()
     val animated = pressEffect != IridePressEffect.None && !reducedMotion
@@ -98,8 +101,10 @@ fun IrideOutlineIconButton(
             .size(size)
             .minimumInteractiveComponentSize()
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource ?: remember { MutableInteractionSource() },
                 indication = ripple(bounded = false, radius = size / 2),
+                enabled = enabled,
+                role = Role.Button,
                 onClick = {
                     if (animated) {
                         scope.launch {

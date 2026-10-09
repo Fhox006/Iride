@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.IrideFolioAlertDialog
+import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -74,6 +80,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
@@ -82,10 +89,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -96,7 +100,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -140,6 +143,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -172,7 +176,6 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
-import com.metrolist.music.constants.AppPeekHeight
 import com.metrolist.music.constants.CurtainCornerRevealHeight
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.PlayerHorizontalPadding
@@ -191,6 +194,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
 import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
+import com.metrolist.music.ui.component.irideBackgroundGrain
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -244,6 +248,7 @@ fun BottomSheetPlayer(
     // of everything) so the cover/title-artist/top-bar can morph between this collapsed peek and
     // the expanded IrideMp3PlayerContent instead of cross-fading duplicates. Null outside curtain mode.
     bridgeState: IrideBridgeState? = null,
+    expandedTopInset: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -254,16 +259,17 @@ fun BottomSheetPlayer(
     val copiedArtistStr = stringResource(R.string.copied_artist)
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current
+    val miniPlayerContentColor = LocalFloatingPanelAppearance.current.contentColor
     if (playerConnection == null) {
         if (!showPeekContent) {
             val cachedMetadata by MiniPlayerSnapshotStore.metadata.collectAsState()
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
                 Column(
                     modifier = Modifier.fillMaxWidth().height(state.collapsedBound)
-                        .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - 20.dp).coerceAtLeast(0.dp)),
+                        .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - IrideFolio.MiniPlayerTopSpacing).coerceAtLeast(0.dp)),
                     verticalArrangement = Arrangement.Bottom,
                 ) {
-                    IrideMiniPlayerPreview(cachedMetadata)
+                    IrideMiniPlayerPreview(cachedMetadata, miniPlayerContentColor)
                 }
             }
         }
@@ -400,7 +406,6 @@ fun BottomSheetPlayer(
         showComments = false
     }
 
-
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
@@ -448,14 +453,19 @@ fun BottomSheetPlayer(
 
     // Use State objects for position/duration to pass to MiniPlayer without causing recomposition
     // These states persist across playback state changes to ensure continuous progress updates
-    val positionState = remember { mutableLongStateOf(0L) }
-    val durationState = remember { mutableLongStateOf(0L) }
+    val positionState = remember(playerConnection) {
+        mutableLongStateOf(
+            (playerConnection.player.currentPosition + playerConnection.service.scratchProcessor.driftMs)
+                .coerceIn(0L, playerConnection.player.duration.coerceAtLeast(0L))
+        )
+    }
+    val durationState = remember(playerConnection) { mutableLongStateOf(playerConnection.player.duration) }
 
     // Convenience accessors for local use
     var position by positionState
     var duration by durationState
 
-    val effectivePosition by remember {
+    val effectivePosition by remember(positionState) {
         derivedStateOf {
             if (isCasting) {
                 castPosition
@@ -720,9 +730,8 @@ fun BottomSheetPlayer(
     val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
     val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
 
-
     if (showSleepTimerDialog) {
-        AlertDialog(
+        IrideFolioAlertDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false),
             onDismissRequest = { showSleepTimerDialog = false },
             icon = {
@@ -733,7 +742,7 @@ fun BottomSheetPlayer(
             },
             title = { Text(stringResource(R.string.sleep_timer)) },
             confirmButton = {
-                TextButton(
+                IrideFolioPrimaryButton(
                     onClick = {
                         showSleepTimerDialog = false
                         playerConnection.service.sleepTimer.start(
@@ -747,7 +756,7 @@ fun BottomSheetPlayer(
                 }
             },
             dismissButton = {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = { showSleepTimerDialog = false },
                 ) {
                     Text(stringResource(android.R.string.cancel))
@@ -789,14 +798,14 @@ fun BottomSheetPlayer(
                             ).show()
                         }
                         if (isAtDefault) {
-                            Button(
+                            IrideFolioPrimaryButton(
                                 onClick = setDefaultClick,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(stringResource(R.string.set_as_default))
                             }
                         } else {
-                            OutlinedButton(
+                            IrideFolioSecondaryButton(
                                 onClick = setDefaultClick,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -804,7 +813,7 @@ fun BottomSheetPlayer(
                             }
                         }
 
-                        OutlinedButton(
+                        IrideFolioSecondaryButton(
                             onClick = {
                                 showSleepTimerDialog = false
                                 playerConnection.service.sleepTimer.start(minute = -1)
@@ -897,12 +906,13 @@ fun BottomSheetPlayer(
         // for a non-null mediaMetadata, so disable both the tap and the drag-to-expand gesture until
         // a real track lands, instead of opening onto a blank body.
         isExpandable = if (curtainMode) mediaMetadata != null else true,
-        // Preserve the expanded player's existing content position inside the moving panel.
-        contentTopPadding = if (curtainMode) (AppPeekHeight - CurtainCornerRevealHeight).coerceAtLeast(0.dp) else 0.dp,
+        // The expanded panel leaves a glimpse of the app above its rounded top edge.
+        expandedTopInset = expandedTopInset,
         backgroundAlwaysOpaque = false,
         backgroundFollowsContent = curtainMode,
+        topEdgeColor = Color.Transparent,
         background = background@{
-            // The compact panel uses its own artwork gradient; the expanded player keeps its dark surface.
+            // The expanded MP3 content owns its artwork gradient.
             if (curtainMode) {
                 Box(
                     modifier = Modifier
@@ -946,7 +956,8 @@ fun BottomSheetPlayer(
                                         .fillMaxSize()
                                         .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                                         .background(Brush.verticalGradient(colorStops = gradientColorStops))
-                                        .background(Color.Black.copy(alpha = 0.2f)),
+                                        .background(Color.Black.copy(alpha = 0.2f))
+                                        .irideBackgroundGrain(),
                                 )
                             }
                         }
@@ -1040,18 +1051,13 @@ fun BottomSheetPlayer(
                         modifier = Modifier
                             .fillMaxSize()
                             .align(Alignment.BottomStart)
-                            .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - 20.dp).coerceAtLeast(0.dp)),
+                            .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - IrideFolio.MiniPlayerTopSpacing).coerceAtLeast(0.dp)),
                         verticalArrangement = Arrangement.Bottom,
                     ) {
                         if (hasPendingQueueRestore || (currentMetadata == null && cachedMetadata != null)) {
-                            IrideMiniPlayerPreview(cachedMetadata)
+                            IrideMiniPlayerPreview(cachedMetadata, miniPlayerContentColor)
                         } else {
-                        // The drag-handle indicator used to live here as a static Box, but it
-                        // disappeared once the sheet started expanding (this whole collapsedContent
-                        // fades out by ~25% progress). It's now drawn by IrideCurtainHandleOverlay
-                        // in MainActivity instead, which stays visible the whole way and glides up
-                        // to the top of the screen as the player opens, so the curtain's drag
-                        // affordance never vanishes mid-gesture.
+                        // The handle is drawn by MainActivity above this row and follows the sheet's position.
                         PillPlayerRow(
                             isIrideStyle = true,
                             progressState = pillProgressState,
@@ -1063,15 +1069,15 @@ fun BottomSheetPlayer(
                             castHandler = castHandler,
                             playerConnection = playerConnection,
                             listenTogetherManager = listenTogetherManager,
-                            // New Iride UI curtain miniplayer sits on the player's own flat dark
-                            // background (IrideMp3BackgroundColor) in every theme, so it's styled
-                            // monochrome white-on-dark to match the rest of the New Iride UI instead
-                            // of the Material accent/surface palette. The progress ring in particular
-                            // must be solid white here (was the themed primary/accent color).
-                            primaryColor = Color.White,
-                            outlineColor = Color.White,
-                            onSurfaceColor = Color.White,
-                            errorColor = Color(0xFFFF6B6B),
+                            // The collapsed row follows the page ink; the expanded player stays dark.
+                            primaryColor = miniPlayerContentColor,
+                            outlineColor = miniPlayerContentColor,
+                            onSurfaceColor = miniPlayerContentColor,
+                            errorColor = if (miniPlayerContentColor == Color.Black) {
+                                Color(0xFFB3261E)
+                            } else {
+                                Color(0xFFFF6B6B)
+                            },
                             // PillPlayerRow has its own clickable, independent of BottomSheet's
                             // isExpandable — guard here too, or a placeholder tap would still open
                             // onto IrideMp3PlayerContent's blank (mediaMetadata == null) body.
@@ -1370,7 +1376,7 @@ fun BottomSheetPlayer(
                         if (!show) {
                             FilledIconButton(
                                 onClick = {
-                                    menuState.show {
+                                    menuState.show(anchored = true) {
                                         PlayerMenu(
                                             mediaMetadata = mediaMetadata,
                                             navController = navController,
@@ -1768,7 +1774,7 @@ fun BottomSheetPlayer(
                                         isFullScreen = isFullScreen,
                                         onExitFullScreen = { isFullScreen = false },
                                         onShowOptionsMenu = {
-                                            menuState.show {
+                                            menuState.show(anchored = true) {
                                                 com.metrolist.music.ui.menu.LyricsMenu(
                                                     lyricsProvider = { currentLyrics },
                                                     songProvider = { currentSong?.song },
@@ -1905,17 +1911,27 @@ fun BottomSheetPlayer(
                             }
                         },
                         onFavoriteClick = { playerConnection.service.toggleLike() },
-                        onRadioClick = {
-                            // Unified stable radio: toggle RDAMVM continuation from
-                            // the current song, then open the queue so the user
-                            // sees the new upcoming list.
-                            mediaMetadata?.let { playerConnection.toggleRadio(it) }
-                            showQueue = true
-                            showInlineLyrics = false
-                            showComments = false
-                            radioNonce++
+                        onLyricsOptions = {
+                            menuState.show(anchored = true) {
+                                com.metrolist.music.ui.menu.LyricsMenu(
+                                    lyricsProvider = { currentLyrics },
+                                    songProvider = { currentSong?.song },
+                                    mediaMetadataProvider = { it },
+                                    onDismiss = menuState::dismiss,
+                                    onShowOffsetDialog = {
+                                        bottomSheetPageState.show {
+                                            ShowOffsetDialog(songProvider = { currentSong?.song })
+                                        }
+                                    },
+                                )
+                            }
                         },
-                        radioTrigger = radioNonce,
+                        isShuffleActive = playerConnection.service.isAutoMixQueueActive.collectAsState().value,
+                        onShuffleClick = {
+                            if (!isListenTogetherGuest) {
+                                playerConnection.toggleRadio(it)
+                            }
+                        },
                         isListenTogetherGuest = isListenTogetherGuest,
                         isMuted = isMuted,
                         onSeek = { fraction ->
@@ -1932,25 +1948,6 @@ fun BottomSheetPlayer(
                                 state.collapseSoft()
                             }
                         },
-                        isLyricsActive = showInlineLyrics,
-                        isQueueActive = showQueue,
-                        onLyricsClick = {
-                            showInlineLyrics = !showInlineLyrics
-                            if (showInlineLyrics) {
-                                showQueue = false
-                                showComments = false
-                            }
-                        },
-                        onQueueClick = {
-                            showQueue = !showQueue
-                            if (showQueue) {
-                                showInlineLyrics = false
-                                showComments = false
-                                queueOpenNonce++
-                            }
-                        },
-                        isFullScreen = isFullScreen,
-                        onToggleFullScreen = { isFullScreen = !isFullScreen },
                         navController = navController,
                         playerBottomSheetState = state,
                         // Just the raw nav-bar inset — using state.collapsedBound here (as before)
@@ -1961,11 +1958,11 @@ fun BottomSheetPlayer(
                         // actually open. That left a dead gap at the true bottom of the screen —
                         // exactly MiniPlayerHeight-ish tall — that only the collapsed peek content
                         // ever used.
-                        bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-                        cornerRevealHeight = if (curtainMode) CurtainCornerRevealHeight else 0.dp,
+                        playerBackground = playerBackground,
+                        bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding(),
                         bridgeState = bridgeState,
                         modifier = Modifier
-                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                     )
                 }
             }

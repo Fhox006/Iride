@@ -52,7 +52,6 @@ enum class DensityScale(
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
-val AdvancedAnimationKey = booleanPreferencesKey("advancedAnimation")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
@@ -295,7 +294,6 @@ val MoodSnapshotKey = stringPreferencesKey("moodSnapshot")
 val LastMoodChipTitleKey = stringPreferencesKey("lastMoodChipTitle")
 val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 
-val HeroCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
 val SeenNewReleaseFirstIdsKey = stringSetPreferencesKey("seenNewReleaseFirstIds")
 val HomeCollapsedSectionsKey = stringSetPreferencesKey("homeCollapsedSections")
 

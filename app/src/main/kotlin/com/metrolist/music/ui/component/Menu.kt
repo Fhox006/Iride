@@ -110,5 +110,8 @@ data class Material3MenuItemData(
     val description: (@Composable () -> Unit)? = null,
     val onClick: (() -> Unit)? = null,
     val cardColors: CardColors? = null,
-    val trailingContent: (@Composable () -> Unit)? = null
+    val trailingContent: (@Composable () -> Unit)? = null,
+    val actionId: Int? = null,
+    val selected: Boolean = false,
+    val section: Int? = null,
 )

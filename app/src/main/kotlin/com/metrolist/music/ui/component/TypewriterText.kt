@@ -29,9 +29,9 @@ import androidx.compose.material3.Text
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlinx.coroutines.delay
 
-private const val MS_PER_CHAR = 26L
-private const val MAX_TOTAL_MS = 700L
-private const val CURSOR_BLINK_MS = 280L
+internal fun irideTypewriterStepMillis(characterCount: Int): Long =
+    minOf(26L, 700L / characterCount.coerceAtLeast(1)).coerceAtLeast(1L)
+internal const val IrideTypewriterCursorBlinkMillis = 280L
 private const val CURSOR_BLINKS_AT_END = 2
 
 /**
@@ -82,18 +82,18 @@ fun TypewriterText(
         }
         typed = 0
         cursorVisible = true
-        val step = minOf(MS_PER_CHAR, MAX_TOTAL_MS / text.length)
+        val step = irideTypewriterStepMillis(text.length)
         repeat(text.length) {
             delay(step)
             typed++
         }
         repeat(CURSOR_BLINKS_AT_END) {
-            delay(CURSOR_BLINK_MS)
+            delay(IrideTypewriterCursorBlinkMillis)
             cursorVisible = false
-            delay(CURSOR_BLINK_MS)
+            delay(IrideTypewriterCursorBlinkMillis)
             cursorVisible = true
         }
-        delay(CURSOR_BLINK_MS)
+        delay(IrideTypewriterCursorBlinkMillis)
         cursorVisible = false
     }
 

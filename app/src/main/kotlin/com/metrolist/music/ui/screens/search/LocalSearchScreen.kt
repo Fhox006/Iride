@@ -1,34 +1,22 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.gestures.Orientation
-import com.metrolist.music.LocalPlayerAwareWindowInsets
-import com.metrolist.music.ui.component.LibraryListPage
-import com.metrolist.music.ui.component.LibraryPageMenuAction
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,8 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -53,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_LIST
@@ -69,11 +56,14 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.LibraryListPage
+import com.metrolist.music.ui.component.LibraryPageMenuAction
+import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
-import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.AlbumMenu
@@ -83,8 +73,8 @@ import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LocalFilter
 import com.metrolist.music.viewmodels.LocalSearchViewModel
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -115,13 +105,12 @@ fun LocalSearchScreen(
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
-
     LaunchedEffect(lazyListState) {
-        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
-            .collect(onScrollChanged)
+        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }.collect(onScrollChanged)
     }
 
     LaunchedEffect(Unit) {
+        if (header != null) return@LaunchedEffect
         snapshotFlow { lazyListState.firstVisibleItemScrollOffset }
             .drop(1)
             .collect {
@@ -155,26 +144,32 @@ fun LocalSearchScreen(
     }
 
     if (header != null) {
-        LibraryListPage(
+        IridePageLayout(
             titleRes = R.string.search,
             state = lazyListState,
-            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-            onNavigateUp = { navController.navigateUp() },
+            bottomPadding =
+                LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            showTopBar = true,
             contentHorizontalPadding = 0.dp,
             menuSections = pageMenuSections,
-            modifier = Modifier.fillMaxSize().background(
-                when {
-                    pureBlack -> Color.Black
-                    mainTopGradient -> Color.Transparent
-                    else -> MaterialTheme.colorScheme.background
-                },
-            ).let { base ->
-                if (isLandscape) {
-                    base.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                } else {
-                    base
-                }
-            },
+            modifier =
+                Modifier.fillMaxSize()
+                    .background(
+                        when {
+                            pureBlack -> Color.Black
+                            mainTopGradient -> Color.Transparent
+                            else -> MaterialTheme.colorScheme.background
+                        }
+                    )
+                    .let { base ->
+                        if (isLandscape) {
+                            base.windowInsetsPadding(
+                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
+                            )
+                        } else {
+                            base
+                        }
+                    },
         ) {
             item(key = "search_header") { header() }
             item(key = "local_search_chips") { chipsRow() }
@@ -197,55 +192,47 @@ fun LocalSearchScreen(
         return
     }
 
-    Column(
+    IridePageLayout(
+        titleRes = R.string.search,
+        state = lazyListState,
         modifier =
-            Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .background(
                     when {
                         pureBlack -> Color.Black
                         mainTopGradient -> Color.Transparent
                         else -> MaterialTheme.colorScheme.background
-                    },
+                    }
                 )
                 .let { base ->
                     if (isLandscape) {
                         base.windowInsetsPadding(
-                            WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                            WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
                         )
                     } else {
                         base
                     }
                 },
+        bottomPadding =
+            LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
     ) {
-        chipsRow()
+        item(key = "local_search_chips") { chipsRow() }
 
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .weight(1f)
-                .rubberBandOverscroll(Orientation.Vertical, lazyListState),
-            contentPadding =
-                WindowInsets.systemBars
-                    .only(WindowInsetsSides.Bottom)
-                    .asPaddingValues(),
-        ) {
-            localSearchResultItems(
-                result = result,
-                navController = navController,
-                menuState = menuState,
-                onDismiss = onDismiss,
-                isFromCache = isFromCache,
-                isPlaying = isPlaying,
-                mediaMetadata = mediaMetadata,
-                queueSearchedSongsStr = queueSearchedSongsStr,
-                onFilterChange = { viewModel.filter.value = it },
-                playerConnection = playerConnection,
-                coroutineScope = coroutineScope,
-                haptic = haptic,
-                useIrideStyle = true,
-            )
-        }
+        localSearchResultItems(
+            result = result,
+            navController = navController,
+            menuState = menuState,
+            onDismiss = onDismiss,
+            isFromCache = isFromCache,
+            isPlaying = isPlaying,
+            mediaMetadata = mediaMetadata,
+            queueSearchedSongsStr = queueSearchedSongsStr,
+            onFilterChange = { viewModel.filter.value = it },
+            playerConnection = playerConnection,
+            coroutineScope = coroutineScope,
+            haptic = haptic,
+            useIrideStyle = true,
+        )
     }
 }
 
@@ -264,61 +251,75 @@ private fun LazyListScope.localSearchResultItems(
     haptic: HapticFeedback,
     useIrideStyle: Boolean = false,
 ) {
-            if (result.filter == LocalFilter.ALL) {
-                result.map.forEach { (filter, items) ->
-                    item(key = "title_$filter") {
-                        NavigationTitle(
-                            title = stringResource(
-                                when (filter) {
-                                    LocalFilter.SONG -> R.string.filter_songs
-                                    LocalFilter.ALBUM -> R.string.filter_albums
-                                    LocalFilter.ARTIST -> R.string.filter_artists
-                                    LocalFilter.PLAYLIST -> R.string.filter_playlists
-                                    LocalFilter.ALL, LocalFilter.DOWNLOAD -> error("")
-                                },
-                            ),
-                            useIrideStyle = useIrideStyle,
-                            onClick = { onFilterChange(filter) },
-                        )
-                    }
+    if (result.filter == LocalFilter.ALL) {
+        result.map.forEach { (filter, items) ->
+            item(key = "title_$filter") {
+                NavigationTitle(
+                    title =
+                        stringResource(
+                            when (filter) {
+                                LocalFilter.SONG -> R.string.filter_songs
+                                LocalFilter.ALBUM -> R.string.filter_albums
+                                LocalFilter.ARTIST -> R.string.filter_artists
+                                LocalFilter.PLAYLIST -> R.string.filter_playlists
+                                LocalFilter.ALL,
+                                LocalFilter.DOWNLOAD -> error("")
+                            }
+                        ),
+                    useIrideStyle = useIrideStyle,
+                    onClick = { onFilterChange(filter) },
+                )
+            }
 
-                    item(key = "row_$filter") {
-                        LazyRow(
-                            contentPadding = PaddingValues(
-                                start = if (useIrideStyle) 20.dp else 16.dp,
-                                end = 8.dp,
-                            ),
-                        ) {
-                            items(
-                                items = items.distinctBy { it.id },
-                                key = { "search_local_grid_${it.id}" },
-                            ) { item ->
-                                when (item) {
-                                    is Song -> SongGridItem(
-                                        song = item,
-                                        isActive = item.id == mediaMetadata?.id,
-                                        isPlaying = isPlaying,
-                                        modifier = Modifier.combinedClickable(
+            item(key = "row_$filter") {
+                LazyRow(
+                    contentPadding =
+                        PaddingValues(
+                            start = if (useIrideStyle) 20.dp else 16.dp,
+                            end = 8.dp,
+                        )
+                ) {
+                    items(
+                        items = items.distinctBy { it.id },
+                        key = { "search_local_grid_${it.id}" },
+                    ) { item ->
+                        when (item) {
+                            is Song ->
+                                SongGridItem(
+                                    song = item,
+                                    isActive = item.id == mediaMetadata?.id,
+                                    isPlaying = isPlaying,
+                                    modifier =
+                                        Modifier.combinedClickable(
                                             onClick = {
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    val songs = result.map
-                                                        .getOrDefault(LocalFilter.SONG, emptyList())
-                                                        .filterIsInstance<Song>()
-                                                        .map { it.toMediaItem() }
+                                                    val songs =
+                                                        result.map
+                                                            .getOrDefault(
+                                                                LocalFilter.SONG,
+                                                                emptyList(),
+                                                            )
+                                                            .filterIsInstance<Song>()
+                                                            .map { it.toMediaItem() }
                                                     playerConnection.playQueue(
                                                         ListQueue(
                                                             title = queueSearchedSongsStr,
                                                             items = songs,
-                                                            startIndex = songs.indexOfFirst { it.mediaId == item.id },
-                                                        ),
+                                                            startIndex =
+                                                                songs.indexOfFirst {
+                                                                    it.mediaId == item.id
+                                                                },
+                                                        )
                                                     )
                                                 }
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                                menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = item,
                                                         navController = navController,
@@ -331,21 +332,25 @@ private fun LazyListScope.localSearchResultItems(
                                                 }
                                             },
                                         ),
-                                    )
+                                )
 
-                                    is Album -> AlbumGridItem(
-                                        album = item,
-                                        isActive = item.id == mediaMetadata?.album?.id,
-                                        isPlaying = isPlaying,
-                                        coroutineScope = coroutineScope,
-                                        modifier = Modifier.combinedClickable(
+                            is Album ->
+                                AlbumGridItem(
+                                    album = item,
+                                    isActive = item.id == mediaMetadata?.album?.id,
+                                    isPlaying = isPlaying,
+                                    coroutineScope = coroutineScope,
+                                    modifier =
+                                        Modifier.combinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("album/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                                menuState.show(anchored = true) {
                                                     AlbumMenu(
                                                         originalAlbum = item,
                                                         navController = navController,
@@ -354,18 +359,22 @@ private fun LazyListScope.localSearchResultItems(
                                                 }
                                             },
                                         ),
-                                    )
+                                )
 
-                                    is Artist -> ArtistGridItem(
-                                        artist = item,
-                                        modifier = Modifier.combinedClickable(
+                            is Artist ->
+                                ArtistGridItem(
+                                    artist = item,
+                                    modifier =
+                                        Modifier.combinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("artist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                                menuState.show(anchored = true) {
                                                     ArtistMenu(
                                                         originalArtist = item,
                                                         coroutineScope = coroutineScope,
@@ -374,18 +383,22 @@ private fun LazyListScope.localSearchResultItems(
                                                 }
                                             },
                                         ),
-                                    )
+                                )
 
-                                    is Playlist -> PlaylistGridItem(
-                                        playlist = item,
-                                        modifier = Modifier.combinedClickable(
+                            is Playlist ->
+                                PlaylistGridItem(
+                                    playlist = item,
+                                    modifier =
+                                        Modifier.combinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("local_playlist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                                menuState.show(anchored = true) {
                                                     PlaylistMenu(
                                                         playlist = item,
                                                         coroutineScope = coroutineScope,
@@ -394,143 +407,146 @@ private fun LazyListScope.localSearchResultItems(
                                                 }
                                             },
                                         ),
-                                    )
-                                }
-                            }
+                                )
                         }
                     }
                 }
-
-                if (result.query.isNotEmpty() && result.map.isEmpty()) {
-                    item(key = "no_result") {
-                        EmptyPlaceholder(
-                            icon = R.drawable.search,
-                            text = stringResource(R.string.no_results_found),
-                        )
-                    }
-                }
-                return
             }
+        }
 
-            result.map.forEach { (_, items) ->
-                items(
-                    items = items.distinctBy { it.id },
-                    key = { "search_local_${it.id}" },
-                    contentType = { CONTENT_TYPE_LIST },
-                ) { item ->
-                    when (item) {
-                        is Song -> {
-                            SongListItem(
-                                song = item,
-                                isActive = item.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                trailingContent = {
-                                    IconButton(
-                                        onClick = {
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = item,
-                                                    navController = navController,
-                                                    onDismiss = {
-                                                        onDismiss()
-                                                        menuState.dismiss()
-                                                    },
-                                                    isFromCache = isFromCache,
-                                                )
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
+        if (result.query.isNotEmpty() && result.map.isEmpty()) {
+            item(key = "no_result") {
+                EmptyPlaceholder(
+                    icon = R.drawable.search,
+                    text = stringResource(R.string.no_results_found),
+                )
+            }
+        }
+        return
+    }
+
+    result.map.forEach { (_, items) ->
+        items(
+            items = items.distinctBy { it.id },
+            key = { "search_local_${it.id}" },
+            contentType = { CONTENT_TYPE_LIST },
+        ) { item ->
+            when (item) {
+                is Song -> {
+                    SongListItem(
+                        song = item,
+                        isActive = item.id == mediaMetadata?.id,
+                        isPlaying = isPlaying,
+                        trailingContent = {
+                            SongMenuIconButton(
+                                onClick = {
+                                    menuState.show(anchored = true) {
+                                        SongMenu(
+                                            originalSong = item,
+                                            navController = navController,
+                                            onDismiss = {
+                                                onDismiss()
+                                                menuState.dismiss()
+                                            },
+                                            isFromCache = isFromCache,
                                         )
                                     }
-                                },
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (item.id == mediaMetadata?.id) {
-                                                    playerConnection.togglePlayPause()
-                                                } else {
-                                                    val songs =
-                                                        result.map
-                                                            .getOrDefault(LocalFilter.SONG, emptyList())
-                                                            .filterIsInstance<Song>()
-                                                            .map { it.toMediaItem() }
-                                                    playerConnection.playQueue(
-                                                        ListQueue(
-                                                            title = queueSearchedSongsStr,
-                                                            items = songs,
-                                                            startIndex = songs.indexOfFirst { it.mediaId == item.id },
-                                                        ),
-                                                    )
-                                                }
-                                            },
-                                            onLongClick = {
-                                                menuState.show {
-                                                    SongMenu(
-                                                        originalSong = item,
-                                                        navController = navController,
-                                                        onDismiss = {
-                                                            onDismiss()
-                                                            menuState.dismiss()
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.more_vert),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                        modifier =
+                            Modifier.combinedClickable(
+                                    onClick = {
+                                        if (item.id == mediaMetadata?.id) {
+                                            playerConnection.togglePlayPause()
+                                        } else {
+                                            val songs =
+                                                result.map
+                                                    .getOrDefault(LocalFilter.SONG, emptyList())
+                                                    .filterIsInstance<Song>()
+                                                    .map { it.toMediaItem() }
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = queueSearchedSongsStr,
+                                                    items = songs,
+                                                    startIndex =
+                                                        songs.indexOfFirst {
+                                                            it.mediaId == item.id
                                                         },
-                                                        isFromCache = isFromCache,
-                                                    )
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
-
-                        is Album -> {
-                            AlbumListItem(
-                                album = item,
-                                isActive = item.id == mediaMetadata?.album?.id,
-                                isPlaying = isPlaying,
-                                modifier =
-                                    Modifier
-                                        .clickable {
-                                            onDismiss()
-                                            navController.navigate("album/${item.id}")
-                                        }.animateItem(),
-                            )
-                        }
-
-                        is Artist -> {
-                            ArtistListItem(
-                                artist = item,
-                                modifier =
-                                    Modifier
-                                        .clickable {
-                                            onDismiss()
-                                            navController.navigate("artist/${item.id}")
-                                        }.animateItem(),
-                            )
-                        }
-
-                        is Playlist -> {
-                            PlaylistListItem(
-                                playlist = item,
-                                modifier =
-                                    Modifier
-                                        .clickable {
-                                            onDismiss()
-                                            navController.navigate("local_playlist/${item.id}")
-                                        }.animateItem(),
-                            )
-                        }
-                    }
+                                                )
+                                            )
+                                        }
+                                    },
+                                    onLongClick = {
+                                        menuState.show(anchored = true) {
+                                            SongMenu(
+                                                originalSong = item,
+                                                navController = navController,
+                                                onDismiss = {
+                                                    onDismiss()
+                                                    menuState.dismiss()
+                                                },
+                                                isFromCache = isFromCache,
+                                            )
+                                        }
+                                    },
+                                )
+                                .animateItem(),
+                    )
                 }
-            }
 
-            if (result.query.isNotEmpty() && result.map.isEmpty()) {
-                item(key = "no_result") {
-                    EmptyPlaceholder(
-                        icon = R.drawable.search,
-                        text = stringResource(R.string.no_results_found),
+                is Album -> {
+                    AlbumListItem(
+                        album = item,
+                        isActive = item.id == mediaMetadata?.album?.id,
+                        isPlaying = isPlaying,
+                        modifier =
+                            Modifier.clickable {
+                                    onDismiss()
+                                    navController.navigate("album/${item.id}")
+                                }
+                                .animateItem(),
+                    )
+                }
+
+                is Artist -> {
+                    ArtistListItem(
+                        artist = item,
+                        modifier =
+                            Modifier.clickable {
+                                    onDismiss()
+                                    navController.navigate("artist/${item.id}")
+                                }
+                                .animateItem(),
+                    )
+                }
+
+                is Playlist -> {
+                    PlaylistListItem(
+                        playlist = item,
+                        modifier =
+                            Modifier.clickable {
+                                    onDismiss()
+                                    navController.navigate("local_playlist/${item.id}")
+                                }
+                                .animateItem(),
                     )
                 }
             }
+        }
+    }
+
+    if (result.query.isNotEmpty() && result.map.isEmpty()) {
+        item(key = "no_result") {
+            EmptyPlaceholder(
+                icon = R.drawable.search,
+                text = stringResource(R.string.no_results_found),
+            )
+        }
+    }
 }

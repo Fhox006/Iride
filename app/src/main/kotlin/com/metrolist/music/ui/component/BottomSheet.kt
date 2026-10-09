@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -38,11 +41,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -57,6 +67,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
+
+internal val LocalPlayerSheetGestureLock = compositionLocalOf<MutableState<Boolean>> {
+    error("Player gesture lock is only available inside a bottom sheet")
+}
 
 /**
  * Bottom Sheet
@@ -76,12 +90,22 @@ fun BottomSheet(
     selfPositions: Boolean = true,
     // Reserves space above the expanded content without changing its layout.
     contentTopPadding: Dp = 0.dp,
+    // Leaves a tappable glimpse of the app above the expanded player.
+    expandedTopInset: Dp = 0.dp,
     // Legacy background behavior for sheets that draw their background outside the moving content.
     backgroundAlwaysOpaque: Boolean = false,
     // The player panel moves over the app, so its background must travel with its content.
     backgroundFollowsContent: Boolean = false,
+    topEdgeColor: Color = Color.Transparent,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val gestureLock = remember { mutableStateOf(false) }
+    val cornerRadius = when {
+        !selfPositions -> 0.dp
+        expandedTopInset > 0.dp -> 16.dp + 16.dp * state.progress.coerceIn(0f, 1f)
+        !state.isExpanded -> 16.dp
+        else -> 0.dp
+    }
     if (!backgroundFollowsContent) {
         Box(
             modifier = modifier
@@ -98,16 +122,17 @@ fun BottomSheet(
     }
     Box(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .then(if (expandedTopInset > 0.dp) Modifier.height(state.expandedBound) else Modifier.fillMaxSize())
             // Use graphicsLayer for offset to ensure hardware acceleration and 120Hz support
             .graphicsLayer {
                 if (selfPositions) {
-                    translationY = (state.expandedBound - state.value)
+                    translationY = (expandedTopInset + state.expandedBound - state.value)
                         .toPx()
                         .coerceAtLeast(0f)
                 }
             }
-            .pointerInput(state, isExpandable) {
+            .pointerInput(state, isExpandable, backgroundFollowsContent, expandedTopInset) {
                 if (!isExpandable) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -116,7 +141,8 @@ fun BottomSheet(
                     // system navigation handle while the sheet is collapsed.
                     val densityScale = density
                     val screenStartY =
-                        (down.position.y + (state.expandedBound - state.value).toPx()) / densityScale
+                        (down.position.y + (expandedTopInset + state.expandedBound - state.value).toPx()) / densityScale
+                    val curtainGestures = backgroundFollowsContent && expandedTopInset > 0.dp
                     val sideDragSlop = if (backgroundFollowsContent && state.isCollapsed) {
                         viewConfiguration.touchSlop
                     } else {
@@ -124,7 +150,7 @@ fun BottomSheet(
                     }
                     val dragSlop = bottomSheetDragSlop(
                         startYDp = screenStartY,
-                        screenHeightDp = size.height / densityScale,
+                        screenHeightDp = size.height / densityScale + expandedTopInset.value,
                         sideDragSlopPx = sideDragSlop,
                         densityScale = densityScale,
                     )
@@ -135,15 +161,20 @@ fun BottomSheet(
                     var dragging = false
                     try {
                         while (true) {
-                            val event = awaitPointerEvent()
+                            // Child lists, swipe actions and reorder handles own their gestures first.
+                            val event = awaitPointerEvent(PointerEventPass.Main)
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             velocityTracker.addPointerInputChange(change)
                             if (!dragging) {
-                                if (change.isConsumed || !change.pressed) break
+                                if (gestureLock.value || change.isConsumed || !change.pressed) break
                                 val delta = change.positionChange()
                                 accumulatedY += delta.y
                                 accumulatedX += delta.x
-                                if (isVerticalDragPastSlop(accumulatedY, accumulatedX, dragSlop)) {
+                                val closing = curtainGestures && accumulatedY > dragSlop &&
+                                    accumulatedY > abs(accumulatedX)
+                                val opening = (!curtainGestures || state.isCollapsed) &&
+                                    isVerticalDragPastSlop(accumulatedY, accumulatedX, dragSlop)
+                                if (closing || opening) {
                                     dragging = true
                                     change.consume()
                                     state.dispatchRawDelta(accumulatedY - sign(accumulatedY) * dragSlop)
@@ -166,11 +197,42 @@ fun BottomSheet(
             }
             .graphicsLayer {
                 if (selfPositions) {
-                    val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
                     shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                     clip = true
                 }
             }
+            .then(if (topEdgeColor.alpha > 0f) Modifier.drawWithCache {
+                val strokeWidth = 1.dp.toPx()
+                val inset = strokeWidth / 2f
+                val radius = cornerRadius.toPx().coerceAtMost(size.minDimension / 2f)
+                    .coerceAtLeast(inset)
+                val fadeHeight = maxOf(72.dp.toPx(), radius * 2f)
+                val edge = Path().apply {
+                    moveTo(inset, fadeHeight)
+                    lineTo(inset, radius)
+                    arcTo(
+                        Rect(inset, inset, radius * 2f - inset, radius * 2f - inset),
+                        180f, 90f, false,
+                    )
+                    lineTo(size.width - radius, inset)
+                    arcTo(
+                        Rect(size.width - radius * 2f + inset, inset, size.width - inset, radius * 2f - inset),
+                        270f, 90f, false,
+                    )
+                    lineTo(size.width - inset, fadeHeight)
+                }
+                val brush = Brush.verticalGradient(
+                    0f to topEdgeColor,
+                    0.45f to topEdgeColor.copy(alpha = topEdgeColor.alpha * 0.35f),
+                    1f to Color.Transparent,
+                    endY = fadeHeight,
+                )
+                val stroke = Stroke(width = strokeWidth)
+                onDrawWithContent {
+                    drawContent()
+                    drawPath(edge, brush, alpha = state.progress.coerceIn(0f, 1f), style = stroke)
+                }
+            } else Modifier)
     ) {
         if (backgroundFollowsContent) {
             Box(
@@ -193,8 +255,11 @@ fun BottomSheet(
                     .graphicsLayer {
                         alpha = ((state.progress - 0.15f) * 4).coerceIn(0f, 1f)
                     },
-                content = content
-            )
+            ) {
+                CompositionLocalProvider(LocalPlayerSheetGestureLock provides gestureLock) {
+                    content()
+                }
+            }
         }
 
         if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
@@ -287,19 +352,12 @@ class BottomSheetState(
         if (range > 0.dp) (value - collapsedBound) / range else 0f
     }
 
-    // Set whenever an expand is triggered. Lets callers tell "just opened, no time to interact
-    // yet" (e.g. an accidental tap while backgrounding) apart from "user has been sitting in the
-    // expanded player for a while and left it open on purpose".
-    var lastExpandedAtMs: Long = 0L
-        private set
-
     fun collapse(animationSpec: AnimationSpec<Dp>) {
         onAnchorChanged(collapsedAnchor)
         launchAnimation(collapsedBound, animationSpec)
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
-        lastExpandedAtMs = android.os.SystemClock.elapsedRealtime()
         onAnchorChanged(expandedAnchor)
         launchAnimation(expandedBound, animationSpec)
     }
