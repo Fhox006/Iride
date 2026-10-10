@@ -21,6 +21,7 @@ import com.metrolist.innertube.pages.ArtistPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.data.remote.ArtistArtworkCandidate
 import com.metrolist.music.data.remote.ArtistArtworkRepository
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
@@ -39,12 +40,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import com.metrolist.music.extensions.filterVideoSongs as filterVideoSongsLocal
@@ -85,8 +88,20 @@ class ArtistViewModel @Inject constructor(
         libraryArtist,
     ) { online, local ->
         (online?.title ?: local?.artist?.name) to (online?.channelId ?: local?.artist?.channelId ?: artistId)
-    }.distinctUntilChanged().mapLatest { (name, channelId) ->
-        if (name == null || isPodcastChannel) emptyList() else artistArtworkRepository.findArtworks(name, channelId)
+    }.distinctUntilChanged().flatMapLatest { (name, channelId) ->
+        channelFlow<List<ArtistArtworkCandidate>> {
+            send(emptyList())
+            if (name != null && !isPodcastChannel) {
+                val candidates = mutableListOf<ArtistArtworkCandidate>()
+                val candidateMutex = Mutex()
+                artistArtworkRepository.findArtworks(name, channelId) { candidate ->
+                    candidateMutex.withLock {
+                        candidates.add(candidate)
+                        send(candidates.toList())
+                    }
+                }
+            }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val isChannelSubscribed = kotlinx.coroutines.flow.combine(

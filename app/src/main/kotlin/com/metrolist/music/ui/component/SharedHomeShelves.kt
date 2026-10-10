@@ -39,20 +39,14 @@ fun SharedHomeSectionTitle(
     showNavigationArrow: Boolean = false,
     titleMaxLines: Int = 1,
 ) {
-    NavigationTitle(
+    IrideFolioShelfHeader(
         title = title,
         modifier = modifier,
         onClick = onClick,
         onRefreshClick = onRefreshClick,
         isRefreshing = isRefreshing,
-        useIrideStyle = true,
-        prominentTitle = true,
-        sentenceCaseTitle = true,
-        showDivider = false,
         showNavigationArrow = showNavigationArrow,
         titleMaxLines = titleMaxLines,
-        topPadding = 24.dp,
-        bottomPadding = 12.dp,
     )
 }
 
@@ -174,7 +168,7 @@ fun <T> SharedYouTubePlaylistRow(
     LazyRow(
         state = listState,
         contentPadding = PaddingValues(horizontal = contentPadding),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
         overscrollEffect = null,
         modifier =
             modifier

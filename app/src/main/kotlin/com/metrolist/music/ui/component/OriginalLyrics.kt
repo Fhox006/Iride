@@ -505,7 +505,31 @@ fun OriginalLyrics(
     // Professional animation states for smooth Metrolist-style transitions
     var isAnimating by remember { mutableStateOf(false) }
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
+    val scrollPause = remember { LyricsScrollPause() }
+    androidx.compose.runtime.SideEffect {
+        pillsController?.canSelectLyrics = lines.any { it.text.isNotBlank() }
+        pillsController?.isSelectionModeActive = isSelectionModeActive
+        pillsController?.selectionAction = {
+            if (isSelectionModeActive) {
+                isSelectionModeActive = false
+                selectedIndices.clear()
+            } else if (lines.isNotEmpty()) {
+                isSelectionModeActive = true
+                selectedIndices.clear()
+                val selected = currentLineIndex.takeIf { it in lines.indices }
+                    ?: lines.indexOfFirst { it.text.isNotBlank() }
+                if (selected >= 0) selectedIndices.add(selected)
+            }
+        }
+    }
     var isLyricsLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isSelectionModeActive) {
+        if (isSelectionModeActive) {
+            isAutoScrollEnabled = false
+            scrollPause.manualScroll()
+        }
+    }
 
     // Handle back button press - close selection mode instead of exiting screen
     BackHandler(enabled = isSelectionModeActive) {
@@ -585,15 +609,6 @@ fun OriginalLyrics(
         }
     }
 
-    LaunchedEffect(isSeeking, lastPreviewTime) {
-        if (isSeeking) {
-            lastPreviewTime = 0L
-        } else if (lastPreviewTime != 0L) {
-            delay(LyricsPreviewTime)
-            lastPreviewTime = 0L
-        }
-    }
-
     /**
      * Smoothly scrolls the lyrics list to center the item at [targetIndex].
      *
@@ -635,6 +650,7 @@ fun OriginalLyrics(
             if (nearest != null && layout.totalItemsCount > 0) {
                 val target = (nearest.index + direction).coerceIn(0, layout.totalItemsCount - 1)
                 isAutoScrollEnabled = false
+                scrollPause.manualScroll()
                 lastPreviewTime = System.currentTimeMillis()
                 scope.launch {
                     lazyListState.animateScrollToItem(target, -center + nearest.size / 2)
@@ -645,6 +661,12 @@ fun OriginalLyrics(
 
     LaunchedEffect(currentLineIndex, lastPreviewTime, initialScrollDone, isAutoScrollEnabled) {
         if (!isSynced) return@LaunchedEffect
+        if (!isAutoScrollEnabled && !isSelectionModeActive && currentLineIndex != previousLineIndex &&
+            currentLineIndex >= 0 && scrollPause.canResume()
+        ) {
+            isAutoScrollEnabled = true
+            lastPreviewTime = 0L
+        }
         if (isAutoScrollEnabled) {
             if ((currentLineIndex == 0 && shouldScrollToFirstLine) || !initialScrollDone) {
                 shouldScrollToFirstLine = false
@@ -860,6 +882,7 @@ fun OriginalLyrics(
                 modifier =
                     Modifier
                         .fadingEdge(vertical = 64.dp)
+                        .trackLyricsTouch(scrollPause)
                         .nestedScroll(
                             remember {
                                 object : NestedScrollConnection {
@@ -868,10 +891,9 @@ fun OriginalLyrics(
                                         available: Offset,
                                         source: NestedScrollSource,
                                     ): Offset {
-                                        if (source == NestedScrollSource.UserInput) {
+                                        if (source == NestedScrollSource.UserInput && consumed.y != 0f) {
                                             isAutoScrollEnabled = false
-                                        }
-                                        if (!isSelectionModeActive) { // Only update preview time if not selecting
+                                            scrollPause.manualScroll()
                                             lastPreviewTime = System.currentTimeMillis()
                                         }
                                         return super.onPostScroll(consumed, available, source)
@@ -881,10 +903,6 @@ fun OriginalLyrics(
                                         consumed: Velocity,
                                         available: Velocity,
                                     ): Velocity {
-                                        isAutoScrollEnabled = false
-                                        if (!isSelectionModeActive) { // Only update preview time if not selecting
-                                            lastPreviewTime = System.currentTimeMillis()
-                                        }
                                         return super.onPostFling(consumed, available)
                                     }
                                 }
@@ -1846,7 +1864,7 @@ fun OriginalLyrics(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    IrideFolioPrimaryButton(
+                    IrideFolioFrostedButton(
                         onClick = {
                             if (selectedIndices.isNotEmpty()) {
                                 val sortedIndices = selectedIndices.sorted()
@@ -1871,10 +1889,12 @@ fun OriginalLyrics(
                         enabled = selectedIndices.isNotEmpty(),
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.arrow_forward),
-                            contentDescription = "Share",
+                            painter = painterResource(id = R.drawable.share),
+                            contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.share_as_image))
                     }
                 }
             }

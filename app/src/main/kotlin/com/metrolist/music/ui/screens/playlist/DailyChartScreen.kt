@@ -225,7 +225,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                     }
                 }
             }
-            IrideFolioRankedSongRow(rank = track.rank) {
+            IrideFolioRankedSongRow(rank = track.rank, movement = track.movement) {
                 if (song != null) {
                     val librarySong by remember(song.id) { database.song(song.id) }.collectAsStateWithLifecycle(initialValue = null)
                     val displaySong = librarySong ?: remember(song) {

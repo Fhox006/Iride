@@ -11,6 +11,7 @@ import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.response.BrowseResponse
 import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.utils.parseTime
+import java.util.Locale
 
 data class AlbumPage(
     val album: AlbumItem,
@@ -19,6 +20,41 @@ data class AlbumPage(
     val similarAlbums: List<AlbumItem> = emptyList(),
 ) {
     companion object {
+        /** Shelf count and order vary: a lone carousel can contain alternate editions. */
+        fun albumShelves(response: BrowseResponse, album: AlbumItem): Pair<List<AlbumItem>, List<AlbumItem>> {
+            val primary = response.contents?.singleColumnBrowseResultsRenderer?.tabs
+                ?: response.contents?.twoColumnBrowseResultsRenderer?.tabs
+            val sections = primary?.flatMap { it?.tabRenderer?.content?.sectionListRenderer?.contents.orEmpty() }.orEmpty() +
+                response.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents.orEmpty()
+            val versions = mutableListOf<AlbumItem>()
+            val recommendations = mutableListOf<AlbumItem>()
+            fun releaseName(value: String) = value.lowercase(Locale.ROOT).replace(
+                Regex("""\s*(?:\([^)]*\)|\[[^\]]*\]|[-–:]\s*(?:deluxe|expanded|remaster|anniversary).*)"""), "",
+            ).trim()
+            for (shelf in sections.mapNotNull { it.musicCarouselShelfRenderer }) {
+                val title = shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs.orEmpty()
+                    .joinToString("") { it.text }.lowercase(Locale.ROOT)
+                val isVersionsShelf = listOf("other version", "altre version", "otras version", "autres version", "andere version", "outras vers").any { it in title }
+                val albums = shelf.contents.mapNotNull { it.musicTwoRowItemRenderer }.mapNotNull { renderer ->
+                    if (!renderer.isAlbum && renderer.navigationEndpoint.browseEndpoint?.browseId?.startsWith("MPRE") != true) return@mapNotNull null
+                    val parsed = NewReleaseAlbumPage.fromMusicTwoRowItemRenderer(renderer)
+                        ?: (ArtistPage.fromMusicTwoRowItemRenderer(renderer) as? AlbumItem)
+                        ?: return@mapNotNull null
+                    if (isVersionsShelf && parsed.artists.isNullOrEmpty()) parsed.copy(artists = album.artists) else parsed
+                }
+                for (item in albums) {
+                    if (item.id == album.id) continue
+                    val sameArtist = item.artists.orEmpty().any { candidate -> album.artists.orEmpty().any {
+                        (candidate.id != null && candidate.id == it.id) || candidate.name.equals(it.name, true)
+                    } }
+                    if (isVersionsShelf || (sameArtist && releaseName(item.title) == releaseName(album.title))) versions += item
+                    else recommendations += item
+                }
+            }
+            val versionIds = versions.map { it.id }.toSet()
+            return versions.distinctBy { it.id } to recommendations.distinctBy { it.id }.filterNot { it.id in versionIds }
+        }
+
         fun getPlaylistId(response: BrowseResponse): String? {
             var playlistId = response.microformat?.microformatDataRenderer?.urlCanonical?.substringAfterLast('=')
             if (playlistId == null)

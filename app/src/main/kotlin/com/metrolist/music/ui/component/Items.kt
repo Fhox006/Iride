@@ -985,7 +985,7 @@ fun ArtistListItem(
             AsyncImage(
                 model =
                     ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnail)
+                        .data(thumbnail?.let { artistArtworkDownloadUrl(it, 192) })
                         .size(192, 192)
                         .precision(Precision.EXACT)
                         .memoryCacheKey(thumbnail?.let { "iride_artist_thumbnail:$it:192" })
@@ -1043,7 +1043,7 @@ fun ArtistGridItem(
             AsyncImage(
                 model =
                     ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnail)
+                        .data(thumbnail?.let { artistArtworkDownloadUrl(it, ThumbnailRequestSize) })
                         .size(ThumbnailRequestSize, ThumbnailRequestSize)
                         .precision(Precision.EXACT)
                         .memoryCacheKey(thumbnail?.let { "iride_artist_thumbnail:$it:$ThumbnailRequestSize" })
@@ -2058,7 +2058,8 @@ fun ItemThumbnail(
                     imageLoader = imageLoader ?: LocalContext.current.imageLoader,
                     model =
                         ImageRequest.Builder(LocalContext.current)
-                            .data(if (artistArtwork) thumbnailUrl else thumbnailUrl?.resize(requestResolution, requestResolution))
+                            .data(if (artistArtwork) thumbnailUrl?.let { artistArtworkDownloadUrl(it, requestResolution) }
+                                else thumbnailUrl?.resize(requestResolution, requestResolution))
                             .apply {
                                 if (artistArtwork) {
                                     size(requestResolution, requestResolution)

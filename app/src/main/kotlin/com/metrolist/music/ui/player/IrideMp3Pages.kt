@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.ColorDrawable
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -451,16 +452,17 @@ internal fun IrideMp3Lyrics(
         fullscreenProgress.snapTo(0f)
         if (fullscreen) {
             fullscreenProgress.animateTo(
-                1f, tween(if (reducedMotion) 0 else IrideMotion.Medium, easing = IrideMotion.EaseOutExpo),
+                1f, tween(if (reducedMotion) 0 else IrideMotion.Fullscreen, easing = FastOutSlowInEasing),
             )
         }
     }
     fun closeFullscreen(afterClose: () -> Unit = {}) {
         if (closing) return
         closing = true
+        if (controller.isSelectionModeActive) controller.selectionAction()
         scope.launch {
             fullscreenProgress.animateTo(
-                0f, tween(if (reducedMotion) 0 else IrideMotion.Short, easing = IrideMotion.EaseOutExpo),
+                0f, tween(if (reducedMotion) 0 else IrideMotion.Fullscreen, easing = FastOutSlowInEasing),
             )
             fullscreen = false
             closing = false
@@ -479,66 +481,78 @@ internal fun IrideMp3Lyrics(
     val content = remember(controller, lyricsViewModel) {
         movableContentOf<Boolean> { full ->
             val backdrop = rememberFrostBackdrop().takeIf { lyricsStyle == Mp3LyricsStyle.GRADIENT }
-            Box(Modifier.fillMaxSize().background(IrideMp3BackgroundColor)) {
-                Box(Modifier.fillMaxSize().background(IrideMp3BackgroundColor).recordFrostBackdrop(
-                    backdrop, enabled = lyricsStyle == Mp3LyricsStyle.GRADIENT,
-                )) {
-                    if (lyricsStyle == Mp3LyricsStyle.GRADIENT) BetterAnimatedGradientBackground(
-                        thumbnail = displayedBitmap,
-                        incomingThumbnail = incomingBitmap,
-                        crossfadeProgress = artworkProgress.value,
-                        grainOpacity = IrideFolio.LyricsGrainOpacity,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    if (lyricsStyle == Mp3LyricsStyle.TV) {
-                        IrideTvLyrics(
-                            position = latestPosition,
-                            controller = controller,
-                            viewModel = lyricsViewModel,
-                            onOptions = { if (full) closeFullscreen { latestOptions() } else latestOptions() },
-                            modifier = Modifier.fillMaxSize().padding(
-                                top = if (full) lerp(68f, 90f, fullscreenProgress.value).dp else 68.dp,
-                            ),
+            CompositionLocalProvider(LocalFolioButtonBackdrop provides backdrop) {
+                Box(Modifier.fillMaxSize().background(IrideMp3BackgroundColor)) {
+                    // Glass controls must sample a sibling, never a layer containing themselves.
+                    if (lyricsStyle == Mp3LyricsStyle.GRADIENT) Box(
+                        Modifier.fillMaxSize().background(IrideMp3BackgroundColor).recordFrostBackdrop(backdrop),
+                    ) {
+                        BetterAnimatedGradientBackground(
+                            thumbnail = displayedBitmap,
+                            incomingThumbnail = incomingBitmap,
+                            crossfadeProgress = artworkProgress.value,
+                            grainOpacity = IrideFolio.LyricsGrainOpacity,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    if (lyricsStyle == Mp3LyricsStyle.GRADIENT) Lyrics(
-                        sliderPositionProvider = { latestPosition },
-                        modifier = Modifier.fillMaxSize().padding(
-                            start = 12.dp, top = if (full) lerp(68f, 90f, fullscreenProgress.value).dp else 68.dp,
-                        ),
-                        showLyrics = true,
-                        lyricsViewModel = lyricsViewModel,
-                        showPills = false,
-                        pillsController = controller,
-                        isFullScreen = full,
-                        onExitFullScreen = { closeFullscreen() },
-                        onShowOptionsMenu = { if (full) closeFullscreen { latestOptions() } else latestOptions() },
-                        // Alpha 26 sizing: do not compound this scale with a fullscreen fullness boost.
-                        textScale = if (full) lerp(1.15f, 1.6f, fullscreenProgress.value) else 1.15f,
-                        morphing = { fullscreen && fullscreenProgress.value > 0f && fullscreenProgress.value < 1f },
-                    )
-                }
-                Row(
-                    Modifier.align(Alignment.TopEnd)
-                        .windowInsetsPadding(if (full) WindowInsets.displayCutout else WindowInsets(0))
-                        .padding(top = if (full) 26.dp else 16.dp, end = if (full) 20.dp else 8.dp)
-                        .frostedNavigationSurface(
-                            backdrop, Color.White, IrideFolio.ControlsShape,
-                            surfaceAlpha = IrideFolio.FrostedLightTintOpacity,
+                    Box(Modifier.fillMaxSize()) {
+                        if (lyricsStyle == Mp3LyricsStyle.TV) {
+                            IrideTvLyrics(
+                                position = latestPosition,
+                                controller = controller,
+                                viewModel = lyricsViewModel,
+                                onOptions = { if (full) closeFullscreen { latestOptions() } else latestOptions() },
+                                modifier = Modifier.fillMaxSize().padding(
+                                    top = if (full) lerp(68f, 90f, fullscreenProgress.value).dp else 68.dp,
+                                ),
+                            )
+                        }
+                        if (lyricsStyle == Mp3LyricsStyle.GRADIENT) Lyrics(
+                            sliderPositionProvider = { latestPosition },
+                            modifier = Modifier.fillMaxSize().padding(
+                                start = 12.dp, top = if (full) lerp(68f, 90f, fullscreenProgress.value).dp else 68.dp,
+                            ),
+                            showLyrics = true,
+                            lyricsViewModel = lyricsViewModel,
+                            showPills = false,
+                            pillsController = controller,
+                            isFullScreen = full,
+                            onExitFullScreen = { closeFullscreen() },
+                            onShowOptionsMenu = { if (full) closeFullscreen { latestOptions() } else latestOptions() },
+                            // Enlarge the compact view while preserving the final fullscreen scale.
+                            textScale = if (full) lerp(1.3f, 1.6f, fullscreenProgress.value) else 1.3f,
+                            morphing = { fullscreen && fullscreenProgress.value > 0f && fullscreenProgress.value < 1f },
                         )
-                        .border(1.dp, Color.White.copy(alpha = 0.14f), IrideFolio.ControlsShape)
-                        .padding(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Mp3PageAction(
-                        R.drawable.translate, stringResource(R.string.mp3_translate),
-                        { controller.translateAction() },
-                    )
-                    Mp3PageAction(
-                        if (full) R.drawable.ic_iride_fullscreen_exit else R.drawable.fullscreen,
-                        stringResource(if (full) R.string.mp3_exit_fullscreen else R.string.mp3_fullscreen),
-                        { if (full) closeFullscreen() else fullscreen = true },
-                    )
+                    }
+                    Row(
+                        Modifier.align(Alignment.TopEnd)
+                            .windowInsetsPadding(if (full) WindowInsets.displayCutout else WindowInsets(0))
+                            .padding(
+                                top = if (full) lerp(16f, 26f, fullscreenProgress.value).dp else 16.dp,
+                                end = if (full) lerp(8f, 20f, fullscreenProgress.value).dp else 8.dp,
+                            )
+                            .irideFolioGlassSurface(backdrop)
+                            .padding(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IrideFolioActionReveal(visible = full && !closing && fullscreenProgress.value >= 0.5f) {
+                            Row {
+                                Mp3PageAction(
+                                    R.drawable.translate, stringResource(R.string.mp3_translate),
+                                    { controller.translateAction() },
+                                )
+                                if (lyricsStyle == Mp3LyricsStyle.GRADIENT) Mp3PageAction(
+                                    R.drawable.share, stringResource(R.string.share_lyrics),
+                                    { controller.selectionAction() }, enabled = controller.canSelectLyrics,
+                                )
+                            }
+                        }
+                        Mp3PageAction(
+                            if (full) R.drawable.ic_iride_fullscreen_exit else R.drawable.fullscreen,
+                            stringResource(if (full) R.string.mp3_exit_fullscreen else R.string.mp3_fullscreen),
+                            { if (full) closeFullscreen() else fullscreen = true },
+                        )
+                    }
                 }
             }
         }
@@ -601,7 +615,13 @@ private fun Mp3PageAction(
     tint: Color = Color.White,
     enabled: Boolean = true,
 ) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize)) {
+    IrideFolioFrostedButton(
+        onClick = onClick,
+        enabled = enabled,
+        grouped = true,
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
+    ) {
         Icon(painterResource(icon), description, tint = if (enabled) tint else tint.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
     }
 }

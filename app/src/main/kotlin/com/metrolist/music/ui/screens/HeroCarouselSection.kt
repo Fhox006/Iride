@@ -56,7 +56,8 @@ import coil3.request.crossfade
 import com.metrolist.music.R
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.models.stableKey
-import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.IrideFolioShelfHeader
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
@@ -83,8 +84,8 @@ fun HeroCarouselSection(
         HorizontalPager(
             state = activePagerState,
             key = { page -> items.getOrNull(page)?.stableKey() ?: "hero_page_$page" },
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            pageSpacing = 12.dp,
+            contentPadding = PaddingValues(horizontal = IrideFolio.HorizontalPadding),
+            pageSpacing = IrideFolio.ShelfItemSpacing,
             modifier = Modifier.fillMaxWidth(),
         ) { page ->
             items.getOrNull(page)?.let { item ->
@@ -113,13 +114,8 @@ fun HeroCarouselSection(
 
 @Composable
 private fun RadioSectionTitle() {
-    NavigationTitle(
+    IrideFolioShelfHeader(
         title = stringResource(R.string.folio_artists_for_you),
-        useIrideStyle = true,
-        sentenceCaseTitle = true,
-        showDivider = false,
-        topPadding = 4.dp,
-        bottomPadding = 12.dp,
         showNavigationArrow = false,
     )
 }
@@ -198,7 +194,8 @@ private fun HeroCard(
                 text = title,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = SpaceMonoFontFamily,
-                    fontSize = 15.sp,
+                    fontSize = IrideFolio.ShelfItemFontSize,
+                    lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
                     letterSpacing = (-0.1).sp,
                 ),
                 fontWeight = FontWeight.Bold,
@@ -211,7 +208,8 @@ private fun HeroCard(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = SpaceMonoFontFamily,
-                        fontSize = 11.sp,
+                        fontSize = IrideFolio.ShelfDetailFontSize,
+                        lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
                         letterSpacing = 0.02.em,
                     ),
                     color = Color.White.copy(alpha = 0.85f),

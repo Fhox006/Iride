@@ -15,6 +15,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -25,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 
 internal data class IrideArtistArtwork(
     val bitmap: Bitmap,
@@ -58,19 +61,21 @@ internal fun rememberIrideArtistArtwork(
                     if (key == request.key && selected.value == null) selected.value = loader.cachedForDisplay(request)
                 }
             }
+            if (highResolution) launch {
+                snapshotFlow { selected.value }.filterNotNull().collectLatest { displayed ->
+                    val detailed = loader.loadHighResolution(displayed) ?: return@collectLatest
+                    // Upgrade definition without replacing the photo, including late cache updates.
+                    if (selected.value?.url == displayed.url && detailed.artwork.bitmap.width > displayed.artwork.bitmap.width) {
+                        selected.value = detailed
+                    }
+                }
+            }
             loader.prefetch(request)
             if (selected.value == null) {
                 val prepared = loader.loadForDisplay(request)
                 if (prepared != null) {
                     if (selected.value == null) selected.value = prepared
                 }
-            }
-            if (!highResolution) return@coroutineScope
-            val displayed = selected.value ?: return@coroutineScope
-            val detailed = loader.loadHighResolution(displayed) ?: return@coroutineScope
-            // Upgrade definition without changing the pinned artist photo or fading it out.
-            if (selected.value?.url == displayed.url && detailed.artwork.bitmap.width > displayed.artwork.bitmap.width) {
-                selected.value = detailed
             }
         }
     }

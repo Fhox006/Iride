@@ -283,12 +283,14 @@ object YouTube {
                 thumbnail = response.header.musicDetailHeaderRenderer.thumbnail.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()!!.url,
                 explicit = false, // TODO: Extract explicit badge for albums from YouTube response
             )
+            val shelves = AlbumPage.albumShelves(response, albumItem)
             return@runCatching AlbumPage(
                 album = albumItem,
                 songs = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()?.musicShelfRenderer?.contents?.getItems()?.mapNotNull {
                     AlbumPage.getSong(it, albumItem)
                 }!!.toMutableList(),
-                otherVersions = emptyList()
+                otherVersions = shelves.first,
+                similarAlbums = shelves.second,
             )
         } else {
             val playlistId =
@@ -309,23 +311,15 @@ object YouTube {
                 explicit = false, // TODO: Extract explicit badge for albums from YouTube response
                 albumType = response.contents.twoColumnBrowseResultsRenderer.tabs.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()?.musicResponsiveHeaderRenderer?.subtitle?.runs?.firstOrNull()?.text,
             )
-            val carousels = response.contents.twoColumnBrowseResultsRenderer.secondaryContents
-                ?.sectionListRenderer?.contents
-                ?.drop(1)
-                ?.mapNotNull { it.musicCarouselShelfRenderer }
-                .orEmpty()
-
-            fun List<MusicCarouselShelfRenderer.Content>.toAlbumItems() =
-                mapNotNull { it.musicTwoRowItemRenderer }
-                    .mapNotNull(NewReleaseAlbumPage::fromMusicTwoRowItemRenderer)
+            val shelves = AlbumPage.albumShelves(response, albumItem)
 
             return@runCatching AlbumPage(
                 album = albumItem,
                 songs = if (withSongs) albumSongs(
                     playlistId, albumItem
                 ).getOrThrow() else emptyList(),
-                otherVersions = if (carousels.size >= 2) carousels[0].contents.toAlbumItems() else emptyList(),
-                similarAlbums = carousels.lastOrNull()?.contents?.toAlbumItems().orEmpty()
+                otherVersions = shelves.first,
+                similarAlbums = shelves.second,
             )
         }
     }

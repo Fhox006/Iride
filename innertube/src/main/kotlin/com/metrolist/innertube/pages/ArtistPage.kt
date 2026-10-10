@@ -118,7 +118,7 @@ data class ArtistPage(
             )
         }
 
-        private fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
+        internal fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
             return when {
                 renderer.isSong -> {
                     val subtitleRuns = renderer.subtitle?.runs?.oddElements() ?: return null
@@ -148,7 +148,7 @@ data class ArtistPage(
                     )
                 }
 
-                renderer.isAlbum -> {
+                renderer.isAlbum || renderer.navigationEndpoint.browseEndpoint?.browseId?.startsWith("MPRE") == true -> {
                     AlbumItem(
                         browseId = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                         playlistId = renderer.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content

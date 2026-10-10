@@ -5,10 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +32,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -42,28 +40,24 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.palette.graphics.Palette
-import coil3.ImageLoader
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
 import coil3.request.crossfade
-import coil3.toBitmap
 import com.metrolist.music.R
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.theme.SatoshiFontFamily
 import com.metrolist.music.ui.theme.InterFontFamily
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun rememberAdjustedFontSize(
@@ -145,7 +139,6 @@ fun rememberAdjustedFontSize(
     return calculatedFontSize
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun LyricsImageCard(
     lyricText: String,
@@ -155,168 +148,107 @@ fun LyricsImageCard(
     backgroundStyle: LyricsBackgroundStyle = LyricsBackgroundStyle.SOLID,
     textColor: Color? = null,
     secondaryTextColor: Color? = null,
-    textAlign: TextAlign = TextAlign.Center
+    textAlign: TextAlign = TextAlign.Center,
 ) {
     val context = LocalContext.current
-
-    val cardCornerRadius = 20.dp
-    val padding = 20.dp
-    val coverArtSize = 64.dp
-
-    val defaultBgColor = if (darkBackground) Color(0xFF121212) else Color(0xFFF5F5F5)
-    val backgroundSolidColor = backgroundColor ?: defaultBgColor
-
-    val mainTextColor = textColor ?: if (darkBackground) Color.White else Color.Black
-    val secondaryColor = secondaryTextColor ?: if (darkBackground) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
-
+    val background = backgroundColor ?: if (darkBackground) Color(0xFF121212) else Color(0xFFF5F5F5)
+    val ink = textColor ?: if (darkBackground) Color.White else Color.Black
+    val secondary = secondaryTextColor ?: ink.copy(alpha = 0.7f)
     val painter = rememberAsyncImagePainter(
-        ImageRequest.Builder(context)
-            .data(mediaMetadata.thumbnailUrl)
-            .crossfade(false)
-            .build()
+        ImageRequest.Builder(context).data(mediaMetadata.thumbnailUrl).crossfade(false).build(),
     )
-
-    var gradientBrush by remember { mutableStateOf<Brush?>(null) }
-
-    if (backgroundStyle == LyricsBackgroundStyle.GRADIENT) {
-        LaunchedEffect(mediaMetadata.thumbnailUrl) {
-            withContext(Dispatchers.IO) {
-                try {
-                    val loader = ImageLoader(context)
-                    val req = ImageRequest.Builder(context).data(mediaMetadata.thumbnailUrl).allowHardware(false).build()
-                    val result = loader.execute(req)
-                    val bmp = result.image?.toBitmap()
-                    if (bmp != null) {
-                        val palette = Palette.from(bmp).generate()
-                        val vibrant = palette.getVibrantColor(defaultBgColor.toArgb())
-                        val darkVibrant = palette.getDarkVibrantColor(defaultBgColor.toArgb())
-                        gradientBrush = Brush.linearGradient(
-                            colors = listOf(Color(vibrant), Color(darkVibrant)),
-                            tileMode = TileMode.Clamp
-                        )
-                    }
-                } catch (_: Exception) {}
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))) {
+        val scale = maxWidth.value / LyricsShareStyle.Width
+        val density = LocalDensity.current
+        val fontScale = density.fontScale
+        val padding = (LyricsShareStyle.Padding * scale).dp
+        val coverSize = (LyricsShareStyle.CoverSize * scale).dp
+        val coverRadius = (LyricsShareStyle.CoverRadius * scale).dp
+        val measurer = rememberTextMeasurer()
+        val lyricSize = remember(lyricText, maxWidth, density, measurer) {
+            val pixelsPerUnit = density.density * scale
+            val availableWidth = ((LyricsShareStyle.Width - LyricsShareStyle.Padding * 2) * pixelsPerUnit).toInt()
+                .coerceAtLeast(1)
+            val fitted = LyricsShareStyle.fittedTextSize(
+                lyricText, LyricsShareStyle.lyricsHeightLimit(LyricsShareStyle.CoverSize),
+            ) { size ->
+                val fontSize = (size * scale / fontScale).sp
+                measurer.measure(
+                    text = AnnotatedString(lyricText),
+                    style = TextStyle(
+                        fontFamily = SatoshiFontFamily,
+                        fontWeight = FontWeight.Black,
+                        fontSize = fontSize,
+                        lineHeight = fontSize * LyricsShareStyle.LineSpacing,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
+                    constraints = Constraints(maxWidth = availableWidth),
+                ).size.height / pixelsPerUnit
             }
+            (fitted * scale / fontScale).sp
         }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(cardCornerRadius))
-    ) {
-        Box(modifier = Modifier.matchParentSize()) {
-            when (backgroundStyle) {
-                LyricsBackgroundStyle.SOLID -> Box(modifier = Modifier.fillMaxSize().background(backgroundSolidColor))
-                LyricsBackgroundStyle.BLUR -> Image(
-                    painter = painter,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().blur(50.dp).background(Color.Black.copy(alpha = 0.3f))
-                )
-                LyricsBackgroundStyle.GRADIENT -> Box(
-                    modifier = Modifier.fillMaxSize().background(
-                        gradientBrush ?: Brush.linearGradient(listOf(backgroundSolidColor, backgroundSolidColor))
-                    )
-                )
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(padding)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
-            ) {
+        Box(Modifier.matchParentSize()) {
+            if (backgroundStyle == LyricsBackgroundStyle.BLUR) {
                 Image(
-                    painter = painter,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(coverArtSize)
-                        .clip(RoundedCornerShape(6.dp))
-                        .border(1.dp, mainTextColor.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
+                    painter, null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().blur(50.dp),
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.Start,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = mediaMetadata.title,
-                        color = mainTextColor,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                    Text(
-                        text = mediaMetadata.artists.joinToString { it.name },
-                        color = secondaryColor,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
+            } else {
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+                    LyricsShareStyle.gradientColors(background.toArgb()).map { Color(it) },
+                )))
             }
-
-            val lyricFontSize = when {
-                lyricText.length < 80 -> 30.sp
-                lyricText.length < 180 -> 25.sp
-                else -> 21.sp
-            }
-
-            Text(
-                text = lyricText,
-                color = mainTextColor,
-                fontFamily = InterFontFamily,
-                fontSize = lyricFontSize,
-                fontWeight = FontWeight.Bold,
-                textAlign = textAlign,
-                lineHeight = lyricFontSize * 1.3f,
-                softWrap = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(secondaryColor),
-                    contentAlignment = Alignment.Center
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .padding(padding),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(bottom = (LyricsShareStyle.FooterGap * scale).dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = (LyricsShareStyle.HeaderGap * scale).dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_logo),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(backgroundSolidColor)
+                        painter, null, contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(coverSize).clip(RoundedCornerShape(coverRadius)),
                     )
+                    Spacer(Modifier.width((LyricsShareStyle.CoverGap * scale).dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            mediaMetadata.title, color = ink, fontFamily = InterFontFamily,
+                            fontSize = (LyricsShareStyle.TitleSize * scale / fontScale).sp,
+                            fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            mediaMetadata.artists.joinToString { it.name }, color = secondary,
+                            fontFamily = InterFontFamily,
+                            fontSize = (LyricsShareStyle.ArtistSize * scale / fontScale).sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Iride",
-                    color = secondaryColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    lyricText, color = ink, fontFamily = SatoshiFontFamily,
+                    fontSize = lyricSize, fontWeight = FontWeight.Black, textAlign = textAlign,
+                    lineHeight = lyricSize * LyricsShareStyle.LineSpacing,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painterResource(R.drawable.ic_logo), null,
+                    modifier = Modifier.size((LyricsShareStyle.LogoSize * scale).dp),
+                    colorFilter = ColorFilter.tint(secondary),
+                )
+                Spacer(Modifier.width((LyricsShareStyle.LogoGap * scale).dp))
+                Text(
+                    "Iride", color = secondary, fontFamily = InterFontFamily,
+                    fontSize = (LyricsShareStyle.AppNameSize * scale / fontScale).sp,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
-
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .border(1.dp, mainTextColor.copy(alpha = 0.09f), RoundedCornerShape(cardCornerRadius))
-        )
     }
 }

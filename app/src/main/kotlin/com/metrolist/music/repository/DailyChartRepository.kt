@@ -10,6 +10,7 @@ import com.metrolist.music.data.remote.ChartTrackMatcher
 import com.metrolist.music.data.remote.DailyChart
 import com.metrolist.music.data.remote.DailyChartParser
 import com.metrolist.music.data.remote.isCurrentFor
+import com.metrolist.music.data.remote.withRankMovements
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -130,7 +131,7 @@ class DailyChartRepository @Inject constructor(
                     return@withLock
                 }
                 check(response.status.value == 200) { "Chart HTTP ${response.status.value}" }
-                val fresh = DailyChartParser.parse(response.bodyAsText(), market, now)
+                val fresh = DailyChartParser.parse(response.bodyAsText(), market, now).withRankMovements(cached)
                 require(fresh.isCurrentFor(market)) { "Chart has no current valid output" }
                 require(cached == null || fresh.date >= cached.date) { "Chart date moved backwards" }
                 try {

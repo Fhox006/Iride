@@ -9,6 +9,7 @@ import android.util.LruCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.toArgb
@@ -23,7 +24,6 @@ import coil3.request.bitmapConfig
 import coil3.size.Precision
 import coil3.toBitmap
 import com.metrolist.music.data.remote.ArtistArtworkRepository
-import com.metrolist.music.data.remote.ArtistArtworkParser
 import com.metrolist.music.data.remote.ArtistArtworkSource
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.ArtistNameMatcher
@@ -193,11 +193,13 @@ internal class ArtistArtworkLoader @Inject constructor(
         return url?.let { detailed.get(it) ?: prepared.get(it) ?: previews.get(it) ?: cachedThumbnail(it) }
     }
 
-    suspend fun loadHighResolution(artwork: PreparedArtistArtwork): PreparedArtistArtwork? =
-        detailRequests.withPermit {
-            if (artwork.artwork.bitmap.width >= detailResolution) artwork
-            else detailed.get(artwork.url) ?: load(artwork.source, artwork.url, resolution = detailResolution, evaluateQuality = false)
+    suspend fun loadHighResolution(artwork: PreparedArtistArtwork): PreparedArtistArtwork? {
+        if (artwork.artwork.bitmap.width >= detailResolution) return artwork
+        detailed.get(artwork.url)?.let { return it }
+        return detailRequests.withPermit {
+            detailed.get(artwork.url) ?: load(artwork.source, artwork.url, resolution = detailResolution, evaluateQuality = false)
         }
+    }
 
     fun clearMemory() {
         prepared.evictAll()
@@ -247,7 +249,14 @@ internal class ArtistArtworkLoader @Inject constructor(
         val previous = async { saved?.let { load(it.source, it.url) } }
         val fallback = async { loadFallback(request) }
         val alternatives = mutableListOf<PreparedArtistArtwork>()
+        val previewSelection = Mutex()
         repository.findArtworks(requireNotNull(request.name), request.channelId ?: request.id) { candidate ->
+            previewSelection.withLock {
+                if (cachedForDisplay(request) == null) {
+                    load(candidate.source, candidate.imageUrl, resolution = ArtistArtworkPreviewResolution,
+                        evaluateQuality = false)?.let { save(request, it) }
+                }
+            }
             load(candidate.source, candidate.imageUrl)?.let { artwork ->
                 synchronized(alternatives) { alternatives.add(artwork) }
             }
@@ -343,31 +352,35 @@ internal class ArtistArtworkLoader @Inject constructor(
         evaluateQuality: Boolean,
     ): PreparedArtistArtwork? {
         return try {
-            // Match the tile's disk entry: decode a small preview without downloading another URL.
-            val downloadUrl = if (resolution == ArtistArtworkPreviewResolution) url else if (source == ArtistArtworkSource.YOUTUBE_MUSIC) url.resize(resolution, resolution)
-                else ArtistArtworkParser.imageUrl(source, url, resolution)
-            val bitmap = context.imageLoader.execute(
-                ImageRequest.Builder(context).data(downloadUrl).size(resolution, resolution)
+            val downloadUrl = artistArtworkDownloadUrl(url, resolution)
+            suspend fun decode(data: String, cacheOnly: Boolean): Bitmap? = context.imageLoader.execute(
+                ImageRequest.Builder(context).data(data).size(resolution, resolution)
                     .precision(Precision.EXACT)
                     .memoryCacheKey(if (resolution == ArtistArtworkPreviewResolution)
                         "iride_artist_thumbnail:$url:$resolution" else "iride_artist_artwork_v3:$resolution:$url")
-                    .diskCacheKey(downloadUrl)
+                    .diskCacheKey(data)
                     .bitmapConfig(Bitmap.Config.ARGB_8888)
                     .allowHardware(false).apply {
-                        if (diskOnly) networkCachePolicy(CachePolicy.DISABLED)
+                        if (cacheOnly) networkCachePolicy(CachePolicy.DISABLED)
                     }.build(),
-            ).image?.toBitmap() ?: return null
+            ).image?.toBitmap()
+            // Reuse old full-size disk entries before downloading a smaller preview.
+            val bitmap = if (resolution == ArtistArtworkPreviewResolution && downloadUrl != url) {
+                decode(downloadUrl, cacheOnly = true) ?: decode(url, cacheOnly = true)
+                    ?: if (diskOnly) null else decode(downloadUrl, cacheOnly = false)
+            } else decode(downloadUrl, cacheOnly = diskOnly)
+            if (bitmap == null) return null
             val result = withContext(Dispatchers.Default) {
                 val normalized = squareArtistBitmap(bitmap, resolution)
-                if (evaluateQuality) cacheThumbnails(url, normalized)
-                val sample = Bitmap.createScaledBitmap(normalized, 64, 64, true)
-                val pixels = IntArray(64 * 64)
-                sample.getPixels(pixels, 0, 64, 0, 0, 64, 64)
-                if (sample !== normalized) sample.recycle()
+                cacheThumbnails(url, normalized)
                 // One photo keeps its original page pigment when HD decoding changes the sampling grid.
                 val tint = tintCache.get(url)?.let { Color(it) } ?: normalized.irideArtistArtworkTint(1f)
                     .also { tintCache.put(url, it.toArgb()) }
                 val quality = qualityCache.get(url) ?: if (!evaluateQuality) ArtistArtworkQuality(0f, 0f, 0f) else run {
+                    val sample = Bitmap.createScaledBitmap(normalized, 64, 64, true)
+                    val pixels = IntArray(64 * 64)
+                    sample.getPixels(pixels, 0, 64, 0, 0, 64, 64)
+                    if (sample !== normalized) sample.recycle()
                     val frost = frostedArtistBitmap(normalized)
                     val frostSample = Bitmap.createScaledBitmap(frost, 64, 64, true)
                     val frostPixels = IntArray(64 * 64)
@@ -384,7 +397,7 @@ internal class ArtistArtworkLoader @Inject constructor(
                         blend = blend,
                         photographic = artistPhotographicQuality(pixels, 64, 64),
                     )
-                }.also { qualityCache.put(url, it) }
+                }.also { if (evaluateQuality) qualityCache.put(url, it) }
                 PreparedArtistArtwork(
                     source,
                     url,
@@ -423,6 +436,7 @@ internal class ArtistArtworkLoader @Inject constructor(
             selections[request.key] = selection
             if (selections.size > 128) selections.keys.first().also { selections.remove(it) } else null
         }
+        val evaluatedQuality = qualityCache.get(artwork.url)
         preferences.edit().apply {
             if (removed != null) remove(removed)
             putString(request.key, buildJsonObject {
@@ -430,11 +444,13 @@ internal class ArtistArtworkLoader @Inject constructor(
                 put("url", selection.url)
                 put("expiresAt", selection.expiresAt)
                 put("policyVersion", selection.policyVersion)
-                put("portrait", artwork.quality.portrait)
-                put("borders", artwork.quality.borders)
-                put("definition", artwork.quality.definition)
-                put("blend", artwork.quality.blend)
-                put("photographic", artwork.quality.photographic)
+                evaluatedQuality?.let {
+                    put("portrait", it.portrait)
+                    put("borders", it.borders)
+                    put("definition", it.definition)
+                    put("blend", it.blend)
+                    put("photographic", it.photographic)
+                }
                 put("tint", artwork.artwork.tint.toArgb())
             }.toString())
         }.apply()
@@ -481,17 +497,25 @@ internal fun rememberArtistThumbnail(
         ArtistArtworkRequest(id, name, youtubeUrl, channelId, externalEnabled)
     }
     // A visible tile keeps its source. Its next appearance can use the newly prepared selection.
-    val url = remember(request.key, youtubeUrl) {
-        loader.presentationUrl(request,
-            loader.cachedUrl(request) ?: youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution))
+    val selectedUrl = remember(request.key) {
+        mutableStateOf(loader.presentationUrl(request,
+            loader.cachedUrl(request) ?: youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution)))
     }
+    val url = selectedUrl.value
     DisposableEffect(request.id, url) {
         if (url != null) loader.retainPresentation(request, url)
         onDispose { if (url != null) loader.releasePresentation(request, url) }
     }
     LaunchedEffect(request) {
         loader.restoreSelections()
+        if (selectedUrl.value == null) selectedUrl.value = loader.presentationUrl(request,
+            loader.cachedUrl(request) ?: youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution))
         loader.prefetch(request)
+        loader.selectionUpdates.collect { key ->
+            if (key == request.key && selectedUrl.value == null) {
+                selectedUrl.value = loader.presentationUrl(request, loader.cachedUrl(request))
+            }
+        }
     }
     return url ?: youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution)
 }

@@ -256,6 +256,17 @@ object IrideFolio {
     const val SurfaceGrainOpacity = 0.05f
     const val ButtonGrainOpacity = 0.065f
     val HorizontalPadding = 20.dp
+    // Horizontal shelves in Home and Discovery share one typographic hierarchy.
+    val ShelfSectionFontSize = 24.sp
+    val ShelfTitleFontSize = 18.sp
+    val ShelfLabelFontSize = 12.sp
+    val ShelfItemFontSize = 14.sp
+    val ShelfDetailFontSize = 12.sp
+    val ShelfTopPadding = 24.dp
+    val ShelfBottomPadding = 12.dp
+    val ShelfItemSpacing = 12.dp
+    val ShelfSelectorIconSize = 18.dp
+    val ShelfSelectorMaxWidth = 150.dp
     val SongRowHorizontalPadding = 12.dp
     val ReleaseSpotlightHeight = 176.dp
     val ReleaseSpotlightCoverSize = 72.dp
@@ -269,6 +280,11 @@ object IrideFolio {
     val ChartRankGap = 6.dp
     val ChartRankFontSize = 10.sp
     val ChartRankLineHeight = 14.sp
+    val ChartRankIndicatorSize = 14.dp
+    val ChartRankNewEntryDotSize = 5.dp
+    const val ChartRankHighlightedCount = 25
+    val ChartRankUpColor = Color(0xFF4CAF50)
+    val ChartRankMutedColor = Color(0xFF808080).copy(alpha = 0.45f)
     val GeneratedPlaylistArtworkSize = 240.dp
     val GeneratedPlaylistArtworkRadius = 12.dp
     const val GeneratedPlaylistArtworkSmoothing = 0.45f

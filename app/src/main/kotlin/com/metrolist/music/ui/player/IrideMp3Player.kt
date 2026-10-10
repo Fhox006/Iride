@@ -907,8 +907,9 @@ private fun IrideClickWheel(
     val reducedMotion = rememberReducedMotion()
     val shuffleDescription = stringResource(if (isShuffleActive) R.string.mp3_shuffle_on else R.string.mp3_shuffle_off)
     val centerSize = wheelSize * 0.40f
-    val zoneSize = wheelSize * 0.31f
-    val edgeInset = wheelSize * 0.022f
+    // Each zone spans the ring band, putting its icon and selected halo on the same midpoint.
+    val zoneSize = (wheelSize - centerSize) / 2
+    val edgeInset = 0.dp
     val iconSize = (wheelSize * 0.13f).coerceIn(20.dp, 28.dp)
     val radioHighlight by animateColorAsState(
         if (isShuffleActive) Color.White.copy(alpha = 0.12f) else Color.Transparent,

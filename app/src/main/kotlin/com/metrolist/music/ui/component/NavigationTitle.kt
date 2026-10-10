@@ -74,6 +74,7 @@ fun NavigationTitle(
     showDivider: Boolean = true,
     prominentTitle: Boolean = false,
     titleMaxLines: Int = 1,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val headerInteractionSource = remember { MutableInteractionSource() }
     val hairlineColor = MaterialTheme.colorScheme.strokeHairline
@@ -127,7 +128,8 @@ fun NavigationTitle(
                     style = if (useIrideStyle) {
                         MaterialTheme.typography.labelLarge.copy(
                             fontFamily = SpaceMonoFontFamily,
-                            fontSize = 13.sp,
+                            fontSize = IrideFolio.ShelfLabelFontSize,
+                            lineHeight = IrideFolio.ShelfLabelFontSize * 1.4f,
                             letterSpacing = (-0.1).sp,
                         )
                     } else {
@@ -149,7 +151,8 @@ fun NavigationTitle(
                 style = if (prominentTitle) {
                     MaterialTheme.typography.titleMedium.copy(
                         fontFamily = SpaceMonoFontFamily,
-                        fontSize = 18.sp,
+                        fontSize = IrideFolio.ShelfTitleFontSize,
+                        lineHeight = IrideFolio.ShelfTitleFontSize * 1.35f,
                     )
                 } else if (useIrideStyle) {
                     MaterialTheme.typography.labelLarge.copy(
@@ -166,6 +169,8 @@ fun NavigationTitle(
                 maxLines = titleMaxLines,
             )
         }
+
+        trailingContent?.invoke()
 
         onPlayAllClick?.let { playAllClick ->
             if (useIrideStyle) {

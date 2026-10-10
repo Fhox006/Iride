@@ -1,6 +1,15 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -22,6 +33,62 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.pressScale
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.rememberReducedMotion
+
+internal val LocalFolioButtonBackdrop = staticCompositionLocalOf<FrostBackdrop?> { null }
+
+/** The same glass surface, press feedback and disabled state for text and icon actions. */
+@Composable
+internal fun IrideFolioFrostedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    grouped: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(
+        horizontal = IrideFolio.ButtonHorizontalPadding,
+        vertical = IrideFolio.ButtonVerticalPadding,
+    ),
+    content: @Composable RowScope.() -> Unit,
+) = IrideFolioButton(
+    onClick = onClick,
+    modifier = modifier,
+    enabled = enabled,
+    secondary = false,
+    frosted = true,
+    grouped = grouped,
+    contentPadding = contentPadding,
+    content = content,
+)
+
+@Composable
+internal fun Modifier.irideFolioGlassSurface(backdrop: FrostBackdrop?): Modifier =
+    frostedNavigationSurface(
+        backdrop, Color.White, IrideFolio.ControlsShape,
+        surfaceAlpha = IrideFolio.FrostedLightTintOpacity,
+    ).border(
+        IrideFolio.ButtonBorderWidth,
+        Color.White.copy(alpha = IrideFolio.ButtonBorderOpacity),
+        IrideFolio.ControlsShape,
+    )
+
+/** Reversible native reveal; newly added actions use the same timing and reduced-motion rules. */
+@Composable
+internal fun IrideFolioActionReveal(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val duration = if (rememberReducedMotion()) 0 else IrideMotion.Long
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = expandHorizontally(tween(duration, easing = FastOutSlowInEasing), Alignment.End) +
+            fadeIn(tween(duration)) + scaleIn(tween(duration), initialScale = 0.92f),
+        exit = shrinkHorizontally(tween(duration, easing = FastOutSlowInEasing), Alignment.End) +
+            fadeOut(tween(duration)) + scaleOut(tween(duration), targetScale = 0.92f),
+    ) { content() }
+}
 
 /** All filled actions, including collection play controls, use this protocol. */
 @Composable
@@ -113,6 +180,8 @@ private fun IrideFolioButton(
     modifier: Modifier,
     enabled: Boolean,
     secondary: Boolean,
+    frosted: Boolean = false,
+    grouped: Boolean = false,
     interactionSource: MutableInteractionSource? = null,
     contentPadding: PaddingValues = PaddingValues(
         horizontal = IrideFolio.ButtonHorizontalPadding,
@@ -122,14 +191,24 @@ private fun IrideFolioButton(
 ) {
     val interactions = interactionSource ?: remember { MutableInteractionSource() }
     val colors = MaterialTheme.colorScheme
-    val ink = if (secondary) colors.textPrimary else colors.background
+    val ink = if (frosted) Color.White else if (secondary) colors.textPrimary else colors.background
+    val shape = if (frosted) IrideFolio.ControlsShape else IrideFolio.ButtonShape
     Button(
         onClick = onClick,
         modifier = modifier
             .defaultMinSize(minHeight = IrideFolio.ButtonMinHeight)
-            .folioButtonSurface(secondary, enabled, interactions),
+            .then(
+                if (frosted) Modifier
+                    .pressScale(interactions, pressedScale = IrideFolio.ButtonPressedScale)
+                    .clip(shape)
+                    .then(
+                        if (grouped) Modifier
+                        else Modifier.irideFolioGlassSurface(LocalFolioButtonBackdrop.current),
+                    )
+                else Modifier.folioButtonSurface(secondary, enabled, interactions),
+            ),
         enabled = enabled,
-        shape = IrideFolio.ButtonShape,
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
             contentColor = ink,

@@ -31,12 +31,16 @@ value class ChartMarket(val code: String) {
 }
 
 @Serializable
+enum class ChartRankMovement { UP, DOWN, NEW }
+
+@Serializable
 data class ChartTrack(
     val rank: Int,
     val spotifyId: String,
     val title: String,
     val artists: List<String>,
     val streams: Long,
+    val movement: ChartRankMovement? = null,
 )
 
 @Serializable
@@ -47,6 +51,22 @@ data class DailyChart(
     val checkedAt: Long,
     val sourceTrackCount: Int = DailyChartParser.TRACK_COUNT,
 )
+
+fun DailyChart.withRankMovements(previous: DailyChart?): DailyChart {
+    val previousRanks = previous
+        ?.takeIf { it.marketCode == marketCode && it.date <= date }
+        ?.tracks?.associate { it.spotifyId to it.rank }
+    return copy(tracks = tracks.map { track ->
+        val previousRank = previousRanks?.get(track.spotifyId)
+        track.copy(movement = when {
+            previousRanks == null -> null
+            previousRank == null -> ChartRankMovement.NEW
+            track.rank < previousRank -> ChartRankMovement.UP
+            track.rank > previousRank -> ChartRankMovement.DOWN
+            else -> null
+        })
+    })
+}
 
 fun DailyChart.isHistorical(today: LocalDate = LocalDate.now(java.time.ZoneOffset.UTC)): Boolean =
     LocalDate.parse(date).isBefore(today.minusDays(7))

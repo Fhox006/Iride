@@ -168,7 +168,9 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.IrideFolioShelfHeader
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.irideFolioShelfTypography
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -305,7 +307,7 @@ private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modif
                 .fillMaxWidth()
                 .clipToBounds()
                 .padding(start = contentPadding),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
         ) {
             repeat(4) {
                 Box(
@@ -331,7 +333,7 @@ private fun HomeSimilarityTitle(
     isRefreshing: Boolean = false,
 ) {
     val shape = if (isArtist) CircleShape else RoundedCornerShape(5.dp)
-    NavigationTitle(
+    IrideFolioShelfHeader(
         label = stringResource(R.string.home_similar_to),
         title = compactHomeTitle(name),
         thumbnail = {
@@ -349,11 +351,6 @@ private fun HomeSimilarityTitle(
         onRefreshClick = onRefreshClick,
         isRefreshing = isRefreshing,
         modifier = modifier,
-        useIrideStyle = true,
-        prominentTitle = true,
-        showDivider = false,
-        topPadding = 24.dp,
-        bottomPadding = 12.dp,
         showNavigationArrow = false,
     )
 }
@@ -613,7 +610,7 @@ private fun HomeScreenContent(
             onTertiaryContainer = colors.onSurface,
         )
     }
-    MaterialTheme(colorScheme = homeColorScheme) {
+    MaterialTheme(colorScheme = homeColorScheme, typography = irideFolioShelfTypography()) {
     Scaffold(
         modifier = Modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -882,17 +879,11 @@ private fun HomeScreenContent(
                 if (forYouLoading || forYouShelves.size >= 4) {
                     shelfOrder.added(hasFourRows = false)
                     item(key = "for_you_title") {
-                        NavigationTitle(
+                        IrideFolioShelfHeader(
                             title = stringResource(R.string.for_you_artists_title),
                             modifier = homeTitleMotion("for_you"),
                             onRefreshClick = { viewModel.regenerateForYouShelves() },
                             isRefreshing = "for_you_shelf" in regeneratingSections,
-                            useIrideStyle = true,
-                            prominentTitle = true,
-                            showDivider = false,
-                            topPadding = 24.dp,
-                            bottomPadding = 12.dp,
-                            sentenceCaseTitle = true,
                             showNavigationArrow = false,
                         )
                     }
@@ -919,7 +910,7 @@ private fun HomeScreenContent(
                             LazyRow(
                                 state = forYouState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                                 overscrollEffect = null,
                                 modifier = homeRowMotion("for_you_carousel")
                                     .rubberBandOverscroll(Orientation.Horizontal, forYouState)
@@ -1341,16 +1332,10 @@ private fun HomeScreenContent(
                                 onClick = onSectionClick,
                             )
                         } else {
-                            NavigationTitle(
+                            IrideFolioShelfHeader(
                                 title = stringResource(if (isTrending) R.string.home_trending_title else R.string.home_new_albums_title),
-                                sentenceCaseTitle = true,
                                 onClick = onSectionClick,
                                 modifier = homeTitleMotion("home_section_$index"),
-                                useIrideStyle = true,
-                                prominentTitle = true,
-                                showDivider = false,
-                                topPadding = 24.dp,
-                                bottomPadding = 12.dp,
                                 showNavigationArrow = false,
                             )
                         }
@@ -1360,7 +1345,7 @@ private fun HomeScreenContent(
                         LazyRow(
                             state = sectionItemsState,
                             contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                             overscrollEffect = null,
                             modifier = homeRowMotion("home_section_${index}_row")
                                 .rubberBandOverscroll(Orientation.Horizontal, sectionItemsState),
@@ -1374,15 +1359,9 @@ private fun HomeScreenContent(
                 if (isLoggedIn && moodChips.isNotEmpty()) {
                     shelfOrder.added(hasFourRows = false)
                     item(key = "your_mood_title") {
-                        NavigationTitle(
+                        IrideFolioShelfHeader(
                             title = stringResource(R.string.home_mood_youtube_music),
                             modifier = homeTitleMotion("your_mood"),
-                            useIrideStyle = true,
-                            prominentTitle = true,
-                            showDivider = false,
-                            topPadding = 24.dp,
-                            bottomPadding = 12.dp,
-                            sentenceCaseTitle = true,
                             showNavigationArrow = false,
                         )
                     }
@@ -1411,7 +1390,7 @@ private fun HomeScreenContent(
                                 LazyRow(
                                     state = moodMixesState,
                                     contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                                     overscrollEffect = null,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1502,14 +1481,9 @@ private fun HomeScreenContent(
                 forYouSection(shelfOrder)
                 if (isLoggedIn) shelfOrder.added(hasFourRows = false)
                 if (isLoggedIn) item(key = "home_personal_mixes_title") {
-                    NavigationTitle(
+                    IrideFolioShelfHeader(
                         title = stringResource(R.string.home_fresh_find_old_favorite),
                         modifier = homeTitleMotion("home_personal_mixes"),
-                        useIrideStyle = true,
-                        showDivider = false,
-                        topPadding = 24.dp,
-                        bottomPadding = 12.dp,
-                        sentenceCaseTitle = true,
                         showNavigationArrow = false,
                     )
                 }
@@ -1529,7 +1503,7 @@ private fun HomeScreenContent(
                     LazyRow(
                         state = personalMixesState,
                         contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                         overscrollEffect = null,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1561,16 +1535,10 @@ private fun HomeScreenContent(
                         shelfOrder.added(hasFourRows = false)
                         item(key = "daily_discover_title") {
                             val title = stringResource(R.string.your_daily_discover)
-                            NavigationTitle(
+                            IrideFolioShelfHeader(
                                 title = title,
                                 onRefreshClick = { viewModel.regenerateDailyDiscover() },
                                 isRefreshing = "daily_discover" in regeneratingSections,
-                                useIrideStyle = true,
-                                prominentTitle = true,
-                                showDivider = false,
-                                topPadding = 24.dp,
-                                bottomPadding = 12.dp,
-                                sentenceCaseTitle = true,
                                 showNavigationArrow = false,
                                 modifier = homeTitleMotion("daily_discover"),
                             )
@@ -1580,7 +1548,7 @@ private fun HomeScreenContent(
                             LazyRow(
                                 state = dailyDiscoverState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                                 overscrollEffect = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1613,17 +1581,11 @@ private fun HomeScreenContent(
                     communityPlaylists?.distinctBy { it.playlist.id }?.takeIf { it.size >= 4 }?.let { playlists ->
                         shelfOrder.added(hasFourRows = false)
                         item(key = "community_playlists_title") {
-                            NavigationTitle(
+                            IrideFolioShelfHeader(
                                 title = stringResource(R.string.from_the_community),
                                 modifier = homeTitleMotion("community_playlists"),
                                 onRefreshClick = { viewModel.regenerateCommunityPlaylists() },
                                 isRefreshing = "community_playlists" in regeneratingSections,
-                                useIrideStyle = true,
-                                prominentTitle = true,
-                                showDivider = false,
-                                topPadding = 24.dp,
-                                bottomPadding = 12.dp,
-                                sentenceCaseTitle = true,
                                 showNavigationArrow = false,
                             )
                         }
@@ -1632,7 +1594,7 @@ private fun HomeScreenContent(
                             LazyRow(
                                 state = communityPlaylistsState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                                 overscrollEffect = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1701,7 +1663,7 @@ private fun HomeScreenContent(
                             LazyRow(
                                 state = similarToState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                                 overscrollEffect = null,
                                     modifier = homeRowMotion("similar_to_row_$index")
                                         .rubberBandOverscroll(Orientation.Horizontal, similarToState)
@@ -1785,8 +1747,8 @@ private fun HomeScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 24.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = IrideFolio.HorizontalPadding),
+                        horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
                     ) {
                         items(2) { index ->
                             if (index == 0) {
@@ -1895,7 +1857,7 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
@@ -1954,7 +1916,7 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),

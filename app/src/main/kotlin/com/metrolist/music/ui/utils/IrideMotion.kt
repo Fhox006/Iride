@@ -71,6 +71,7 @@ object IrideMotion {
     const val Short = 240
     const val Medium = 300
     const val Long = 420
+    const val Fullscreen = 520
 
     /** Gap between siblings in a cascade. Short enough to read as one gesture, not a queue. */
     const val StaggerStep = 40

@@ -1,6 +1,7 @@
 package com.metrolist.music.data.remote
 
 import com.metrolist.music.utils.ArtistNameMatcher
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -12,6 +13,7 @@ import java.net.URI
 
 enum class ArtistArtworkSource { APPLE_MUSIC, SPOTIFY, YOUTUBE_MUSIC }
 
+@Serializable
 data class ArtistArtworkCandidate(
     val source: ArtistArtworkSource,
     val artistName: String,

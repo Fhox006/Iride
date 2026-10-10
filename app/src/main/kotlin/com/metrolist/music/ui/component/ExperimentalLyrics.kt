@@ -168,6 +168,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.lyrics.LyricsDebugLog
 
 class LyricsPillController {
+    var canSelectLyrics by mutableStateOf(false)
     var hasTranslations by mutableStateOf(false)
     var isSelectionModeActive by mutableStateOf(false)
     var isRomanizeActive by mutableStateOf(false)
@@ -214,7 +215,6 @@ private val LYRICS_FADE_TOP_DP = 130.dp
 private val LYRICS_FADE_BOTTOM_DP = 160.dp
 private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
 private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
-private const val LYRICS_PREVIEW_TIME = 8000L
 private const val LAST_LINE_TAIL_MS = 10000L
 
 // Once playback passes the last line, the whole block drifts down so that it rests in the
@@ -488,7 +488,7 @@ fun ExperimentalLyrics(
 
     var currentPositionState by remember { mutableLongStateOf(0L) }
     var deferredCurrentLineIndex by rememberSaveable { mutableIntStateOf(0) }
-    var lastPreviewTime by rememberSaveable { mutableLongStateOf(0L) }
+    val scrollPause = remember { LyricsScrollPause() }
     var isSeeking by remember { mutableStateOf(false) }
     var showProgressDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
@@ -527,6 +527,7 @@ fun ExperimentalLyrics(
     SideEffect {
         if (pillsController != null) {
             pillsController.hasTranslations = hasTranslations
+            pillsController.canSelectLyrics = lines.any { it.text.isNotBlank() }
             pillsController.isSelectionModeActive = isSelectionModeActive
             pillsController.isRomanizeActive = romanizeEnabled && hasRomanizations
             pillsController.romanizeAction = { romanizeEnabled = !romanizeEnabled }
@@ -553,7 +554,8 @@ fun ExperimentalLyrics(
                 } else if (lines.isNotEmpty()) {
                     isSelectionModeActive = true
                     selectedIndices.clear()
-                    val currentLine = deferredCurrentLineIndex
+                    val currentLine = deferredCurrentLineIndex.takeIf { it in lines.indices }
+                        ?: lines.indexOfFirst { it.text.isNotBlank() }
                     if (currentLine >= 0 && currentLine < lines.size) {
                         selectedIndices.add(currentLine)
                     }
@@ -699,15 +701,6 @@ fun ExperimentalLyrics(
         }
     }
 
-    LaunchedEffect(isSeeking, lastPreviewTime) {
-        if (isSeeking) {
-            lastPreviewTime = 0L
-        } else if (lastPreviewTime != 0L) {
-            delay(LYRICS_PREVIEW_TIME)
-            lastPreviewTime = 0L
-        }
-    }
-
     LaunchedEffect(scrollTargetIndex, isAutoScrollEnabled) {
         if (scrollTargetIndex != -1 && isAutoScrollEnabled) {
             deferredCurrentLineIndex = scrollTargetIndex
@@ -715,36 +708,31 @@ fun ExperimentalLyrics(
     }
 
     var userManualOffset by remember { mutableFloatStateOf(0f) }
-    var skippedLinesAfterScroll by remember { mutableIntStateOf(0) }
+    var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    LaunchedEffect(isAutoScrollEnabled) {
-        if (!isAutoScrollEnabled) {
-            skippedLinesAfterScroll = 0
-            var anchorLineIndex = -1
+    LaunchedEffect(isSelectionModeActive) {
+        if (isSelectionModeActive) {
+            flingJob?.cancel()
+            isAutoScrollEnabled = false
+            scrollPause.manualScroll()
+        }
+    }
+
+    LaunchedEffect(isAutoScrollEnabled, isSelectionModeActive) {
+        if (!isAutoScrollEnabled && !isSelectionModeActive) {
+            var anchorLineIndex = activeLineIndices
+                .filter { lines.getOrNull(it)?.isBackground == false }.maxOrNull()
             snapshotFlow { activeLineIndices }
                 .collectLatest { newActiveIndices ->
-                    if (newActiveIndices.isEmpty()) return@collectLatest
                     val maxMainIndex = newActiveIndices
                         .filter { lines.getOrNull(it)?.isBackground == false }
-                        .maxOrNull()
-                    if (maxMainIndex == null) return@collectLatest
-                    if (anchorLineIndex == -1) {
-                        anchorLineIndex = maxMainIndex
-                        return@collectLatest
-                    }
-                    val userJustScrolled = System.currentTimeMillis() - lastPreviewTime < 500L
-                    when {
-                        userJustScrolled -> skippedLinesAfterScroll = 0
-                        maxMainIndex > anchorLineIndex -> {
-                            anchorLineIndex = maxMainIndex
-                            skippedLinesAfterScroll++
-                            if (skippedLinesAfterScroll >= 1) {
-                                userManualOffset = 0f
-                                isAutoScrollEnabled = true
-                                lastPreviewTime = 0L
-                                skippedLinesAfterScroll = 0
-                            }
-                        }
+                        .maxOrNull() ?: return@collectLatest
+                    val lineChanged = maxMainIndex != anchorLineIndex
+                    anchorLineIndex = maxMainIndex
+                    if (lineChanged && scrollPause.canResume()) {
+                        flingJob?.cancel()
+                        userManualOffset = 0f
+                        isAutoScrollEnabled = true
                     }
                 }
         }
@@ -768,14 +756,11 @@ fun ExperimentalLyrics(
         if (isAutoScrollEnabled) pillsVisible = true
     }
 
-    // Pills hide while fullscreen so nothing floats over the enlarged lyrics. Text size
-    // stays constant here: the panel↔fullscreen growth is a rigid graphicsLayer transform
-    // owned by the host (IrideMp3Player), so no line ever re-wraps or overlaps mid-animation.
+    // The host owns fullscreen sizing and keeps these controls outside the lyric viewport.
     LaunchedEffect(isFullScreen) {
         pillsVisible = !isFullScreen
     }
 
-    var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val velocityTracker = remember { VelocityTracker() }
     val decayAnimSpec = remember { exponentialDecay<Float>(frictionMultiplier = 1.8f) }
     val itemHeights = remember(mediaMetadata?.id) { mutableStateMapOf<Int, Int>() }
@@ -892,7 +877,7 @@ fun ExperimentalLyrics(
                     val offset = -positions.getOrDefault(target, 0f)
                     flingJob?.cancel()
                     isAutoScrollEnabled = false
-                    lastPreviewTime = System.currentTimeMillis()
+                    scrollPause.manualScroll()
                     flingJob = scope.launch {
                         AnimationState(initialValue = userManualOffset).animateTo(
                             offset.coerceIn(safeMinOffset, safeMaxOffset), tween(220, easing = FastOutSlowInEasing),
@@ -1075,7 +1060,6 @@ fun ExperimentalLyrics(
                                             deferredCurrentLineIndex = target
                                             scrollTargetIndex = target
                                             isAutoScrollEnabled = true
-                                            lastPreviewTime = 0L
                                         }
                                     }
                                     .padding(horizontal = 20.dp),
@@ -1102,29 +1086,21 @@ fun ExperimentalLyrics(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = isSelectionModeActive,
-                    enter = slideInVertically { -it } + fadeIn(),
-                    exit = slideOutVertically { -it } + fadeOut(),
-                ) {
-                    Box(
+                IrideFolioActionReveal(visible = isSelectionModeActive) {
+                    IrideFolioFrostedButton(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .height(42.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(if (anySelected) expressiveAccent else Color.Transparent)
-                            .border(1.dp, expressiveAccent.copy(alpha = if (anySelected) 0.35f else 0.2f), RoundedCornerShape(50))
-                            .clickable(enabled = anySelected) {
-                                val text = selectedIndices.sorted().mapNotNull { lines.getOrNull(it)?.text }.joinToString("\n")
-                                if (text.isNotBlank()) {
-                                    shareDialogData = Triple(text, mediaMetadata?.title ?: "", mediaMetadata?.artists?.joinToString { it.name } ?: "")
-                                    showShareDialog = true
-                                }
-                                isSelectionModeActive = false
-                                selectedIndices.clear()
-                            },
-                        contentAlignment = Alignment.Center,
+                            .padding(horizontal = 12.dp),
+                        enabled = anySelected,
+                        onClick = {
+                            val text = selectedIndices.sorted().mapNotNull { lines.getOrNull(it)?.text }.joinToString("\n")
+                            if (text.isNotBlank()) {
+                                shareDialogData = Triple(text, mediaMetadata?.title ?: "", mediaMetadata?.artists?.joinToString { it.name } ?: "")
+                                showShareDialog = true
+                            }
+                            isSelectionModeActive = false
+                            selectedIndices.clear()
+                        },
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1133,13 +1109,10 @@ fun ExperimentalLyrics(
                             Icon(
                                 painter = painterResource(R.drawable.arrow_upward),
                                 contentDescription = null,
-                                tint = if (anySelected) iconButtonColor else expressiveAccent.copy(alpha = 0.4f),
                                 modifier = Modifier.size(17.dp),
                             )
                             Text(
                                 text = stringResource(R.string.share_as_image),
-                                color = if (anySelected) iconButtonColor else expressiveAccent.copy(alpha = 0.4f),
-                                style = MaterialTheme.typography.labelMedium,
                             )
                         }
                     }
@@ -1175,16 +1148,17 @@ fun ExperimentalLyrics(
                     .fillMaxSize()
                     .fadingEdge(top = fadeTop, bottom = fadeBottom)
                     .clipToBounds()
+                    .trackLyricsTouch(scrollPause)
                     .nestedScroll(remember {
                         object : NestedScrollConnection {
                             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                                if (source == NestedScrollSource.UserInput) isAutoScrollEnabled = false
-                                if (!isSelectionModeActive) lastPreviewTime = System.currentTimeMillis()
+                                if (source == NestedScrollSource.UserInput && consumed.y != 0f) {
+                                    isAutoScrollEnabled = false
+                                    scrollPause.manualScroll()
+                                }
                                 return super.onPostScroll(consumed, available, source)
                             }
                             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                                isAutoScrollEnabled = false
-                                if (!isSelectionModeActive) lastPreviewTime = System.currentTimeMillis()
                                 return super.onPostFling(consumed, available)
                             }
                         }
@@ -1197,7 +1171,6 @@ fun ExperimentalLyrics(
                                 flingJob?.cancel()
                                 velocityTracker.resetTracking()
                                 isAutoScrollEnabled = false
-                                lastPreviewTime = System.currentTimeMillis()
                                 velocityTracker.addPosition(down.uptimeMillis, down.position)
                                 verticalDrag(down.id) { change ->
                                     val dy = change.positionChange().y
@@ -1327,13 +1300,11 @@ fun ExperimentalLyrics(
                                                     deferredCurrentLineIndex = index
                                                     isAutoScrollEnabled = true
                                                     userManualOffset = 0f
-                                                    lastPreviewTime = 0L
                                                 } else {
                                                     scrollTargetIndex = index
                                                     deferredCurrentLineIndex = index
                                                     isAutoScrollEnabled = true
                                                     userManualOffset = 0f
-                                                    lastPreviewTime = 0L
                                                 }
                                             }
                                         },

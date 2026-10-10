@@ -17,6 +17,9 @@
     <string name="home_new_albums_title">New albums for you</string>
     <string name="new_charts_title">Charts</string>
     <string name="new_charts_refresh">Refresh Charts</string>
+    <string name="new_charts_rank_up">Moved up</string>
+    <string name="new_charts_rank_down">Moved down</string>
+    <string name="new_charts_rank_new">New chart entry</string>
     <string name="new_charts_all">All Charts</string>
     <string name="new_charts_search">Search countries</string>
     <string name="new_charts_global">Global</string>
@@ -296,4 +299,7 @@
     <string name="new_mini_player_design">New mini player design</string>
     <string name="top_navigation_bar_desc">Text tabs at the top and a fully black screen instead of the bottom navigation pill</string>
     <string name="update_interstitial_enable_install_desc">Allow Iride to install updates from this source</string>
+    <string name="album_discovery_mix" translatable="false">Albums You May Like</string>
+    <string name="album_discovery_style" translatable="false">More in This Style</string>
+    <string name="album_discovery_style_context" translatable="false">New discoveries inspired by this album</string>
 </resources>

@@ -72,6 +72,8 @@ import com.metrolist.music.ui.component.IrideArtworkSurface
 import com.metrolist.music.ui.component.rememberIrideArtistArtwork
 import com.metrolist.music.ui.component.rememberGenreArtwork
 import com.metrolist.music.ui.component.rememberGenreArtworkLoader
+import com.metrolist.music.ui.component.rememberArtistArtworkLoader
+import com.metrolist.music.ui.component.ArtistArtworkRequest
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -319,6 +321,7 @@ fun SearchScreen(
             listOf(
                 LibraryPageMenuAction(
                     label = stringResource(R.string.online),
+                    icon = R.drawable.language,
                     selected = searchSource == SearchSource.ONLINE,
                     onClick = {
                         searchSource = SearchSource.ONLINE
@@ -326,6 +329,7 @@ fun SearchScreen(
                 ),
                 LibraryPageMenuAction(
                     label = stringResource(R.string.filter_library),
+                    icon = if (searchSource == SearchSource.LOCAL) R.drawable.bookmark_filled else R.drawable.bookmark_outlined,
                     selected = searchSource == SearchSource.LOCAL,
                     onClick = {
                         searchSource = SearchSource.LOCAL
@@ -342,6 +346,16 @@ fun SearchScreen(
     }
     val searchedGenre = remember(submittedQuery, searchSource) {
         if (searchSource == SearchSource.ONLINE) searchGenreArtworkName(submittedQuery) else null
+    }
+    val artworkLoader = rememberArtistArtworkLoader()
+    val pendingArtist = (onlineSearchResultViewModel.summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull() as? ArtistItem)
+        ?.takeIf { searchedGenre == null && searchSource == SearchSource.ONLINE && submittedQuery.isNotBlank() && onlineSearchResultViewModel.query == submittedQuery }
+    // Decode during result classification so the confirmed backdrop is already warm.
+    LaunchedEffect(pendingArtist, submittedQuery) {
+        pendingArtist?.let {
+            artworkLoader.prefetch(ArtistArtworkRequest(it.id, it.title, it.thumbnail, it.channelId,
+                it.id.startsWith("UC") && !it.isProfile))
+        }
     }
     // Song results can promote an exact song above an initially returned artist. Wait for that
     // classification before mounting artwork; suggestions only prefetch, never choose a backdrop.
