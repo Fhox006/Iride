@@ -17,6 +17,7 @@ internal fun folioActionOrder(id: Int?): Pair<Int, Int> =
         R.string.action_download,
         R.string.remove_download,
         R.string.downloading -> 1 to 3
+        R.string.go_to_source -> 2 to -1
         R.string.view_artist,
         R.string.song_menu_view_artists,
         R.string.song_menu_view_collaborators -> 2 to 0
@@ -30,6 +31,7 @@ internal fun folioActionOrder(id: Int?): Pair<Int, Int> =
         R.string.select -> 4 to 3
         R.string.sleep_timer -> 4 to 4
         R.string.repeat_one -> 4 to 5
+        R.string.folio_dissolve -> 4 to 5
         R.string.listen_together -> 4 to 6
         R.string.details -> 4 to 7
         R.string.advanced -> 4 to 8

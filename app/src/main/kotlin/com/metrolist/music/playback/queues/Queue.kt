@@ -12,6 +12,8 @@ import com.metrolist.music.models.MediaMetadata
 interface Queue {
     val preloadItem: MediaMetadata?
 
+    val sourceRoute: String? get() = null
+
     /** True when pagination completes a finite playlist rather than extending recommendations. */
     val requiresPagination: Boolean get() = false
 
@@ -58,7 +60,7 @@ fun List<MediaItem>.filterExplicit(enabled: Boolean = true) =
 
 fun List<MediaItem>.filterVideoSongs(disableVideos: Boolean = false) =
     if (disableVideos) {
-        filterNot { it.metadata?.isVideoSong == true }
+        filterNot { it.metadata?.isVideoSong == true && it.localConfiguration?.uri?.scheme != "iride-video" }
     } else {
         this
     }

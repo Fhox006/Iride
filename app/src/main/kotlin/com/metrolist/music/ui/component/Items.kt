@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -120,6 +121,8 @@ import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.ImageLoader
+import androidx.compose.ui.graphics.asImageBitmap
+import coil3.asImage
 import coil3.request.allowHardware
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
@@ -335,17 +338,18 @@ fun VinylPeekDisc(
     size: Dp,
     modifier: Modifier = Modifier,
     rotationDegrees: Float = 0f,
+    artwork: android.graphics.Bitmap? = null,
 ) {
     val painter =
         rememberAsyncImagePainter(
             model =
                 ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl?.resize(160, 160))
+                    .data(artwork?.asImage() ?: thumbnailUrl?.resize(160, 160))
                     .crossfade(true)
                     .build()
         )
     val painterState by painter.state.collectAsState()
-    val isLoaded = painterState is AsyncImagePainter.State.Success
+    val isLoaded = artwork != null || painterState is AsyncImagePainter.State.Success
     val grooveColor = MaterialTheme.colorScheme.fillSubtle
 
     AnimatedVisibility(
@@ -385,21 +389,21 @@ fun VinylPeekDisc(
                         shape = CircleShape,
                     )
         ) {
-            Image(
-                painter = painter,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier.align(Alignment.Center)
-                        .fillMaxSize(VinylPeekDiscLabelFraction)
-                        .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
-                        .clip(CircleShape)
-                        .border(
-                            width = 0.5.dp,
-                            color = MaterialTheme.colorScheme.strokeCard,
-                            shape = CircleShape,
-                        ),
-            )
+            val labelModifier =
+                Modifier.align(Alignment.Center)
+                    .fillMaxSize(VinylPeekDiscLabelFraction)
+                    .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
+                    .clip(CircleShape)
+                    .border(
+                        width = 0.5.dp,
+                        color = MaterialTheme.colorScheme.strokeCard,
+                        shape = CircleShape,
+                    )
+            if (artwork != null) {
+                Image(artwork.asImageBitmap(), null, contentScale = ContentScale.Crop, modifier = labelModifier)
+            } else {
+                Image(painter = painter, contentDescription = null, contentScale = ContentScale.Crop, modifier = labelModifier)
+            }
             Box(
                 modifier =
                     Modifier.align(Alignment.Center)
@@ -439,7 +443,6 @@ inline fun ListItem(
     val applyHPad = LocalItemHorizontalPadding.current
     val highlightShape = RoundedCornerShape(ThumbnailCornerRadius)
     val hPad = if (applyHPad) IrideFolio.SongRowHorizontalPadding else 0.dp
-    val plain = !isActive && isSelected != true && showDivider
 
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -447,7 +450,7 @@ inline fun ListItem(
             modifier =
                 when {
                     isActive -> {
-                        Modifier.padding(horizontal = hPad, vertical = 2.dp).height(ListItemHeight)
+                        Modifier.padding(horizontal = hPad).heightIn(min = ListItemHeight)
                     }
                     isSelected == true -> {
                         Modifier.padding(horizontal = hPad, vertical = 2.dp)
@@ -456,10 +459,10 @@ inline fun ListItem(
                                 selectedBackgroundColor
                                     ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f)
                             )
-                            .height(ListItemHeight)
+                            .heightIn(min = ListItemHeight)
                     }
                     else -> {
-                        Modifier.padding(horizontal = hPad, vertical = 0.dp).height(ListItemHeight)
+                        Modifier.padding(horizontal = hPad, vertical = 0.dp).heightIn(min = ListItemHeight)
                     }
                 },
         ) {
@@ -509,7 +512,7 @@ inline fun ListItem(
             trailingContent()
         }
 
-        if (plain) {
+        if (showDivider) {
             androidx.compose.material3.HorizontalDivider(
                 modifier =
                     Modifier.align(Alignment.BottomStart)
@@ -935,11 +938,13 @@ fun SongGridItem(
             val gridHeight = currentGridThumbnailHeight()
             val squircleRadius = maxWidth * 0.06f
             ItemThumbnail(
-                thumbnailUrl = song.song.thumbnailUrl,
+                thumbnailUrl = if (song.song.isVideo) com.metrolist.music.playback.youtubeVideoThumbnail(song.id, song.song.thumbnailUrl)
+                    else song.song.thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(5.dp),
-                modifier = Modifier.size(gridHeight),
+                shape = RoundedCornerShape(if (song.song.isVideo) 16.dp else 5.dp),
+                modifier = if (song.song.isVideo) Modifier.fillMaxSize() else Modifier.size(gridHeight),
+                contentScaleOverride = if (song.song.isVideo) ContentScale.Crop else null,
                 softBorder = true,
             )
             if (!isActive) {
@@ -947,6 +952,7 @@ fun SongGridItem(
             }
         },
         fillMaxWidth = fillMaxWidth,
+        thumbnailRatio = if (song.song.isVideo) 16f / 9f else 1f,
         modifier = modifier,
     )
 
@@ -1698,6 +1704,7 @@ fun YouTubeGridItem(
         }
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
+    forceThumbnailRatio: Boolean = false,
     thumbnailCornerRadius: Dp = ThumbnailCornerRadius,
     thumbnailShape: Shape? = null,
     isActive: Boolean = false,
@@ -1719,6 +1726,8 @@ fun YouTubeGridItem(
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
     val effectiveThumbnailRatio =
         when {
+            item is SongItem && item.isVideoSong -> IrideFolio.VideoThumbnailRatio
+            forceThumbnailRatio -> thumbnailRatio
             thumbnailRatio != defaultRatio -> thumbnailRatio
             item is SongItem && squareVideoThumbnail -> 1f
             else -> thumbnailRatio
@@ -1783,9 +1792,12 @@ fun YouTubeGridItem(
         badges = badges,
         thumbnailContent = {
             ItemThumbnail(
+                thumbnailRatio = effectiveThumbnailRatio,
                 thumbnailUrl =
                     if (useThumbnailOverride) thumbnailUrlOverride
-                    else thumbnailUrlOverride ?: artistThumbnail ?: item.thumbnail,
+                    else thumbnailUrlOverride ?: artistThumbnail ?: if (item is SongItem && item.isVideoSong)
+                        com.metrolist.music.playback.youtubeVideoThumbnail(item.id, item.thumbnail) else item.thumbnail,
+                contentScaleOverride = if ((forceThumbnailRatio || item is SongItem && item.isVideoSong) && effectiveThumbnailRatio != 1f) ContentScale.Crop else null,
                 artistArtwork = item is ArtistItem,
                 imageLoader = thumbnailImageLoader,
                 placeholder = thumbnailPlaceholder,
@@ -1796,7 +1808,7 @@ fun YouTubeGridItem(
                         ?: when {
                             item is ArtistItem -> CircleShape
                             effectiveThumbnailRatio != 1f ->
-                                RoundedCornerShape(thumbnailCornerRadius)
+                                RoundedCornerShape(if (item is SongItem && item.isVideoSong) IrideFolio.VideoThumbnailRadius else thumbnailCornerRadius)
                             else -> RoundedCornerShape(5.dp)
                         },
                 hairlineBorder = hairlineBorder,
@@ -1990,6 +2002,7 @@ fun ItemThumbnail(
     placeholder: (@Composable () -> Unit)? = null,
     requestResolution: Int = ThumbnailRequestSize,
     artistArtwork: Boolean = false,
+    contentScaleOverride: ContentScale? = null,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val selectionBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -2109,7 +2122,7 @@ fun ItemThumbnail(
                 painter = painter,
                 contentDescription = null,
                 contentScale =
-                    if (shape == CircleShape || cropAlbumArt) ContentScale.Crop
+                    contentScaleOverride ?: if (shape == CircleShape || cropAlbumArt) ContentScale.Crop
                     else ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().then(sizeResolver).clip(shape),
             )
@@ -2330,7 +2343,7 @@ fun PlaylistThumbnail(
                         AsyncImage(
                             model =
                                 ImageRequest.Builder(LocalContext.current)
-                                    .data(thumbnails.getOrNull(index))
+                                    .data(thumbnails[index % thumbnails.size])
                                     .apply {}
                                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)

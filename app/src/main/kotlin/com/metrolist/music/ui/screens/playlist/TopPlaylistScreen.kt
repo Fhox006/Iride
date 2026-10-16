@@ -467,6 +467,7 @@ fun TopPlaylistScreen(
                         if (!isSearching) {
                             item(key = "playlist_header") {
                                 TopPlaylistHeader(
+                                    sourceRoute = "top_playlist/$maxSize",
                                     name = name,
                                     songs = songs!!,
                                     likeLength = likeLength,
@@ -581,6 +582,7 @@ fun TopPlaylistScreen(
                                                 } else {
                                                     playerConnection.playQueue(
                                                         ListQueue(
+                                                            sourceRoute = "top_playlist/$maxSize",
                                                             title = name,
                                                             items =
                                                                 songs!!.map { it.toMediaItem() },
@@ -652,6 +654,7 @@ fun TopPlaylistScreen(
 
 @Composable
 private fun TopPlaylistHeader(
+    sourceRoute: String,
     name: String,
     songs: List<Song>,
     likeLength: Int,
@@ -719,6 +722,7 @@ private fun TopPlaylistHeader(
             onShuffleClick = {
                 playerConnection.playQueue(
                     ListQueue(
+                        sourceRoute = sourceRoute,
                         title = name,
                         items = songs.shuffled().map { it.toMediaItem() },
                     )
@@ -730,6 +734,7 @@ private fun TopPlaylistHeader(
                 } else {
                     playerConnection.playQueue(
                         ListQueue(
+                            sourceRoute = sourceRoute,
                             title = name,
                             items = songs.map { it.toMediaItem() },
                         )

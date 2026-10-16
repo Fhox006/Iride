@@ -25,6 +25,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.discovery.NewRelease
+import com.metrolist.music.discovery.NewReleaseSchedule
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -41,7 +42,7 @@ fun HomeFollowedReleases(
     isVisible: Boolean,
     viewModel: FollowedReleasesViewModel = hiltViewModel(),
 ) {
-    val tracks by viewModel.tracks.collectDeferredHomeState("followed_releases")
+    val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val resolvingId by viewModel.resolvingId.collectAsStateWithLifecycle()
     val resolvedSongIds by viewModel.resolvedSongIds.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -59,7 +60,7 @@ fun HomeFollowedReleases(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 viewModel.refresh()
-                delay(15 * 60_000L)
+                delay(NewReleaseSchedule.nextCheckDelayMillis())
             }
         }
     }

@@ -972,6 +972,7 @@ fun SongMenu(
                     items(section) { action ->
                         IrideFolioMenuItem(
                             text = action.title,
+                            selected = action.selected,
                             leadingIcon = action.icon?.let { icon ->
                                 { Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() } }
                             },

@@ -58,6 +58,7 @@ import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
@@ -182,7 +183,31 @@ fun ArtistItemsScreen(
                     items = sortedSongs,
                     key = { "artist_items_list_${it.id}" },
                 ) { item ->
-                    YouTubeListItem(
+                    val videoItem = item is SongItem && (item.isVideoSong ||
+                        title.contains("video", ignoreCase = true) || title.contains("performance", ignoreCase = true))
+                    if (videoItem) {
+                        YouTubeGridItem(
+                            item = item,
+                            thumbnailRatio = IrideFolio.VideoThumbnailRatio,
+                            forceThumbnailRatio = true,
+                            thumbnailCornerRadius = IrideFolio.VideoThumbnailRadius,
+                            thumbnailUrlOverride = com.metrolist.music.playback.youtubeVideoThumbnail(item.id, item.thumbnail),
+                            fillMaxWidth = true,
+                            isActive = mediaMetadata?.id == item.id,
+                            isPlaying = isPlaying,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                                .combinedClickable(
+                                    onClick = {
+                                        playerConnection.videoPlayback.playVideo(item.toMediaMetadata())
+                                    },
+                                    onLongClick = {
+                                        menuState.show(anchored = true) {
+                                            YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
+                                        }
+                                    },
+                                ),
+                        )
+                    } else YouTubeListItem(
                         item = item,
                         isActive =
                             when (item) {
@@ -350,7 +375,11 @@ fun ArtistItemsScreen(
                                     onClick = {
                                         when (item) {
                                             is SongItem -> {
-                                                playerConnection.playQueue(
+                                                if (item.isVideoSong || title.contains("video", ignoreCase = true) ||
+                                                    title.contains("performance", ignoreCase = true)
+                                                ) {
+                                                    playerConnection.videoPlayback.playVideo(item.toMediaMetadata())
+                                                } else playerConnection.playQueue(
                                                     YouTubeQueue(
                                                         item.endpoint
                                                             ?: WatchEndpoint(videoId = item.id),

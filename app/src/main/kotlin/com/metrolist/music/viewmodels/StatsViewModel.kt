@@ -6,21 +6,16 @@
 package com.metrolist.music.viewmodels
 
 import android.content.Context
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
-import com.metrolist.innertube.models.Artist
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.LastMonthlyMostPlaylistSyncKey
 import com.metrolist.music.constants.LastWeeklyMostPlaylistSyncKey
 import com.metrolist.music.constants.StatPeriod
-import com.metrolist.music.constants.statToPeriod
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
-import com.metrolist.music.ui.screens.OptionStats
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
 import androidx.datastore.preferences.core.edit
@@ -38,6 +33,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.metrolist.music.models.listeningBounds
+import java.time.YearMonth
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
@@ -54,179 +51,49 @@ class StatsViewModel
 constructor(
     @ApplicationContext private val context: Context,
     val database: MusicDatabase,
+    reverieRepository: com.metrolist.music.repository.MonthlyReverieRepository,
 ) : ViewModel() {
     private val periodicMostPlaylistSyncMutex = Mutex()
-    val selectedOption = MutableStateFlow(OptionStats.CONTINUOUS)
-    val indexChips = MutableStateFlow(0)
+    val listeningMonths = reverieRepository.listeningMonths
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val reverieMonths = reverieRepository.availableMonths
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val firstFullReverieMonth = reverieRepository.firstFullMonth
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    private val requestedMonth = MutableStateFlow<YearMonth?>(null)
+    val selectedMonth = combine(requestedMonth, listeningMonths) { requested, months ->
+        requested?.takeIf { it in months } ?: months.firstOrNull() ?: YearMonth.now()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), YearMonth.now())
 
-    val mostPlayedSongsStats =
-        combine(
-            selectedOption,
-            indexChips,
-            context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
-        ) { first, second, third -> Triple(first, second, third) }
-            .flatMapLatest { (selection, t, hideVideoSongs) ->
-                database
-                    .mostPlayedSongsStats(
-                        fromTimeStamp = statToPeriod(selection, t),
-                        limit = -1,
-                        toTimeStamp =
-                        if (selection == OptionStats.CONTINUOUS || t == 0) {
-                            LocalDateTime
-                                .now()
-                                .toInstant(
-                                    ZoneOffset.UTC,
-                                ).toEpochMilli()
-                        } else {
-                            statToPeriod(selection, t - 1)
-                        },
-                    ).map { songs ->
-                        if (hideVideoSongs) songs.filter { !it.isVideo } else songs
-                    }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    fun selectMonth(month: YearMonth) { requestedMonth.value = month }
 
-    val mostPlayedSongs =
-        combine(
-            selectedOption,
-            indexChips,
-            context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
-        ) { first, second, third -> Triple(first, second, third) }
-            .flatMapLatest { (selection, t, hideVideoSongs) ->
-                database
-                    .mostPlayedSongs(
-                        fromTimeStamp = statToPeriod(selection, t),
-                        limit = -1,
-                        toTimeStamp =
-                        if (selection == OptionStats.CONTINUOUS || t == 0) {
-                            LocalDateTime
-                                .now()
-                                .toInstant(
-                                    ZoneOffset.UTC,
-                                ).toEpochMilli()
-                        } else {
-                            statToPeriod(selection, t - 1)
-                        },
-                    ).map { songs ->
-                        if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
-                    }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    private val hideVideoSongs = context.dataStore.data
+        .map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
 
-    val mostPlayedArtists =
-        combine(
-            selectedOption,
-            indexChips,
-        ) { first, second -> Pair(first, second) }
-            .flatMapLatest { (selection, t) ->
-                database
-                    .mostPlayedArtists(
-                        statToPeriod(selection, t),
-                        limit = -1,
-                        toTimeStamp =
-                        if (selection == OptionStats.CONTINUOUS || t == 0) {
-                            LocalDateTime
-                                .now()
-                                .toInstant(
-                                    ZoneOffset.UTC,
-                                ).toEpochMilli()
-                        } else {
-                            statToPeriod(selection, t - 1)
-                        },
-                    ).map { artists ->
-                        artists.filter { it.artist.isYouTubeArtist }
-                    }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val mostPlayedSongsStats = combine(selectedMonth, hideVideoSongs) { month, hide -> month to hide }
+        .flatMapLatest { (month, hide) ->
+            val bounds = month.listeningBounds()
+            database.mostPlayedSongsStats(fromTimeStamp = bounds.first, limit = -1, toTimeStamp = bounds.last)
+                .map { songs -> if (hide) songs.filter { !it.isVideo } else songs }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val mostPlayedAlbums =
-        combine(
-            selectedOption,
-            indexChips,
-        ) { first, second -> Pair(first, second) }
-            .flatMapLatest { (selection, t) ->
-                database.mostPlayedAlbums(
-                    statToPeriod(selection, t),
-                    limit = -1,
-                    toTimeStamp =
-                    if (selection == OptionStats.CONTINUOUS || t == 0) {
-                        LocalDateTime
-                            .now()
-                            .toInstant(
-                                ZoneOffset.UTC,
-                            ).toEpochMilli()
-                    } else {
-                        statToPeriod(selection, t - 1)
-                    },
-                )
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val mostPlayedSongs = combine(selectedMonth, hideVideoSongs) { month, hide -> month to hide }
+        .flatMapLatest { (month, hide) ->
+            val bounds = month.listeningBounds()
+            database.mostPlayedSongs(fromTimeStamp = bounds.first, limit = -1, toTimeStamp = bounds.last)
+                .map { songs -> if (hide) songs.filter { !it.song.isVideo } else songs }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val mostPlayedCategories =
-        combine(
-            selectedOption,
-            indexChips,
-        ) { first, second -> Pair(first, second) }
-            .flatMapLatest { (selection, t) ->
-                database.mostPlayedCategories(
-                    statToPeriod(selection, t),
-                    limit = 8,
-                    toTimeStamp =
-                    if (selection == OptionStats.CONTINUOUS || t == 0) {
-                        LocalDateTime
-                            .now()
-                            .toInstant(
-                                ZoneOffset.UTC,
-                            ).toEpochMilli()
-                    } else {
-                        statToPeriod(selection, t - 1)
-                    },
-                )
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val mostPlayedArtists = selectedMonth.flatMapLatest { month ->
+        val bounds = month.listeningBounds()
+        database.mostPlayedArtists(fromTimeStamp = bounds.first, limit = -1, toTimeStamp = bounds.last)
+            .map { artists -> artists.filter { it.artist.isYouTubeArtist } }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val firstEvent =
-        database
-            .firstEvent()
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
-
-    val selectedArtists = mutableStateListOf<Artist>()
-
-    val filteredSongs = combine(
-        mostPlayedSongsStats,
-        snapshotFlow { selectedArtists.toList() }
-    ) { songs, selected ->
-        if (selected.isEmpty()) {
-            songs
-        } else {
-            songs.filter { song ->
-                song.artists.any { artist -> selected.any { it.id == artist.id } }
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    val filteredArtists = combine(
-        mostPlayedArtists,
-        snapshotFlow { selectedArtists.toList() }
-    ) { artists, selected ->
-        if (selected.isEmpty()) {
-            artists
-        } else {
-            artists.filter { artist ->
-                selected.any { it.id == artist.artist.id }
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    val filteredAlbums = combine(
-        mostPlayedAlbums,
-        snapshotFlow { selectedArtists.toList() }
-    ) { albums, selected ->
-        if (selected.isEmpty()) {
-            albums
-        } else {
-            albums.filter { album ->
-                album.artists.any { artist ->
-                    selected.any { it.id == artist.id }
-                }
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val mostPlayedAlbums = selectedMonth.flatMapLatest { month ->
+        val bounds = month.listeningBounds()
+        database.mostPlayedAlbums(fromTimeStamp = bounds.first, limit = -1, toTimeStamp = bounds.last)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun transferSongStats(fromSongId: String, toSongId: String, onDone: (() -> Unit)? = null) {
         viewModelScope.launch {

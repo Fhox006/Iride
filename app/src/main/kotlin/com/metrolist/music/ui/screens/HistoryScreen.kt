@@ -513,6 +513,7 @@ fun HistoryScreen(
                                                 } else {
                                                     playerConnection.playQueue(
                                                         ListQueue(
+                                                            sourceRoute = "history",
                                                             title = dateTitle,
                                                             items =
                                                                 dateEvents.map {
@@ -558,6 +559,7 @@ fun HistoryScreen(
                     if (songs.isNotEmpty()) {
                         playerConnection.playQueue(
                             ListQueue(
+                                sourceRoute = "history",
                                 title = historyTitle,
                                 items = songs.map { it.toMediaItem() }.shuffled(),
                             )
@@ -566,6 +568,7 @@ fun HistoryScreen(
                 } else {
                     playerConnection.playQueue(
                         ListQueue(
+                            sourceRoute = "history",
                             title = historyTitle,
                             items = allEvents.map { it.song.toMediaItem() }.shuffled(),
                         )

@@ -17,9 +17,9 @@ class NewReleasesTest {
     private val today = LocalDate.parse("2026-10-07")
 
     @Test fun rejectsUnknownFutureAndOldDatesIncludingInvalidCalendarDays() {
-        assertEquals("2026-09-23", NewReleaseCatalog.date("2026-09-23T07:00:00Z", today))
+        assertEquals("2026-10-02", NewReleaseCatalog.date("2026-10-02T07:00:00Z", today))
         assertEquals("2026-10-07", NewReleaseCatalog.date("2026-10-07", today))
-        listOf(null, "", "2026", "2026-10-08", "2026-09-22", "2026-02-30", "2026-10-07garbage")
+        listOf(null, "", "2026", "2026-10-08", "2026-10-01", "2026-09-22", "2026-02-30", "2026-10-07garbage")
             .forEach { assertNull(NewReleaseCatalog.date(it, today)) }
     }
 
@@ -74,6 +74,72 @@ class NewReleasesTest {
         items, trending, profile, "it", hide, today, visit, 1_791_370_000_000L, 1_791_370_000_000L,
     )
 
+    @Test fun fridayRemovesPreviousWeekFromEveryShelfEvenWhenOnlyCachedItemsExist() {
+        val old = (1..40).map { release(it, track = it % 2 == 0, followed = it <= 20, date = "2026-10-09") }
+        val thursday = LocalDate.parse("2026-10-15")
+        fun onDate(date: LocalDate) = NewReleaseSelection.page(old, emptySet(), NewReleaseProfile(),
+            "it", false, date, 0, 0, 0)
+        assertTrue(onDate(thursday).hasContent)
+        assertFalse(onDate(thursday.plusDays(1)).hasContent)
+    }
+
+    @Test fun fridayPublishesOnlyCurrentWeekAlbumsAndSongsWithoutWaitingForResolution() {
+        val friday = LocalDate.parse("2026-10-16")
+        val previousAlbum = release(1, followed = true, date = "2026-10-09")
+        val previousSong = release(2, track = true, followed = true, date = "2026-10-15")
+        val album = release(3, followed = true, date = friday.toString()).copy(playable = false)
+        val song = release(4, track = true, followed = true, date = friday.toString())
+        val page = NewReleaseSelection.page(listOf(previousAlbum, previousSong, album, song),
+            emptySet(), NewReleaseProfile(), "it", false, friday, 0, 0, 0)
+        val shown = page.hero + page.followedAlbums + page.followedSingles + page.albums + page.songs +
+            page.sections.flatMap { it.releases }
+        assertEquals(setOf(album.id, song.id), shown.map { it.id }.toSet())
+        assertEquals(listOf(album.id), page.followedAlbums.map { it.id })
+        assertEquals(listOf(song.id), page.followedSingles.map { it.id })
+    }
+
+    @Test fun reopeningOnThursdayRecoversReleasesFromEveryDaySinceFriday() {
+        val friday = LocalDate.parse("2026-10-09")
+        val releases = (0L..6L).flatMap { day -> listOf(
+            release(day.toInt() * 2 + 1, followed = true, date = friday.plusDays(day).toString()),
+            release(day.toInt() * 2 + 2, track = true, followed = true, date = friday.plusDays(day).toString()),
+        ) }
+        val page = NewReleaseSelection.page(releases, emptySet(), NewReleaseProfile(),
+            "it", false, friday.plusDays(6), 0, 0, 0)
+        assertEquals(releases.filterNot { it.isTrack }.map { it.id }.toSet(),
+            page.followedAlbums.map { it.id }.toSet())
+        assertEquals(releases.filter { it.isTrack }.map { it.id }.toSet(),
+            page.followedSingles.map { it.id }.toSet())
+    }
+
+    @Test fun partialRefreshRetainsEarlierWeeklyFindsAndUpdatesDuplicates() {
+        val cached = release(1, track = true, date = "2026-10-02")
+        val expired = release(2, track = true, date = "2026-10-01")
+        val existing = release(3, track = true, date = "2026-10-03")
+        val updated = existing.copy(artworkUrl = "https://example.com/new.jpg")
+        val discovered = release(4, track = true, date = "2026-10-06")
+        val merged = NewReleaseCatalog.mergeCached(listOf(cached, expired, existing), listOf(updated, discovered), today)
+        assertEquals(setOf(cached.id, updated.id, discovered.id), merged.map { it.id }.toSet())
+        assertEquals(updated.artworkUrl, merged.single { it.id == existing.id }.artworkUrl)
+        assertEquals(listOf(cached), NewReleaseCatalog.mergeCached(listOf(cached, expired), emptyList(), today))
+        assertTrue(NewReleaseCatalog.mergeCached(merged, emptyList(), LocalDate.parse("2026-10-09")).isEmpty())
+    }
+
+    @Test fun backfillsEveryFreshCollectionWithMissingTracksWithoutRepeatingCompleteOnes() {
+        val complete = catalogAlbum(1, "Complete", "2026-10-02")
+        val incomplete = catalogAlbum(2, "Partial", "2026-10-03")
+        val missing = catalogAlbum(3, "Missing", "2026-10-05")
+        val expired = catalogAlbum(4, "Old", "2026-10-01")
+        val future = catalogAlbum(5, "Future", "2026-10-08")
+        val fullTracks = (1..12).map { catalogTrack(it, "Track $it", 1, "Complete") }
+        val partialTracks = (13..15).map { catalogTrack(it, "Track $it", 2, "Partial") }
+        val result = NewReleaseCatalog.collectionsMissingTracks(
+            listOf(complete, incomplete, missing, expired, future, incomplete),
+            fullTracks + partialTracks + partialTracks, today,
+        )
+        assertEquals(listOf(incomplete, missing), result)
+    }
+
     @Test fun followedAlbumsIncludeEpsAndSinglesComeBeforeAlbumTracks() {
         val album = release(1, followed = true)
         val ep = release(2, kind = NewReleaseKind.EP, followed = true)
@@ -92,10 +158,10 @@ class NewReleasesTest {
         val single = release(50, kind = NewReleaseKind.SINGLE, followed = true)
         val ep = release(51, kind = NewReleaseKind.EP, followed = true)
         val album = release(52, followed = true)
-        val olderSingle = release(60, track = true, followed = true, collectionId = "50", date = "2026-10-01")
+        val olderSingle = release(60, track = true, followed = true, collectionId = "50", date = "2026-10-03")
         val newerSingle = release(61, track = true, followed = true, collectionId = "50", date = "2026-10-06")
-        val epTrack = release(62, track = true, followed = true, collectionId = "51", date = "2026-09-30")
-        val albumTrack = release(63, track = true, followed = true, collectionId = "52", date = "2026-09-29")
+        val epTrack = release(62, track = true, followed = true, collectionId = "51", date = "2026-10-04")
+        val albumTrack = release(63, track = true, followed = true, collectionId = "52", date = "2026-10-05")
         val items = listOf(albumTrack, newerSingle, epTrack, olderSingle, single, ep, album)
         val expected = listOf(olderSingle.id, newerSingle.id, epTrack.id, albumTrack.id)
         assertEquals(expected, page(items, visit = 1).followedSingles.map(NewRelease::id))
@@ -147,7 +213,7 @@ class NewReleasesTest {
 
     @Test fun reopeningRotatesDiscoveryOrderWhileFollowedShelfStaysChronological() {
         val items = (1..30).map { release(it) } + listOf(release(100, followed = true, date = "2026-10-03"),
-            release(101, followed = true, date = "2026-10-01"))
+            release(101, followed = true, date = "2026-10-02"))
         val first = page(items, visit = 1)
         val second = page(items, visit = 2)
         assertNotEquals(first.albums.map(NewRelease::id), second.albums.map(NewRelease::id))
@@ -288,5 +354,65 @@ class NewReleasesTest {
         assertEquals(listOf(first, collaboration), groups["1"])
         assertEquals(listOf(second, album), groups["2"])
         assertNull(groups["3"])
+    }
+
+    private fun catalogAlbum(id: Int, title: String, date: String, artist: String = "Artist") =
+        Json.parseToJsonElement("""{
+            "wrapperType":"collection", "collectionId":$id, "collectionName":"$title",
+            "artistName":"$artist", "releaseDate":"${date}T07:00:00Z", "trackCount":12,
+            "artworkUrl100":"https://example.com/100x100bb.jpg"
+        }""") as JsonObject
+
+    private fun catalogTrack(id: Int, title: String, collectionId: Int, collection: String,
+        date: String = "2026-10-02", artist: String = "Artist") = Json.parseToJsonElement("""{
+            "wrapperType":"track", "kind":"song", "trackId":$id, "trackName":"$title",
+            "collectionId":$collectionId, "collectionName":"$collection", "trackCount":12,
+            "artistName":"$artist", "releaseDate":"${date}T07:00:00Z",
+            "artworkUrl100":"https://example.com/100x100bb.jpg"
+        }""") as JsonObject
+
+    @Test fun comparesDeluxeWithAnOlderStandardAlbumOutsideTheFreshnessWindow() {
+        val standard = catalogAlbum(1, "Work", "2021-01-01")
+        val deluxe = catalogAlbum(2, "Work (Deluxe Edition)", "2026-10-02")
+        val candidates = listOf(standard, deluxe,
+            catalogAlbum(3, "Work", "2026-10-05"),
+            catalogAlbum(4, "Work", "2021-01-01", "Other Artist"),
+            catalogAlbum(5, "Work (Live Edition)", "2020-01-01"),
+            catalogAlbum(6, "Different Work", "2021-01-01"))
+        assertNull(NewReleaseCatalog.parse(standard, "it", today))
+        assertEquals(listOf(standard), NewReleaseCatalog.standardAlbums(deluxe, candidates))
+        assertTrue(NewReleaseCatalog.isAlbumEdition("Work (Deluxe Edition)"))
+        assertTrue(NewReleaseCatalog.isAlbumEdition("Work Deluxe"))
+        assertEquals(listOf(standard), NewReleaseCatalog.standardAlbums(
+            catalogAlbum(2, "Work Deluxe", "2026-10-02"), candidates))
+        assertTrue(NewReleaseCatalog.isAlbumEdition("Work - Expanded Edition"))
+        assertFalse(NewReleaseCatalog.isAlbumEdition("Work - Single"))
+        assertFalse(NewReleaseCatalog.isAlbumEdition("Work (Live Edition)"))
+    }
+
+    @Test fun deluxeKeepsOnlyBonusRecordingsEvenWhenOldTracksHaveNewIdsAndDates() {
+        val original = catalogTrack(1, "Original", 10, "Work", "2021-01-01")
+        val repackaged = catalogTrack(2, "ORIGINAL (Deluxe Edition)", 20, "Work (Deluxe Edition)")
+        val bonus = catalogTrack(3, "Bonus track", 20, "Work (Deluxe Edition)")
+        val remix = catalogTrack(4, "Original (Remix)", 20, "Work (Deluxe Edition)")
+        val live = catalogTrack(5, "Original (Live Edition)", 20, "Work (Deluxe Edition)")
+        val acoustic = catalogTrack(6, "Original (Acoustic)", 20, "Work (Deluxe Edition)")
+        val otherArtist = catalogTrack(7, "Original", 20, "Work (Deluxe Edition)", artist = "Other Artist")
+        val tracks = listOf(repackaged, bonus, remix, live, acoustic, otherArtist)
+        val excluded = NewReleaseCatalog.reissuedTrackIds(tracks, listOf(original))
+        assertEquals(setOf("apple:song:2"), excluded)
+        val fresh = NewReleaseCatalog.parseCatalog(tracks, "it", today).filterNot { it.id in excluded }
+        assertEquals(listOf("Bonus track", "Original (Remix)", "Original (Live Edition)",
+            "Original (Acoustic)", "Original"), fresh.map { it.title })
+        assertTrue(NewReleaseCatalog.reissuedTrackIds(listOf(repackaged), emptyList()).isEmpty())
+    }
+
+    @Test fun editionComparisonAlsoExcludesTracksFromARecentlyReleasedStandardAlbum() {
+        val standard = catalogAlbum(1, "Work", "2026-09-30")
+        val deluxe = catalogAlbum(2, "Work (Deluxe)", "2026-10-02")
+        assertEquals(listOf(standard), NewReleaseCatalog.standardAlbums(deluxe, listOf(standard)))
+        val original = catalogTrack(10, "Original", 1, "Work", "2026-09-30")
+        val reissue = catalogTrack(20, "Original", 2, "Work (Deluxe)")
+        assertEquals(setOf("apple:song:20"), NewReleaseCatalog.reissuedTrackIds(listOf(reissue), listOf(original)))
     }
 }

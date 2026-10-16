@@ -51,9 +51,9 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -134,47 +134,41 @@ class App :
     }
 
     /**
-     * A network change leaves the OkHttp pool full of sockets bound to the old (now dead) network.
-     * Every later request picks one up and stalls until the connect timeout, so the app looks
-     * permanently offline until the process is killed. Dropping the pool on each transition makes
-     * the next request open a fresh connection instead.
+     * Release calls bound to a dead default network and restore account credentials before
+     * consumers retry their failed loads. Capability-only updates do not reset working calls.
      */
     @OptIn(FlowPreview::class)
     private fun observeConnectivity() {
         applicationScope.launch(Dispatchers.IO) {
-            connectivityObserver.networkStatus
-                .drop(1)
-                .collect { connected ->
-                    YouTube.evictConnections()
-                    if (connected) {
-                        val prefs = dataStore.data.first()
-                        prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
-                        prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
-                        prefs[DataSyncIdKey]?.let { raw ->
-                            YouTube.dataSyncId =
-                                raw.takeIf { !it.contains("||") }
-                                    ?: raw.takeIf { it.endsWith("||") }?.substringBefore("||")
-                                    ?: raw.substringAfter("||")
-                        }
-                        // A reconnect keeps working only if visitorData is fresh: a stale id
-                        // makes every later browse/account call fail without retry.
-                        if (YouTube.visitorData.isNullOrEmpty() || YouTube.visitorData == "null") {
-                            YouTube.visitorData().getOrNull()?.also { fresh ->
-                                YouTube.visitorData = fresh
-                                dataStore.edit { settings ->
-                                    settings[VisitorDataKey] = fresh
-                                }
-                            }
-                        }
-                    }
-                }
-        }
-
-        applicationScope.launch(Dispatchers.IO) {
             connectivityObserver.networkChanged
                 .debounce(300)
                 .collect {
-                    YouTube.evictConnections()
+                    YouTube.resetConnections()
+                    if (connectivityObserver.networkStatus.value) {
+                        try {
+                            val prefs = dataStore.data.first()
+                            prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
+                            prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
+                            prefs[DataSyncIdKey]?.let { raw ->
+                                YouTube.dataSyncId =
+                                    raw.takeIf { !it.contains("||") }
+                                        ?: raw.takeIf { it.endsWith("||") }?.substringBefore("||")
+                                        ?: raw.substringAfter("||")
+                            }
+                            if (YouTube.visitorData.isNullOrEmpty() || YouTube.visitorData == "null") {
+                                YouTube.visitorData().getOrNull()?.also { fresh ->
+                                    YouTube.visitorData = fresh
+                                    dataStore.edit { settings ->
+                                        settings[VisitorDataKey] = fresh
+                                    }
+                                }
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e, "Could not restore account after network change")
+                        }
+                    }
                 }
         }
     }

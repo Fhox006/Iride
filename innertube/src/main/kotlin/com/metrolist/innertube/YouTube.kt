@@ -134,6 +134,8 @@ object YouTube {
      */
     fun evictConnections() = innerTube.evictConnections()
 
+    fun resetConnections() = innerTube.resetConnections()
+
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> = runCatching {
         val response = innerTube.getSearchSuggestions(WEB_REMIX, query).body<GetSearchSuggestionsResponse>()
         SearchSuggestions(
@@ -1515,6 +1517,10 @@ object YouTube {
         innerTube.addToPlaylist(WEB_REMIX, playlistId, videoId)
     }
 
+    suspend fun addToPlaylist(playlistId: String, videoIds: List<String>) = runCatching {
+        innerTube.addToPlaylist(WEB_REMIX, playlistId, videoIds)
+    }
+
     suspend fun addPlaylistToPlaylist(playlistId: String, addPlaylistId: String) = runCatching {
         innerTube.addPlaylistToPlaylist(WEB_REMIX, playlistId, addPlaylistId)
     }
@@ -1530,6 +1536,9 @@ object YouTube {
     fun createPlaylist(title: String) = runBlocking {
         innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
     }
+
+    suspend fun createPlaylist(title: String, videoIds: List<String>): String =
+        innerTube.createPlaylist(WEB_REMIX, title, videoIds).body<CreatePlaylistResponse>().playlistId
 
     suspend fun renamePlaylist(playlistId: String, name: String) = runCatching {
         innerTube.renamePlaylist(WEB_REMIX, playlistId, name)

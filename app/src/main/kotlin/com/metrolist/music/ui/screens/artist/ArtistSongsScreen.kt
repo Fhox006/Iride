@@ -203,6 +203,7 @@ fun ArtistSongsScreen(
                                         } else {
                                             playerConnection.playQueue(
                                                 ListQueue(
+                                                    sourceRoute = artist?.id?.let { "artist/$it/songs" },
                                                     title = queueAllSongsStr,
                                                     items = filteredSongs.map { it.toMediaItem() },
                                                     startIndex = index,
@@ -256,6 +257,7 @@ fun ArtistSongsScreen(
                 onClick = {
                     playerConnection.playQueue(
                         ListQueue(
+                            sourceRoute = artist?.id?.let { "artist/$it/songs" },
                             title = artist?.artist?.name,
                             items = filteredSongs.shuffled().map { it.toMediaItem() },
                         )

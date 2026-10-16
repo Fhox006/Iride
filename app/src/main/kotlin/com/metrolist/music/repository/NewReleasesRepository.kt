@@ -23,6 +23,7 @@ import com.metrolist.music.discovery.NewReleaseCatalog.text
 import com.metrolist.music.discovery.NewReleasePage
 import com.metrolist.music.discovery.NewReleaseProfile
 import com.metrolist.music.discovery.NewReleaseSelection
+import com.metrolist.music.discovery.NewReleaseSchedule
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.HomeFeedSnapshotStore
@@ -59,8 +60,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import timber.log.Timber
 import java.io.File
+import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -76,6 +78,9 @@ private data class ArtistReleaseCache(
     val originalDates: Map<String, String> = emptyMap(),
     val nextAttemptAt: Long = 0,
     val failures: Int = 0,
+    val editionComparisonVersion: Int = 0,
+    val tracklistScanVersion: Int = 0,
+    val reissuedTrackIds: Set<String> = emptySet(),
 )
 
 @Serializable
@@ -118,6 +123,8 @@ class NewReleasesRepository @Inject constructor(
     private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobLock = Mutex()
     private var backgroundRefresh: Job? = null
+    private var backgroundFollowedOnly = false
+    private var backgroundForced = false
     private var retryJob: Job? = null
     private val unavailableReleases = ConcurrentHashMap<String, Long>()
     private var protectedArtists = emptySet<String>()
@@ -141,12 +148,23 @@ class NewReleasesRepository @Inject constructor(
 
     /** Incremental publication keeps the first screen usable during large followed-artist scans. */
     suspend fun refresh(force: Boolean = false, followedOnly: Boolean = false): Unit {
-        val job = jobLock.withLock {
-            backgroundRefresh?.takeIf { it.isActive } ?: background.launch { refreshContent(force, followedOnly) }
-                .also { backgroundRefresh = it }
+        while (true) {
+            val (job, satisfiesRequest) = jobLock.withLock {
+                val running = backgroundRefresh?.takeIf { it.isActive }
+                if (running != null) {
+                    running to ((followedOnly || !backgroundFollowedOnly) && (!force || backgroundForced))
+                } else {
+                    backgroundFollowedOnly = followedOnly
+                    backgroundForced = force
+                    val started = background.launch { refreshContent(force, followedOnly) }
+                    backgroundRefresh = started
+                    started to true
+                }
+            }
+            // A followed-only scan must not swallow a request to refresh the entire releases page.
+            job.join()
+            if (satisfiesRequest) return
         }
-        // The app-wide catalog job survives a navigation cancellation; callers only await its progress.
-        job.join()
     }
 
     private suspend fun refreshContent(force: Boolean, followedOnly: Boolean): Unit = withContext(Dispatchers.IO) {
@@ -208,10 +226,7 @@ class NewReleasesRepository @Inject constructor(
                 val recommendations = async {
                     refreshRecommendations(country, force, recentArtists.map { it.artist.name } + pending)
                 }
-                val feeds = async {
-                    if (force || stale(cache!!.checkedAt, 6 * HOUR, now) || cache!!.feedCheckedAt.size <
-                        listOf(country, "us", "gb", "fr", "br", "jp").distinct().size * 2) refreshDiscovery(country, force)
-                }
+                val feeds = async { refreshDiscovery(country, force) }
                 val chartLoad = async {
                     supervisorScope {
                         listOf(ChartMarket(country), ChartMarket.Global).map { market -> async {
@@ -272,14 +287,12 @@ class NewReleasesRepository @Inject constructor(
                 .filter { !it.isPodcast && !it.thumbnail.isNullOrBlank() }.distinctBy { it.id }.take(36),
             recommendedArtists = (cache!!.recommendedArtists + items.filterIsInstance<ArtistItem>())
                 .filter { !it.isProfile && !it.thumbnail.isNullOrBlank() }.distinctBy { it.id }.take(20),
-            newAlbums = (cache!!.newAlbums + HomeCache.explorePage?.newReleaseAlbums.orEmpty())
-                .distinctBy { it.id }.take(60),
         )
     }
 
     private suspend fun refreshNewAlbums(country: String, force: Boolean): Unit {
         val snapshot = cache ?: return
-        if (!force && snapshot.newAlbums.isNotEmpty() && !stale(snapshot.albumsCheckedAt, 6 * HOUR, System.currentTimeMillis())) return
+        if (!force && snapshot.newAlbums.isNotEmpty() && !NewReleaseSchedule.needsRefresh(snapshot.albumsCheckedAt, 6 * HOUR, System.currentTimeMillis())) return
         val albums = attempt { withTimeout(12_000) { YouTube.newReleaseAlbums().getOrThrow() } }
             ?.filter { !it.thumbnail.isNullOrBlank() }?.distinctBy { it.id }?.take(60).orEmpty()
         if (albums.isEmpty()) return
@@ -307,7 +320,7 @@ class NewReleasesRepository @Inject constructor(
 
     private suspend fun refreshRecommendations(country: String, force: Boolean, artistNames: List<String>): Unit {
         val snapshot = cache ?: return
-        if (!force && !stale(snapshot.recommendationsCheckedAt, 6 * HOUR, System.currentTimeMillis())) return
+        if (!force && !NewReleaseSchedule.needsRefresh(snapshot.recommendationsCheckedAt, 6 * HOUR, System.currentTimeMillis())) return
         val home = attempt { withTimeout(18_000) { YouTube.home().getOrThrow() } } ?: return
         storeRecommendations(country, home, complete = false)
         val items = home.sections.flatMap { it.items }.toMutableList()
@@ -356,7 +369,7 @@ class NewReleasesRepository @Inject constructor(
                 val chunkKeys = chunk.map(NewReleaseCatalog::normalize).toSet()
                 val dueFavorites = followedNames.filter { (key, _) ->
                     val saved = cache!!.artists[key]
-                    key !in chunkKeys && (saved == null || stale(saved.checkedAt, DAY, System.currentTimeMillis())) &&
+                    key !in chunkKeys && (saved == null || NewReleaseSchedule.needsRefresh(saved.checkedAt, DAY, System.currentTimeMillis())) &&
                         (saved == null || System.currentTimeMillis() >= saved.nextAttemptAt)
                 }.values.toList()
                 if (dueFavorites.isNotEmpty()) scanArtists(dueFavorites, country, force, prioritizeFollowed = false)
@@ -367,8 +380,9 @@ class NewReleasesRepository @Inject constructor(
                 val now = System.currentTimeMillis()
                 val retryDue = saved == null || now >= saved.nextAttemptAt
                 if (saved?.failures?.let { it > 0 } == true) mutableFailed.value = true
-                retryDue && (force || saved == null || saved.failures > 0 ||
-                    stale(saved.checkedAt, if (key in followed) DAY else 6 * HOUR, now))
+                retryDue && (force || saved == null || saved.failures > 0 || saved.editionComparisonVersion < EDITION_COMPARISON_VERSION ||
+                    saved.tracklistScanVersion < TRACKLIST_SCAN_VERSION ||
+                    NewReleaseSchedule.needsRefresh(saved.checkedAt, if (key in followed) DAY else 6 * HOUR, now))
             }
             val found = mutableMapOf<String, String>()
             for (name in pending) {
@@ -402,7 +416,7 @@ class NewReleasesRepository @Inject constructor(
                 }
             }
             val checked = followed.keys.count { cache!!.artists[it]?.checkedAt?.let { time ->
-                !stale(time, DAY, System.currentTimeMillis()) } == true }
+                !NewReleaseSchedule.needsRefresh(time, DAY, System.currentTimeMillis()) } == true }
             mutableProgress.value = checked to followed.size
         }
     }
@@ -423,9 +437,52 @@ class NewReleasesRepository @Inject constructor(
         appleId: String,
         albums: Pair<String, List<JsonObject>>,
         songs: Pair<String, List<JsonObject>>,
-    ): Unit = cacheLock.withLock {
+    ): Unit {
         val key = NewReleaseCatalog.normalize(name)
-        val records = albums.second + songs.second
+        val catalog = albums.second + songs.second
+        val editionRecords = catalog.filter { record ->
+            record.text("collectionId") != null &&
+                record.text("collectionName")?.let(NewReleaseCatalog::isAlbumEdition) == true &&
+                NewReleaseCatalog.date(record.text("releaseDate"), today()) != null
+        }.distinctBy { it.text("collectionId") }
+        val comparisonTracks = mutableMapOf<String, MutableList<JsonObject>>()
+        val reissuedTrackIds = mutableSetOf<String>()
+        val tracklists = mutableMapOf<Pair<String, String>, List<JsonObject>>()
+        suspend fun tracks(collection: JsonObject, country: String): List<JsonObject> {
+            val id = requireNotNull(collection.text("collectionId"))
+            return tracklists.getOrPut(country to id) {
+                val response = lookup(id, "song", country)
+                check(response.any { it.text("wrapperType") == "collection" && it.text("collectionId") == id }) {
+                    "Missing album tracklist"
+                }
+                val entries = response.filter { it.text("wrapperType") == "track" && it.text("collectionId") == id }
+                val expected = response.first { it.text("wrapperType") == "collection" }.text("trackCount")?.toIntOrNull()
+                check(expected == null || entries.size >= expected) { "Incomplete album tracklist" }
+                entries.filter { it.text("kind") == "song" }.also {
+                    check(it.isNotEmpty()) { "Missing album tracks" }
+                    comparisonTracks.getOrPut(country) { mutableListOf() }.addAll(it)
+                }
+            }
+        }
+        // Artist lookups are bounded; fetch each fresh collection when its tracks were cut off.
+        for (collection in NewReleaseCatalog.collectionsMissingTracks(albums.second, songs.second, today())) {
+            tracks(collection, albums.first)
+        }
+        for (edition in editionRecords) {
+            val country = if (albums.second.any { it.text("collectionId") == edition.text("collectionId") }) albums.first else songs.first
+            var originals = NewReleaseCatalog.standardAlbums(edition, catalog)
+            if (originals.isEmpty()) {
+                val title = NewReleaseCatalog.albumFamilyTitle(edition.text("collectionName").orEmpty())
+                val results = apple("search", mapOf("term" to "$name $title", "entity" to "album",
+                    "country" to country, "limit" to "200", "media" to "music")).objects("results")
+                originals = NewReleaseCatalog.standardAlbums(edition, results)
+            }
+            if (originals.isEmpty()) continue
+            val editionTracks = tracks(edition, country)
+            val standardTracks = originals.flatMap { tracks(it, country) }
+            reissuedTrackIds += NewReleaseCatalog.reissuedTrackIds(editionTracks, standardTracks)
+        }
+        val records = catalog + comparisonTracks.values.flatten()
         val collections = records.filter { it.text("wrapperType") == "collection" }
             .mapNotNull { record ->
                 val id = record.text("collectionId") ?: return@mapNotNull null
@@ -434,20 +491,31 @@ class NewReleasesRepository @Inject constructor(
                 id to (NewReleaseCatalog.kind(title, count) to count)
             }.toMap()
         val releases = (NewReleaseCatalog.parseCatalog(albums.second, albums.first, today()) +
-            NewReleaseCatalog.parseCatalog(songs.second, songs.first, today())).map { release ->
-            val collection = collections[release.collectionId].takeIf { release.isTrack }
-            release.copy(kind = collection?.first ?: release.kind,
-                trackCount = collection?.second ?: release.trackCount,
-                artistId = followed[key].takeIf { NewReleaseCatalog.normalize(release.artistName) == key },
-                sourceArtistNames = release.sourceArtistNames + name)
-        }
+            NewReleaseCatalog.parseCatalog(songs.second, songs.first, today()) +
+            comparisonTracks.flatMap { (country, tracks) -> NewReleaseCatalog.parseCatalog(tracks, country, today()) })
+            .distinctBy { it.id }.map { release ->
+                val collection = collections[release.collectionId].takeIf { release.isTrack }
+                release.copy(kind = collection?.first ?: release.kind,
+                    trackCount = collection?.second ?: release.trackCount,
+                    artistId = followed[key].takeIf { NewReleaseCatalog.normalize(release.artistName) == key },
+                    sourceArtistNames = release.sourceArtistNames + name)
+            }
         val genre = records.firstOrNull { it.text("wrapperType") == "artist" && it.text("artistId") == appleId }
             ?.text("primaryGenreName")
-        val cached = ArtistReleaseCache(name, appleId, System.currentTimeMillis(), releases, genre,
-            NewReleaseCatalog.originalDates(records))
-        cache = cache!!.copy(artists = cache!!.artists + (key to cached), artistIds = cache!!.artistIds + (key to appleId))
-        publish()
-        save()
+        cacheLock.withLock {
+            val previous = cache!!.artists[key]
+            val originalDates = (previous?.originalDates.orEmpty().entries + NewReleaseCatalog.originalDates(records).entries)
+                .groupBy { it.key }.mapValues { (_, dates) -> dates.minOf { it.value } }
+            val cached = ArtistReleaseCache(name, appleId, System.currentTimeMillis(),
+                NewReleaseCatalog.mergeCached(previous?.releases.orEmpty(), releases, today()),
+                genre ?: previous?.genre, originalDates,
+                editionComparisonVersion = EDITION_COMPARISON_VERSION,
+                tracklistScanVersion = TRACKLIST_SCAN_VERSION,
+                reissuedTrackIds = previous?.reissuedTrackIds.orEmpty() + reissuedTrackIds)
+            cache = cache!!.copy(artists = cache!!.artists + (key to cached), artistIds = cache!!.artistIds + (key to appleId))
+            publish()
+            save()
+        }
     }
 
     /** Revalidate dates whenever shown, including offline cache, then change discovery ordering. */
@@ -474,7 +542,7 @@ class NewReleasesRepository @Inject constructor(
             listOf(country, "us", "gb", "fr", "br", "jp").distinct().flatMap { market ->
                 listOf("albums", "songs").map { type -> async {
                     val feedKey = "$market/$type"
-                    if (!force && !stale(cache!!.feedCheckedAt[feedKey] ?: 0, 6 * HOUR, System.currentTimeMillis())) return@async null
+                    if (!force && !NewReleaseSchedule.needsRefresh(cache!!.feedCheckedAt[feedKey] ?: 0, 6 * HOUR, System.currentTimeMillis())) return@async null
                     val result = attempt {
                         val root = getJson("https://rss.marketingtools.apple.com/api/v2/$market/music/most-played/100/$type.json")
                         val feed = root["feed"] as? JsonObject ?: error("Missing music feed")
@@ -489,7 +557,9 @@ class NewReleasesRepository @Inject constructor(
                                 .map(NewRelease::id).toSet()
                             cache = old.copy(
                                 checkedAt = System.currentTimeMillis(),
-                                discovery = releases + old.discovery.filterNot { it.country == market && it.isTrack == tracks },
+                                discovery = NewReleaseCatalog.mergeCached(
+                                    old.discovery.filter { it.country == market && it.isTrack == tracks }, releases, today,
+                                ) + old.discovery.filterNot { it.country == market && it.isTrack == tracks },
                                 trendingIds = if (tracks) (old.trendingIds - replacedIds) + releases.map(NewRelease::id)
                                     else old.trendingIds,
                                 artistIds = old.artistIds + results.groupBy { NewReleaseCatalog.normalize(it.text("artistName").orEmpty()) }
@@ -559,12 +629,19 @@ class NewReleasesRepository @Inject constructor(
         } }
         val knownOriginals = snapshot.artists.values.flatMap { it.originalDates.entries }.groupBy { it.key }
             .mapValues { (_, dates) -> dates.minOf { it.value } }
+        val reissuedTrackIds = snapshot.artists.values.flatMap { it.reissuedTrackIds }.toMutableSet()
+        // Apply cache migration to feed copies too, until their artist's tracklists have been compared.
+        snapshot.artists.values.filter { it.editionComparisonVersion < EDITION_COMPARISON_VERSION }.forEach { cached ->
+            reissuedTrackIds += cached.releases.filter { release ->
+                release.isTrack && release.collectionTitle?.let(NewReleaseCatalog::isAlbumEdition) == true
+            }.map { it.id }
+        }
         val all = (artists + snapshot.discovery.map { release ->
             val match = followed[NewReleaseCatalog.normalize(release.artistName)]
             release.copy(followed = match != null, artistId = match)
         }).filter { release ->
             val original = knownOriginals[NewReleaseCatalog.recordingKey(release)]
-            (original == null || NewReleaseCatalog.date(original, today()) != null) &&
+            release.id !in reissuedTrackIds && (original == null || NewReleaseCatalog.date(original, today()) != null) &&
                 (unavailableReleases[release.id] ?: 0L) <= System.currentTimeMillis()
         }.map { release ->
             if (release.isTrack || release.kind == com.metrolist.music.discovery.NewReleaseKind.SINGLE) release else {
@@ -591,7 +668,10 @@ class NewReleasesRepository @Inject constructor(
                 artists = snapshot.recommendedArtists.filter { !hideExplicit || !it.explicit },
             )
         val shown = selected.hero + selected.followedAlbums + selected.albums + selected.sections.flatMap { it.releases }
-        mutablePage.value = selected.copy(newAlbums = NewReleaseSelection.discoveryAlbums(snapshot.newAlbums, shown, hideExplicit))
+        val albumDate = Instant.ofEpochMilli(snapshot.albumsCheckedAt)
+            .atZone(ZoneId.systemDefault()).toLocalDate()
+        val currentAlbums = snapshot.newAlbums.takeIf { albumDate >= NewReleaseSchedule.weekStart(today()) }.orEmpty()
+        mutablePage.value = selected.copy(newAlbums = NewReleaseSelection.discoveryAlbums(currentAlbums, shown, hideExplicit))
     }
 
     private fun targetFile(id: String): File = File(directory, "targets/${id.replace(':', '_')}.json")
@@ -699,10 +779,12 @@ class NewReleasesRepository @Inject constructor(
     } catch (cancelled: CancellationException) { throw cancelled }
     catch (error: Exception) { Timber.w(error, "Music catalog source unavailable"); null }
 
-    private fun today(): LocalDate = LocalDate.now(ZoneOffset.UTC)
+    private fun today(): LocalDate = LocalDate.now()
     private fun stale(checkedAt: Long, ttl: Long, now: Long): Boolean = checkedAt <= 0 || now < checkedAt || now - checkedAt >= ttl
 
     companion object {
+        private const val EDITION_COMPARISON_VERSION = 1
+        private const val TRACKLIST_SCAN_VERSION = 1
         private const val HOUR = 3_600_000L
         private const val DAY = 86_400_000L
     }

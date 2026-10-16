@@ -10,8 +10,13 @@ import kotlinx.coroutines.launch
 
 /** Refresh jobs keep running; only publication to Home is deferred. Access on the main thread. */
 class HomeContentSnapshot(private val scope: CoroutineScope) {
-    private class Binding<T>(initial: T, hasContent: (T) -> Boolean, identity: (T) -> Any?) {
-        val content = DeferredHomeContent(initial, hasContent, identity)
+    private class Binding<T>(
+        initial: T,
+        hasContent: (T) -> Boolean,
+        identity: (T) -> Any?,
+        mergeWhileVisible: (T, T) -> T,
+    ) {
+        val content = DeferredHomeContent(initial, hasContent, identity, mergeWhileVisible)
         val displayed = MutableStateFlow(initial)
 
         fun setVisible(visible: Boolean) {
@@ -33,9 +38,10 @@ class HomeContentSnapshot(private val scope: CoroutineScope) {
         source: StateFlow<T>,
         hasContent: (T) -> Boolean,
         identity: (T) -> Any? = { Unit },
+        mergeWhileVisible: (T, T) -> T = { current, _ -> current },
     ): StateFlow<T> {
         bindings[key]?.let { return (it as Binding<T>).displayed.asStateFlow() }
-        val binding = Binding(source.value, hasContent, identity)
+        val binding = Binding(source.value, hasContent, identity, mergeWhileVisible)
         binding.setVisible(visible)
         bindings[key] = binding
         scope.launch(start = CoroutineStart.UNDISPATCHED) {

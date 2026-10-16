@@ -6,6 +6,13 @@ internal class ArtistArtworkPresentation(private val now: () -> Long = System::n
     private val entries = LinkedHashMap<String, Entry>(128, 0.75f, true)
     private val retention = 10_000_000_000L
 
+    /** Promote a provisional fallback to the persisted choice, keeping visible surfaces in sync. */
+    @Synchronized
+    fun select(id: String, url: String) {
+        if (entries[id]?.url == url) return
+        entries[id] = Entry(url, 0, now() + retention)
+    }
+
     @Synchronized
     fun current(id: String): String? {
         val entry = entries[id] ?: return null

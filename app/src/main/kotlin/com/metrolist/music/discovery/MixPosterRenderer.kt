@@ -67,17 +67,9 @@ internal object MixPosterRenderer {
         val width = photo.width * scale
         val height = photo.height * scale
         // RGB tinting preserves opacity; PorterDuff MULTIPLY with low alpha erased the photograph.
-        val red = 0.94f + 0.06f * Color.red(moodColor) / 255f
-        val green = 0.94f + 0.06f * Color.green(moodColor) / 255f
-        val blue = 0.94f + 0.06f * Color.blue(moodColor) / 255f
         canvas.drawColor(Color.rgb(242, 240, 235))
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
-                1.05f * red, 0f, 0f, 0f, -6f,
-                0f, 1.05f * green, 0f, 0f, -6f,
-                0f, 0f, 1.05f * blue, 0f, -6f,
-                0f, 0f, 0f, 1f, 0f,
-            )))
+            colorFilter = moodPhotoColorFilter(moodColor)
         }
         canvas.drawBitmap(photo, null, RectF(
             (size - width) / 2, (size - height) / 2,
@@ -127,22 +119,7 @@ internal object MixPosterRenderer {
         val radius = size * random.between(0.14f, 0.22f)
         val center = rosetteCenter(size.toFloat(), radius, random)
         val rotation = random.nextFloat() * (2 * PI).toFloat()
-        val path = Path()
-        val sharp = mood.sharpness > 0.6f
-        val samples = if (sharp) mood.petals * 2 else 240
-        repeat(samples) { index ->
-            val angle = index * 2 * PI / samples
-            val r = if (sharp) {
-                radius * if (index % 2 == 0) 1f else 0.42f
-            } else {
-                radius * (0.82f + 0.18f * cos(angle * mood.petals).toFloat())
-            }
-            val x = center.x + r * cos(angle + rotation).toFloat()
-            val y = center.y + r * sin(angle + rotation).toFloat()
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        path.close()
-        return path
+        return moodRosettePath(center.x, center.y, radius, mood.petals, mood.sharpness, rotation)
     }
 
     internal data class RosetteCenter(val x: Float, val y: Float)

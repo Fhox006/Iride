@@ -71,6 +71,21 @@ class FrostBackdrop internal constructor(
         }
     }
     private val recordingListeners = mutableSetOf<() -> Unit>()
+    internal var captureVersion = 0L
+    internal var sampledVersion = -1L
+    private val invalidationListeners = mutableSetOf<() -> Unit>()
+
+    internal fun addInvalidationListener(listener: () -> Unit) {
+        invalidationListeners.add(listener)
+    }
+
+    internal fun removeInvalidationListener(listener: () -> Unit) {
+        invalidationListeners.remove(listener)
+    }
+
+    internal fun invalidateRecording() {
+        invalidationListeners.forEach { it() }
+    }
 
     internal fun addRecordingListener(listener: () -> Unit) {
         recordingListeners.add(listener)
@@ -81,6 +96,7 @@ class FrostBackdrop internal constructor(
     }
 
     internal fun notifyRecorded() {
+        captureVersion++
         recordingListeners.forEach { it() }
     }
 }
@@ -170,13 +186,22 @@ fun rememberFrostBackdrop(
     val nativeEffect = remember(radiusPx) {
         BlurEffect(radiusPx, radiusPx, TileMode.Clamp)
     }
-    blurred.renderEffect = if (captureOnly) null else nativeEffect
+    blurred.renderEffect = nativeEffect
     return remember(content, blurred, background, backgroundColor, sampleHeightPx, blurredScale, captureOnly) {
         FrostBackdrop(content, blurred, background, backgroundColor, sampleHeightPx, blurredScale, captureOnly)
     }
 }
 
 internal fun DrawScope.drawFrostedBackdrop(backdrop: FrostBackdrop, position: Offset) {
+    // Inline controls sample a background-only capture, excluding themselves from the source.
+    // Share its lazy blur across every control until the background is recorded again.
+    if (backdrop.captureOnly && backdrop.sampledVersion != backdrop.captureVersion) {
+        backdrop.blurred.record(size = backdrop.content.size) {
+            drawRect(backdrop.backgroundColor)
+            drawLayer(backdrop.content)
+        }
+        backdrop.sampledVersion = backdrop.captureVersion
+    }
     val offset = backdrop.positionOnScreen + backdrop.blurredOffset - position
     translate(offset.x, offset.y) {
         scale(1f / backdrop.blurredScale, pivot = Offset.Zero) { drawLayer(backdrop.blurred) }
@@ -200,6 +225,7 @@ fun Modifier.recordFrostBackdrop(
     val layer = backdrop?.content ?: return this
     if (!enabled) return this
     return then(if (trackScroll) Modifier.nestedScroll(backdrop.scrollConnection) else Modifier)
+        .frostBackdropCapture(backdrop)
         .onGloballyPositioned { backdrop.positionOnScreen = it.positionOnScreen() }
         .drawWithContent {
             // Lazy items move/recycle their own layers without necessarily redrawing this ancestor.

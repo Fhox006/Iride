@@ -13,6 +13,7 @@ class DailyChartQueue(
     private val firstSong: SongItem,
     hideExplicit: Boolean,
     resolve: suspend (ChartTrack) -> SongItem?,
+    override val sourceRoute: String? = null,
 ) : Queue {
     private val pager = ChartTrackPager(tracks, hideExplicit, resolve)
     override val preloadItem: MediaMetadata? = null

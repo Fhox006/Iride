@@ -59,6 +59,7 @@ import com.metrolist.music.db.entities.SongArtistMap
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.db.entities.SongWithStats
 import com.metrolist.music.extensions.reversed
+import com.metrolist.music.extensions.sortedByReleaseDate
 import com.metrolist.music.extensions.toSQLiteQuery
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
@@ -86,6 +87,19 @@ import java.util.Locale
  */
 @Dao
 interface DatabaseDao {
+    @Transaction
+    @Query("""
+        SELECT * FROM song
+        WHERE isEpisode = 0 AND (inLibrary IS NOT NULL OR liked = 1 OR totalPlayTime > 0)
+          AND (:query = '' OR title LIKE '%' || :query || '%' OR EXISTS (
+              SELECT 1 FROM song_artist_map JOIN artist ON artist.id = song_artist_map.artistId
+              WHERE song_artist_map.songId = song.id AND artist.name LIKE '%' || :query || '%'
+          ))
+        ORDER BY liked DESC, totalPlayTime DESC, rowId DESC
+        LIMIT :limit
+    """)
+    fun playlistDraftSongs(query: String = "", limit: Int = 120): Flow<List<Song>>
+
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
@@ -1094,7 +1108,7 @@ interface DatabaseDao {
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
-    @Query("SELECT * FROM album WHERE bookmarkedAt IS NOT NULL ORDER BY year")
+    @Query("SELECT * FROM album WHERE isUploaded = 1 ORDER BY year")
     fun albumsUploadedByYearAsc(): Flow<List<Album>>
 
     @Transaction
@@ -1145,7 +1159,9 @@ interface DatabaseDao {
         AlbumSortType.SONG_COUNT -> albumsBySongCountAsc()
         AlbumSortType.LENGTH -> albumsByLengthAsc()
         AlbumSortType.PLAY_TIME -> albumsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
+    }.map { albums ->
+        if (sortType == AlbumSortType.YEAR) albums.sortedByReleaseDate(descending) else albums.reversed(descending)
+    }
 
     fun albumsLiked(
         sortType: AlbumSortType,
@@ -1170,7 +1186,9 @@ interface DatabaseDao {
         AlbumSortType.SONG_COUNT -> albumsLikedBySongCountAsc()
         AlbumSortType.LENGTH -> albumsLikedByLengthAsc()
         AlbumSortType.PLAY_TIME -> albumsLikedByPlayTimeAsc()
-    }.map { it.reversed(descending) }
+    }.map { albums ->
+        if (sortType == AlbumSortType.YEAR) albums.sortedByReleaseDate(descending) else albums.reversed(descending)
+    }
 
     fun albumsUploaded(
         sortType: AlbumSortType,
@@ -1195,7 +1213,12 @@ interface DatabaseDao {
         AlbumSortType.SONG_COUNT -> albumsUploadedBySongCountAsc()
         AlbumSortType.LENGTH -> albumsUploadedByLengthAsc()
         AlbumSortType.PLAY_TIME -> albumsUploadedByPlayTimeAsc()
-    }.map { it.reversed(descending) }
+    }.map { albums ->
+        if (sortType == AlbumSortType.YEAR) albums.sortedByReleaseDate(descending) else albums.reversed(descending)
+    }
+
+    @Query("UPDATE album SET releaseDate = :releaseDate WHERE id = :albumId AND releaseDate IS :previousReleaseDate")
+    fun updateAlbumReleaseDate(albumId: String, releaseDate: String, previousReleaseDate: String?)
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1320,6 +1343,12 @@ interface DatabaseDao {
         playlistId: String,
         now: LocalDateTime = LocalDateTime.now(),
     )
+
+    @Query("UPDATE playlist SET isAutoSync = 0 WHERE id = :playlistId")
+    fun pausePlaylistAutoSync(playlistId: String)
+
+    @Query("UPDATE playlist SET isAutoSync = 1 WHERE id = :playlistId")
+    fun resumePlaylistAutoSync(playlistId: String)
     @Transaction
     fun addSongToPlaylist(playlist: Playlist, songIds: List<String>) {
         var position = playlist.songCount
@@ -1364,7 +1393,7 @@ interface DatabaseDao {
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
         """
-        SELECT album.* FROM album
+        SELECT album.*, (SELECT SUM(song.totalPlayTime) FROM song WHERE song.albumId = album.id) AS timeListened FROM album
         WHERE album.songCount > 0
           AND album.songCount = (
               SELECT COUNT(*) FROM song WHERE song.albumId = album.id AND song.isDownloaded = 1
@@ -1373,6 +1402,23 @@ interface DatabaseDao {
         """
     )
     fun albumsDownloadedByDateDesc(): Flow<List<Album>>
+
+    fun albumsDownloaded(sortType: AlbumSortType, descending: Boolean): Flow<List<Album>> =
+        albumsDownloadedByDateDesc().map { albums ->
+            val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
+            val sorted = when (sortType) {
+                AlbumSortType.CREATE_DATE -> albums.asReversed()
+                AlbumSortType.NAME -> albums.sortedWith(compareBy(collator) { it.album.title })
+                AlbumSortType.ARTIST -> albums.sortedWith(compareBy(collator) { album ->
+                    album.artists.joinToString("") { it.name }
+                })
+                AlbumSortType.SONG_COUNT -> albums.sortedBy { it.album.songCount }
+                AlbumSortType.LENGTH -> albums.sortedBy { it.album.duration }
+                AlbumSortType.PLAY_TIME -> albums.sortedBy { it.timeListened ?: 0L }
+                AlbumSortType.YEAR -> albums.sortedByReleaseDate(descending)
+            }
+            if (sortType == AlbumSortType.YEAR) sorted else sorted.reversed(descending)
+        }
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1667,6 +1713,48 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
+
+    @Query("SELECT DISTINCT strftime('%Y-%m', timestamp / 1000, 'unixepoch') FROM event WHERE playTime > 0 ORDER BY 1 DESC")
+    fun listeningMonths(): Flow<List<String>>
+
+    @Query("SELECT MIN(timestamp) FROM event WHERE playTime > 0")
+    fun firstListeningTimestamp(): Flow<Long?>
+
+    @Query("""
+        SELECT strftime('%Y-%m', e.timestamp / 1000, 'unixepoch') AS month,
+               COUNT(DISTINCT e.songId) AS tracks, SUM(e.playTime) AS milliseconds,
+               COUNT(DISTINCT strftime('%Y-%m-%d', e.timestamp / 1000, 'unixepoch')) AS days
+        FROM event e JOIN song s ON s.id = e.songId
+        WHERE e.playTime > 0 AND s.isEpisode = 0
+          AND (:hideVideo = 0 OR s.isVideo = 0) AND (:hideExplicit = 0 OR s.explicit = 0)
+        GROUP BY month ORDER BY month DESC
+    """)
+    fun reverieMonthActivity(hideVideo: Boolean, hideExplicit: Boolean): Flow<List<com.metrolist.music.models.ReverieMonthActivity>>
+
+    @Transaction
+    @Query("SELECT * FROM event WHERE timestamp > :fromTimestamp AND timestamp <= :toTimestamp AND playTime > 0 ORDER BY timestamp, id")
+    fun reverieEvents(fromTimestamp: Long, toTimestamp: Long): Flow<List<EventWithSong>>
+
+    @Query("""
+        SELECT MIN(name) AS name, MAX(colorHex) AS colorHex,
+               COUNT(*) AS songCountListened, SUM(playTime) AS timeListened
+        FROM (
+            SELECT e.id, MIN(pc.name) AS name, MAX(pc.colorHex) AS colorHex, e.playTime
+            FROM event e
+            JOIN song s ON s.id = e.songId
+            JOIN playlist_category_song_map map ON map.songId = e.songId
+            JOIN playlist_category pc ON pc.id = map.categoryId
+            WHERE e.timestamp > :fromTimestamp AND e.timestamp <= :toTimestamp
+              AND e.playTime > 0 AND s.isEpisode = 0
+              AND (:hideVideo = 0 OR s.isVideo = 0)
+              AND (:hideExplicit = 0 OR s.explicit = 0)
+            GROUP BY e.id, LOWER(TRIM(pc.name))
+        )
+        GROUP BY LOWER(TRIM(name))
+        ORDER BY timeListened DESC, name
+        LIMIT 4
+    """)
+    fun reverieCategories(fromTimestamp: Long, toTimestamp: Long, hideVideo: Boolean, hideExplicit: Boolean): Flow<List<CategoryStats>>
 
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId DESC LIMIT 1")

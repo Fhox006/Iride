@@ -107,12 +107,14 @@ fun PlayerMenu(
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
+    showDissolve: Boolean = false,
 ) {
     mediaMetadata ?: return
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
+    val queueSourceRoute by playerConnection.queueSourceRoute.collectAsState()
 
     val castHandler =
         remember(playerConnection) {
@@ -380,6 +382,19 @@ fun PlayerMenu(
     IrideFolioContextMenu(
         items =
             buildList {
+                if (showDissolve) add(com.metrolist.music.ui.component.folioDissolveAction())
+                queueSourceRoute?.let { sourceRoute ->
+                    add(
+                        folioMenuAction(
+                            R.string.go_to_source,
+                            R.drawable.arrow_back,
+                            {
+                                navController.navigate(sourceRoute) { launchSingleTop = true }
+                                playerBottomSheetState.collapseSoft()
+                            },
+                        )
+                    )
+                }
                 addAll(
                     listOf(
                         when (download?.state) {
@@ -620,6 +635,7 @@ fun PlayerMenu(
         onDismiss = onDismiss,
         retainOpenActions =
             setOf(
+                R.string.folio_dissolve,
                 R.string.add_to_playlist,
                 R.string.view_artist,
                 R.string.share,

@@ -13,15 +13,22 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredSize
+import com.metrolist.music.ui.component.IrideFolioPlayerPanel
+import androidx.compose.material3.IconButton
+import com.metrolist.music.ui.component.IrideFolioActionReveal
+import com.metrolist.music.ui.component.irideFolioGestures
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -112,8 +119,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.Timeline
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.size.Size as CoilSize
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -123,6 +128,7 @@ import com.metrolist.music.extensions.metadata
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.irideFolioPlayerArtworkRequest
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PillCoverRadius
@@ -134,7 +140,9 @@ import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.utils.rememberReducedMotion
-import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
+import com.metrolist.music.constants.IrideSoftBorderWidth
+import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.viewmodels.LyricsViewModel
 import kotlin.math.roundToInt
@@ -152,6 +160,9 @@ private val IrideMp3InfoActionSize = 48.dp
 private val IrideMp3InfoActionIconSize = 28.dp
 private val IrideMp3InfoActionColor = Color.White.copy(alpha = 0.9f)
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
+internal val IrideMp3ArtworkShape = RoundedCornerShape(5.dp)
+private val IrideMp3MenuRowShape = RoundedCornerShape(8.dp)
+private val IrideMp3MenuOrder = listOf(0, 1, 3, 2, 4)
 
 // Shared artist-line grey — single source of truth for both the static info block and the
 // bridge overlay, so the expanded state renders identically no matter which path draws it.
@@ -232,7 +243,7 @@ class IrideBridgeState {
 internal fun Modifier.irideReportRect(target: (Rect) -> Unit): Modifier =
     this.onGloballyPositioned { target(Rect(it.positionInWindow(), it.size.toSize())) }
 
-private enum class IrideMp3Page { NowPlaying, Menu, Queue, Lyrics, FindSimilar }
+private enum class IrideMp3Page { NowPlaying, Menu, Queue, Video, Lyrics, FindSimilar }
 
 @Composable
 fun IrideMp3PlayerContent(
@@ -259,18 +270,18 @@ fun IrideMp3PlayerContent(
     bottomInset: Dp = 0.dp,
     bridgeState: IrideBridgeState? = null,
 ) {
-    val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
-    val onMoreClick = {
-        menuState.show(anchored = true) {
+    val showMoreMenu: (com.metrolist.music.ui.component.MenuState) -> Unit = { targetMenu ->
+        targetMenu.show(anchored = true) {
             PlayerMenu(
                 mediaMetadata = mediaMetadata,
+                showDissolve = true,
                 navController = navController,
                 playerBottomSheetState = playerBottomSheetState,
                 onShowDetailsDialog = {
                     bottomSheetPageState.show { ShowMediaInfo(mediaMetadata.id) }
                 },
-                onDismiss = menuState::dismiss,
+                onDismiss = targetMenu::dismiss,
             )
         }
     }
@@ -284,31 +295,88 @@ fun IrideMp3PlayerContent(
     val unavailableLyricsMediaId by lyricsViewModel.unavailableLyricsMediaId.collectAsState()
     val showLyricsEntry = unavailableLyricsMediaId != mediaMetadata.id
     val context = LocalContext.current
-    var lyricsFullscreen by remember { mutableStateOf(false) }
-    val categories = listOf(
-        IrideMp3Page.NowPlaying, IrideMp3Page.Queue, IrideMp3Page.Lyrics, IrideMp3Page.FindSimilar,
-    )
-    val availableCategoryIndices = categories.indices.filter { index ->
-        showLyricsEntry || categories[index] != IrideMp3Page.Lyrics
+    val displayState = remember { IrideMp3DisplayState() }
+    val videoConnection = LocalPlayerConnection.current
+    val videoState by
+        videoConnection?.videoPlayback?.state?.collectAsState()
+            ?: remember { mutableStateOf(com.metrolist.music.playback.VideoPlaybackState()) }
+    val videoOpenRequest by
+        videoConnection?.videoPlayback?.openPlayerRequests?.collectAsState()
+            ?: remember { mutableStateOf(0L) }
+    var handledVideoOpenRequest by rememberSaveable { mutableStateOf(0L) }
+    val pendingVideoOpen = videoOpenRequest > handledVideoOpenRequest
+    val videoPlayerExpanded = !playerBottomSheetState.isCollapsed && !playerBottomSheetState.isDismissed
+    LaunchedEffect(videoOpenRequest, videoState.isVideo, videoState.mediaId, mediaMetadata.id, videoPlayerExpanded) {
+        if (pendingVideoOpen && videoPlayerExpanded &&
+            videoConnection?.videoPlayback?.isOpenPlayerReady(mediaMetadata.id) == true
+        ) {
+            handledVideoOpenRequest = videoOpenRequest
+            selectedItem = 2
+            page = IrideMp3Page.Video
+            displayState.requestFullscreen(true)
+        }
     }
+    LaunchedEffect(videoState.isVideo) {
+        if (videoState.isVideo && !pendingVideoOpen) {
+            selectedItem = 2
+            page = IrideMp3Page.Video
+        }
+    }
+    val videoPanelVisible =
+        page == IrideMp3Page.Video &&
+            (!playerBottomSheetState.isCollapsed && !playerBottomSheetState.isDismissed ||
+                displayState.inFullscreenWindow)
+    LaunchedEffect(videoPanelVisible, mediaMetadata.id, videoOpenRequest) {
+        if (videoPanelVisible) videoConnection?.videoPlayback?.enterVideoMode(mediaMetadata)
+        else if (!pendingVideoOpen) {
+            videoConnection?.videoPlayback?.leaveVideoMode()
+            if (page == IrideMp3Page.Video) {
+                selectedItem = 2
+                page = IrideMp3Page.Menu
+            }
+        }
+    }
+    DisposableEffect(videoConnection) {
+        onDispose { videoConnection?.videoPlayback?.leaveVideoMode() }
+    }
+    val categories =
+        listOf(
+            IrideMp3Page.NowPlaying,
+            IrideMp3Page.Queue,
+            IrideMp3Page.Video,
+            IrideMp3Page.Lyrics,
+            IrideMp3Page.FindSimilar,
+        )
+    val availableCategoryIndices =
+        IrideMp3MenuOrder.filter { index ->
+            showLyricsEntry || categories[index] != IrideMp3Page.Lyrics
+        }
     LaunchedEffect(availableCategoryIndices) {
-        if (selectedItem !in availableCategoryIndices) selectedItem = availableCategoryIndices.first()
+        if (selectedItem !in availableCategoryIndices)
+            selectedItem = availableCategoryIndices.first()
     }
     fun moveMenuSelection(direction: Int) {
         val current = availableCategoryIndices.indexOf(selectedItem).coerceAtLeast(0)
-        selectedItem = availableCategoryIndices[
-            (current + direction + availableCategoryIndices.size) % availableCategoryIndices.size
-        ]
+        selectedItem =
+            availableCategoryIndices[
+                (current + direction + availableCategoryIndices.size) %
+                    availableCategoryIndices.size]
     }
     val menuOpen = page == IrideMp3Page.Menu
-    val openMenu = { page = IrideMp3Page.Menu }
+    val openMenu = {
+        categories.indexOf(page).takeIf { it >= 0 }?.let { selectedItem = it }
+        page = IrideMp3Page.Menu
+    }
     val previousClick by rememberUpdatedState(onPreviousClick)
     val nextClick by rememberUpdatedState(onNextClick)
     fun selectCategory(index: Int) {
         if (index !in availableCategoryIndices) return
         selectedItem = index
         if (categories[index] == IrideMp3Page.FindSimilar) {
-            val query = (listOf(mediaMetadata.title) + mediaMetadata.artists.map { it.name }).joinToString(" ")
+            val query =
+                (listOf(mediaMetadata.title) + mediaMetadata.artists.map { it.name }).joinToString(
+                    " "
+                )
             page = IrideMp3Page.NowPlaying
             playerBottomSheetState.collapseSoft()
             navController.navigate(Screens.Search.route) { launchSingleTop = true }
@@ -316,12 +384,20 @@ fun IrideMp3PlayerContent(
         } else page = categories[index]
     }
 
-    BackHandler(enabled = page != IrideMp3Page.NowPlaying) {
-        page = if (menuOpen) IrideMp3Page.NowPlaying else IrideMp3Page.Menu
+    LaunchedEffect(playerBottomSheetState.isCollapsed, playerBottomSheetState.isDismissed) {
+        if (
+            displayState.inFullscreenWindow &&
+                (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+        ) {
+            displayState.requestFullscreen(false)
+        }
+    }
+    BackHandler(enabled = page != IrideMp3Page.NowPlaying && !displayState.inFullscreenWindow) {
+        if (menuOpen) page = IrideMp3Page.NowPlaying else openMenu()
     }
     SideEffect {
         bridgeState?.panelActive = page != IrideMp3Page.NowPlaying
-        bridgeState?.lyricsFullScreenActive = lyricsFullscreen
+        bridgeState?.lyricsFullScreenActive = displayState.inFullscreenWindow
     }
     DisposableEffect(bridgeState) {
         onDispose {
@@ -337,177 +413,350 @@ fun IrideMp3PlayerContent(
         val topSpacing = minOf(32.dp, panelHeight * 0.05f)
         val bottomSpacing = maxOf(bottomInset, 20.dp).coerceAtMost(panelHeight)
         val availableHeight = (panelHeight - topSpacing - bottomSpacing).coerceAtLeast(0.dp)
-        val screenHeight = minOf(panelWidth * 1.12f + 8.dp, availableHeight * 0.68f)
+        val preferredScreenHeight = panelWidth * 1.12f + 8.dp
+        val screenHeight = minOf(preferredScreenHeight, availableHeight * 0.68f)
+        val wheelTopSpacing = minOf(28.dp, availableHeight * .045f)
+        val wheelHeight = (availableHeight - screenHeight - wheelTopSpacing).coerceAtLeast(0.dp)
+        val wheelSize = minOf(216.dp, panelWidth * .56f, wheelHeight * .94f)
+        val measuredWheel = IrideMp3WheelGeometry(wheelSize)
+        var inlineWheel by remember { mutableStateOf(measuredWheel) }
+        SideEffect { if (!displayState.inFullscreenWindow) inlineWheel = measuredWheel }
+        val wheelGeometry = if (displayState.inFullscreenWindow) inlineWheel else measuredWheel
         val coverShape = irideSquircle(IrideCoverBorderRadius)
         Column(Modifier.fillMaxSize().padding(top = topSpacing, bottom = bottomSpacing)) {
-            Box(
-                Modifier.fillMaxWidth().height(screenHeight)
-                    .padding(horizontal = IrideMp3FrameHorizontalPadding)
-                    .clip(IrideMp3FrameShape)
-                    .background(Color.Black)
-                    .border(1.dp, IrideMp3FrameBorderColor, IrideMp3FrameShape),
-            ) {
-                TopScreenGradientBackground(
-                    mediaMetadata = mediaMetadata,
-                    playerBackground = when (playerBackground) {
-                        PlayerBackgroundStyle.DEFAULT, PlayerBackgroundStyle.BLUR -> PlayerBackgroundStyle.GRADIENT
-                        else -> playerBackground
-                    },
-                    emphasizeArtwork = true,
-                    backgroundColor = IrideMp3BackgroundColor,
-                    artworkGradientHeight = screenHeight,
-                )
-                Column(Modifier.fillMaxSize().padding(IrideMp3FrameInset)) {
-                    Box(
-                        modifier = Modifier.weight(1f).fillMaxWidth()
-                            .clip(coverShape)
-                            .pointerInput(isListenTogetherGuest, page) {
-                                if (isListenTogetherGuest || page != IrideMp3Page.NowPlaying) return@pointerInput
-                                val threshold = maxOf(48.dp.toPx(), size.width * 0.20f)
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    var distance = Offset.Zero
-                                    var horizontal = false
-                                    while (true) {
-                                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                                        if (change.isConsumed) break
-                                        if (!change.pressed) {
-                                            if (horizontal && distance.x <= -threshold) nextClick()
-                                            else if (horizontal && distance.x >= threshold) previousClick()
-                                            break
+            IrideMp3DisplayHost(
+                state = displayState,
+                mediaId = mediaMetadata.id,
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(screenHeight)
+                        .padding(horizontal = IrideMp3FrameHorizontalPadding),
+            ) { presentation ->
+                val displayMenu = LocalMenuState.current
+                val onMoreClick = { showMoreMenu(displayMenu) }
+                val expansion = presentation.expansion
+                val controlsOpacity = presentation.controlsOpacity
+                val frameInset = IrideMp3FrameInset * (1f - expansion)
+                val viewportShape = irideSquircle(IrideCoverBorderRadius * (1f - expansion))
+                val density = LocalDensity.current
+                val safeBottom = with(density) { WindowInsets.displayCutout.getBottom(this).toDp() }
+                val displayTextScale =
+                    if (displayState.inFullscreenWindow) {
+                        val sourceWidth =
+                            with(density) { displayState.transitionBounds?.width?.toDp() }
+                        sourceWidth?.let {
+                            ((it + IrideMp3FrameHorizontalPadding * 2) / 360.dp).coerceIn(
+                                .90f,
+                                1.1f,
+                            )
+                        } ?: textScale
+                    } else textScale
+                Box(
+                    Modifier.fillMaxSize()
+                        .clip(IrideMp3FrameShape)
+                        .background(Color.Black)
+                        .border(
+                            1.dp,
+                            IrideMp3FrameBorderColor.copy(alpha = 1f - expansion),
+                            IrideMp3FrameShape,
+                        )
+                ) {
+                    TopScreenGradientBackground(
+                        mediaMetadata = mediaMetadata,
+                        playerBackground =
+                            when (playerBackground) {
+                                PlayerBackgroundStyle.DEFAULT,
+                                PlayerBackgroundStyle.BLUR -> PlayerBackgroundStyle.GRADIENT
+                                else -> playerBackground
+                            },
+                        emphasizeArtwork = true,
+                        backgroundColor = IrideMp3BackgroundColor,
+                        artworkGradientHeight = screenHeight,
+                    )
+                    IrideMp3DisplayLayout(expansion, Modifier.fillMaxSize().padding(frameInset)) {
+                        Box(
+                            modifier =
+                                Modifier.fillMaxSize().clip(viewportShape).pointerInput(
+                                    isListenTogetherGuest,
+                                    page,
+                                ) {
+                                    if (isListenTogetherGuest || page != IrideMp3Page.NowPlaying)
+                                        return@pointerInput
+                                    val threshold = maxOf(48.dp.toPx(), size.width * 0.20f)
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        var distance = Offset.Zero
+                                        var horizontal = false
+                                        while (true) {
+                                            val change =
+                                                awaitPointerEvent().changes.firstOrNull {
+                                                    it.id == down.id
+                                                } ?: break
+                                            if (change.isConsumed) break
+                                            if (!change.pressed) {
+                                                if (horizontal && distance.x <= -threshold)
+                                                    nextClick()
+                                                else if (horizontal && distance.x >= threshold)
+                                                    previousClick()
+                                                break
+                                            }
+                                            distance += change.positionChange()
+                                            if (
+                                                !horizontal &&
+                                                    distance.getDistance() >
+                                                        viewConfiguration.touchSlop
+                                            ) {
+                                                if (abs(distance.x) < abs(distance.y) * 1.7f) break
+                                                horizontal = true
+                                            }
+                                            if (horizontal) change.consume()
                                         }
-                                        distance += change.positionChange()
-                                        if (!horizontal && distance.getDistance() > viewConfiguration.touchSlop) {
-                                            if (abs(distance.x) < abs(distance.y) * 1.7f) break
-                                            horizontal = true
+                                    }
+                                }
+                        ) {
+                            when (page) {
+                                IrideMp3Page.NowPlaying ->
+                                    Crossfade(
+                                        targetState = mediaMetadata.thumbnailUrl,
+                                        animationSpec =
+                                            tween(
+                                                if (reducedMotion) 0 else IrideMotion.Short,
+                                                easing = IrideMotion.EaseOutQuart,
+                                            ),
+                                        label = "mp3Artwork",
+                                        modifier = Modifier.fillMaxSize(),
+                                    ) { thumbnailUrl ->
+                                        Box(
+                                            Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            AsyncImage(
+                                                model =
+                                                    remember(context, thumbnailUrl) {
+                                                        irideFolioPlayerArtworkRequest(
+                                                            context,
+                                                            thumbnailUrl,
+                                                        )
+                                                    },
+                                                contentDescription =
+                                                    stringResource(R.string.mp3_now_playing),
+                                                contentScale = ContentScale.Crop,
+                                                modifier =
+                                                    Modifier.fillMaxSize()
+                                                        .irideReportRect {
+                                                            bridgeState?.playerArt = it
+                                                        }
+                                                        .irideArtworkOverlayBorder(
+                                                            IrideSoftBorderWidth,
+                                                            MaterialTheme.colorScheme
+                                                                .strokeItemSoft,
+                                                            coverShape,
+                                                        )
+                                                        .clip(coverShape)
+                                                        .combinedClickable(
+                                                            interactionSource =
+                                                                remember {
+                                                                    MutableInteractionSource()
+                                                                },
+                                                            indication = null,
+                                                            onClick = {},
+                                                            onLongClick = onMoreClick,
+                                                        ),
+                                            )
                                         }
-                                        if (horizontal) change.consume()
+                                    }
+                                IrideMp3Page.Menu ->
+                                    IrideMp3Menu(
+                                        mediaMetadata = mediaMetadata,
+                                        remaining = (duration - position).coerceAtLeast(0),
+                                        selectedItem = selectedItem,
+                                        textScale = textScale,
+                                        showLyrics = showLyricsEntry,
+                                        onSelect = ::selectCategory,
+                                    )
+                                IrideMp3Page.Queue ->
+                                    IrideMp3Queue(
+                                        queueControls,
+                                        duration - position,
+                                        isListenTogetherGuest,
+                                        playerBottomSheetState,
+                                        onNowPlaying = { page = IrideMp3Page.NowPlaying },
+                                        textScale = textScale,
+                                    )
+                                IrideMp3Page.Lyrics ->
+                                    IrideMp3Lyrics(
+                                        position = position,
+                                        controller = lyricsControls,
+                                        expansion = expansion,
+                                        controlsOpacity = controlsOpacity,
+                                        onOptions = {
+                                            displayState.requestFullscreen(false)
+                                            onLyricsOptions()
+                                        },
+                                        onKeepControlsVisible = {
+                                            displayState.keepControlsVisible = it
+                                        },
+                                        onInteraction = displayState::revealControls,
+                                    )
+                                IrideMp3Page.Video ->
+                                    IrideMp3Video(
+                                        metadata = mediaMetadata,
+                                        duration = duration,
+                                        isPlaying = isPlaying,
+                                        isGuest = isListenTogetherGuest,
+                                        onSeek = onSeek,
+                                        fullscreen = displayState.fullscreen,
+                                        onToggleControls = displayState::toggleControls,
+                                        morphing = expansion > 0f && expansion < 1f,
+                                    )
+                                IrideMp3Page.FindSimilar -> Unit
+                            }
+                        }
+                        IrideFolioPlayerPanel(
+                            expansion = expansion,
+                            opacity = controlsOpacity,
+                            bottomInset = safeBottom,
+                            onReveal = displayState::revealControls,
+                            transportHeight = wheelGeometry.centerSize,
+                            transport = {
+                                IrideMp3Transport(
+                                    geometry = wheelGeometry,
+                                    isPlaying = isPlaying,
+                                    isGuest = isListenTogetherGuest,
+                                    isMuted = isMuted,
+                                    canSkipNext =
+                                        videoConnection?.canSkipNext?.collectAsState()?.value ==
+                                            true,
+                                    reducedMotion = reducedMotion,
+                                    onPlayPause = onPlayPauseClick,
+                                    onPrevious = onPreviousClick,
+                                    onNext = onNextClick,
+                                )
+                            },
+                            info = {
+                                Column(
+                                    Modifier.fillMaxWidth()
+                                        .padding(start = 6.dp, end = 6.dp, bottom = 6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement =
+                                            androidx.compose.foundation.layout.Arrangement
+                                                .SpaceBetween,
+                                    ) {
+                                        val displayedPosition =
+                                            dragFraction?.let { (duration * it).toLong() }
+                                                ?: position
+                                        listOf(
+                                                makeTimeString(displayedPosition),
+                                                makeTimeString(duration),
+                                            )
+                                            .forEach { time ->
+                                                Text(
+                                                    text = time,
+                                                    color = Color.White.copy(alpha = 0.75f),
+                                                    fontFamily = SpaceMonoFontFamily,
+                                                    fontSize = (10 * displayTextScale).sp,
+                                                    lineHeight = (14 * displayTextScale).sp,
+                                                )
+                                            }
+                                    }
+                                    IrideMp3Progress(
+                                        position = position,
+                                        duration = duration,
+                                        dragFraction = dragFraction,
+                                        enabled = !isListenTogetherGuest,
+                                        onDragFraction = { dragFraction = it },
+                                        onSeek = onSeek,
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(
+                                            modifier =
+                                                Modifier.weight(1f).irideReportRect {
+                                                    bridgeState?.playerInfo = it
+                                                }
+                                        ) {
+                                            Text(
+                                                text = mediaMetadata.title,
+                                                color = Color.White,
+                                                fontFamily = SpaceMonoFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = (16 * displayTextScale).sp,
+                                                lineHeight = (21 * displayTextScale).sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier =
+                                                    Modifier.basicMarquee(
+                                                            iterations = 1,
+                                                            initialDelayMillis = 2000,
+                                                        )
+                                                        .combinedClickable(
+                                                            interactionSource =
+                                                                remember {
+                                                                    MutableInteractionSource()
+                                                                },
+                                                            indication = null,
+                                                            onClick = {},
+                                                            onLongClick = onMoreClick,
+                                                        ),
+                                            )
+                                            IrideArtistText(
+                                                mediaMetadata = mediaMetadata,
+                                                color = IrideArtistTextColor,
+                                                fontSize = (12 * displayTextScale).sp,
+                                                lineHeight = (16 * displayTextScale).sp,
+                                                fontWeight = FontWeight.Normal,
+                                                fontFamily = SpaceMonoFontFamily,
+                                                onArtistClick = onArtistClick,
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                        IrideMp3InfoActions(
+                                            isFavorite,
+                                            onFavoriteClick,
+                                            onMoreClick,
+                                            reducedMotion,
+                                            expansion = expansion,
+                                            fullscreenAction =
+                                                page == IrideMp3Page.Video ||
+                                                    page == IrideMp3Page.Lyrics,
+                                            contextualIcon =
+                                                when (page) {
+                                                    IrideMp3Page.Video,
+                                                    IrideMp3Page.Lyrics -> R.drawable.fullscreen
+                                                    else -> null
+                                                },
+                                            contextualDescription =
+                                                stringResource(
+                                                    if (displayState.fullscreen)
+                                                        R.string.mp3_exit_fullscreen
+                                                    else R.string.mp3_fullscreen
+                                                ),
+                                            onContextualClick = {
+                                                when (page) {
+                                                    IrideMp3Page.Lyrics,
+                                                    IrideMp3Page.Video ->
+                                                        displayState.requestFullscreen(
+                                                            !displayState.fullscreen
+                                                        )
+                                                    else -> Unit
+                                                }
+                                            },
+                                        )
                                     }
                                 }
                             },
-                    ) {
-                        when (page) {
-                            IrideMp3Page.NowPlaying -> Crossfade(
-                                targetState = mediaMetadata.thumbnailUrl,
-                                animationSpec = tween(
-                                    if (reducedMotion) 0 else IrideMotion.Short,
-                                    easing = IrideMotion.EaseOutQuart,
-                                ),
-                                label = "mp3Artwork",
-                                modifier = Modifier.fillMaxSize(),
-                            ) { thumbnailUrl ->
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    AsyncImage(
-                                        model = remember(context, thumbnailUrl) {
-                                            ImageRequest.Builder(context)
-                                                .data(thumbnailUrl?.resize(1080, 1080))
-                                                .size(CoilSize.ORIGINAL)
-                                                .build()
-                                        },
-                                        contentDescription = stringResource(R.string.mp3_now_playing),
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                            .irideReportRect { bridgeState?.playerArt = it }
-                                            .clip(coverShape)
-                                            .combinedClickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = null,
-                                                onClick = {},
-                                                onLongClick = onMoreClick,
-                                            ),
-                                    )
-                                }
-                            }
-                            IrideMp3Page.Menu -> IrideMp3Menu(
-                                mediaMetadata = mediaMetadata,
-                                remaining = (duration - position).coerceAtLeast(0),
-                                selectedItem = selectedItem,
-                                textScale = textScale,
-                                showLyrics = showLyricsEntry,
-                                onSelect = ::selectCategory,
-                            )
-                            IrideMp3Page.Queue -> IrideMp3Queue(queueControls, duration - position,
-                                isListenTogetherGuest, playerBottomSheetState,
-                                onNowPlaying = { page = IrideMp3Page.NowPlaying }, textScale = textScale)
-                            IrideMp3Page.Lyrics -> IrideMp3Lyrics(position, controller = lyricsControls,
-                                onOptions = onLyricsOptions, onFullscreen = { lyricsFullscreen = it })
-                            IrideMp3Page.FindSimilar -> Unit
-                        }
-                    }
-                    Spacer(Modifier.height(IrideCoverBorderRadius))
-                    Column(
-                        Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                        ) {
-                            val displayedPosition = dragFraction?.let { (duration * it).toLong() } ?: position
-                            listOf(makeTimeString(displayedPosition), makeTimeString(duration)).forEach { time ->
-                                Text(
-                                    text = time,
-                                    color = Color.White.copy(alpha = 0.75f),
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontSize = (10 * textScale).sp,
-                                    lineHeight = (14 * textScale).sp,
-                                )
-                            }
-                        }
-                        IrideMp3Progress(
-                            position = position,
-                            duration = duration,
-                            dragFraction = dragFraction,
-                            enabled = !isListenTogetherGuest,
-                            onDragFraction = { dragFraction = it },
-                            onSeek = onSeek,
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f)
-                                    .irideReportRect { bridgeState?.playerInfo = it },
-                            ) {
-                                Text(
-                                    text = mediaMetadata.title,
-                                    color = Color.White,
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = (16 * textScale).sp,
-                                    lineHeight = (21 * textScale).sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 2000)
-                                        .combinedClickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = {},
-                                            onLongClick = onMoreClick,
-                                        ),
-                                )
-                                IrideArtistText(
-                                    mediaMetadata = mediaMetadata,
-                                    color = IrideArtistTextColor,
-                                    fontSize = (12 * textScale).sp,
-                                    lineHeight = (16 * textScale).sp,
-                                    fontWeight = FontWeight.Normal,
-                                    fontFamily = SpaceMonoFontFamily,
-                                    onArtistClick = onArtistClick,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            IrideMp3InfoActions(isFavorite, onFavoriteClick, onMoreClick, reducedMotion)
-                        }
                     }
                 }
             }
             BoxWithConstraints(
-                modifier = Modifier.weight(1f).fillMaxWidth()
-                    .padding(top = minOf(28.dp, availableHeight * 0.045f)),
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(top = wheelTopSpacing),
                 contentAlignment = Alignment.Center,
             ) {
-                val wheelSize = minOf(216.dp, panelWidth * 0.56f, maxHeight * 0.94f)
                 IrideClickWheel(
                     isPlaying = isPlaying,
                     isShuffleActive = isShuffleActive,
@@ -522,10 +771,9 @@ fun IrideMp3PlayerContent(
                     onNextClick = onNextClick,
                     onRadioClick = onShuffleClick,
                     onCenterClick = {
-                        if (menuOpen) selectCategory(selectedItem)
-                        else onPlayPauseClick()
+                        if (menuOpen) selectCategory(selectedItem) else onPlayPauseClick()
                     },
-                    wheelSize = wheelSize,
+                    wheelSize = wheelGeometry.diameter,
                 )
             }
         }
@@ -538,6 +786,11 @@ private fun IrideMp3InfoActions(
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
     reducedMotion: Boolean,
+    expansion: Float = 0f,
+    fullscreenAction: Boolean = false,
+    contextualIcon: Int? = null,
+    contextualDescription: String = "",
+    onContextualClick: () -> Unit = {},
 ) {
     Row(
         Modifier.padding(start = 10.dp)
@@ -581,33 +834,159 @@ private fun IrideMp3InfoActions(
                 )
             }
         }
-        SongMenuIconButton(
-            onClick = onMoreClick,
-            modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
+        // All three actions retain their size and order through the display morph.
+        Box(
+            Modifier.width(IrideFolio.ControlsTouchTargetSize)
+                .height(IrideFolio.ControlsTouchTargetSize)
+                .clipToBounds()
         ) {
-            Icon(
-                painterResource(R.drawable.more_vert),
-                stringResource(R.string.mp3_more),
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(22.dp),
-            )
+            SongMenuIconButton(
+                onClick = onMoreClick,
+                modifier =
+                    Modifier.requiredSize(IrideFolio.ControlsTouchTargetSize).graphicsLayer {
+                        alpha = 1f
+                    },
+            ) {
+                Icon(
+                    painterResource(R.drawable.more_vert),
+                    stringResource(R.string.mp3_more),
+                    tint = Color.White.copy(alpha = .85f),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        IrideFolioActionReveal(visible = contextualIcon != null) {
+            val interaction = remember { MutableInteractionSource() }
+            Box(
+                Modifier.size(IrideFolio.ControlsTouchTargetSize)
+                    .pressScale(interaction, pressedScale = .92f)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onContextualClick,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (fullscreenAction)
+                    Box(
+                        Modifier.size(22.dp).semantics {
+                            contentDescription = contextualDescription
+                        }
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.fullscreen),
+                            null,
+                            tint = Color.White.copy(alpha = .85f),
+                            modifier =
+                                Modifier.fillMaxSize().graphicsLayer { alpha = 1f - expansion },
+                        )
+                        Icon(
+                            painterResource(R.drawable.ic_iride_fullscreen_exit),
+                            null,
+                            tint = Color.White.copy(alpha = .85f),
+                            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = expansion },
+                        )
+                    }
+                else
+                    Icon(
+                        painterResource(contextualIcon ?: R.drawable.history),
+                        contextualDescription,
+                        tint = Color.White.copy(alpha = .85f),
+                        modifier = Modifier.size(22.dp),
+                    )
+            }
         }
     }
 }
 
 @Composable
-private fun IrideMp3Progress(
+private fun IrideMp3Transport(
+    geometry: IrideMp3WheelGeometry,
+    isPlaying: Boolean,
+    isGuest: Boolean,
+    isMuted: Boolean,
+    canSkipNext: Boolean,
+    reducedMotion: Boolean,
+    onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Box(
+        Modifier.requiredSize(geometry.diameter, geometry.centerSize),
+        contentAlignment = Alignment.Center,
+    ) {
+        WheelZone(Alignment.CenterStart, geometry.zoneSize, 0.dp, onPrevious, enabled = !isGuest) {
+            Icon(
+                painterResource(R.drawable.ic_iride_fast_forward_filled),
+                stringResource(R.string.mp3_previous),
+                tint = if (isGuest) IrideMp3DimIconColor else Color.White,
+                modifier = Modifier.size(geometry.iconSize).graphicsLayer { scaleX = -1f },
+            )
+        }
+        WheelZone(
+            Alignment.CenterEnd,
+            geometry.zoneSize,
+            0.dp,
+            onNext,
+            enabled = !isGuest && canSkipNext,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_iride_fast_forward_filled),
+                stringResource(R.string.mp3_next),
+                tint = if (isGuest || !canSkipNext) IrideMp3DimIconColor else Color.White,
+                modifier = Modifier.size(geometry.iconSize),
+            )
+        }
+        val interaction = remember { MutableInteractionSource() }
+        val label =
+            stringResource(
+                if (isGuest) R.string.mp3_mute
+                else if (isPlaying) R.string.mp3_pause else R.string.mp3_play
+            )
+        Box(
+            Modifier.size(geometry.centerSize)
+                .pressScale(interaction, pressedScale = .96f)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClickLabel = label,
+                    onClick = onPlayPause,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isGuest)
+                Icon(
+                    painterResource(if (isMuted) R.drawable.volume_off else R.drawable.volume_up),
+                    label,
+                    tint = Color.White,
+                    modifier = Modifier.size(geometry.iconSize),
+                )
+            else
+                IrideMp3PlaybackGlyph(
+                    isPlaying,
+                    reducedMotion,
+                    Modifier.size(geometry.iconSize).semantics { contentDescription = label },
+                )
+        }
+    }
+}
+
+@Composable
+internal fun IrideMp3Progress(
     position: Long,
     duration: Long,
     dragFraction: Float?,
     enabled: Boolean,
     onDragFraction: (Float?) -> Unit,
     onSeek: (Float) -> Unit,
+    touchTargetHeight: Dp = 20.dp,
 ) {
     val progress = (dragFraction ?: if (duration > 0) position.toFloat() / duration else 0f)
         .coerceIn(0f, 1f)
     Box(
-        modifier = Modifier.fillMaxWidth().height(20.dp)
+        modifier = Modifier.fillMaxWidth().height(touchTargetHeight)
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
                 if (enabled && duration > 0) {
@@ -657,7 +1036,7 @@ internal fun IrideMp3CurrentTrack(
     selected: Boolean = true,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = IrideMp3MenuRowShape
     Row(
         Modifier.fillMaxWidth().clip(shape)
             .background(if (selected) IrideMp3SurfaceColor else Color.Transparent)
@@ -667,8 +1046,11 @@ internal fun IrideMp3CurrentTrack(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
-            model = metadata.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
-            modifier = Modifier.size(52.dp * textScale).clip(RoundedCornerShape(6.dp)),
+            model = irideFolioPlayerArtworkRequest(LocalContext.current, metadata.thumbnailUrl),
+            contentDescription = null, contentScale = ContentScale.Crop,
+            modifier = Modifier.size(52.dp * textScale)
+                .irideArtworkOverlayBorder(IrideSoftBorderWidth, MaterialTheme.colorScheme.strokeItemSoft, IrideMp3ArtworkShape)
+                .clip(IrideMp3ArtworkShape),
         )
         Column(Modifier.weight(1f).padding(start = 7.dp * textScale)) {
             Text(
@@ -711,8 +1093,13 @@ private fun IrideMp3Menu(
     val queueWindows by playerConnection?.queueWindows?.collectAsState() ?: remember { mutableStateOf(emptyList<Timeline.Window>()) }
     val queueIndex by playerConnection?.currentWindowIndex?.collectAsState() ?: remember { mutableIntStateOf(0) }
     val songsLeft = (queueWindows.size - queueIndex - 1).coerceAtLeast(0)
-    val labels = listOf(R.string.mp3_now_playing, R.string.mp3_manage_queue, R.string.mp3_read_lyrics, R.string.mp3_song_info)
-    val menuEntries = labels.indices.drop(1).filter { showLyrics || it != 2 }
+    val labels = listOf(R.string.mp3_now_playing, R.string.mp3_manage_queue, R.string.mp3_watch_track_video, R.string.mp3_read_lyrics, R.string.mp3_song_info)
+    val menuEntries = IrideMp3MenuOrder.drop(1).filter { showLyrics || it != 3 }
+    val upcoming = remember(queueWindows, queueIndex) {
+        queueWindows.drop((queueIndex + 1).coerceAtLeast(0)).take(3)
+    }
+    val videoState by playerConnection?.videoPlayback?.state?.collectAsState()
+        ?: remember { mutableStateOf(com.metrolist.music.playback.VideoPlaybackState()) }
     val listState = rememberLazyListState()
     val reducedMotion = rememberReducedMotion()
     LaunchedEffect(selectedItem, menuEntries) {
@@ -725,7 +1112,8 @@ private fun IrideMp3Menu(
     @Composable fun MenuEntry(index: Int) {
         if (index == 0) {
             IrideMp3CurrentTrack(
-                mediaMetadata, remaining, textScale, selectedItem == 0,
+                videoState.audioMetadata ?: mediaMetadata,
+                remaining, textScale, selectedItem == 0,
                 onClick = { onSelect(0) },
             )
             Spacer(Modifier.height(4.dp))
@@ -739,33 +1127,23 @@ private fun IrideMp3Menu(
         )
         Row(
             modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(IrideMp3MenuRowShape)
                 .background(selectionColor)
                 .border(
                     0.5.dp,
                     if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent,
-                    RoundedCornerShape(14.dp),
+                    IrideMp3MenuRowShape,
                 )
                 .selectable(selected = selected, role = Role.Button, onClick = { onSelect(index) })
-                .padding(horizontal = 7.dp * textScale, vertical = (if (index == 1) 7.dp else 4.dp) * textScale),
+                .padding(horizontal = 8.dp * textScale, vertical = (if (index == 1) 8.dp else 6.dp) * textScale),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val artworkSize = 52.dp * textScale
-            val upcoming = queueWindows.drop((queueIndex + 1).coerceAtLeast(0)).take(3)
-            Box(Modifier.size(width = artworkSize + if (index == 1) 12.dp else 0.dp, height = if (index == 1) artworkSize else 32.dp * textScale), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.size(width = artworkSize, height = if (index == 1) artworkSize else 36.dp * textScale), contentAlignment = Alignment.CenterStart) {
                 if (index == 1) {
-                    upcoming.asReversed().forEachIndexed { reversed, window ->
-                        val depth = upcoming.lastIndex - reversed
-                        AsyncImage(model = window.mediaItem.metadata?.thumbnailUrl,
-                            contentDescription = null, contentScale = ContentScale.Crop,
-                            alpha = if (depth == 0) 1f else if (depth == 1) .6f else .3f,
-                            modifier = Modifier.size(artworkSize - depth.dp * 2)
-                                .offset(x = depth.dp * 6).clip(RoundedCornerShape(5.dp)))
-                    }
-                    if (upcoming.isEmpty()) Icon(painterResource(R.drawable.queue_music), null,
-                        tint = Color.White.copy(alpha = .55f), modifier = Modifier.size(28.dp))
+                    IrideMp3QueueArtwork(upcoming, textScale)
                 } else {
-                    Icon(painterResource(if (index == 2) R.drawable.ic_iride_quote else R.drawable.search), null,
+                    Icon(painterResource(when (index) { 2 -> R.drawable.ic_iride_play; 3 -> R.drawable.ic_iride_quote; else -> R.drawable.search }), null,
                         tint = Color.White, modifier = Modifier.align(Alignment.Center).size(26.dp * textScale))
                 }
             }
@@ -803,19 +1181,64 @@ private fun IrideMp3Menu(
                 }
             }
             Icon(
-                painter = painterResource(if (index == 3) R.drawable.ic_iride_arrow_up_right else R.drawable.expand_more),
+                painter = painterResource(if (index != 1) R.drawable.ic_iride_arrow_up_right else R.drawable.expand_more),
                 contentDescription = null,
                 tint = if (selected) Color.White else Color(0xFF666666),
-                modifier = Modifier.size((if (index == 3) 22.dp else 26.dp) * textScale)
-                    .graphicsLayer { rotationZ = if (index == 3) 0f else -90f },
+                modifier = Modifier.size((if (index != 1) 22.dp else 26.dp) * textScale)
+                    .graphicsLayer { rotationZ = if (index != 1) 0f else -90f },
             )
         }
         Spacer(Modifier.height(4.dp))
     }
     Column(Modifier.fillMaxSize().padding(1.dp)) {
         MenuEntry(0)
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().clipToBounds().irideFolioGestures(listState), state = listState, overscrollEffect = null) {
             items(menuEntries, key = { it }) { index -> MenuEntry(index) }
+        }
+    }
+}
+
+@Composable
+private fun IrideMp3QueueArtwork(upcoming: List<Timeline.Window>, textScale: Float) {
+    val context = LocalContext.current
+    Box(Modifier.size(52.dp * textScale), contentAlignment = Alignment.CenterStart) {
+        if (upcoming.isEmpty()) {
+            Icon(
+                painterResource(R.drawable.queue_music),
+                contentDescription = null,
+                tint = IrideMp3DimIconColor,
+                modifier = Modifier.align(Alignment.Center).size(28.dp * textScale),
+            )
+        }
+        // Paint back to front; every cover shares the same vanishing direction and square corners.
+        upcoming.asReversed().forEachIndexed { reversed, window ->
+            val depth = upcoming.lastIndex - reversed
+            AsyncImage(
+                model = irideFolioPlayerArtworkRequest(context, window.mediaItem.metadata?.thumbnailUrl),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = 6.dp * depth * textScale, y = (-2).dp * depth * textScale)
+                    .size(46.dp * textScale)
+                    .graphicsLayer {
+                        val scale = 1f - depth * 0.10f
+                        scaleX = scale
+                        scaleY = scale
+                        rotationY = -18f
+                        cameraDistance = 10f * size.width
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        shadowElevation = 2.dp.toPx()
+                        shape = IrideMp3ArtworkShape
+                    }
+                    .clip(IrideMp3ArtworkShape)
+                    .background(IrideMp3BackgroundColor)
+                    .irideArtworkOverlayBorder(
+                        IrideSoftBorderWidth,
+                        MaterialTheme.colorScheme.strokeItemSoft,
+                        IrideMp3ArtworkShape,
+                    ),
+            )
         }
     }
 }
@@ -906,11 +1329,12 @@ private fun IrideClickWheel(
     val scale = wheelSize / 233.dp
     val reducedMotion = rememberReducedMotion()
     val shuffleDescription = stringResource(if (isShuffleActive) R.string.mp3_shuffle_on else R.string.mp3_shuffle_off)
-    val centerSize = wheelSize * 0.40f
+    val geometry = IrideMp3WheelGeometry(wheelSize)
+    val centerSize = geometry.centerSize
     // Each zone spans the ring band, putting its icon and selected halo on the same midpoint.
-    val zoneSize = (wheelSize - centerSize) / 2
+    val zoneSize = geometry.zoneSize
     val edgeInset = 0.dp
-    val iconSize = (wheelSize * 0.13f).coerceIn(20.dp, 28.dp)
+    val iconSize = geometry.iconSize
     val radioHighlight by animateColorAsState(
         if (isShuffleActive) Color.White.copy(alpha = 0.12f) else Color.Transparent,
         tween(if (reducedMotion) 0 else IrideMotion.Short), label = "mp3RadioSeed",
@@ -1085,7 +1509,7 @@ private fun IrideClickWheel(
 }
 
 @Composable
-private fun IrideMp3PlaybackGlyph(
+internal fun IrideMp3PlaybackGlyph(
     isPlaying: Boolean,
     reducedMotion: Boolean,
     modifier: Modifier = Modifier,
@@ -1128,56 +1552,9 @@ internal fun IrideMp3PlayerHandle(
     isExpandable: Boolean,
     contentColor: Color = Color.White,
     modifier: Modifier = Modifier,
-) {
-    if (state.isDismissed) return
-    val description = stringResource(R.string.mp3_close)
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier.fillMaxWidth().height(20.dp)
-            .graphicsLayer {
-                val progress = (state.progress / .25f).coerceIn(0f, 1f)
-                val morph = progress * progress * (3f - 2f * progress)
-                val centerOffset = lerp(IrideFolio.MiniPlayerDividerOffset.value, -12f, morph).dp
-                // One mark follows the sheet: the divider becomes its upper closing handle.
-                translationY = (screenHeight - state.value + centerOffset - 10.dp).toPx()
-            }
-            .then(
-                if (isExpandable && !state.isCollapsed) {
-                    Modifier.semantics { contentDescription = description }
-                        .draggable(
-                            state = state,
-                            orientation = Orientation.Vertical,
-                            onDragStopped = { velocity -> state.performFling(-velocity, null) },
-                        )
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = state::collapseSoft,
-                        )
-                } else Modifier,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val progress = (state.progress / .25f).coerceIn(0f, 1f)
-            val morph = progress * progress * (3f - 2f * progress)
-            val collapsedWidth = (size.width - 2f * IrideFolio.MiniPlayerDividerHorizontalInset.toPx())
-                .coerceAtLeast(0f)
-            val width = lerp(collapsedWidth, 96.dp.toPx().coerceAtMost(collapsedWidth), morph)
-            val thickness = lerp(IrideFolio.MiniPlayerDividerStroke.toPx(), 4.dp.toPx(), morph)
-            drawRoundRect(
-                color = lerpColor(
-                    contentColor.copy(alpha = IrideFolio.MiniPlayerDividerOpacity),
-                    Color(0xFFC4C4C4),
-                    morph,
-                ),
-                topLeft = Offset((size.width - width) / 2f, (size.height - thickness) / 2f),
-                size = Size(width, thickness),
-                cornerRadius = CornerRadius(thickness / 2f),
-            )
-        }
-    }
-}
+) = com.metrolist.music.ui.component.IrideFolioDragHandle(
+    state, screenHeight, isExpandable, contentColor, modifier,
+)
 
 @Composable
 private fun BoxScope.WheelZone(
@@ -1276,17 +1653,7 @@ fun IrideMiniPlayerBridgeOverlay(
                     (onScreenRadius / scale.coerceAtLeast(0.01f)).coerceAtMost(200f)
                 val context = LocalContext.current
                 AsyncImage(
-                    // Always requests the source at full quality regardless of this frame's box
-                    // size — early in the transition (before the expanded rect is known) this box
-                    // briefly measures at the mini pill's small size, and without an explicit
-                    // CoilSize.ORIGINAL request Coil decodes/caches a small bitmap for it that then
-                    // visibly pops to sharp once the real size lands (the "grainy then upgrades"
-                    // regression).
-                    model =
-                        ImageRequest.Builder(context)
-                            .data(metadata.thumbnailUrl?.resize(1080, 1080))
-                            .size(CoilSize.ORIGINAL)
-                            .build(),
+                    model = irideFolioPlayerArtworkRequest(context, metadata.thumbnailUrl),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().clip(irideSquircle(compensatedRadius.dp)),
@@ -1361,9 +1728,11 @@ private fun BridgedInfoBlock(
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
     val librarySong by database.song(metadata.id).collectAsState(initial = null)
+    val favoriteSong by playerConnection?.favoriteSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
     val isEpisode = librarySong?.song?.isEpisode == true
     val isFavorite =
-        if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+        if (isEpisode) favoriteSong?.song?.inLibrary != null else favoriteSong?.song?.liked == true
 
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
@@ -1371,6 +1740,7 @@ private fun BridgedInfoBlock(
         menuState.show(anchored = true) {
             PlayerMenu(
                 mediaMetadata = metadata,
+                showDissolve = true,
                 navController = navController,
                 playerBottomSheetState = playerBottomSheetState,
                 onShowDetailsDialog = {

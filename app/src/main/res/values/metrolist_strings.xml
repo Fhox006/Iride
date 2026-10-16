@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="folio_dissolve">Dissolvenza</string>
     <string name="daily_chart_world_title">Classifiche nel mondo</string>
     <string name="daily_chart_world_subtitle">Tutti i paesi e territori</string>
     <string name="daily_chart_sized_title">Top %1$d · %2$s</string>
@@ -185,6 +186,7 @@
     <string name="home_mood_empty">No playlists available for this filter</string>
     <string name="home_mood_load_error">Couldn’t load playlists</string>
     <string name="home_mood_retry">Retry</string>
+    <string name="home_feed_unavailable">Home non disponibile. Riprova quando torna la connessione.</string>
     <string name="search_albums">Cerca album</string>
     <string name="search_artists">Cerca artisti</string>
     <string name="search_playlists">Cerca playlist</string>
@@ -254,6 +256,7 @@
     <string name="mp3_up_next">Up next</string>
     <string name="mp3_queue_empty">No upcoming songs</string>
     <string name="mp3_history_empty">No recent songs</string>
+    <string name="mp3_queue_and_history">Coda · Cronologia</string>
     <string name="mp3_reorder">Reorder song</string>
     <string name="mp3_exit_fullscreen">Exit full screen lyrics</string>
     <string name="mp3_remove_queue">Remove from queue</string>
@@ -274,6 +277,7 @@
     <string name="mp3_previous">Previous song</string>
     <string name="mp3_next">Next song</string>
     <string name="mp3_mute">Toggle mute</string>
+    <string name="mp3_playback_controls">Show playback controls</string>
     <string name="mp3_add_favorite">Add to favorites</string>
     <string name="mp3_remove_favorite">Remove from favorites</string>
     <string name="mp3_close">Close player</string>
@@ -302,4 +306,122 @@
     <string name="album_discovery_mix" translatable="false">Albums You May Like</string>
     <string name="album_discovery_style" translatable="false">More in This Style</string>
     <string name="album_discovery_style_context" translatable="false">New discoveries inspired by this album</string>
+    <string name="vocal_voice_level" translatable="false">Karaoke</string>
+    <string name="vocal_instrumental" translatable="false">Instrumental</string>
+    <string name="vocal_original" translatable="false">Original</string>
+    <string name="vocal_prepare" translatable="false">Download</string>
+    <string name="vocal_downloading_status" translatable="false">Downloading…</string>
+    <string name="vocal_starting_status" translatable="false">Starting…</string>
+    <string name="vocal_active_status" translatable="false">Active</string>
+    <string name="vocal_inactive_status" translatable="false">Off</string>
+    <string name="vocal_retry" translatable="false">Retry</string>
+    <string name="vocal_preparation_failed" translatable="false">Karaoke unavailable. Try again.</string>
+    <string name="vocal_engine_unavailable" translatable="false">Karaoke is unavailable on this device.</string>
+    <string name="vocal_local_playback_only" translatable="false">Available for music played on this phone, including headphones and Bluetooth.</string>
+    <string name="vocal_song_too_large" translatable="false">Track is too large to prepare on this device.</string>
+    <string name="vocal_no_space" translatable="false">Not enough storage to prepare this track.</string>
+    <string name="vocal_memory_unavailable" translatable="false">Not enough memory. Close other apps and try again.</string>
+    <string name="go_to_source" translatable="false">Go to source</string>
+    <string name="reverie_archive_title">I tuoi Reverie</string>
+    <string name="reverie_audio_preparing_all">Preparazione audio · %1$d / %2$d</string>
+    <string name="reverie_audio_prepare_error">Audio non disponibile. Controlla la connessione e riprova.</string>
+    <string name="reverie_coming_month">Il tuo mese prende forma. Reverie di %1$s ti aspetta dal %2$s, con almeno 9 brani, 30 minuti e 3 giorni di ascolto.</string>
+    <string name="reverie_partial_month">Questo mese ha dati parziali: lo conserviamo nelle statistiche. Il primo mese completo è %1$s; il suo Reverie sarà disponibile dal %2$s, con ascolti sufficienti.</string>
+    <string name="reverie_insufficient_month">Questo mese resta nelle statistiche. Per comporre un Reverie servono almeno 9 brani, 30 minuti e 3 giorni di ascolto in un mese completo.</string>
+    <string name="reverie_name" translatable="false">Reverie</string>
+    <string name="reverie_edition" translatable="false">IRIDE / %1$s</string>
+    <string name="reverie_home_description">Un mese di ascolti.\nUna traccia da ripercorrere.</string>
+    <string name="reverie_home_action">Rivedi il tuo mese</string>
+    <string name="reverie_open_archive">Apri archivio Reverie</string>
+    <string name="reverie_play_month">Guarda il riepilogo mensile</string>
+    <string name="reverie_choose_month">Seleziona un mese da ripercorrere.</string>
+    <string name="reverie_no_months">Ascolta un po’ di musica: i tuoi riepiloghi mensili compariranno qui.</string>
+    <string name="reverie_loading">Componiamo il tuo mese…</string>
+    <string name="reverie_error">Non siamo riusciti a comporre questo mese. Riprova.</string>
+    <string name="reverie_empty">Reverie disponibile solo per mesi terminati e completi, con almeno 9 brani, 30 minuti di musica e 3 giorni di ascolto.</string>
+    <string name="reverie_retry">Riprova</string>
+    <string name="reverie_watch_selected">Guarda Reverie · %1$s</string>
+    <string name="reverie_overture">IL TUO MESE.\nIN MUSICA.</string>
+    <string name="reverie_overture_note">Ogni ascolto lascia una traccia.</string>
+    <string name="reverie_time_title">TEMPO\nBEN SPESO.</string>
+    <string name="reverie_time_note">La musica ti ha fatto compagnia.</string>
+    <string name="reverie_rhythm_title">IL TUO\nRITMO.</string>
+    <string name="reverie_artist_title">UNA VOCE\nSU TUTTE.</string>
+    <string name="reverie_song_title">ANCORA.\nE ANCORA.</string>
+    <string name="reverie_colours_title">LE TUE\nSFUMATURE.</string>
+    <string name="reverie_genres_title">IL TUO\nSUONO.</string>
+    <string name="reverie_genres_note">I generi dei tuoi brani, pesati per tempo di ascolto.</string>
+    <string name="reverie_gestures">Tocca o scorri a destra e sinistra per cambiare capitolo. Tieni premuto per mettere in pausa. Scorri in basso per chiudere.</string>
+    <string name="reverie_colours_note">Dalle categorie delle playlist YouTube Music.</string>
+    <string name="reverie_album_title">UN MONDO\nIN UN DISCO.</string>
+    <string name="reverie_poster_title">IL MESE\nÈ TUO.</string>
+    <string name="reverie_minutes">MINUTI DI MUSICA</string>
+    <string name="reverie_plays">ASCOLTI</string>
+    <string name="reverie_tracks">BRANI DIVERSI</string>
+    <string name="reverie_artists">ARTISTI</string>
+    <string name="reverie_active_days">GIORNI IN MUSICA</string>
+    <string name="reverie_peak_day">IL GIORNO PIÙ ASCOLTATO</string>
+    <string name="reverie_top_artist">ARTISTA DEL MESE</string>
+    <string name="reverie_top_song">BRANO DEL MESE</string>
+    <string name="reverie_top_album">ALBUM DEL MESE</string>
+    <string name="reverie_your_artists">LE TUE VOCI</string>
+    <string name="reverie_your_songs">LE TUE TRACCE</string>
+    <string name="reverie_month_in_music">IL MIO MESE IN MUSICA</string>
+    <string name="reverie_minute_value">%1$s min</string>
+    <string name="reverie_play_value">%1$s ascolti</string>
+    <string name="reverie_chapter">Capitolo %1$d di %2$d: %3$s</string>
+    <string name="reverie_previous">Capitolo precedente</string>
+    <string name="reverie_next">Capitolo successivo</string>
+    <string name="reverie_pause">Metti in pausa il riepilogo</string>
+    <string name="reverie_resume">Riprendi il riepilogo</string>
+    <string name="reverie_replay">Riguarda</string>
+    <string name="reverie_mute">Disattiva musica</string>
+    <string name="reverie_unmute">Attiva musica</string>
+    <string name="reverie_audio_unavailable">Anteprima non disponibile · il racconto continua</string>
+    <string name="reverie_audio_preparing">Prepariamo la prossima traccia…</string>
+    <string name="reverie_share_image">Condividi immagine</string>
+    <string name="reverie_copy_image">Copia immagine</string>
+    <string name="reverie_image_copied">Immagine copiata</string>
+    <string name="reverie_export_error">Impossibile preparare l’immagine. Riprova.</string>
+    <string name="reverie_exporting">Prepariamo la locandina…</string>
+    <string name="mp3_watch_track_video">Watch the track video</string>
+    <string name="mp3_youtube_video">Video da YouTube</string>
+    <string name="mp3_video_no_results">Nessun video trovato per questo brano.</string>
+    <string name="mp3_video_error">Video non disponibile. Riprova oppure torna al menu.</string>
+    <string name="mp3_video_speed">Velocità · %1$.2f×</string>
+    <string name="mp3_video_back_ten">−10 secondi</string>
+    <string name="mp3_video_forward_ten">+10 secondi</string>
+    <string name="mp3_video_seek_seconds">%1$+d</string>
+    <string name="mp3_queue_recommended">Consigliati in coda</string>
+    <string name="mp3_queue_filter_empty">Nessun brano in coda per questo filtro.</string>
+    <string name="mp3_queue_moods_loading">Rilevamento dei mood?</string>
+    <string name="playlist_draft_title">New playlist</string>
+    <string name="playlist_picker_title">Add to playlist</string>
+    <string name="playlist_picker_close">Close playlist picker</string>
+    <string name="playlist_picker_search">Find a playlist</string>
+    <string name="playlist_picker_contains">Contains tracks from this selection</string>
+    <string name="playlist_picker_add_error">Could not add tracks. Choose a playlist to try again.</string>
+    <string name="playlist_picker_no_results">No playlists found.</string>
+    <string name="playlist_draft_untitled">Untitled</string>
+    <string name="playlist_draft_name">Playlist name</string>
+    <string name="playlist_draft_create">Create</string>
+    <string name="playlist_draft_add_music">Add music</string>
+    <string name="playlist_draft_add">Add</string>
+    <string name="playlist_draft_saving">Saving</string>
+    <string name="playlist_draft_close">Close playlist editor</string>
+    <string name="playlist_draft_search">Find a song or artist</string>
+    <string name="playlist_draft_discover">Discover</string>
+    <string name="playlist_draft_refresh">Refresh suggestions</string>
+    <string name="playlist_draft_retry">Try again</string>
+    <string name="playlist_draft_start">Start with a song. The next ones will follow.</string>
+    <string name="playlist_draft_empty_selection">Your first track is in Discover.</string>
+    <string name="playlist_draft_no_results">No matches. Try another song or artist.</string>
+    <string name="playlist_draft_offline">Discovery is unavailable. You can still use your library.</string>
+    <string name="playlist_draft_seed_error">Could not load your tracks. Try again before creating.</string>
+    <string name="playlist_draft_save_error">Could not save. Your tracks are still here.</string>
+    <string name="playlist_draft_saved_locally">Saved on this device. Account sync is unavailable.</string>
+    <plurals name="playlist_draft_tracks">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
 </resources>

@@ -7,6 +7,8 @@
 
 package com.metrolist.music.playback
 
+import com.metrolist.music.ui.utils.resize
+
 import com.metrolist.music.utils.MiniPlayerSnapshotStore
 
 import android.app.ForegroundServiceStartNotAllowedException
@@ -54,6 +56,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
@@ -74,6 +77,17 @@ import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
 import androidx.media3.extractor.mp4.FragmentedMp4Extractor
+import androidx.media3.extractor.wav.WavExtractor
+import androidx.media3.datasource.cache.ContentMetadata
+import com.metrolist.music.playback.audio.VocalMixAudioProcessor
+import com.metrolist.music.playback.vocals.VocalPreparation
+import com.metrolist.music.playback.vocals.VocalSeparation
+import com.metrolist.music.playback.vocals.VocalSeparationState
+import com.metrolist.music.playback.vocals.VocalTimeline
+import com.metrolist.music.playback.audio.VocalTimelineAudioSink
+import com.metrolist.music.playback.vocals.VocalPreparationException
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaController
@@ -186,7 +200,6 @@ import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.playback.queues.filterExplicit
 import com.metrolist.music.playback.queues.filterVideoSongs
-import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.CoilBitmapLoader
 import com.metrolist.music.utils.DiscordRPC
 import com.metrolist.music.utils.NetworkConnectivityObserver
@@ -281,12 +294,15 @@ class MusicService :
     private var wasPlayingBeforeVolumeMute = false
     private var isPausedByVolumeMute = false
 
+    private var switchingVideoEdition = false
     private var crossfadeEnabled = false
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
     private var crossfadeTriggerJob: Job? = null
     private var skipFadeEnabled = false
     private var skipFadeDuration = 3500f
+    private val manualDissolveGate = ManualDissolveGate()
+    private var queuePlaybackRequested: Boolean? = null
     private var persistentQueueEnabled = true
     private val queuePersistenceLock = Any()
     private var queueSaveGeneration = 0L
@@ -309,6 +325,24 @@ class MusicService :
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    val videoPlayback by lazy {
+        VideoPlayback(
+            scope = scope,
+            player = { player },
+            playQueue = { playQueue(it) },
+            startTrackRadio = { startRadioSeamlessly(it, automaticRecommendations = true) },
+            preloadArtwork = { metadata ->
+                coil3.SingletonImageLoader.get(this).enqueue(
+                    com.metrolist.music.ui.component.irideFolioPlayerArtworkRequest(this, metadata.thumbnailUrl),
+                )
+            },
+            transitionEdition = ::switchVideoEdition,
+        ) {
+            !(listenTogetherManager.isInRoom && !listenTogetherManager.isHost) &&
+                castConnectionHandler?.isCasting?.value != true
+        }
+    }
+
     private val binder = MusicBinder()
 
     inner class MusicBinder : Binder() {
@@ -323,11 +357,21 @@ class MusicService :
 
     private lateinit var audioQuality: com.metrolist.music.constants.AudioQuality
 
+    private val mutableQueueSourceRoute = MutableStateFlow<String?>(null)
+    val queueSourceRoute: kotlinx.coroutines.flow.StateFlow<String?> = mutableQueueSourceRoute
     private var currentQueue: Queue = EmptyQueue
+        set(value) {
+            field = value
+            mutableQueueSourceRoute.value = value.sourceRoute
+        }
     private var finiteQueueLoadJob: Job? = null
     var queueTitle: String? = null
 
     val currentMediaMetadata = MutableStateFlow<com.metrolist.music.models.MediaMetadata?>(null)
+    val favoriteSong = combine(currentMediaMetadata, videoPlayback.state) { metadata, state ->
+        favoriteMetadataForEdition(metadata, state.mediaId.takeIf { state.isVideo }, state.audioMetadata)
+    }.distinctUntilChanged().flatMapLatest { metadata -> database.song(metadata?.id) }
+        .stateIn(scope, SharingStarted.Eagerly, null)
     private val currentSong =
         currentMediaMetadata
             .flatMapLatest { mediaMetadata ->
@@ -381,6 +425,179 @@ class MusicService :
 
     lateinit var player: ExoPlayer
         private set
+
+    private val vocalSeparation by lazy { VocalSeparation(this) }
+    private fun karaokeDownloadRequired() = !vocalSeparation.componentsInstalled()
+    private val vocalState by lazy { MutableStateFlow(VocalSeparationState(downloadRequired = karaokeDownloadRequired())) }
+    val vocalSeparationState: kotlinx.coroutines.flow.StateFlow<VocalSeparationState> get() = vocalState
+    private var vocalPreparationJob: Job? = null
+    private val vocalForeground = MutableStateFlow(false)
+    private var vocalControlsVisible = false
+    @Volatile private var vocalPlaybackActive = false
+    @Volatile private var vocalRequest = 0L
+    @Volatile private var vocalTimeline: VocalTimeline? = null
+    @Volatile private var vocalPositionMs = 0L
+    @Volatile private var vocalSeekRevision = 0L
+    private val karaokeRequested: Boolean
+        get() = (vocalPreparationJob != null || vocalTimeline != null) && vocalState.value.voiceLevel < 1f
+
+    private fun stopConcurrentPlaybackForKaraoke() {
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        if (isCrossfading) {
+            crossfadeJob?.cancel()
+            crossfadeJob = null
+            cleanupCrossfade()
+        }
+    }
+
+    private fun updateVocalPreparationPriority() {
+        val positionFrame = vocalPositionMs.coerceAtLeast(0) * VocalTimeline.SAMPLE_RATE / 1000
+        val durationFrames = player.duration.takeIf { it > 0 }?.let { it * VocalTimeline.SAMPLE_RATE / 1000 } ?: 0L
+        val buffered = vocalTimeline?.hasReadyAhead(positionFrame, durationFrames,
+            VocalTimeline.SAMPLE_RATE * 10L) == true
+        vocalForeground.value = vocalControlsVisible || vocalState.value.voiceLevel < 1f || !buffered
+    }
+
+    fun setVoiceLevel(level: Float) {
+        if (!level.isFinite()) return
+        val wasRequested = karaokeRequested
+        vocalState.update { it.copy(voiceLevel = level.coerceIn(0f, 1f)) }
+        updateVocalPreparationPriority()
+        if (level < 1f) player.setOffloadEnabled(false)
+        if (vocalPreparationJob == null && level < 1f) prepareVocalSeparation(allowDownload = true)
+        if (karaokeRequested) stopConcurrentPlaybackForKaraoke()
+        else if (wasRequested) scheduleCrossfade()
+    }
+
+    fun cancelVocalPreparation() {
+        val voiceLevel = vocalState.value.voiceLevel
+        vocalRequest++
+        vocalPreparationJob?.cancel()
+        vocalPreparationJob = null
+        vocalTimeline = null
+        vocalForeground.value = vocalControlsVisible || voiceLevel < 1f
+        vocalState.value = VocalSeparationState(player.currentMediaItem?.mediaId,
+            voiceLevel = voiceLevel, downloadRequired = karaokeDownloadRequired())
+    }
+
+    fun setKaraokeControlsVisible(visible: Boolean) {
+        vocalControlsVisible = visible
+        updateVocalPreparationPriority()
+        if (visible) activateKaraoke()
+    }
+
+    fun activateKaraoke() {
+        if (vocalPreparationJob != null) return
+        val required = karaokeDownloadRequired()
+        vocalState.value = vocalState.value.copy(downloadRequired = required)
+        prepareVocalSeparation(allowDownload = true)
+    }
+
+    private fun warmKaraokeIfAvailable() {
+        val item = player.currentMediaItem ?: return
+        if (player.playbackState == Player.STATE_READY && !videoPlayback.isVideoItem(item) &&
+            item.metadata?.isEpisode == false && castConnectionHandler?.isCasting?.value != true &&
+            vocalState.value.phase != VocalPreparation.Error) {
+            activateKaraoke()
+        }
+    }
+
+    fun downloadKaraoke() {
+        prepareVocalSeparation(allowDownload = true)
+    }
+
+    private fun prepareVocalSeparation(allowDownload: Boolean = false) {
+        val item = player.currentMediaItem ?: return
+        if (vocalPreparationJob != null || (vocalState.value.downloadRequired && !allowDownload)) return
+        if (castConnectionHandler?.isCasting?.value == true || item.metadata?.isEpisode == true ||
+            videoPlayback.isVideoItem(item)) {
+            vocalState.value = VocalSeparationState(item.mediaId, VocalPreparation.Error,
+                error = getString(R.string.vocal_local_playback_only))
+            return
+        }
+        val mediaId = item.mediaId
+        val durationMs = player.duration.takeIf { it > 0 } ?: (item.metadata?.duration ?: 0) * 1000L
+        val request = ++vocalRequest
+        val timeline = vocalTimeline ?: VocalTimeline()
+        vocalTimeline = timeline
+        vocalPositionMs = player.currentPosition
+        updateVocalPreparationPriority()
+        val required = karaokeDownloadRequired()
+        vocalState.value = VocalSeparationState(mediaId,
+            if (required) VocalPreparation.DownloadingRuntime else VocalPreparation.Separating,
+            voiceLevel = vocalState.value.voiceLevel,
+            downloadRequired = required)
+        if (karaokeRequested) stopConcurrentPlaybackForKaraoke()
+        if (karaokeRequested) player.setOffloadEnabled(false)
+        vocalPreparationJob = scope.launch {
+            val positionJob = launch {
+                while (true) {
+                    vocalPositionMs = player.currentPosition
+                    vocalPlaybackActive = player.isPlaying
+                    updateVocalPreparationPriority()
+                    val ready = timeline.covers(vocalPositionMs.coerceAtLeast(0) * VocalTimeline.SAMPLE_RATE / 1000)
+                    vocalState.update { state ->
+                        if (request == vocalRequest && state.mediaId == mediaId) state.copy(audioReady = ready) else state
+                    }
+                    delay(250)
+                }
+            }
+            try {
+                withContext(Dispatchers.IO) {
+                    vocalSeparation.prepare(timeline, durationMs, { vocalPositionMs }, { vocalSeekRevision },
+                        enabled = { request == vocalRequest && (vocalForeground.value || vocalPlaybackActive) },
+                        foreground = vocalForeground, openSource = {
+                            val length = ContentMetadata.getContentLength(downloadCache.getContentMetadata(mediaId))
+                            val uri = if (length > 0 && downloadCache.isCached(mediaId, 0, length)) {
+                                mediaId.toUri()
+                            } else {
+                                val cached = songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }
+                                (cached?.first ?: resolvePlayback(mediaId).getOrThrow().streamUrl).toUri()
+                            }
+                            createCacheDataSource(readOnly = true).createDataSource() to
+                                DataSpec.Builder().setUri(uri).setKey(mediaId).build()
+                    }) { phase, progress ->
+                        vocalState.update { state ->
+                            if (request == vocalRequest && state.mediaId == mediaId) {
+                                state.copy(
+                                    phase = phase, progress = (progress * 100).toInt() / 100f,
+                                    downloadRequired = state.downloadRequired &&
+                                        phase != VocalPreparation.Separating && phase != VocalPreparation.Ready,
+                                )
+                            } else state
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.tag("VocalSeparation").e(error, "Could not prepare local stems")
+                if (request == vocalRequest) vocalState.value = vocalState.value.copy(
+                    phase = VocalPreparation.Error,
+                    downloadRequired = karaokeDownloadRequired(),
+                    error = if (error is VocalPreparationException) error.message else getString(R.string.vocal_preparation_failed),
+                )
+            } catch (error: LinkageError) {
+                Timber.tag("VocalSeparation").e(error, "Could not load local separation engine")
+                if (request == vocalRequest) vocalState.value = vocalState.value.copy(
+                    phase = VocalPreparation.Error, error = getString(R.string.vocal_engine_unavailable),
+                    downloadRequired = karaokeDownloadRequired(),
+                )
+            } catch (error: OutOfMemoryError) {
+                Timber.tag("VocalSeparation").e(error, "Insufficient memory for local separation")
+                if (request == vocalRequest) vocalState.value = vocalState.value.copy(
+                    phase = VocalPreparation.Error, error = getString(R.string.vocal_memory_unavailable),
+                    downloadRequired = karaokeDownloadRequired(),
+                )
+            } finally {
+                positionJob.cancel()
+                if (request == vocalRequest) {
+                    vocalPreparationJob = null
+                }
+            }
+        }
+    }
     lateinit var scratchProcessor: ScratchAudioProcessor
         private set
     private var scratchBufferSize = ScratchBufferSize.MEDIUM
@@ -444,6 +661,7 @@ class MusicService :
     val promotedRadioItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
     val isAutoMixQueueActive = MutableStateFlow(false)
+    val isAutomaticRecommendations = MutableStateFlow(false)
     val radioSeedMetadata = MutableStateFlow<MediaMetadata?>(null)
 
     // Bumped whenever the radio state is reset so that in-flight automix fetches
@@ -799,7 +1017,7 @@ class MusicService :
             }
         }
 
-        currentSong.debounce(1000).collect(scope) { song ->
+        combine(currentSong, favoriteSong) { _, _ -> Unit }.debounce(1000).collect(scope) {
             updateNotification()
             updateWidgetUI(player.isPlaying)
         }
@@ -835,7 +1053,7 @@ class MusicService :
             .map { (it[SkipSilenceKey] ?: false) to (it[SkipSilenceInstantKey] ?: false) }
             .distinctUntilChanged()
             .collectLatest(scope) { (skipSilence, instantSkip) ->
-                player.skipSilenceEnabled = skipSilence
+                player.skipSilenceEnabled = skipSilence && !videoPlayback.state.value.isVideo
                 secondaryPlayer?.skipSilenceEnabled = skipSilence
 
                 val enableInstant = skipSilence && instantSkip
@@ -872,12 +1090,12 @@ class MusicService :
 
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
-            dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
+            dataStore.data.map { (it[CrossfadeEnabledKey] ?: false) || (it[SkipFadeKey] ?: false) },
         ) { offloadPref, crossfadeEnabled ->
             if (crossfadeEnabled) false else offloadPref
         }.distinctUntilChanged()
             .collectLatest(scope) { useOffload ->
-                player.setOffloadEnabled(useOffload)
+                player.setOffloadEnabled(useOffload && !karaokeRequested && !videoPlayback.state.value.isVideo)
                 secondaryPlayer?.setOffloadEnabled(useOffload)
             }
 
@@ -986,13 +1204,18 @@ class MusicService :
                 crossfadeEnabled = enabled
                 crossfadeDuration = duration * 1000f
                 crossfadeGapless = gapless
+                if (!enabled && !skipFadeEnabled) cancelActiveDissolve()
+                scheduleCrossfade()
             }
 
-        dataStore.data
-            .map { prefs -> prefs[SkipFadeKey] ?: false }
+        combine(
+            dataStore.data.map { prefs -> prefs[SkipFadeKey] ?: false },
+            listenTogetherManager.roomState,
+        ) { enabled, roomState -> enabled && roomState == null }
             .distinctUntilChanged()
             .collect(scope) { enabled ->
                 skipFadeEnabled = enabled
+                if (!enabled && !crossfadeEnabled) cancelActiveDissolve()
             }
 
         dataStore.data
@@ -1102,6 +1325,7 @@ class MusicService :
 
     private fun createExoPlayer(): ExoPlayer {
         val eqProcessor = CustomEqualizerAudioProcessor()
+        val vocalMix = VocalMixAudioProcessor { vocalState.value.voiceLevel }
         equalizerService.addAudioProcessor(eqProcessor)
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
@@ -1118,7 +1342,7 @@ class MusicService :
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, scratchProcessor, visualizerTap))
+                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, scratchProcessor, visualizerTap, vocalMix))
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .setAudioAttributes(
@@ -1133,12 +1357,15 @@ class MusicService :
                 .setDeviceVolumeControlEnabled(true)
                 .build()
 
+        vocalMix.timeline = {
+            if (::player.isInitialized && this@MusicService.player === player) vocalTimeline else null
+        }
         playerSilenceProcessors[player] = silenceProcessor
 
         player.apply {
             runBlocking {
                 val offload = dataStore.get(AudioOffload, false)
-                val crossfade = dataStore.get(CrossfadeEnabledKey, false)
+                val crossfade = dataStore.get(CrossfadeEnabledKey, false) || dataStore.get(SkipFadeKey, false)
                 setOffloadEnabled(if (crossfade) false else offload)
                 skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
             }
@@ -1193,9 +1420,10 @@ class MusicService :
             AudioManager.AUDIOFOCUS_LOSS -> {
                 hasAudioFocus = false
                 audioFocusVolumeMultiplier.value = 1f
-                wasPlayingBeforeAudioFocusLoss = player.isPlaying
-                if (player.isPlaying) {
+                wasPlayingBeforeAudioFocusLoss = player.playWhenReady
+                if (player.playWhenReady || fadingPlayer?.isPlaying == true) {
                     player.pause()
+                    cancelActiveDissolve()
                 }
                 abandonAudioFocus()
                 lastAudioFocusState = focusChange
@@ -1204,9 +1432,10 @@ class MusicService :
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 hasAudioFocus = false
                 audioFocusVolumeMultiplier.value = 1f
-                wasPlayingBeforeAudioFocusLoss = player.isPlaying
-                if (player.isPlaying) {
+                wasPlayingBeforeAudioFocusLoss = player.playWhenReady
+                if (player.playWhenReady || fadingPlayer?.isPlaying == true) {
                     player.pause()
+                    cancelActiveDissolve()
                 }
                 lastAudioFocusState = focusChange
             }
@@ -1335,16 +1564,16 @@ class MusicService :
                 CommandButton.Builder()
                     .setDisplayName(
                         getString(
-                            if (currentSong.value?.song?.liked == true) {
+                            if (favoriteSong.value?.song?.liked == true) {
                                 R.string.action_remove_like
                             } else {
                                 R.string.action_like
                             },
                         ),
                     )
-                    .setIconResId(if (currentSong.value?.song?.liked == true) R.drawable.ic_widget_star_nav else R.drawable.ic_widget_star_outline_nav)
+                    .setIconResId(if (favoriteSong.value?.song?.liked == true) R.drawable.ic_widget_star_nav else R.drawable.ic_widget_star_outline_nav)
                     .setSessionCommand(CommandToggleLike)
-                    .setEnabled(currentSong.value != null)
+                    .setEnabled(favoriteSong.value != null)
                     .build(),
                 CommandButton.Builder()
                     .setDisplayName(getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on))
@@ -1436,6 +1665,7 @@ class MusicService :
 
         finiteQueueLoadJob?.cancel()
         finiteQueueLoadJob = null
+        queuePlaybackRequested = playWhenReady
         currentQueue = queue
         queueTitle = null
         clearRadioState()
@@ -1450,9 +1680,7 @@ class MusicService :
         }
         originalQueueSize = 0
         queue.preloadItem?.let { preloadItem ->
-            player.setMediaItem(preloadItem.toMediaItem())
-            player.prepare()
-            player.playWhenReady = playWhenReady
+            replaceQueuePlayback(listOf(preloadItem.toMediaItem()), 0, 0, playWhenReady)
         }
         scope.launch(SilentHandler) {
             val initialStatus =
@@ -1462,11 +1690,19 @@ class MusicService :
                         .filterExplicit(dataStore.get(HideExplicitKey, false))
                         .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
                 }
-            if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
+            if (currentQueue !== queue) return@launch
+            if (queue.preloadItem != null && player.playbackState == STATE_IDLE) {
+                queuePlaybackRequested = null
+                return@launch
+            }
+            mutableQueueSourceRoute.value = queue.sourceRoute
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
-            if (initialStatus.items.isEmpty()) return@launch
+            if (initialStatus.items.isEmpty()) {
+                queuePlaybackRequested = null
+                return@launch
+            }
             originalQueueSize = initialStatus.items.size
             if (queue.preloadItem != null) {
                 player.addMediaItems(
@@ -1480,7 +1716,7 @@ class MusicService :
                     ),
                 )
             } else {
-                player.setMediaItems(
+                replaceQueuePlayback(
                     initialStatus.items,
                     if (initialStatus.mediaItemIndex >
                         0
@@ -1490,10 +1726,10 @@ class MusicService :
                         0
                     },
                     initialStatus.position,
+                    queuePlaybackRequested ?: playWhenReady,
                 )
-                player.prepare()
-                player.playWhenReady = playWhenReady
             }
+            queuePlaybackRequested = null
 
             if (player.shuffleModeEnabled) {
                 val shufflePlaylistFirst = shufflePlaylistFirst
@@ -1502,7 +1738,7 @@ class MusicService :
         }
     }
 
-    fun startRadioSeamlessly() {
+    fun startRadioSeamlessly(seed: MediaMetadata? = null, automaticRecommendations: Boolean = false) {
         if (!playerInitialized.value) {
             Timber.tag(TAG).w("startRadioSeamlessly called before player initialization")
             return
@@ -1512,7 +1748,8 @@ class MusicService :
         // Keeps the current song, replaces everything after it.
         // Snapshot once: if the radio is already on, the current upcoming list
         // is already radio content, so keep the original snapshot for restore.
-        val currentMediaMetadata = player.currentMetadata ?: return
+        val currentMediaMetadata = seed ?: player.currentMetadata ?: return
+        val playingMediaId = player.currentMediaItem?.mediaId
 
         val currentIndex = player.currentMediaItemIndex
         val currentMediaId = currentMediaMetadata.id
@@ -1533,6 +1770,7 @@ class MusicService :
 
         synchronized(automixLock) { radioSeedId = currentMediaId }
         radioSeedMetadata.value = currentMediaMetadata
+        isAutomaticRecommendations.value = automaticRecommendations
         isAutoMixQueueActive.value = true
         val requestId = automixRequestId.get()
 
@@ -1543,6 +1781,7 @@ class MusicService :
                         WatchEndpoint(
                             videoId = currentMediaId,
                         ),
+                    sourceRoute = preRadioQueue.sourceRoute,
                 )
 
             try {
@@ -1562,7 +1801,9 @@ class MusicService :
                 val radioLabel = getString(R.string.radio)
                 val serverTitle = initialStatus.title
                 queueTitle =
-                    if (serverTitle.isNullOrBlank() || serverTitle.equals(radioLabel, ignoreCase = true)) {
+                    if (automaticRecommendations) {
+                        getString(R.string.mp3_queue_recommended)
+                    } else if (serverTitle.isNullOrBlank() || serverTitle.equals(radioLabel, ignoreCase = true)) {
                         "$radioLabel • ${currentMediaMetadata.title}"
                     } else {
                         serverTitle
@@ -1570,7 +1811,7 @@ class MusicService :
 
                 val radioItems =
                     initialStatus.items.filter { item ->
-                        item.mediaId != currentMediaId
+                        item.mediaId != currentMediaId && item.mediaId != playingMediaId
                     }
 
                 if (radioItems.isNotEmpty()) {
@@ -1669,6 +1910,7 @@ class MusicService :
         synchronized(automixLock) { radioSeedId = null }
         radioSeedMetadata.value = null
         isAutoMixQueueActive.value = false
+        isAutomaticRecommendations.value = false
         automixItems.value = emptyList()
         automixEnsuredAtIndex = C.INDEX_UNSET
         automixWatchJob?.cancel()
@@ -1747,7 +1989,7 @@ class MusicService :
             }
             lastRadioToggleAt = now
         }
-        return if (isAutoMixQueueActive.value && radioSeedId == mediaMetadata.id) {
+        return if (isAutoMixQueueActive.value && !isAutomaticRecommendations.value && radioSeedId == mediaMetadata.id) {
             stopRadioAndRestore()
             false
         } else {
@@ -2008,7 +2250,12 @@ class MusicService :
 
     fun toggleLike() {
         scope.launch {
-            val songToToggle = currentSong.first()
+            val playbackMetadata = player.currentMetadata ?: return@launch
+            val favoriteMetadata = videoPlayback.favoriteMetadata(playbackMetadata) ?: return@launch
+            val songToToggle = withContext(Dispatchers.IO) {
+                database.insert(favoriteMetadata)
+                database.song(favoriteMetadata.id).first()
+            }
             songToToggle?.let { librarySong ->
                 val songEntity = librarySong.song
 
@@ -2257,6 +2504,25 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        currentMediaMetadata.value = mediaItem?.metadata
+        videoPlayback.onMediaItemTransition(mediaItem)
+        val playingVideo = videoPlayback.isVideoItem(mediaItem)
+        if (vocalState.value.mediaId != mediaItem?.mediaId) {
+            cancelVocalPreparation()
+            // Edition switches keep the same song; a new song starts with its original voice.
+            vocalState.value = VocalSeparationState(mediaItem?.mediaId,
+                voiceLevel = if (switchingVideoEdition) vocalState.value.voiceLevel else 1f,
+                downloadRequired = karaokeDownloadRequired())
+        }
+        player.skipSilenceEnabled = !playingVideo && dataStore.get(SkipSilenceKey, false)
+        player.setOffloadEnabled(!playingVideo && !karaokeRequested &&
+            !crossfadeEnabled && !skipFadeEnabled && !isCrossfading && dataStore.get(AudioOffload, false))
+        if (playingVideo) {
+            cancelVocalPreparation()
+            if (!switchingVideoEdition) stopConcurrentPlaybackForKaraoke()
+        }
+        // Seamless queue transitions can stay READY without another playback-state callback.
+        if (!playingVideo) scope.launch { warmKaraokeIfAvailable() }
         previousEpisodeId?.let { episodeId ->
             if (previousEpisodePosition > 0) {
                 saveEpisodePosition(episodeId, previousEpisodePosition)
@@ -2354,6 +2620,8 @@ class MusicService :
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,
     ) {
+        if (playbackState == STATE_IDLE || playbackState == Player.STATE_ENDED) cancelActiveDissolve()
+        videoPlayback.onPlaybackStateChanged(playbackState)
         if (playbackState == Player.STATE_READY) applyScratchBufferSize()
 
         if (playbackState == Player.STATE_ENDED) {
@@ -2380,6 +2648,7 @@ class MusicService :
                 Timber.tag(TAG).d("Playback successful for $mediaId, reset retry count")
             }
             scheduleCrossfade()
+            warmKaraokeIfAvailable()
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
@@ -2391,6 +2660,12 @@ class MusicService :
         playWhenReady: Boolean,
         reason: Int,
     ) {
+        if (queuePlaybackRequested != null) queuePlaybackRequested = playWhenReady
+        if (!playWhenReady) cancelActiveDissolve()
+        if (playWhenReady && reveriePreviewOwners > 0) {
+            player.pause()
+            return
+        }
         if (playWhenReady && castConnectionHandler?.isCasting?.value == true) {
             player.pause()
             return
@@ -2426,6 +2701,7 @@ class MusicService :
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
                 Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_IS_PLAYING_CHANGED,
             )
         ) {
             scheduleCrossfade()
@@ -2594,6 +2870,7 @@ class MusicService :
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
         super.onPlaybackParametersChanged(playbackParameters)
+        scheduleCrossfade()
         if (playbackParameters.speed != lastPlaybackSpeed) {
             lastPlaybackSpeed = playbackParameters.speed
             discordUpdateJob?.cancel()
@@ -2697,6 +2974,12 @@ class MusicService :
 
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
+        cancelActiveDissolve()
+
+        if (::player.isInitialized && videoPlayback.isVideoItem(player.currentMediaItem)) {
+            videoPlayback.onPlayerError(error)
+            return
+        }
 
         if (!playerInitialized.value) {
             Timber.tag(TAG).e(error, "Player error occurred but player not initialized")
@@ -3045,7 +3328,7 @@ class MusicService :
         }
     }
 
-    private fun createCacheDataSource(): CacheDataSource.Factory =
+    private fun createCacheDataSource(readOnly: Boolean = false): CacheDataSource.Factory =
         CacheDataSource
             .Factory()
             .setCache(downloadCache)
@@ -3053,6 +3336,7 @@ class MusicService :
                 CacheDataSource
                     .Factory()
                     .setCache(playerCache)
+                    .apply { if (readOnly) setCacheWriteDataSinkFactory(null) }
                     .setUpstreamDataSourceFactory(
                         DefaultDataSource.Factory(
                             this,
@@ -3077,6 +3361,7 @@ class MusicService :
     private var isSilenceSkipping = false
 
     private fun handleLongSilenceDetected() {
+        if (videoPlayback.state.value.isVideo) return
         if (!instantSilenceSkipEnabled.value) return
         if (silenceSkipJob?.isActive == true) return
 
@@ -3088,6 +3373,7 @@ class MusicService :
     }
 
     private suspend fun performInstantSilenceSkip() {
+        if (videoPlayback.state.value.isVideo) return
         val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: return
         if (duration <= INSTANT_SILENCE_SKIP_STEP_MS) return
 
@@ -3095,7 +3381,7 @@ class MusicService :
         try {
             var hops = 0
             val silenceProcessor = playerSilenceProcessors[player] ?: return
-            while (coroutineContext.isActive && instantSilenceSkipEnabled.value && silenceProcessor.isCurrentlySilent()) {
+            while (coroutineContext.isActive && !videoPlayback.state.value.isVideo && instantSilenceSkipEnabled.value && silenceProcessor.isCurrentlySilent()) {
                 val current = player.currentPosition
                 val target = (current + INSTANT_SILENCE_SKIP_STEP_MS).coerceAtMost(duration - 500)
 
@@ -3184,7 +3470,7 @@ class MusicService :
         }
 
     private fun createDataSourceFactory(): DataSource.Factory {
-        return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
+        val originalFactory = ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
 
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
@@ -3291,21 +3577,23 @@ class MusicService :
                 return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
             }
         }
+        return originalFactory
     }
 
     private fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
+        videoPlayback.mediaSourceFactory(DefaultMediaSourceFactory(
             createDataSourceFactory(),
             ExtractorsFactory {
-                arrayOf(MatroskaExtractor(), FragmentedMp4Extractor())
+                arrayOf(MatroskaExtractor(), FragmentedMp4Extractor(), WavExtractor())
             },
-        )
+        ))
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         scratchProcessor: ScratchAudioProcessor,
         visualizerTap: com.metrolist.music.playback.audio.VisualizerTapAudioProcessor,
+        vocalMix: VocalMixAudioProcessor,
     ) = object : DefaultRenderersFactory(this) {
         override fun buildAudioSink(
             context: Context,
@@ -3324,6 +3612,7 @@ class MusicService :
             .setAudioProcessorChain(
                 DefaultAudioSink.DefaultAudioProcessorChain(
                     arrayOf(
+                        vocalMix,
                         eqProcessor,
                         visualizerTap,
                         silenceProcessor,
@@ -3332,7 +3621,7 @@ class MusicService :
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),
                 ),
-            ).build()
+            ).build().let { VocalTimelineAudioSink(it, vocalMix) }
     }
 
     override fun onPlaybackStatsReady(
@@ -3469,6 +3758,7 @@ class MusicService :
 
     override fun onDestroy() {
         isRunning = false
+        cancelVocalPreparation()
 
         val currentMetadata = player.currentMediaItem?.metadata
         if (currentMetadata?.isEpisode == true && player.currentPosition > 0) {
@@ -3494,6 +3784,9 @@ class MusicService :
         abandonAudioFocus()
         releaseLoudnessEnhancer()
         cancelPreload()
+        cancelActiveDissolve()
+        secondaryPlayer?.release()
+        secondaryPlayer = null
         mediaLibrarySessionCallback.release()
         mediaSession.release()
         player.removeListener(this)
@@ -3533,7 +3826,7 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_LIKE -> {
-                val currentLiked = currentSong.value?.song?.liked == true
+                val currentLiked = favoriteSong.value?.song?.liked == true
                 widgetManager.updateLikeButtonOptimistic(!currentLiked)
 
                 scope.launch {
@@ -3555,12 +3848,14 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_NEXT -> {
-                player.seekToNext()
+                if (!skipWithFade()) player.seekToNext()
                 updateWidgetUI(player.isPlaying)
             }
 
             MusicWidgetReceiver.ACTION_PREVIOUS -> {
-                player.seekToPrevious()
+                if (!skipWithFade(forward = false, restartCurrent = player.currentPosition > 3000)) {
+                    player.seekToPrevious()
+                }
                 updateWidgetUI(player.isPlaying)
             }
 
@@ -3650,6 +3945,7 @@ class MusicService :
                 playQueue(
                     ListQueue(
                         title = playlistName,
+                        sourceRoute = "local_playlist/$playlistId",
                         items = alarmItems,
                         startIndex = 0,
                         position = 0L,
@@ -3673,7 +3969,7 @@ class MusicService :
                 val song = songData?.song
                 val songTitle = song?.title ?: getString(R.string.no_song_playing)
                 val artistName = songData?.artists?.joinToString(", ") { it.name } ?: getString(R.string.tap_to_open)
-                val isLiked = songData?.song?.liked == true
+                val isLiked = favoriteSong.value?.song?.liked == true
 
                 widgetManager.updateWidgets(
                     title = songTitle,
@@ -3762,8 +4058,107 @@ class MusicService :
         newPosition: Player.PositionInfo,
         reason: Int,
     ) {
+        if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
+            vocalPositionMs = newPosition.positionMs
+            vocalSeekRevision++
+            val ready = vocalTimeline?.covers(newPosition.positionMs.coerceAtLeast(0) * VocalTimeline.SAMPLE_RATE / 1000) == true
+            vocalState.update { it.copy(audioReady = ready) }
+        }
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            cancelActiveDissolve()
             scheduleCrossfade()
+        }
+    }
+
+    private var reveriePreviewOwners = 0
+
+    /** Suspend every service deck while previews own audio, preserving the user's queue and position. */
+    fun suspendForReverie(): ReveriePlaybackLease {
+        val originalId = player.currentMediaItem?.mediaId
+        val wasPlaying = player.playWhenReady
+        reveriePreviewOwners++
+        player.pause()
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        cancelPreload()
+        secondaryPlayer?.removeListener(secondaryPlayerListener)
+        secondaryPlayer?.release()
+        secondaryPlayer = null
+        if (isCrossfading || fadingPlayer != null) cleanupCrossfade()
+        player.pause()
+        return ReveriePlaybackLease(player.volume) { resume ->
+            reveriePreviewOwners = (reveriePreviewOwners - 1).coerceAtLeast(0)
+            if (reveriePreviewOwners == 0 && resume && wasPlaying && player.currentMediaItem?.mediaId == originalId) {
+                player.play()
+            }
+        }
+    }
+
+    private fun cancelActiveDissolve() {
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        if (isCrossfading || fadingPlayer != null) cleanupCrossfade()
+    }
+
+    private fun tryManualDissolve(
+        items: List<MediaItem>?,
+        index: Int,
+        position: Long,
+        playWhenReady: Boolean,
+    ): Boolean {
+        val shouldFade = manualDissolveGate.shouldFade(
+            android.os.SystemClock.elapsedRealtime(), player.isPlaying, isCrossfading,
+        )
+        cancelActiveDissolve()
+        cancelPreload()
+        if (!skipFadeEnabled || !shouldFade || !playWhenReady || karaokeRequested ||
+            reveriePreviewOwners > 0 || castConnectionHandler?.isCasting?.value == true ||
+            videoPlayback.state.value.isVideo ||
+            videoPlayback.isVideoItem(items?.get(index) ?: player.getMediaItemAt(index))) return false
+
+        val incoming = createExoPlayer()
+        incoming.volume = 0f
+        incoming.setOffloadEnabled(false)
+        incoming.playbackParameters = player.playbackParameters
+        incoming.repeatMode = player.repeatMode
+        incoming.shuffleModeEnabled = player.shuffleModeEnabled
+        incoming.setMediaItems(
+            items ?: (0 until player.mediaItemCount).map(player::getMediaItemAt), index, position,
+        )
+        incoming.prepare()
+        incoming.playWhenReady = true
+        secondaryPlayer = incoming
+        performCrossfadeSwap(fadeDuration = skipFadeDuration)
+        onMediaItemTransition(player.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)
+        if (player.shuffleModeEnabled) {
+            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        }
+        return true
+    }
+
+    private fun replaceQueuePlayback(
+        items: List<MediaItem>,
+        index: Int,
+        position: Long,
+        playWhenReady: Boolean,
+    ) {
+        if (!tryManualDissolve(items, index, position, playWhenReady)) {
+            player.setMediaItems(items, index, position)
+            player.prepare()
+            player.playWhenReady = playWhenReady
+        }
+    }
+
+    fun playQueueItem(index: Int) {
+        if (index !in 0 until player.mediaItemCount) return
+        if (!tryManualDissolve(null, index, 0, true)) {
+            player.seekToDefaultPosition(index)
+            if (player.playbackState == STATE_IDLE || player.playbackState == Player.STATE_ENDED) player.prepare()
+            player.play()
         }
     }
 
@@ -3772,47 +4167,22 @@ class MusicService :
         restartCurrent: Boolean = false,
         onComplete: (() -> Unit)? = null,
     ): Boolean {
-        if (!skipFadeEnabled) return false
         if (!::player.isInitialized) return false
-
-        crossfadeTriggerJob?.cancel()
-        crossfadeJob?.cancel()
-        if (isCrossfading) cleanupCrossfade()
-        cancelPreload()
-
-        val savedRepeatMode = player.repeatMode
-        val savedShuffleEnabled = player.shuffleModeEnabled
-
-        val targetIndex: Int = when {
-            restartCurrent -> player.currentMediaItemIndex
-            forward -> {
-                if (savedRepeatMode == REPEAT_MODE_ONE) player.currentMediaItemIndex
-                else player.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: return false
-            }
-            else -> player.previousMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: return false
+        if (restartCurrent) {
+            manualDissolveGate.shouldFade(
+                android.os.SystemClock.elapsedRealtime(), isPlaying = false, isTransitioning = isCrossfading,
+            )
+            cancelActiveDissolve()
+            return false
         }
-
-        secondaryPlayer = createExoPlayer()
-        val secPlayer = secondaryPlayer ?: return false
-        secPlayer.addListener(secondaryPlayerListener)
-
-        val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
-        secPlayer.setMediaItems(items)
-        secPlayer.seekTo(targetIndex, 0)
-        secPlayer.volume = 0f
-        secPlayer.repeatMode = savedRepeatMode
-        secPlayer.shuffleModeEnabled = savedShuffleEnabled
-        secPlayer.prepare()
-        secPlayer.playWhenReady = true
-
-        performCrossfadeSwap(fadeDuration = skipFadeDuration, onComplete = onComplete)
-
-        if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = shufflePlaylistFirst
-            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        val targetIndex = if (forward) player.nextMediaItemIndex else player.previousMediaItemIndex
+        if (targetIndex == C.INDEX_UNSET) {
+            cancelActiveDissolve()
+            return false
         }
-
-        return true
+        val handled = tryManualDissolve(null, targetIndex, 0, true)
+        if (handled) onComplete?.invoke()
+        return handled
     }
 
     private fun cleanupSkipFade() {
@@ -3822,13 +4192,15 @@ class MusicService :
     private fun scheduleCrossfade() {
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
-        if (!crossfadeEnabled || player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
+        if (!::player.isInitialized || !player.isPlaying || isCrossfading ||
+            videoPlayback.state.value.isVideo || reveriePreviewOwners > 0 || karaokeRequested ||
+            !crossfadeEnabled || player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
         val triggerTime = player.duration - crossfadeDuration.toLong()
-        val delayMs = triggerTime - player.currentPosition
-        if (delayMs <= 0) return
+        val delayMs = ((triggerTime - player.currentPosition).coerceAtLeast(0) /
+            player.playbackParameters.speed).toLong()
 
         val targetMediaId = player.currentMediaItem?.mediaId
 
@@ -3850,7 +4222,8 @@ class MusicService :
     }
 
     private fun startCrossfade() {
-        if (isCrossfading || secondaryPlayer != null) return
+        if (!player.isPlaying || !crossfadeEnabled || reveriePreviewOwners > 0 ||
+            karaokeRequested || isCrossfading || secondaryPlayer != null) return
 
         val savedRepeatMode = player.repeatMode
         val savedShuffleEnabled = player.shuffleModeEnabled
@@ -3876,6 +4249,7 @@ class MusicService :
         secPlayer.setMediaItems(items)
         secPlayer.seekTo(targetIndex, 0)
         secPlayer.volume = 0f
+        secPlayer.playbackParameters = player.playbackParameters
 
         secPlayer.repeatMode = savedRepeatMode
         secPlayer.shuffleModeEnabled = savedShuffleEnabled
@@ -3884,6 +4258,7 @@ class MusicService :
         secPlayer.playWhenReady = true
 
         performCrossfadeSwap()
+        onMediaItemTransition(player.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
 
         if (savedShuffleEnabled) {
             val shufflePlaylistFirst = shufflePlaylistFirst
@@ -3891,12 +4266,77 @@ class MusicService :
         }
     }
 
+    private suspend fun switchVideoEdition(item: MediaItem, targetDuration: Long, onCommit: () -> Unit) {
+        val outgoing = player
+        val expected = outgoing.currentMediaItem ?: return
+        val incoming = createExoPlayer()
+        var adopted = false
+        try {
+            incoming.volume = 0f
+            incoming.setOffloadEnabled(false)
+            incoming.skipSilenceEnabled = false
+            incoming.playbackParameters = outgoing.playbackParameters
+            incoming.setMediaItem(item, proportionalVideoPosition(outgoing.currentPosition, outgoing.duration, targetDuration))
+            incoming.prepare()
+            suspend fun awaitReady() {
+                kotlinx.coroutines.withTimeout(20_000) {
+                    while (incoming.playbackState != Player.STATE_READY) {
+                        incoming.playerError?.let { throw it }
+                        if (incoming.playbackState == Player.STATE_ENDED) error("Edition ended during preparation")
+                        delay(25)
+                    }
+                }
+            }
+            awaitReady()
+            if (player !== outgoing || outgoing.currentMediaItem != expected) return
+            incoming.seekTo(proportionalVideoPosition(outgoing.currentPosition, outgoing.duration, targetDuration))
+            awaitReady()
+            if (player !== outgoing || outgoing.currentMediaItem != expected) return
+            crossfadeTriggerJob?.cancel()
+            crossfadeJob?.cancel()
+            if (isCrossfading) cleanupCrossfade()
+            secondaryPlayer?.removeListener(secondaryPlayerListener)
+            secondaryPlayer?.release()
+            secondaryPlayer = null
+            cancelPreload()
+            val index = outgoing.currentMediaItemIndex
+            // Add around the buffered item so radio results arriving during preparation survive.
+            if (index > 0) incoming.addMediaItems(0, (0 until index).map(outgoing::getMediaItemAt))
+            if (index + 1 < outgoing.mediaItemCount) {
+                incoming.addMediaItems((index + 1 until outgoing.mediaItemCount).map(outgoing::getMediaItemAt))
+            }
+            incoming.repeatMode = outgoing.repeatMode
+            incoming.shuffleModeEnabled = outgoing.shuffleModeEnabled
+            val dissolve = outgoing.isPlaying
+            incoming.playWhenReady = outgoing.playWhenReady
+            onCommit()
+            secondaryPlayer = incoming
+            adopted = true
+            performCrossfadeSwap(fadeDuration = if (dissolve) 450f else 0f)
+            switchingVideoEdition = true
+            try {
+                onMediaItemTransition(item, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
+            } finally {
+                switchingVideoEdition = false
+            }
+            if (incoming.shuffleModeEnabled) {
+                applyShuffleOrder(index, incoming.mediaItemCount, shufflePlaylistFirst)
+            }
+        } finally {
+            if (!adopted) {
+                incoming.release()
+                playerSilenceProcessors.remove(incoming)
+            }
+        }
+    }
+
     private fun performCrossfadeSwap(
         fadeDuration: Float = crossfadeDuration,
         onComplete: (() -> Unit)? = null,
     ) {
-        isCrossfading = true
         val nextPlayer = secondaryPlayer ?: return
+        cancelVocalPreparation()
+        isCrossfading = true
         val currentPlayer = player
 
         fadingPlayer = currentPlayer
@@ -3907,21 +4347,11 @@ class MusicService :
         fadingPlayer?.removeListener(this)
         fadingPlayer?.removeListener(sleepTimer)
 
-        player.addListener(
-            object : Player.Listener {
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isCrossfading && fadingPlayer != null) {
-                        if (isPlaying) {
-                            fadingPlayer?.play()
-                        } else {
-                            fadingPlayer?.pause()
-                        }
-                    } else {
-                        player.removeListener(this)
-                    }
-                }
-            },
-        )
+        // The outgoing deck may finish its current song while the selected track buffers.
+        // It must never advance to another queue item of its own.
+        currentPlayer.pauseAtEndOfMediaItems = true
+        currentPlayer.repeatMode = Player.REPEAT_MODE_OFF
+        currentPlayer.setOffloadEnabled(false)
 
         nextPlayer.removeListener(secondaryPlayerListener)
         nextPlayer.addListener(this)
@@ -3935,45 +4365,26 @@ class MusicService :
             timber.log.Timber.e(e, "Failed to swap player in MediaSession")
         }
 
+        if (fadeDuration <= 0f) {
+            player.volume = currentPlayer.volume
+            cleanupCrossfade()
+            onComplete?.invoke()
+            return
+        }
         crossfadeJob =
             scope.launch {
                 val duration = fadeDuration.toLong()
-                val steps = 20
-                val stepTime = (duration / steps).coerceAtLeast(1L)
-                val startVolume =
-                    try {
-                        fadingPlayer?.volume ?: 1f
-                    } catch (e: Exception) {
-                        1f
-                    }
-
-                for (i in 0..steps) {
-                    if (!isActive) break
-                    while (!player.isPlaying && isActive) {
-                        delay(100)
-                    }
-
-                    val progress = i / steps.toFloat()
-                    val fadeIn = 1.0f - (1.0f - progress) * (1.0f - progress)
-                    val fadeOut = (1.0f - progress) * (1.0f - progress)
-
-                    try {
-                        player.volume = startVolume * fadeIn
-                        fadingPlayer?.volume = startVolume * fadeOut
-                    } catch (e: Exception) {
-                        break
-                    }
-
-                    delay(stepTime)
+                runPlaybackDissolve(duration, isPlaying = { nextPlayer.isPlaying }) { progress ->
+                    val fadeIn = playbackFadeInGain(progress)
+                    val volume = calculateEffectiveVolume()
+                    nextPlayer.volume = volume * fadeIn
+                    currentPlayer.volume = volume * (1f - fadeIn)
                 }
-
-                try {
-                    fadingPlayer?.volume = 0f
-                    player.volume = startVolume
+                if (player === nextPlayer && fadingPlayer === currentPlayer) {
                     cleanupCrossfade()
+                    crossfadeJob = null
+                    scheduleCrossfade()
                     onComplete?.invoke()
-                } catch (e: Exception) {
-                    Timber.tag(TAG).w(e, "Crossfade completion failed")
                 }
             }
     }

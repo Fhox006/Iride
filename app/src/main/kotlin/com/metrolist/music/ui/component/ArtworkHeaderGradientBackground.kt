@@ -113,6 +113,7 @@ internal fun ArtworkHeaderGradientBackground(
     }
     Canvas(
         modifier.fillMaxWidth().height(gradientHeight)
+            .invalidateFrostOnChanges { topTint }
             .irideBackgroundGrain(fadeOut = true),
     ) {
         drawRect(backgroundColor)

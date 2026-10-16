@@ -122,6 +122,7 @@ class DailyChartViewModel @Inject constructor(
                     val song = repository.resolve(track, retry = true)
                         ?.takeUnless { hideExplicit && it.explicit } ?: continue
                     onReady(DailyChartQueue(
+                        sourceRoute = "daily_chart/${market.code}",
                         title = title,
                         tracks = orderedTracks.dropWhile { it.spotifyId != track.spotifyId }.drop(1),
                         firstSong = song,

@@ -27,10 +27,17 @@ class ChartRankMovementTest {
     }
 
     @Test
-    fun unchangedRefreshClearsEveryPreviousIndicator() {
+    fun unchangedRefreshPreservesIndicatorsForTheSameDay() {
         val changed = chart(2, 1, 4).withRankMovements(chart(1, 2, 3))
         val unchanged = changed.withRankMovements(changed)
-        assertEquals(listOf(null, null, null), unchanged.tracks.map { it.movement })
+        assertEquals(changed.tracks.map { it.movement }, unchanged.tracks.map { it.movement })
+    }
+
+    @Test
+    fun unchangedRanksOnTheNextDayClearPreviousIndicators() {
+        val changed = chart(2, 1, 4).withRankMovements(chart(1, 2, 3))
+        val nextDay = changed.copy(date = "2026-10-11").withRankMovements(changed)
+        assertEquals(listOf(null, null, null), nextDay.tracks.map { it.movement })
     }
 
     @Test

@@ -30,4 +30,38 @@ class DeferredHomeContentTest {
         assertEquals("energy" to listOf("new"), content.update("energy" to listOf("new")))
         assertEquals("energy" to listOf("new"), content.update("energy" to listOf("pending")))
     }
+
+    @Test fun publishesAdditionalSectionsWithoutMovingOrRefreshingVisibleSections() {
+        val first = "artist-1" to "original"
+        val second = "album-1" to "second"
+        val third = "playlist-1" to "third"
+        val content = DeferredHomeContent(
+            emptyList<Pair<String, String>>(),
+            { it.isNotEmpty() },
+            mergeWhileVisible = { current, incoming ->
+                appendLoadedHomeSections(current, incoming) { it.first }
+            },
+        )
+
+        assertEquals(listOf(first), content.update(listOf(first)))
+        val loaded = listOf(second, "artist-1" to "refreshed", third, second)
+        assertEquals(listOf(first, second, third), content.update(loaded))
+        assertEquals(listOf(first, second, third), content.update(loaded.reversed()))
+        assertEquals(loaded.reversed(), content.setVisible(false))
+    }
+
+    @Test fun keepsReplacementBatchesAndRemovalsPendingEvenWhenGrowthIsEnabled() {
+        val content = DeferredHomeContent(
+            listOf("first", "second"),
+            { it.isNotEmpty() },
+            mergeWhileVisible = { current, incoming ->
+                appendLoadedHomeSections(current, incoming) { it }
+            },
+        )
+
+        assertEquals(listOf("first", "second"), content.update(listOf("replacement", "other", "third")))
+        assertEquals(listOf("first", "second"), content.update(listOf("first")))
+        assertEquals(listOf("first", "second"), content.update(emptyList()))
+        assertEquals(emptyList<String>(), content.setVisible(false))
+    }
 }

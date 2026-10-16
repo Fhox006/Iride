@@ -79,11 +79,39 @@ internal object NewReleaseCatalog {
     private val edition = Regex("(?i)\\s*[\\[(][^\\])]*\\b(?:deluxe|expanded|extended edition|bonus|edition|anniversary|explicit|clean)\\b[^\\])]*[\\])]")
     private val editionSuffix = Regex("(?i)\\s*[-–:]\\s*(?:deluxe|expanded|bonus|special|standard|clean|explicit)(?:\\s+(?:edition|version|tracks))?\\s*$")
     private val recordingVersion = Regex("(?i)\\b(?:live|acoustic|remix|remaster(?:ed)?|instrumental|demo|re-recorded|rerecorded)\\b")
+    private val bareEditionSuffix = Regex("(?i)\\s+(?:deluxe|expanded)(?:\\s+(?:edition|version))?\\s*$")
 
     fun albumFamilyTitle(title: String): String = title.replace(releaseSuffix, "").replace(edition) { match ->
         if (recordingVersion.containsMatchIn(match.value)) match.value else ""
     }
-        .replace(editionSuffix, "").trim()
+        .replace(editionSuffix, "").replace(bareEditionSuffix, "").trim()
+
+    fun isAlbumEdition(title: String): Boolean =
+        albumFamilyTitle(title) != title.replace(releaseSuffix, "").trim()
+
+    fun standardAlbums(edition: JsonObject, candidates: List<JsonObject>): List<JsonObject> {
+        val title = edition.text("collectionName") ?: return emptyList()
+        val artist = normalize(edition.text("artistName").orEmpty())
+        val released = edition.text("releaseDate")?.take(10) ?: return emptyList()
+        return candidates.filter { candidate ->
+            val candidateTitle = candidate.text("collectionName") ?: return@filter false
+            val date = candidate.text("releaseDate")?.take(10) ?: return@filter false
+            candidate.text("wrapperType") == "collection" &&
+                candidate.text("collectionId") != edition.text("collectionId") &&
+                normalize(candidate.text("artistName").orEmpty()) == artist &&
+                !isAlbumEdition(candidateTitle) &&
+                normalize(albumFamilyTitle(candidateTitle)) == normalize(albumFamilyTitle(title)) && date <= released
+        }.distinctBy { it.text("collectionId") }
+    }
+
+    /** Album packaging may change song IDs and dates, but must not turn existing recordings into new tracks. */
+    fun reissuedTrackIds(editionTracks: List<JsonObject>, standardTracks: List<JsonObject>): Set<String> {
+        fun key(track: JsonObject): String = normalize(track.text("artistName").orEmpty()) + "|" +
+            normalize(albumFamilyTitle(track.text("trackName").orEmpty()))
+        val originals = standardTracks.filter { it.text("kind") == "song" }.map(::key).toSet()
+        return editionTracks.filter { it.text("kind") == "song" && key(it) in originals }
+            .mapNotNull { it.text("trackId")?.let { id -> "apple:song:$id" } }.toSet()
+    }
 
     fun familyKey(release: NewRelease): String = normalize(release.artistName) + "|" +
         normalize(if (release.isTrack) release.title else albumFamilyTitle(release.title)) + "|" + release.isTrack
@@ -102,10 +130,30 @@ internal object NewReleaseCatalog {
             if (raw.length == 10) LocalDate.parse(raw)
             else Instant.parse(raw).atOffset(ZoneOffset.UTC).toLocalDate()
         }.getOrNull() ?: return null
-        return parsed.takeIf { !it.isBefore(today.minusDays(14)) && !it.isAfter(today) }?.toString()
+        return parsed.takeIf { !it.isBefore(NewReleaseSchedule.weekStart(today)) && !it.isAfter(today) }?.toString()
     }
 
     fun isFresh(release: NewRelease, today: LocalDate): Boolean = date(release.releaseDate, today) != null
+
+    /** A changing chart or partial catalog must not erase releases already found this week. */
+    fun mergeCached(previous: List<NewRelease>, incoming: List<NewRelease>, today: LocalDate): List<NewRelease> =
+        (incoming + previous).distinctBy { it.id }.filter { isFresh(it, today) }
+
+    fun collectionsMissingTracks(
+        collections: List<JsonObject>,
+        tracks: List<JsonObject>,
+        today: LocalDate,
+    ): List<JsonObject> {
+        val counts = tracks.filter { it.text("wrapperType") == "track" }
+            .distinctBy { it.text("trackId") }.groupingBy { it.text("collectionId") }.eachCount()
+        return collections.filter { collection ->
+            val id = collection.text("collectionId")
+            val expected = collection.text("trackCount")?.toIntOrNull()
+            collection.text("wrapperType") == "collection" && id != null &&
+                date(collection.text("releaseDate"), today) != null &&
+                (expected == null || (counts[id] ?: 0) < expected)
+        }.distinctBy { it.text("collectionId") }
+    }
 
     fun recordingKey(item: JsonObject): String = normalize(item.text("artistName").orEmpty()) + "|" +
         normalize((item.text("trackName") ?: item.text("collectionName").orEmpty()).replace(releaseSuffix, "")) +

@@ -103,7 +103,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
     val startingRank by viewModel.startingRank.collectAsStateWithLifecycle()
     val savedPlaylist by viewModel.savedPlaylist.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
-    val chart = charts[viewModel.market.code]?.chart?.takeIf(::isCurrentChart)
+    val chart = charts[viewModel.market.code]?.chart
     val title = chartTitle(viewModel.market)
     val country = chartCountryName(viewModel.market.code)
     val playerConnection = LocalPlayerConnection.current ?: return

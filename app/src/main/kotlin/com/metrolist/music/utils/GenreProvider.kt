@@ -14,9 +14,12 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -50,7 +53,7 @@ private data class ITunesTrack(
  */
 object GenreProvider {
     private val found = ConcurrentHashMap<String, List<String>>()
-    private val notFound = ConcurrentHashMap.newKeySet<String>()
+    private val notFoundUntil = ConcurrentHashMap<String, Long>()
 
     private val orderCache = ConcurrentHashMap<String, List<String>>()
 
@@ -97,7 +100,7 @@ object GenreProvider {
     /** Call once at app startup. Loads the on-disk cache and starts the periodic flush. */
     fun init(context: Context) {
         if (cacheFile != null) return
-        cacheFile = File(context.filesDir, "genre_cache.json")
+        cacheFile = File(context.filesDir, "genre_cache_v2.json")
         orderCacheFile = File(context.filesDir, "genre_order_cache.json")
         loadCache()
         loadOrderCache()
@@ -162,33 +165,39 @@ object GenreProvider {
         }
     }
 
+    /** Read the same persisted genre assignments used by playlist filters without a network request. */
+    fun cachedGenres(songId: String): List<String>? = found[songId]
+        ?: emptyList<String>().takeIf { (notFoundUntil[songId] ?: 0L) > System.currentTimeMillis() }
+
     suspend fun getGenres(
         songId: String,
         title: String,
         artist: String?,
     ): List<String> {
         found[songId]?.let { return it }
-        if (notFound.contains(songId)) return emptyList()
+        if ((notFoundUntil[songId] ?: 0L) > System.currentTimeMillis()) return emptyList()
 
-        val tags = mutableListOf<String>()
-
-        if (LastFM.isInitialized() && artist != null) {
-            tags += fetchLastFmTags(artist, title)
+        val (lastFmTags, appleGenre) = coroutineScope {
+            val lastFm = async {
+                if (LastFM.isInitialized() && !artist.isNullOrBlank()) fetchLastFmTags(artist, title)
+                else emptyList()
+            }
+            val apple = async { fetchITunesGenre(title, artist) }
+            lastFm.await() to apple.await()
         }
-
-        if (tags.isEmpty()) {
-            fetchITunesGenre(title, artist)?.let { tags += it }
-        }
+        val tags = lastFmTags.toMutableList().apply { appleGenre?.let(::add) }
 
         val result =
             tags
                 .distinctBy { it.lowercase(Locale.ROOT) }
-                .take(4)
+                .take(6)
 
         if (result.isNotEmpty()) {
             found[songId] = result
         } else {
-            notFound.add(songId)
+            // Keep transient misses retryable: provider outages and sparse catalogs must not
+            // hide newly available genre metadata for the rest of the app process.
+            notFoundUntil[songId] = System.currentTimeMillis() + 15 * 60 * 1000L
         }
         dirty.set(true)
         return result
@@ -226,6 +235,8 @@ object GenreProvider {
                     }.bodyAsText()
             val response = json.decodeFromString<ITunesSearchResponse>(body)
             response.results.firstOrNull()?.primaryGenreName?.let { canonicalizeGenre(it) }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("GenreProvider").d(e, "Failed to fetch iTunes genre for $title")
             null

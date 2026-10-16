@@ -23,6 +23,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
@@ -141,6 +143,24 @@ fun NavGraphBuilder.NavigationBuilder(
     }
     composable("all_charts") { com.metrolist.music.ui.screens.playlist.AllChartsScreen(navController) }
     composable("stats") { StatsScreen(navController) }
+    dialog(
+        route = "reverie/{month}",
+        arguments = listOf(navArgument("month") { type = NavType.StringType }),
+        dialogProperties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            dismissOnBackPress = false,
+        ),
+    ) { entry ->
+        val month = entry.arguments?.getString("month")?.let { value ->
+            runCatching { java.time.YearMonth.parse(value) }.getOrNull()
+        }
+        if (month != null) {
+            ReverieScreen(navController, month)
+        } else {
+            LaunchedEffect(Unit) { navController.navigateUp() }
+        }
+    }
     composable("notes") { NotesScreen(navController) }
     composable("iride") {
         var readyToAnimate by remember { mutableStateOf(false) }

@@ -162,8 +162,8 @@ private fun NewReleasesContent(navController: NavController, viewModel: NewRelea
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.onPageOpened()
             while (true) {
-                delay(15 * 60_000L)
-                viewModel.refresh()
+                delay(com.metrolist.music.discovery.NewReleaseSchedule.nextCheckDelayMillis())
+                viewModel.onPageOpened()
             }
         }
     }

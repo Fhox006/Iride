@@ -26,7 +26,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -38,8 +37,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,7 +73,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -137,18 +133,14 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.LocalIrideFolioScrimColor
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.utils.rememberReducedMotion
-import com.metrolist.music.ui.component.IrideFolioShelfHeader
-import com.metrolist.music.ui.component.IrideFolioInlineSelector
-import com.metrolist.music.ui.component.IrideFolioMenuAction
+import com.metrolist.music.ui.component.SharedHomeSectionTitle
 import com.metrolist.music.ui.component.IrideFolioAlbumShelf
-import com.metrolist.music.discovery.DiscoveryLanguage
 import com.metrolist.music.ui.component.NeedleDropLeadInMs
 import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.IrideArtworkSurface
 import com.metrolist.music.ui.component.VinylPeekDisc
-import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.menu.albumScreenMenuSections
 import com.metrolist.music.ui.menu.SelectionSongMenu
@@ -244,12 +236,10 @@ fun AlbumScreen(
     val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
     val discovery by viewModel.discovery.collectAsStateWithLifecycle()
-    val discoveryLanguage by viewModel.discoveryLanguage.collectAsStateWithLifecycle()
-    val appLocale = LocalConfiguration.current.locales[0]
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    LaunchedEffect(appLocale, hideExplicit) {
-        viewModel.configureDiscovery(appLocale, hideExplicit)
+    LaunchedEffect(hideExplicit) {
+        viewModel.configureDiscovery(hideExplicit)
     }
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
@@ -399,6 +389,7 @@ fun AlbumScreen(
         albumWithSongs?.let { current ->
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "album/${current.album.id}",
                     title = current.album.title,
                     items = current.songs.shuffled().map { it.toMediaItem() },
                 )
@@ -623,6 +614,7 @@ fun AlbumScreen(
             state = lazyListState,
             showTopBar = true,
             showPageTitle = false,
+            showTopScrim = false,
             menuSections = if (inSelectMode) emptyList() else albumMenuSections,
             topScrimColor = if (albumTopGradientEnabled) albumBackdropColor else defaultScrimColor,
             animateTopScrimColor = !albumTopGradientEnabled,
@@ -1298,7 +1290,7 @@ fun AlbumScreen(
 
                 if (otherVersions.isNotEmpty()) {
                     item(key = "other_versions_title") {
-                        IrideFolioShelfHeader(
+                        SharedHomeSectionTitle(
                             title = stringResource(R.string.other_versions),
                             modifier =
                                 Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec)
@@ -1308,103 +1300,43 @@ fun AlbumScreen(
                         )
                     }
                     item(key = "other_versions_list") {
-                        val rowState = rememberLazyListState()
-                        LazyRow(
-                            state = rowState,
-                            overscrollEffect = null,
-                            horizontalArrangement = Arrangement.spacedBy(0.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            modifier =
-                                Modifier.irideEnter(
-                                        rememberSectionEnter(
-                                            "other_versions_row",
-                                            revealedSections,
-                                        ),
-                                        10.dp,
+                        IrideFolioAlbumShelf(
+                            albums = otherVersions.distinctBy { it.id },
+                            loading = false,
+                            activeAlbumId = mediaMetadata?.album?.id,
+                            isPlaying = isPlaying,
+                            coroutineScope = scope,
+                            modifier = Modifier.irideEnter(
+                                rememberSectionEnter("other_versions_row", revealedSections),
+                                10.dp,
+                            ),
+                            onClick = { navController.navigate("album/${it.id}") },
+                            onLongClick = { album ->
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuState.show(anchored = true) {
+                                    YouTubeAlbumMenu(
+                                        albumItem = album,
+                                        navController = navController,
+                                        onDismiss = menuState::dismiss,
                                     )
-                                    .rubberBandOverscroll(Orientation.Horizontal, rowState),
-                        ) {
-                            items(
-                                items = otherVersions.distinctBy { it.id },
-                                key = { "album_other_${it.id}" },
-                            ) { item ->
-                                YouTubeGridItem(
-                                    item = item,
-                                    isActive = mediaMetadata?.album?.id == item.id,
-                                    isPlaying = isPlaying,
-                                    coroutineScope = scope,
-                                    modifier =
-                                        Modifier.combinedClickable(
-                                                onClick = {
-                                                    navController.navigate("album/${item.id}")
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
-                                                    menuState.show(anchored = true) {
-                                                        YouTubeAlbumMenu(
-                                                            albumItem = item,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                },
-                                            )
-                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                )
-                            }
-                        }
+                                }
+                            },
+                        )
                     }
                 }
 
                 item(key = "discovery_mix_title") {
-                    IrideFolioShelfHeader(
+                    SharedHomeSectionTitle(
                         title = stringResource(R.string.album_discovery_mix),
+                        titleMaxLines = 2,
                         onRefreshClick = viewModel::refreshDiscovery,
-                        isRefreshing = discovery.albumsLoading || discovery.styleLoading,
+                        isRefreshing = discovery.albumsLoading,
                     )
                 }
                 item(key = "discovery_mix_albums") {
                     IrideFolioAlbumShelf(
                         albums = discovery.albums,
                         loading = discovery.albumsLoading,
-                        activeAlbumId = mediaMetadata?.album?.id,
-                        isPlaying = isPlaying,
-                        coroutineScope = scope,
-                        onClick = { navController.navigate("album/${it.id}") },
-                        onLongClick = { album ->
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            menuState.show(anchored = true) {
-                                YouTubeAlbumMenu(albumItem = album, navController = navController, onDismiss = menuState::dismiss)
-                            }
-                        },
-                    )
-                }
-                item(key = "discovery_style_title") {
-                    IrideFolioShelfHeader(
-                        title = stringResource(R.string.album_discovery_style),
-                        supportingText = stringResource(R.string.album_discovery_style_context),
-                        trailingContent = {
-                            IrideFolioInlineSelector(
-                                label = discoveryLanguage.languageName(appLocale),
-                                sections = DiscoveryLanguage.sections(discoveryLanguage, appLocale).map { section ->
-                                    section.map { language ->
-                                        IrideFolioMenuAction(
-                                            label = language.languageName(appLocale),
-                                            selected = language == discoveryLanguage,
-                                            onClick = { viewModel.selectDiscoveryLanguage(language) },
-                                        )
-                                    }
-                                },
-                            )
-                        },
-                    )
-                }
-                item(key = "discovery_style_albums_${discoveryLanguage.code}") {
-                    IrideFolioAlbumShelf(
-                        albums = discovery.styleAlbums,
-                        loading = discovery.styleLoading,
                         activeAlbumId = mediaMetadata?.album?.id,
                         isPlaying = isPlaying,
                         coroutineScope = scope,

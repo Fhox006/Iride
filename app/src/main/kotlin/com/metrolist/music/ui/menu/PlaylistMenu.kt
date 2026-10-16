@@ -256,6 +256,7 @@ fun PlaylistMenu(
                                 if (songs.isNotEmpty()) {
                                     playerConnection.playQueue(
                                         ListQueue(
+                                            sourceRoute = "local_playlist/${playlist.playlist.id}",
                                             title = playlist.playlist.name,
                                             items = songs.map(Song::toMediaItem),
                                         )

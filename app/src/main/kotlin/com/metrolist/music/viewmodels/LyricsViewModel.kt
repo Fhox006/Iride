@@ -15,14 +15,17 @@ import com.metrolist.music.lyrics.LyricsHelper
 import com.metrolist.music.lyrics.LyricsTier
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.ui.component.LyricsListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,13 +44,28 @@ sealed class LyricsSearchStatus {
 private const val DELAYED_RETRY_MS = 15_000L
 
 @HiltViewModel
+@OptIn(FlowPreview::class)
 class LyricsViewModel @Inject constructor(
     private val lyricsHelper: LyricsHelper,
     private val database: MusicDatabase,
+    private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
     private var processJob: kotlinx.coroutines.Job? = null
     private var progressiveJob: kotlinx.coroutines.Job? = null
     private var delayedRetryJob: kotlinx.coroutines.Job? = null
+    private var retryLyrics: (() -> Unit)? = null
+
+    init {
+        viewModelScope.launch {
+            networkConnectivity.networkChanged.debounce(1_000L).collect {
+                if (networkConnectivity.networkStatus.value &&
+                    lyricsSearchStatus.value != LyricsSearchStatus.FoundWord
+                ) {
+                    retryLyrics?.invoke()
+                }
+            }
+        }
+    }
 
     private var loadedMediaId: String? = null
     private var delayedRetriedMediaId: String? = null
@@ -140,6 +158,16 @@ class LyricsViewModel @Inject constructor(
         force: Boolean = false,
         silent: Boolean = false,
     ) {
+        retryLyrics = {
+            loadProgressiveLyrics(
+                mediaMetadata,
+                enabledLanguages,
+                romanizeCyrillicByLine,
+                showIntervalIndicator,
+                force = true,
+                silent = true,
+            )
+        }
         // Idempotent per song: a still-running job or an already-reached SYNCED_WORD
         // must not be torn down by a panel remount. But a *finished* job stuck on a
         // poor tier (PLAIN/LINE/not-found) is NOT terminal: remounts may retry so a

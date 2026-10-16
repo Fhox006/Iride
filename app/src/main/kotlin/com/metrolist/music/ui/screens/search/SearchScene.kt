@@ -339,7 +339,19 @@ internal fun SearchScene(
     val iconAlpha = ((funnel - 0.48f) / 0.52f).coerceIn(0f, 1f)
     val fieldInk = lerpColor(primary, Color.White, lift)
     val fieldSecondary = lerpColor(secondary, Color.White.copy(alpha = 0.72f), lift)
-    val fontSize = lerp(15f, titleStyle.fontSize.value, collapsed)
+    val textMeasurer = rememberTextMeasurer()
+    val titleQueryStyle = remember(titleStyle.fontSize) {
+        TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = titleStyle.fontSize, fontWeight = FontWeight.Bold)
+    }
+    val queryWidth = remember(query.text, titleQueryStyle, textMeasurer) {
+        textMeasurer.measure(query.text.ifEmpty { " " }, titleQueryStyle, maxLines = 1, softWrap = false).size.width.toFloat()
+    }
+    // Reserve the leading icon, trailing gutter and block cursor before fitting the title.
+    val titleWidth = (fieldWidth - with(density) { 76.dp.toPx() } -
+        with(density) { titleStyle.fontSize.toPx() }).coerceAtLeast(1f)
+    val fittedTitleSize = (titleStyle.fontSize.value * (titleWidth / queryWidth.coerceAtLeast(1f)))
+        .coerceIn(15f, titleStyle.fontSize.value.coerceAtLeast(15f))
+    val fontSize = lerp(15f, fittedTitleSize, collapsed)
     val queryStyle = TextStyle(
         color = fieldInk.copy(alpha = fieldInk.alpha * if (event.returnsToRoot) 1f - progress else 1f),
         fontFamily = SpaceMonoFontFamily,
@@ -347,14 +359,8 @@ internal fun SearchScene(
         fontWeight = FontWeight(lerp(400f, 700f, collapsed).roundToInt()),
         textAlign = TextAlign.Start,
     )
-    val textMeasurer = rememberTextMeasurer()
-    val titleQueryStyle = remember(titleStyle.fontSize) {
-        TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = titleStyle.fontSize, fontWeight = FontWeight.Bold)
-    }
-    val queryWidth = remember(query.text, titleQueryStyle, textMeasurer) {
-        textMeasurer.measure(query.text.ifEmpty { " " }, titleQueryStyle, maxLines = 1).size.width.toFloat()
-    }
-    val titleTextLeft = ((fieldWidth - queryWidth) * 0.5f).coerceAtLeast(with(density) { 52.dp.toPx() })
+    val fittedQueryWidth = queryWidth * fittedTitleSize / titleStyle.fontSize.value
+    val titleTextLeft = ((fieldWidth - fittedQueryWidth) * 0.5f).coerceAtLeast(with(density) { 52.dp.toPx() })
     val textStart = lerp(with(density) { (16.dp + 36.dp * iconAlpha).toPx() }, titleTextLeft, collapsed)
     val impact = if (confirming) searchScenePressure(progress) else 0f
     val fieldScale = pose.scale

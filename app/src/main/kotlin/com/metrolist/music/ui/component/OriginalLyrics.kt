@@ -74,6 +74,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -202,7 +203,11 @@ fun OriginalLyrics(
     showLyrics: Boolean,
     pillsController: LyricsPillController? = null,
     textScale: Float = 1f,
+    singleLineOnly: Boolean = false,
+    compactPresentation: Boolean = false,
+    fullness: () -> Float = { 0f },
 ) {
+    val currentSliderPositionProvider by rememberUpdatedState(sliderPositionProvider)
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
@@ -214,7 +219,8 @@ fun OriginalLyrics(
     val shareLyricsStr = stringResource(R.string.share_lyrics)
     val failedToCreateImageTemplate = stringResource(R.string.failed_to_create_image)
 
-    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val preferredLyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val lyricsTextPosition = preferredLyricsTextPosition
     val changeLyrics by rememberPreference(LyricsClickKey, true)
     val scrollLyrics by rememberPreference(LyricsScrollKey, true)
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
@@ -600,7 +606,7 @@ fun OriginalLyrics(
         }
         while (isActive) {
             delay(8) // Faster update for word-by-word animation
-            val sliderPosition = sliderPositionProvider()
+            val sliderPosition = currentSliderPositionProvider()
             isSeeking = sliderPosition != null
             val position = sliderPosition ?: playerConnection.player.currentPosition
             currentPlaybackPosition = position
@@ -1034,6 +1040,8 @@ fun OriginalLyrics(
                                 when {
                                     !isSynced || (isSelectionModeActive && isSelected) -> 1f
                                     isActiveByIndex || isActiveByTime -> 1f
+                                    singleLineOnly -> 0f
+                                    compactPresentation -> fullness()
                                     else -> 0.35f
                                 },
                             animationSpec = spring(
@@ -1141,7 +1149,9 @@ fun OriginalLyrics(
                             modifier =
                                 itemModifier
                                     .graphicsLayer {
-                                        this.alpha = if (item.isBackground) alpha * 0.8f else alpha
+                                        val contentAlpha = if (compactPresentation && isSynced && !isSelectionModeActive &&
+                                            !isActiveByIndex && !isActiveByTime) fullness() else alpha
+                                        this.alpha = if (item.isBackground) contentAlpha * 0.8f else contentAlpha
                                         this.scaleX = scale * bgScale
                                         this.scaleY = scale * bgScale
                                         this.transformOrigin = TransformOrigin(originX, 1f)
@@ -1777,6 +1787,7 @@ fun OriginalLyrics(
                                 subText?.let { text ->
                                     Text(
                                         text = text,
+                                        fontFamily = InterFontFamily,
                                         fontSize = 18.sp,
                                         color = expressiveAccent.copy(alpha = 0.6f),
                                         textAlign =
@@ -1796,6 +1807,7 @@ fun OriginalLyrics(
                             translatedText?.let { translated ->
                                 Text(
                                     text = translated,
+                                    fontFamily = InterFontFamily,
                                     fontSize = 16.sp,
                                     color = expressiveAccent.copy(alpha = 0.5f),
                                     textAlign =

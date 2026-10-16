@@ -782,7 +782,7 @@ private fun PillNavItem(
 }
 
 @Composable
-private fun PillPlayButton(
+internal fun PillPlayButton(
     progressState: PillProgressState,
     mediaMetadata: MediaMetadata,
     primaryColor: Color,
@@ -863,7 +863,7 @@ private fun PillCoverArtwork(
 }
 
 @Composable
-private fun PillSongInfo(
+internal fun PillSongInfo(
     mediaMetadata: MediaMetadata,
     onSurfaceColor: Color,
     errorColor: Color,

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.coroutineScope
@@ -48,7 +49,13 @@ internal fun rememberIrideArtistArtwork(
         ArtistArtworkRequest(artistId, artistName, url, channelId, externalEnabled)
     }
     val selected = remember(artistId) { mutableStateOf(loader.cachedForDisplay(request)) }
-    val artwork = remember(artistId) { derivedStateOf { selected.value?.artwork } }
+    val artwork = remember(artistId) {
+        derivedStateOf {
+            selected.value?.artwork?.let {
+                it.copy(tint = Color(readableArtistArtworkPigment(it.tint.toArgb())))
+            }
+        }
+    }
     val selectedUrl = selected.value?.url
     DisposableEffect(artistId, selectedUrl) {
         if (selectedUrl != null) loader.retainPresentation(request, selectedUrl)
@@ -58,7 +65,7 @@ internal fun rememberIrideArtistArtwork(
         coroutineScope {
             launch {
                 loader.selectionUpdates.collect { key ->
-                    if (key == request.key && selected.value == null) selected.value = loader.cachedForDisplay(request)
+                    if (key == request.id) selected.value = loader.cachedForDisplay(request) ?: selected.value
                 }
             }
             if (highResolution) launch {
@@ -71,11 +78,9 @@ internal fun rememberIrideArtistArtwork(
                 }
             }
             loader.prefetch(request)
-            if (selected.value == null) {
-                val prepared = loader.loadForDisplay(request)
-                if (prepared != null) {
-                    if (selected.value == null) selected.value = prepared
-                }
+            val prepared = loader.loadForDisplay(request)
+            if (prepared != null) {
+                selected.value = loader.cachedForDisplay(request) ?: prepared
             }
         }
     }

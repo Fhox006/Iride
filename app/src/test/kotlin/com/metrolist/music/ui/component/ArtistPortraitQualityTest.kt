@@ -59,8 +59,8 @@ class ArtistPortraitQualityTest {
     }
 
     @Test
-    fun detectorFailureLeavesBorderAndDefinitionRankingUsable() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+    fun detectorFailureCannotReplaceDefinedApplePhotoForTidierBorders() {
+        assertEquals(ArtistArtworkSource.APPLE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 0.5f, 1f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0f, 1f, 0.7f)),
         ))
@@ -101,7 +101,7 @@ class ArtistPortraitQualityTest {
     @Test
     fun meaningfulTechnicalUpgradeCanReplaceAppleWithoutFaceDetection() {
         assertEquals(ArtistArtworkSource.SPOTIFY, choose(
-            Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 0.45f, 0.4f)),
+            Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 0.45f, 0.35f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0f, 0.9f, 0.85f)),
         ))
     }
@@ -155,6 +155,27 @@ class ArtistPortraitQualityTest {
             { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
         )
         assertEquals(previous, chosen)
+    }
+
+    @Test
+    fun establishedAlternativeCannotBeReplacedAgainEvenByBetterApplePhoto() {
+        val previous = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.6f, 0.7f, 0.6f))
+        assertEquals(previous, preferredArtistArtwork(
+            listOf(Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(1f, 1f, 1f))),
+            { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
+        ))
+    }
+
+    @Test
+    fun usableApplePhotoWinsAcrossBroadRangeOfAlternativeImprovements() {
+        for (portrait in listOf(0f, 0.5f, 1f)) for (borders in listOf(0.4f, 0.7f, 1f)) {
+            for (definition in listOf(0.45f, 0.7f, 1f)) {
+                assertEquals(ArtistArtworkSource.APPLE_MUSIC, choose(
+                    Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(portrait, borders, definition)),
+                    Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(1f, 1f, 1f)),
+                ))
+            }
+        }
     }
 
     @Test

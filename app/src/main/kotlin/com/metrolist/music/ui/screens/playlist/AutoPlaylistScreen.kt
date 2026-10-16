@@ -521,6 +521,7 @@ fun AutoPlaylistScreen(
     val onTopBarShuffleClick: () -> Unit = {
         playerConnection.playQueue(
             ListQueue(
+                sourceRoute = "auto_playlist/$playlistId",
                 title = playlist,
                 items = songs.orEmpty().shuffled().map { it.toMediaItem() },
             )
@@ -534,6 +535,7 @@ fun AutoPlaylistScreen(
         } else {
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "auto_playlist/$playlistId",
                     title = playlist,
                     items = songs.orEmpty().map { it.toMediaItem() },
                 )
@@ -910,6 +912,7 @@ fun AutoPlaylistScreen(
                                                 } else {
                                                     playerConnection.playQueue(
                                                         ListQueue(
+                                                            sourceRoute = "auto_playlist/$playlistId",
                                                             title = playlist,
                                                             items =
                                                                 songs!!.map { it.toMediaItem() },

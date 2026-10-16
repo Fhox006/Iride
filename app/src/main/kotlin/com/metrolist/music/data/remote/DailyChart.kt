@@ -53,18 +53,20 @@ data class DailyChart(
 )
 
 fun DailyChart.withRankMovements(previous: DailyChart?): DailyChart {
-    val previousRanks = previous
-        ?.takeIf { it.marketCode == marketCode && it.date <= date }
-        ?.tracks?.associate { it.spotifyId to it.rank }
+    val comparablePrevious = previous?.takeIf { it.marketCode == marketCode && it.date <= date }
+    val previousRanks = comparablePrevious?.tracks?.associate { it.spotifyId to it.rank }
+    val previousMovements = comparablePrevious?.tracks?.associate { it.spotifyId to it.movement }
     return copy(tracks = tracks.map { track ->
         val previousRank = previousRanks?.get(track.spotifyId)
-        track.copy(movement = when {
+        val movement = when {
             previousRanks == null -> null
+            date == comparablePrevious.date && previousRank == track.rank -> previousMovements?.get(track.spotifyId)
             previousRank == null -> ChartRankMovement.NEW
             track.rank < previousRank -> ChartRankMovement.UP
             track.rank > previousRank -> ChartRankMovement.DOWN
             else -> null
-        })
+        }
+        track.copy(movement = movement)
     })
 }
 

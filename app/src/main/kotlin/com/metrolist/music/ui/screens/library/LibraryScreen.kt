@@ -181,7 +181,6 @@ import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.component.IrideSearchBox
-import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LibraryArtistGridItem
@@ -654,7 +653,15 @@ fun LibraryAlbumsScreen(
                                             filteredAlbums.randomOrNull()
                                         } ?: return@launch
                                         val queue = loadAlbumMediaItems(database, album).shuffled()
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(album.album.title, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = album.album.title,
+                                                    items = queue,
+                                                    sourceRoute = "album/${album.id}",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 onRotation = {
@@ -671,7 +678,15 @@ fun LibraryAlbumsScreen(
                                             .take(20)
                                         val items = rotationAlbums.flatMap { loadAlbumMediaItems(database, it) }
                                         val queue = database.buildRotationQueue(items)
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(albumsQueueTitle, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = albumsQueueTitle,
+                                                    items = queue,
+                                                    sourceRoute = "library_albums",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                     )
@@ -870,7 +885,15 @@ fun LibraryArtistsScreen(
                                         } ?: return@launch
                                         val queue = database.artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
                                             .first().map { it.toMediaItem() }.distinctBy { it.mediaId }.shuffled()
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(artist.artist.name, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = artist.artist.name,
+                                                    items = queue,
+                                                    sourceRoute = "artist/${artist.id}",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 onRotation = {
@@ -890,7 +913,15 @@ fun LibraryArtistsScreen(
                                                 .first().map { it.toMediaItem() }
                                         }.distinctBy { it.mediaId }
                                         val queue = database.buildRotationQueue(tracks)
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueTitle, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = queueTitle,
+                                                    items = queue,
+                                                    sourceRoute = "library",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 )
@@ -1163,14 +1194,30 @@ fun LibraryPlaylistsScreen(
                                     coroutineScope.launch {
                                         val chosen = filteredPlaylists.randomOrNull() ?: return@launch
                                         val queue = loadPlaylistMediaItems(database, chosen).shuffled()
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(chosen.playlist.name, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = chosen.playlist.name,
+                                                    items = queue,
+                                                    sourceRoute = "local_playlist/${chosen.id}",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 onRotation = {
                                     coroutineScope.launch {
                                         val items = filteredPlaylists.flatMap { loadPlaylistMediaItems(database, it) }
                                         val queue = database.buildRotationQueue(items)
-                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueTitle, queue, 0))
+                                        if (queue.isNotEmpty()) {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = queueTitle,
+                                                    items = queue,
+                                                    sourceRoute = "library",
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                     )
@@ -1284,6 +1331,12 @@ fun LibrarySongsScreen(
     val coroutineScope = rememberCoroutineScope()
     val queueAllSongsStr = stringResource(R.string.queue_all_songs)
     val cachedPlaylistStr = stringResource(R.string.offline_ready_songs)
+    val sourceRoute = when {
+        isCache -> "cache_playlist/cached"
+        isLocal -> "library_songs_local"
+        isOffline -> "library_songs_offline"
+        else -> "library_songs"
+    }
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -1431,12 +1484,28 @@ fun LibrarySongsScreen(
         showNavigationPill = !isCache || !inSelectMode,
         onShuffle = {
             val queue = filteredSongs.shuffled().map { it.toMediaItem() }
-            if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueAllSongsStr, queue, 0))
+            if (queue.isNotEmpty()) {
+                playerConnection.playQueue(
+                    ListQueue(
+                        title = queueAllSongsStr,
+                        items = queue,
+                        sourceRoute = sourceRoute,
+                    )
+                )
+            }
         },
         onRotation = {
             coroutineScope.launch {
                 val queue = database.buildRotationQueue(filteredSongs.map { it.toMediaItem() })
-                if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueAllSongsStr, queue, 0))
+                if (queue.isNotEmpty()) {
+                    playerConnection.playQueue(
+                        ListQueue(
+                            title = queueAllSongsStr,
+                            items = queue,
+                            sourceRoute = sourceRoute,
+                        )
+                    )
+                }
             }
         },
         overlay = { if (isCache && inSelectMode) selectionTopBar() },
@@ -1479,6 +1548,7 @@ fun LibrarySongsScreen(
                     } else {
                         playerConnection.playQueue(
                             ListQueue(
+                                sourceRoute = sourceRoute,
                                 title = if (isCache) cachedPlaylistStr else queueAllSongsStr,
                                 items = filteredSongs.map { it.toMediaItem() },
                                 startIndex = index,
@@ -1894,7 +1964,22 @@ fun LibraryMixScreen(
         }
     }
 
-    val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
+    val pageMenuSections = listOf(
+        listOf(
+            LibraryPageMenuAction(
+                label = stringResource(R.string.filter_library),
+                icon = if (isLibraryFilter) R.drawable.bookmark_filled else R.drawable.bookmark_outlined,
+                selected = isLibraryFilter,
+                onClick = { isLibraryFilter = true },
+            ),
+            LibraryPageMenuAction(
+                label = stringResource(R.string.filter_downloaded),
+                icon = R.drawable.storage,
+                selected = !isLibraryFilter,
+                onClick = { isLibraryFilter = false },
+            ),
+        ),
+    )
 
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
@@ -1926,23 +2011,13 @@ fun LibraryMixScreen(
                     IridePageLayout(
                         titleRes = R.string.filter_library,
                         state = lazyListState,
+                        menuSections = pageMenuSections,
                         reducedMotion = reducedMotion,
                         listModifier = Modifier
                             .graphicsLayer { alpha = screenProgress },
                         contentHorizontalPadding = 20.dp,
                         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                     ) {
-                        item(key = "library_filter_toggle") {
-                            IrideSegmentedToggle(
-                                options = listOf(
-                                    true to stringResource(R.string.filter_library),
-                                    false to stringResource(R.string.filter_downloaded),
-                                ),
-                                selected = isLibraryFilter,
-                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
-                                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
-                            )
-                        }
                         item(key = "categories") {
                             CategoriesContent(
                                 navController = navController,
@@ -2032,6 +2107,7 @@ fun LibraryMixScreen(
                                             val filteredSongs = filteredItems.filterIsInstance<Song>()
                                             playerConnection.playQueue(
                                                 ListQueue(
+                                                    sourceRoute = "library",
                                                     title = queueSearchedSongsStr,
                                                     items = filteredSongs.map { it.toMediaItem() },
                                                     startIndex = filteredSongs.indexOfFirst { it.id == item.id },
@@ -2070,6 +2146,7 @@ fun LibraryMixScreen(
                 IridePageLayout(
                     titleRes = R.string.filter_library,
                     state = lazyGridState,
+                    menuSections = pageMenuSections,
                     reducedMotion = reducedMotion,
                     gridModifier = Modifier
                         .graphicsLayer { alpha = screenProgress },
@@ -2082,24 +2159,6 @@ fun LibraryMixScreen(
                     bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
-                        Row(
-                            modifier = Modifier
-                                .padding(top = 4.dp, bottom = 12.dp)
-                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
-                        ) {
-                            IrideSegmentedToggle(
-                                options = listOf(
-                                    true to stringResource(R.string.filter_library),
-                                    false to stringResource(R.string.filter_downloaded),
-                                ),
-                                selected = isLibraryFilter,
-                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
-                            )
-                        }
-                    }
-
                     item(key = "categories", span = { GridItemSpan(maxLineSpan) }) {
                         CategoriesContent(
                             navController = navController,
@@ -2353,6 +2412,7 @@ fun LibraryMixScreen(
                                             val filteredSongs = filteredItems.filterIsInstance<Song>()
                                             playerConnection.playQueue(
                                                 ListQueue(
+                                                    sourceRoute = "library",
                                                     title = queueSearchedSongsStr,
                                                     items = filteredSongs.map { it.toMediaItem() },
                                                     startIndex = filteredSongs.indexOfFirst { it.id == item.id },

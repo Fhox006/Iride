@@ -158,6 +158,8 @@ data class HomePage(
                             )
                         },
                     duration = secondaryLine.lastOrNull()?.firstOrNull()?.text?.parseTime(),
+                    musicVideoType = renderer.musicVideoType,
+                    endpoint = renderer.navigationEndpoint?.watchEndpoint,
                     thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     explicit = renderer.badges?.find {
                         it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -216,6 +218,9 @@ data class HomePage(
                                 )
                             },
                             duration = null,
+                            musicVideoType = renderer.navigationEndpoint.watchEndpoint
+                                .watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType,
+                            endpoint = renderer.navigationEndpoint.watchEndpoint,
                             thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512)
                                 ?: return null,
                             explicit = renderer.subtitleBadges?.any {

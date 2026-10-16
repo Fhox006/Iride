@@ -18,6 +18,7 @@ import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -101,12 +102,15 @@ import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.HomeFeedSnapshotStore
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -165,12 +169,14 @@ data class CommunityPlaylistItem(
 )
 
 @HiltViewModel
+@OptIn(FlowPreview::class)
 class HomeViewModel @Inject constructor(
     @ApplicationContext val context: Context,
     val database: MusicDatabase,
     val syncUtils: SyncUtils,
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
+    private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
     val contentSnapshot = HomeContentSnapshot(viewModelScope)
     val syncState = syncUtils.syncState
@@ -181,6 +187,9 @@ class HomeViewModel @Inject constructor(
 
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
+    val isHomeFeedLoading = MutableStateFlow(true)
+    val isForYouLoading = MutableStateFlow(true)
+    val isAccountPlaylistsLoading = MutableStateFlow(true)
     val regeneratingSections = MutableStateFlow<Set<String>>(emptySet())
     val isRandomizing = MutableStateFlow(false)
     val isPhase1Complete = MutableStateFlow(false)
@@ -193,7 +202,7 @@ class HomeViewModel @Inject constructor(
     // composition of the app).
     private val smartBootEnabled: Boolean = true
 
-    private var restoredHomeFeed = false
+    private var homeFeedJob: Job? = null
 
     private val quickPicksEnum = context.dataStore.data.map {
         it[QuickPicksKey].toEnum(QuickPicks.QUICK_PICKS)
@@ -1691,9 +1700,10 @@ class HomeViewModel @Inject constructor(
                 dailyDiscoverLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        getDailyDiscover()
+                        withTimeoutOrNull(20_000L) { getDailyDiscover() }
                         HomeCache.dailyDiscover = dailyDiscover.value
                     } finally {
+                        currentCoroutineContext().ensureActive()
                         phase2DailyDiscoverDone.value = true
                         checkPhase2Complete()
                     }
@@ -1703,9 +1713,10 @@ class HomeViewModel @Inject constructor(
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        getCommunityPlaylists()
+                        withTimeoutOrNull(20_000L) { getCommunityPlaylists() }
                         HomeCache.communityPlaylists = communityPlaylists.value
                     } finally {
+                        currentCoroutineContext().ensureActive()
                         phase2CommunityDone.value = true
                         checkPhase2Complete()
                     }
@@ -1717,8 +1728,9 @@ class HomeViewModel @Inject constructor(
                         // Gate behind phase 1 like the other sections: the similar fan-out
                         // must not race (and starve) the home/account load on reconnect.
                         phase1Complete.filter { it }.first()
-                        getSimilarRecommendations()
+                        withTimeoutOrNull(30_000L) { getSimilarRecommendations() }
                     } finally {
+                        currentCoroutineContext().ensureActive()
                         phase2SimilarDone.value = true
                         checkPhase2Complete()
                     }
@@ -1730,6 +1742,7 @@ class HomeViewModel @Inject constructor(
                         phase1Complete.filter { it }.first()
                         getDischiPerTe()
                     } finally {
+                        currentCoroutineContext().ensureActive()
                         phase2DischiPerTeDone.value = true
                         checkPhase2Complete()
                     }
@@ -1755,11 +1768,19 @@ class HomeViewModel @Inject constructor(
         dischiPerTeLaunchJob?.cancel(); dischiPerTeLaunchJob = null
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
 
+        isForYouLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { getForYouShelves() }.onFailure { reportException(it) }
+            try {
+                getForYouShelves()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reportException(e)
+            } finally {
+                isForYouLoading.value = false
+            }
         }
 
         try {
@@ -1795,6 +1816,7 @@ class HomeViewModel @Inject constructor(
             sectionsToRestart.forEach(::onSectionBecameVisible)
         }
 
+        refreshHomeFeed()
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit))
@@ -1803,93 +1825,110 @@ class HomeViewModel @Inject constructor(
             }.onFailure { reportException(it) }
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val restoredFeed = restoredHomeFeed
-            if (restoredFeed) restoredHomeFeed = false
-
-            var homeResult: Result<HomePage> =
-                if (restoredFeed) {
-                    homePage.value?.let { Result.success(it) }
-                        ?: Result.failure(IllegalStateException("Restored feed unavailable"))
-                } else {
-                    YouTube.home()
-                }
-
-            if (!restoredFeed && homeResult.isFailure) {
-                if (YouTube.cookie != null) {
-                    val recovered = syncUtils.reInjectCredentials()
-                    if (recovered) homeResult = YouTube.home()
-                } else {
-                    YouTube.visitorData().getOrNull()?.let { fresh ->
-                        YouTube.visitorData = fresh
-                        context.dataStore.edit { it[VisitorDataKey] = fresh }
-                    }
-                    homeResult = YouTube.home()
-                }
-            }
-            if (!restoredFeed && homeResult.isSuccess && YouTube.cookie == null &&
-                homeResult.getOrNull()?.sections?.isEmpty() == true) {
-                YouTube.visitorData().getOrNull()?.let { fresh ->
-                    YouTube.visitorData = fresh
-                    context.dataStore.edit { it[VisitorDataKey] = fresh }
-                }
-                homeResult = YouTube.home()
-            }
-
-            homeResult.onSuccess { page ->
-                val transformedChips = transformChips(page.chips)
-                val transformedPage = page.copy(
-                    chips = transformedChips,
-                    sections = page.sections.mapNotNull { section ->
-                        val filtered = section.items
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .filterYoutubeShorts(hideYoutubeShorts)
-                        if (filtered.isEmpty()) null else section.copy(items = filtered)
-                    }
-                )
-                homePage.value = transformedPage
-                updateHomePersonalMixes(transformedPage)
-
-                fillQuickPicksFromHome(transformedPage, hideExplicit)
-                HomeCache.quickPicks = quickPicks.value
-
-                val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
-                val allowedMoodChips = MoodMixes.chips(transformedChips)
-                val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
-                    transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
-                else null
-
-                if (smartBootEnabled) {
-                    (allowedMoodChips.firstOrNull { it.endpoint?.params == savedParamsForChip }
-                        ?: allowedMoodChips.firstOrNull() ?: preferredChip ?: transformedChips?.firstOrNull())
-                        ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
-                        ?.let { chip ->
-                            applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
-                        }
-                } else {
-                    if (selectedChip.value == null) {
-                        (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
-                    }
-                }
-                HomeCache.homePage = homePage.value
-                HomeCache.lastLoadedAt = System.currentTimeMillis()
-                context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
-                HomeFeedSnapshotStore.save(context, transformedPage)
-                refreshHeroCarousel()
-            }.onFailure { reportException(it) }
-        }
-
         if (YouTube.cookie != null) {
             viewModelScope.launch(Dispatchers.IO) {
                 loadAccountPlaylists()
             }
+        } else {
+            isAccountPlaylistsLoading.value = false
         }
 
         viewModelScope.launch(Dispatchers.IO) {
             enrichQuickPicksFromNetwork()
             HomeCache.quickPicks = quickPicks.value
         }
+    }
+
+    @Synchronized
+    private fun refreshHomeFeed() {
+        if (homeFeedJob?.isActive == true) return
+        isHomeFeedLoading.value = true
+        homeFeedJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!networkConnectivity.networkStatus.value) return@launch
+                withTimeout(20_000L) { fetchHomeFeed() }
+            } catch (_: TimeoutCancellationException) {
+                // Keep the last successful feed when the connection stalls.
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reportException(e)
+            } finally {
+                isHomeFeedLoading.value = false
+            }
+        }
+    }
+
+    private suspend fun fetchHomeFeed() {
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        var homeResult = YouTube.home()
+
+        if (homeResult.isFailure) {
+            if (YouTube.cookie != null) {
+                val recovered = syncUtils.reInjectCredentials()
+                if (recovered) homeResult = YouTube.home()
+            } else {
+                YouTube.visitorData().getOrNull()?.let { fresh ->
+                    YouTube.visitorData = fresh
+                    context.dataStore.edit { it[VisitorDataKey] = fresh }
+                }
+                homeResult = YouTube.home()
+            }
+        }
+        if (homeResult.isSuccess && YouTube.cookie == null &&
+            homeResult.getOrNull()?.sections?.isEmpty() == true) {
+            YouTube.visitorData().getOrNull()?.let { fresh ->
+                YouTube.visitorData = fresh
+                context.dataStore.edit { it[VisitorDataKey] = fresh }
+            }
+            homeResult = YouTube.home()
+        }
+
+        homeResult.onSuccess { page ->
+            val transformedChips = transformChips(page.chips)
+            val transformedPage = page.copy(
+                chips = transformedChips,
+                sections = page.sections.mapNotNull { section ->
+                    val filtered = section.items
+                        .filterExplicit(hideExplicit)
+                        .filterVideoSongs(hideVideoSongs)
+                        .filterYoutubeShorts(hideYoutubeShorts)
+                    if (filtered.isEmpty()) null else section.copy(items = filtered)
+                }
+            )
+            if (transformedPage.sections.isEmpty()) return@onSuccess
+            homePage.value = transformedPage
+            updateHomePersonalMixes(transformedPage)
+
+            fillQuickPicksFromHome(transformedPage, hideExplicit)
+            HomeCache.quickPicks = quickPicks.value
+
+            val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
+            val allowedMoodChips = MoodMixes.chips(transformedChips)
+            val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
+                transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
+            else null
+
+            if (smartBootEnabled) {
+                (allowedMoodChips.firstOrNull { it.endpoint?.params == savedParamsForChip }
+                    ?: allowedMoodChips.firstOrNull() ?: preferredChip ?: transformedChips?.firstOrNull())
+                    ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
+                    ?.let { chip ->
+                        applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                    }
+            } else {
+                if (selectedChip.value == null) {
+                    (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
+                }
+            }
+            HomeCache.homePage = homePage.value
+            HomeCache.lastLoadedAt = System.currentTimeMillis()
+            context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
+            HomeFeedSnapshotStore.save(context, transformedPage)
+            refreshHeroCarousel()
+        }.onFailure { reportException(it) }
     }
 
     fun toggleChip(chip: HomePage.Chip?) {
@@ -1951,6 +1990,7 @@ class HomeViewModel @Inject constructor(
                     .filterYoutubeShorts(hideYoutubeShorts)
                 if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
             }
+            if (filteredSections.isEmpty()) return@launch
 
             previousHomePage.value = homePage.value
             homePage.value = nextSections.copy(chips = homePage.value?.chips, sections = filteredSections)
@@ -1977,16 +2017,24 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadAccountPlaylists() {
-        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-        YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
-            accountPlaylists.value = it.items.filterIsInstance<PlaylistItem>()
-                .filterNot { it.id == "LM" || it.id == "SE" }
-                .filterNot { playlist ->
-                    playlist.songCountText?.let { text -> Regex("""\d+""").find(text)?.value?.toIntOrNull() } == 0
-                }
-                .filterYoutubeShorts(hideYoutubeShorts)
-        }.onFailure {
-            reportException(it)
+        isAccountPlaylistsLoading.value = true
+        try {
+            val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+            val result = withTimeoutOrNull(20_000L) {
+                YouTube.library("FEmusic_liked_playlists").completed()
+            } ?: return
+            result.onSuccess {
+                accountPlaylists.value = it.items.filterIsInstance<PlaylistItem>()
+                    .filterNot { it.id == "LM" || it.id == "SE" }
+                    .filterNot { playlist ->
+                        playlist.songCountText?.let { text -> Regex("""\d+""").find(text)?.value?.toIntOrNull() } == 0
+                    }
+                    .filterYoutubeShorts(hideYoutubeShorts)
+            }.onFailure {
+                reportException(it)
+            }
+        } finally {
+            isAccountPlaylistsLoading.value = false
         }
     }
 
@@ -2121,12 +2169,9 @@ class HomeViewModel @Inject constructor(
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
             }
-            HomeFeedSnapshotStore.load(context)?.let { snap ->
-                updateHomePersonalMixes(snap.page)
-                if (HomeCache.homePage == null) {
-                    homePage.value = snap.page
-                    restoredHomeFeed = true
-                }
+            (HomeCache.homePage ?: HomeFeedSnapshotStore.load(context)?.page)?.let { restoredPage ->
+                homePage.value = restoredPage
+                updateHomePersonalMixes(restoredPage)
             }
             if (smartBootEnabled && isHeroCarouselEnabled.value) {
                 context.dataStore.get(HeroCarouselSnapshotKey, "")?.takeIf { it.isNotEmpty() }?.let { json ->
@@ -2140,6 +2185,19 @@ class HomeViewModel @Inject constructor(
                         }
                 }
             }
+            quickPicks.value = HomeCache.quickPicks?.take(QUICK_PICKS_TARGET_COUNT)
+            HomeCache.quickPicks = quickPicks.value
+            keepListening.value = HomeCache.keepListening
+            forgottenFavorites.value = HomeCache.forgottenFavorites
+            explorePage.value = HomeCache.explorePage
+            similarRecommendations.value = HomeCache.similarRecommendations.orEmpty()
+                .distinctBy { it.title.id }
+                .take(MAX_SIMILAR_RECOMMENDATIONS)
+            HomeCache.similarRecommendations = similarRecommendations.value
+            dailyDiscover.value = HomeCache.dailyDiscover
+            communityPlaylists.value = HomeCache.communityPlaylists
+            dischiPerTe.value = HomeCache.dischiPerTe
+            forYouShelves.value = HomeCache.forYouShelves.orEmpty()
             if (!HomeCache.isStale() && HomeCache.homePage != null) {
                 homePage.value = HomeCache.homePage
                 if (homePersonalMixes.value.isEmpty()) {
@@ -2147,28 +2205,19 @@ class HomeViewModel @Inject constructor(
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { homePersonalMixes.value = it }
                 }
-                quickPicks.value = HomeCache.quickPicks?.take(QUICK_PICKS_TARGET_COUNT)
-                HomeCache.quickPicks = quickPicks.value
-                keepListening.value = HomeCache.keepListening
-                forgottenFavorites.value = HomeCache.forgottenFavorites
-                explorePage.value = HomeCache.explorePage
-                similarRecommendations.value = HomeCache.similarRecommendations.orEmpty()
-                    .distinctBy { it.title.id }
-                    .take(MAX_SIMILAR_RECOMMENDATIONS)
-                HomeCache.similarRecommendations = similarRecommendations.value
-                dailyDiscover.value = HomeCache.dailyDiscover
-                communityPlaylists.value = HomeCache.communityPlaylists
-                dischiPerTe.value = HomeCache.dischiPerTe
-                forYouShelves.value = HomeCache.forYouShelves.orEmpty()
+                isForYouLoading.value = false
+                isHomeFeedLoading.value = false
+                if (YouTube.cookie != null) {
+                    viewModelScope.launch(Dispatchers.IO) { loadAccountPlaylists() }
+                } else {
+                    isAccountPlaylistsLoading.value = false
+                }
                 refreshHeroCarousel(force = true)
                 isPhase1Complete.value = true
-                phase1Complete.value = true
-                phase2Complete.value = true
-                phase2DailyDiscoverDone.value = true
-                phase2CommunityDone.value = true
-                phase2SimilarDone.value = true
                 phase2DischiPerTeDone.value = true
+                phase1Complete.value = true
                 isLoading.value = false
+                refreshHomeFeed()
                 if (quickPicks.value.orEmpty().size < QUICK_PICKS_TARGET_COUNT) {
                     getQuickPicks()
                     enrichQuickPicksFromNetwork()
@@ -2266,6 +2315,15 @@ class HomeViewModel @Inject constructor(
                         loadAccountPlaylists()
                     }
                 }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            networkConnectivity.networkChanged.debounce(1_000L).collect {
+                if (networkConnectivity.networkStatus.value) {
+                    refreshHomeFeed()
+                    if (syncUtils.reInjectCredentials()) loadAccountPlaylists()
+                }
+            }
         }
     }
 

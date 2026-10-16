@@ -13,8 +13,14 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,14 +69,22 @@ internal fun IrideFolioFrostedButton(
 )
 
 @Composable
-internal fun Modifier.irideFolioGlassSurface(backdrop: FrostBackdrop?): Modifier =
+internal fun Modifier.irideFolioGlassSurface(
+    backdrop: FrostBackdrop?,
+    shape: Shape = IrideFolio.ControlsShape,
+    bordered: Boolean = true,
+): Modifier =
     frostedNavigationSurface(
-        backdrop, Color.White, IrideFolio.ControlsShape,
+        backdrop ?: LocalFolioButtonBackdrop.current ?: LocalScreenFrostBackground.current, Color.White, shape,
         surfaceAlpha = IrideFolio.FrostedLightTintOpacity,
-    ).border(
-        IrideFolio.ButtonBorderWidth,
-        Color.White.copy(alpha = IrideFolio.ButtonBorderOpacity),
-        IrideFolio.ControlsShape,
+        observeBackdrop = true,
+        opaqueBackground = false,
+    ).then(
+        if (bordered) Modifier.border(
+            IrideFolio.ButtonBorderWidth,
+            Color.White.copy(alpha = IrideFolio.ButtonBorderOpacity),
+            shape,
+        ) else Modifier,
     )
 
 /** Reversible native reveal; newly added actions use the same timing and reduced-motion rules. */
@@ -131,14 +146,67 @@ fun IrideFolioChoiceButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    compact: Boolean = false,
     content: @Composable RowScope.() -> Unit,
-) = IrideFolioButton(
-    onClick = onClick,
-    modifier = modifier,
-    enabled = enabled,
-    secondary = !selected,
-    content = content,
-)
+) {
+    if (compact) {
+        val ink = LocalArtworkContentColor.current ?: MaterialTheme.colorScheme.textPrimary
+        val interactions = remember { MutableInteractionSource() }
+        val opacity = if (enabled) 1f else IrideFolio.ButtonDisabledOpacity
+        Row(
+            modifier
+                .heightIn(min = IrideFolio.CompactButtonMinHeight)
+                .pressScale(interactions, pressedScale = IrideFolio.ButtonPressedScale)
+                .clip(IrideFolio.ButtonShape)
+                .background(
+                    ink.copy(
+                        alpha =
+                            if (selected) IrideFolio.CompactChoiceSelectedOpacity * opacity else 0f
+                    )
+                )
+                .border(
+                    IrideFolio.ButtonBorderWidth,
+                    ink.copy(
+                        alpha =
+                            (if (selected) IrideFolio.CompactChoiceSelectedBorderOpacity
+                            else IrideFolio.ButtonBorderOpacity) * opacity
+                    ),
+                    IrideFolio.ButtonShape,
+                )
+                .selectable(
+                    selected,
+                    enabled = enabled,
+                    role = Role.RadioButton,
+                    interactionSource = interactions,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .padding(horizontal = IrideFolio.CompactButtonHorizontalPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalContentColor provides
+                    ink.copy(alpha = .8f * opacity)
+            ) {
+                ProvideTextStyle(
+                    MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                ) {
+                    content()
+                }
+            }
+        }
+    } else
+        IrideFolioButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            secondary = !selected,
+            content = content,
+        )
+}
 
 @Composable
 internal fun IrideFolioPrimaryIconButton(
@@ -180,6 +248,7 @@ private fun IrideFolioButton(
     modifier: Modifier,
     enabled: Boolean,
     secondary: Boolean,
+    minHeight: Dp = IrideFolio.ButtonMinHeight,
     frosted: Boolean = false,
     grouped: Boolean = false,
     interactionSource: MutableInteractionSource? = null,
@@ -196,7 +265,7 @@ private fun IrideFolioButton(
     Button(
         onClick = onClick,
         modifier = modifier
-            .defaultMinSize(minHeight = IrideFolio.ButtonMinHeight)
+            .defaultMinSize(minHeight = minHeight)
             .then(
                 if (frosted) Modifier
                     .pressScale(interactions, pressedScale = IrideFolio.ButtonPressedScale)

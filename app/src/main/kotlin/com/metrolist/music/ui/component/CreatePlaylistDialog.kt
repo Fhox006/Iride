@@ -2,32 +2,22 @@
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
-
 package com.metrolist.music.ui.component
 
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.TextFieldValue
-import com.metrolist.innertube.YouTube
-import com.metrolist.music.LocalDatabase
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.extensions.isSyncEnabled
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
-import timber.log.Timber
+import com.metrolist.music.viewmodels.PlaylistCreationViewModel
+import java.util.UUID
 
 @Composable
 fun CreatePlaylistDialog(
@@ -35,53 +25,48 @@ fun CreatePlaylistDialog(
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
     onPlaylistCreated: ((String) -> Unit)? = null,
+    loadInitialSongs: (suspend () -> List<MediaMetadata>)? = null,
+    loadInitialSongIds: (suspend () -> List<String>)? = null,
+    targetPlaylist: PlaylistEntity? = null,
 ) {
-    val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
+    val draftKey = rememberSaveable { UUID.randomUUID().toString() }
+    val viewModel = hiltViewModel<PlaylistCreationViewModel>()
+    val draft by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var isCreating by remember { mutableStateOf(false) }
+    val defaultName = stringResource(R.string.playlist_draft_title)
 
-    TextFieldDialog(
-        icon = { Icon(painter = painterResource(R.drawable.add), contentDescription = null) },
-        title = { Text(text = stringResource(R.string.create_playlist)) },
-        initialTextFieldValue = TextFieldValue(initialTextFieldValue ?: ""),
-        onDismiss = onDismiss,
-        autoDismiss = false,
-        isInputValid = { it.isNotBlank() && !isCreating },
-        onDone = { playlistName ->
-            if (isCreating || playlistName.isBlank()) return@TextFieldDialog
-            isCreating = true
-            coroutineScope.launch(Dispatchers.IO) {
-                val browseId =
-                    if (allowSyncing && context.isSyncEnabled()) {
-                        try {
-                            YouTube.createPlaylist(playlistName)
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Exception) {
-                            Timber.e(error, "Failed to create synced playlist; saving locally")
-                            null
-                        }
-                    } else {
-                        null
-                    }
+    fun initialize() = viewModel.initialize(draftKey, initialTextFieldValue, targetPlaylist) {
+        loadInitialSongs?.invoke() ?: loadInitialSongIds?.invoke()?.let { viewModel.resolveSongs(it) }.orEmpty()
+    }
 
-                val playlistEntity =
-                    PlaylistEntity(
-                        name = playlistName,
-                        browseId = browseId,
-                        bookmarkedAt = LocalDateTime.now(),
-                        isEditable = true,
-                        isAutoSync = browseId != null,
-                    )
+    fun dismiss() {
+        viewModel.release()
+        onDismiss()
+    }
 
-                database.insert(playlistEntity)
-
-                withContext(Dispatchers.Main) {
-                    onPlaylistCreated?.invoke(playlistEntity.id)
-                    onDismiss()
-                }
+    LaunchedEffect(viewModel) { initialize() }
+    LaunchedEffect(draft.created) {
+        draft.created?.let { result ->
+            viewModel.consumeCreated()
+            if (result.savedLocally) {
+                Toast.makeText(context, R.string.playlist_draft_saved_locally, Toast.LENGTH_SHORT).show()
             }
-        },
-    )
+            onPlaylistCreated?.invoke(result.id)
+            dismiss()
+        }
+    }
+
+    IrideFolioEditorDialog(onDismiss = ::dismiss, dismissEnabled = !draft.saving) {
+        IrideFolioPlaylistComposer(
+            draft = draft,
+            onDismiss = ::dismiss,
+            onNameChange = viewModel::setName,
+            onQueryChange = viewModel::setQuery,
+            onSelectionChange = viewModel::showSelection,
+            onToggleSong = viewModel::toggle,
+            onRefresh = viewModel::refresh,
+            onRetrySeeds = ::initialize,
+            onCreate = { viewModel.create(allowSyncing, defaultName) },
+        )
+    }
 }

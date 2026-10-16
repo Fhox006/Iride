@@ -308,6 +308,7 @@ fun OnlinePodcastScreen(
                                                     )
                                                     playerConnection.playQueue(
                                                         ListQueue(
+                                                            sourceRoute = podcast?.id?.let { "online_podcast/$it" },
                                                             title = podcast?.title,
                                                             items = mediaItems,
                                                             startIndex = index,

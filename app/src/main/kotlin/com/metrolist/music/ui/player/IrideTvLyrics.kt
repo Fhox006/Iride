@@ -184,8 +184,11 @@ internal fun IrideTvLyrics(
         currentView?.setActive(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         onDispose { lifecycle.removeObserver(observer) }
     }
-    val accessibleText = if (synced) lines.lastOrNull { !it.isBackground && it.time <= effectivePosition }?.text.orEmpty()
-        else lines.firstOrNull()?.text.orEmpty()
+    val currentLine = (if (synced) lines.lastOrNull { !it.isBackground && it.time <= effectivePosition } else null)
+        ?: lines.firstOrNull { !it.isBackground }
+    val currentRomanized = texts.getOrNull(lines.indexOf(currentLine))?.first
+    val accessibleText = if (romanizeAsMain && romanizeEnabled && !currentRomanized.isNullOrBlank()) currentRomanized
+        else currentLine?.text.orEmpty()
     val previousLabel = stringResource(R.string.mp3_lyrics_previous_line)
     val nextLabel = stringResource(R.string.mp3_lyrics_next_line)
     Box(modifier, contentAlignment = Alignment.Center) {

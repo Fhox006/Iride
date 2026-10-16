@@ -52,7 +52,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -66,6 +65,7 @@ import javax.inject.Singleton
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
+import java.io.IOException
 
 sealed class SyncOperation {
     data object FullSync : SyncOperation()
@@ -139,6 +139,8 @@ class SyncUtils @Inject constructor(
     private var lastFullSyncSucceeded: Boolean? = null
 
     private val queuedOperations = ConcurrentHashMap<SyncOperation, Unit>()
+    private val pendingLikes = ConcurrentHashMap<String, SongEntity>()
+    private var pendingLikesCookie: String? = null
 
     companion object {
         private const val MAX_RETRIES = 3
@@ -160,6 +162,15 @@ class SyncUtils @Inject constructor(
     private fun isPlaylistBeingModified(playlistId: String): Boolean =
         (playlistsBeingModified[playlistId]?.get() ?: 0) > 0 ||
                 pendingRemovals.any { (_, set) -> set.any { it.third == playlistId } }
+
+    suspend fun <T> withPlaylistEdit(playlistId: String, block: suspend () -> T): T {
+        markPlaylistModifying(playlistId)
+        return try {
+            block()
+        } finally {
+            unmarkPlaylistModifying(playlistId)
+        }
+    }
     init {
         context.dataStore.data
             .map { it[LastFMUseSendLikes] ?: false }
@@ -171,12 +182,12 @@ class SyncUtils @Inject constructor(
         startProcessingQueue()
 
         syncScope.launch {
-            connectivityObserver.networkStatus
-                .drop(1)
+            connectivityObserver.networkChanged
                 .debounce(2_000L)
-                .collect { connected ->
-                    if (!connected) return@collect
+                .collect {
+                    if (!connectivityObserver.networkStatus.value) return@collect
                     if (!isLoggedIn()) return@collect
+                    pendingLikes.values.toList().forEach { enqueueUnique(SyncOperation.LikeSong(it)) }
                     if (lastFullSyncSucceeded == false) {
                         Timber.d("Network restored after a failed full sync — re-syncing now")
                         performFullSync()
@@ -305,6 +316,7 @@ class SyncUtils @Inject constructor(
         var currentDelay = initialDelay
         repeat(maxRetries) { attempt ->
             try {
+                if (!connectivityObserver.networkStatus.value) throw IOException("Network unavailable")
                 return Result.success(block())
             } catch (e: CancellationException) {
                 throw e
@@ -373,6 +385,15 @@ class SyncUtils @Inject constructor(
     }
 
     fun likeSong(s: SongEntity) {
+        val cookie = context.dataStore.get(InnerTubeCookieKey, "")
+        if (s.isLocal || cookie.isNullOrEmpty()) return
+        synchronized(pendingLikes) {
+            if (pendingLikesCookie != cookie) {
+                pendingLikes.clear()
+                pendingLikesCookie = cookie
+            }
+            pendingLikes[s.id] = s
+        }
         enqueueUnique(SyncOperation.LikeSong(s))
     }
 
@@ -566,6 +587,10 @@ class SyncUtils @Inject constructor(
 
 
     private suspend fun executeFullSync() = withContext(Dispatchers.IO) {
+        if (!connectivityObserver.networkStatus.value) {
+            lastFullSyncSucceeded = false
+            return@withContext
+        }
         if (!isLoggedIn()) {
             Timber.w("Skipping full sync - user not logged in")
             return@withContext
@@ -586,6 +611,9 @@ class SyncUtils @Inject constructor(
 
         val completedInTime = try {
             withTimeout(FULL_SYNC_TIMEOUT_MS) {
+                // Send local changes before reading the remote library, so a reconnect cannot
+                // undo a favorite whose request failed during the outage.
+                pendingLikes.values.toList().forEach { executeLikeSong(it) }
                 executeSyncLikedSongs()
                 delay(DB_OPERATION_DELAY_MS)
 
@@ -662,8 +690,18 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
+        val pendingSong = synchronized(pendingLikes) {
+            if (pendingLikesCookie != YouTube.cookie) {
+                pendingLikes.clear()
+                return@withContext
+            }
+            pendingLikes[s.id]
+        } ?: return@withContext
+
         withRetry {
-            YouTube.likeVideo(s.id, s.liked)
+            YouTube.likeVideo(pendingSong.id, pendingSong.liked).getOrThrow()
+        }.onSuccess {
+            pendingLikes.remove(pendingSong.id, pendingSong)
         }.onFailure { e ->
             Timber.e(e, "Failed to like song on YouTube: ${s.id}")
         }
@@ -674,7 +712,7 @@ class SyncUtils @Inject constructor(
                 LastFM.setLoveStatus(
                     artist = dbSong?.artists?.joinToString { a -> a.name } ?: "",
                     track = s.title,
-                    love = s.liked
+                    love = pendingSong.liked
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update LastFM love status")
@@ -691,7 +729,7 @@ class SyncUtils @Inject constructor(
 
         Timber.d("[CHANNEL_TOGGLE] User is logged in, calling YouTube.subscribeChannel")
         withRetry {
-            YouTube.subscribeChannel(channelId, subscribe)
+            YouTube.subscribeChannel(channelId, subscribe).getOrThrow()
         }.onSuccess {
             Timber.d("[CHANNEL_TOGGLE] Successfully subscribed/unsubscribed channel: $channelId")
             PodcastRefreshTrigger.triggerRefresh()
@@ -709,7 +747,7 @@ class SyncUtils @Inject constructor(
 
         Timber.d("[PODCAST_TOGGLE] User is logged in, calling YouTube.savePodcast")
         withRetry {
-            YouTube.savePodcast(podcastId, save)
+            YouTube.savePodcast(podcastId, save).getOrThrow()
         }.onSuccess {
             Timber.d("[PODCAST_TOGGLE] Successfully saved/unsaved podcast: $podcastId")
         }.onFailure { e ->
@@ -725,14 +763,14 @@ class SyncUtils @Inject constructor(
 
         if (save) {
             withRetry {
-                YouTube.addEpisodeToSavedEpisodes(episodeId)
+                YouTube.addEpisodeToSavedEpisodes(episodeId).getOrThrow()
             }.onFailure { e ->
                 Timber.e(e, "Failed to save episode: $episodeId")
             }
         } else {
             if (setVideoId != null) {
                 withRetry {
-                    YouTube.removeEpisodeFromSavedEpisodes(episodeId, setVideoId)
+                    YouTube.removeEpisodeFromSavedEpisodes(episodeId, setVideoId).getOrThrow()
                 }.onFailure { e ->
                     Timber.e(e, "Failed to remove episode: $episodeId")
                 }
@@ -775,7 +813,7 @@ class SyncUtils @Inject constructor(
                 if (remoteListLooksTruncated(remoteSongs.size, localSongs.size)) {
                     Timber.w("Liked songs sync: remote has ${remoteSongs.size} items vs ${localSongs.size} local — skipping removals to prevent data loss")
                 } else {
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                    localSongs.filterNot { it.id in remoteIds || pendingLikes.containsKey(it.id) }.forEach { song ->
                         try {
                             database.update(song.song.localToggleLike())
                             delay(DB_OPERATION_DELAY_MS)
@@ -787,6 +825,7 @@ class SyncUtils @Inject constructor(
 
                 val now = LocalDateTime.now()
                 remoteSongs.forEachIndexed { index, song ->
+                    if (pendingLikes.containsKey(song.id)) return@forEachIndexed
                     try {
                         val dbSong = database.song(song.id).firstOrNull()
                         val timestamp = now.minusSeconds(index.toLong())
@@ -1617,6 +1656,7 @@ class SyncUtils @Inject constructor(
     }
 
     private suspend fun executeSyncPlaylist(browseId: String, playlistId: String) = withContext(Dispatchers.IO) {
+        if (isPlaylistBeingModified(playlistId)) return@withContext
         Timber.d("syncPlaylist: Starting sync for browseId=$browseId, playlistId=$playlistId")
 
         withRetry {
@@ -1651,6 +1691,7 @@ class SyncUtils @Inject constructor(
                         .toSet()
 
                     database.withTransaction {
+                        if (isPlaylistBeingModified(playlistId)) return@withTransaction
                         database.clearPlaylist(playlistId)
                         songs.forEachIndexed { idx, song ->
                             if (database.song(song.id).firstOrNull() == null) {

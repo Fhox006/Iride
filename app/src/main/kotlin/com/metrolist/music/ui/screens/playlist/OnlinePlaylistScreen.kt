@@ -347,6 +347,7 @@ fun OnlinePlaylistScreen(
         playlist?.let { current ->
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "online_playlist/${current.id}",
                     title = current.title,
                     items = songs.shuffled().map { it.toMediaItem() },
                 )

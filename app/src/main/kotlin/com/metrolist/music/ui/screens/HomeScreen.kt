@@ -137,6 +137,8 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.discovery.MixMood
+import com.metrolist.music.ui.component.ReverieHomeCard
+import com.metrolist.music.viewmodels.MonthlyReverieViewModel
 import com.metrolist.music.ui.component.MixPosterPlaceholder
 import com.metrolist.music.discovery.MoodMixes
 import com.metrolist.innertube.models.isMixtape
@@ -180,6 +182,7 @@ import com.metrolist.music.ui.component.SharedHomeSectionTitle
 import com.metrolist.music.ui.component.HomeFollowedReleases
 import com.metrolist.music.ui.component.LocalHomeContentSnapshot
 import com.metrolist.music.ui.component.collectDeferredHomeState
+import com.metrolist.music.utils.appendLoadedHomeSections
 import com.metrolist.music.ui.screens.playlist.NewReleaseChartsShelf
 import com.metrolist.music.ui.screens.playlist.PreloadHomeCharts
 import com.metrolist.music.viewmodels.ChartDirectoryViewModel
@@ -394,8 +397,10 @@ private fun HomeScreenContent(
 ) {
     val menuState = LocalMenuState.current
     val chartViewModel: ChartDirectoryViewModel = hiltViewModel()
+    val reverieViewModel: MonthlyReverieViewModel = hiltViewModel()
+    val reverieMonths by reverieViewModel.archiveMonths.collectAsStateWithLifecycle()
+    val firstFullReverieMonth by reverieViewModel.firstFullMonth.collectAsStateWithLifecycle()
     PreloadHomeCharts(chartViewModel)
-    val chartsPosition = rememberSaveable { kotlin.random.Random.nextInt(1, 6) }
     val followedReleasesPosition = rememberSaveable { kotlin.random.Random.nextInt(1, 6) }
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
@@ -413,6 +418,12 @@ private fun HomeScreenContent(
     }.collectAsStateWithLifecycle()
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isHomeFeedLoading by viewModel.isHomeFeedLoading.collectAsStateWithLifecycle()
+    val isForYouLoading by viewModel.isForYouLoading.collectAsStateWithLifecycle()
+    val isAccountPlaylistsLoading by viewModel.isAccountPlaylistsLoading.collectAsStateWithLifecycle()
+    val dailyDiscoverComplete by viewModel.phase2DailyDiscoverDone.collectAsStateWithLifecycle()
+    val communityComplete by viewModel.phase2CommunityDone.collectAsStateWithLifecycle()
+    val similarComplete by viewModel.phase2SimilarDone.collectAsStateWithLifecycle()
 
     val speedDialItems by viewModel.speedDialItems.collectDeferredHomeState("speed_dial")
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectDeferredHomeState("pinned_speed_dial")
@@ -433,11 +444,21 @@ private fun HomeScreenContent(
     }
     val homePersonalMixes by viewModel.homePersonalMixes.collectDeferredHomeState("personal_mixes")
     val starredPlaylistThumbnails by viewModel.starredPlaylistThumbnails.collectDeferredHomeState("starred_thumbnails")
-    val similarRecommendations by viewModel.similarRecommendations.collectDeferredHomeState("similar_recommendations")
+    val similarRecommendations by viewModel.similarRecommendations.collectDeferredHomeState(
+        "similar_recommendations",
+        mergeWhileVisible = { current, incoming ->
+            appendLoadedHomeSections(current.orEmpty(), incoming.orEmpty()) { it.title.id }
+        },
+    )
     val quickPicks by viewModel.quickPicks.collectDeferredHomeState("quick_picks") {
         it.orEmpty().filterNot { song -> song.song.isVideo || song.song.isEpisode }.distinctBy { song -> song.id }.size >= 4
     }
-    val forYouShelves by viewModel.forYouShelves.collectDeferredHomeState("for_you") { it.size >= 4 }
+    val forYouShelves by viewModel.forYouShelves.collectDeferredHomeState(
+        "for_you",
+        mergeWhileVisible = { current, incoming ->
+            appendLoadedHomeSections(current, incoming) { it.artist.id }
+        },
+    ) { it.size >= 4 }
     val homePage by viewModel.homePage.collectDeferredHomeState("feed") { !it?.sections.isNullOrEmpty() }
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
@@ -631,7 +652,9 @@ private fun HomeScreenContent(
                             .combinedClickable(
                                 onClick = {
                                     if (!isListenTogetherGuest) {
-                                        if (item.id == mediaMetadata?.id) {
+                                        if (item.song.isVideo) {
+                                            playerConnection?.videoPlayback?.playVideo(item.toMediaMetadata())
+                                        } else if (item.id == mediaMetadata?.id) {
                                             playerConnection?.togglePlayPause()
                                         } else {
                                             playerConnection?.startRadioForSong(item.toMediaMetadata())
@@ -702,14 +725,16 @@ private fun HomeScreenContent(
                         isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
                         isPlaying = isPlaying,
                         coroutineScope = scope,
-                        thumbnailRatio = 1f,
+                        thumbnailRatio = if (item is SongItem && item.isVideoSong) 16f / 9f else 1f,
+                        forceThumbnailRatio = item is SongItem && item.isVideoSong,
                         size = currentGridHeight,
                         modifier = Modifier.combinedClickable(
                             onClick = {
                                 when (item) {
                                     is SongItem -> {
                                         if (!isListenTogetherGuest) {
-                                            playerConnection?.playQueue(
+                                            if (item.isVideoSong) playerConnection?.videoPlayback?.playVideo(item.toMediaMetadata())
+                                            else playerConnection?.playQueue(
                                                 YouTubeQueue(
                                                     item.endpoint ?: WatchEndpoint(videoId = item.id),
                                                     item.toMediaMetadata(),
@@ -874,7 +899,7 @@ private fun HomeScreenContent(
                     )
                 }
             }
-            val forYouLoading = !phase1Complete && forYouShelves.isEmpty()
+            val forYouLoading = isForYouLoading && forYouShelves.size < 4
             val forYouSection: LazyListScope.(HomeShelfOrder) -> Unit = { shelfOrder ->
                 if (forYouLoading || forYouShelves.size >= 4) {
                     shelfOrder.added(hasFourRows = false)
@@ -1261,9 +1286,9 @@ private fun HomeScreenContent(
                         label.contains("similar to") || label.contains("simile a")
                     val isTrending = title.contains("trending") || title.contains("top 100")
                     val isNewRelease = title.contains("new release") || title.contains("nuove uscite")
-                    if ((!isTrending && !isNewRelease && !isSimilar) ||
-                        title.contains("video") || label.contains("video")
-                    ) return@feedSection
+                    val isVideoSection = title.contains("video") || label.contains("video") ||
+                        section.items.isNotEmpty() && section.items.all { it is SongItem && it.isVideoSong }
+                    if (!isTrending && !isNewRelease && !isSimilar && !isVideoSection) return@feedSection
                     if (title.contains("listen again") || label.contains("listen again") ||
                         title.contains("long listens") || title == accountName.lowercase() ||
                         title.contains("picked for you") || title.contains("picked 4u") ||
@@ -1272,9 +1297,9 @@ private fun HomeScreenContent(
                     ) return@feedSection
 
                     val sectionItems = section.items.distinctBy { it.id }.filter { item ->
-                        val isMusicItem = item is SongItem && !item.isVideoSong ||
+                        val isMusicItem = item is SongItem ||
                             item is AlbumItem || item is ArtistItem
-                        isMusicItem && (!isNewRelease || item is AlbumItem &&
+                        isMusicItem && (isVideoSection || !isNewRelease || item is AlbumItem &&
                             item.albumType?.lowercase() !in setOf("single", "singolo") &&
                             item.artists.orEmpty().any { artist ->
                                 artist.id?.let { it in knownArtistIds } == true
@@ -1303,7 +1328,7 @@ private fun HomeScreenContent(
                             else -> false
                         }
                     } else sectionItems
-                    if (displayItems.size < 4) return@feedSection
+                    if (displayItems.isEmpty() || !isVideoSection && displayItems.size < 4) return@feedSection
                     val matchedArtist = sectionItems.filterIsInstance<ArtistItem>()
                         .firstOrNull { it.title.equals(name, ignoreCase = true) }
                     val matchedAlbum = sectionItems.filterIsInstance<AlbumItem>()
@@ -1333,7 +1358,7 @@ private fun HomeScreenContent(
                             )
                         } else {
                             IrideFolioShelfHeader(
-                                title = stringResource(if (isTrending) R.string.home_trending_title else R.string.home_new_albums_title),
+                                title = if (isVideoSection) section.title else stringResource(if (isTrending) R.string.home_trending_title else R.string.home_new_albums_title),
                                 onClick = onSectionClick,
                                 modifier = homeTitleMotion("home_section_$index"),
                                 showNavigationArrow = false,
@@ -1351,7 +1376,8 @@ private fun HomeScreenContent(
                                 .rubberBandOverscroll(Orientation.Horizontal, sectionItemsState),
                         ) {
                             items(displayItems, key = { "home_section_${index}_item_${it.id}" }) { item ->
-                                ytGridItem(item)
+                                ytGridItem(if (isVideoSection && item is SongItem && !item.isVideoSong)
+                                    item.copy(musicVideoType = "MUSIC_VIDEO_TYPE_OMV") else item)
                             }
                         }
                     }
@@ -1479,6 +1505,30 @@ private fun HomeScreenContent(
                 }
 
                 forYouSection(shelfOrder)
+                // Reveal the next shelves only after those above have settled.
+                if (forYouLoading) return@IridePageLayout
+                if (homePage?.sections.isNullOrEmpty()) {
+                    item(key = "home_feed_status") {
+                        if (isHomeFeedLoading) {
+                            HomeFeedLoadingShelf(currentGridHeight)
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.home_feed_unavailable),
+                                    color = MaterialTheme.colorScheme.textSecondary,
+                                )
+                                TextButton(onClick = { viewModel.loadHomeData() }) {
+                                    Text(stringResource(R.string.home_mood_retry))
+                                }
+                            }
+                        }
+                    }
+                    return@IridePageLayout
+                }
                 if (isLoggedIn) shelfOrder.added(hasFourRows = false)
                 if (isLoggedIn) item(key = "home_personal_mixes_title") {
                     IrideFolioShelfHeader(
@@ -1720,22 +1770,69 @@ private fun HomeScreenContent(
                     }
                 }
                 var followedReleasesAdded = false
-                listOf(feedSection, dailySection, communitySection, similarSection, accountSection)
-                    .forEachIndexed { index, section ->
-                        section()
-                        if (index + 1 == chartsPosition) {
-                            item(key = "home_charts") {
-                                NewReleaseChartsShelf(navController, chartViewModel, preload = false)
+                val sectionReadiness = listOf(
+                    true,
+                    dailyDiscoverComplete || dailyDiscover.orEmpty().distinctBy { it.recommendation.id }.size >= 4,
+                    communityComplete || communityPlaylists.orEmpty().distinctBy { it.playlist.id }.size >= 4,
+                    similarComplete || !similarRecommendations.isNullOrEmpty(),
+                    !isLoggedIn || !isAccountPlaylistsLoading ||
+                        accountPlaylists.orEmpty().distinctBy { it.id }.size >= 4,
+                )
+                for ((index, section) in listOf(
+                    feedSection, dailySection, communitySection, similarSection, accountSection,
+                ).withIndex()) {
+                    section()
+                    if (!sectionReadiness[index]) {
+                        item(key = "home_pending_section_$index") {
+                            HomeFeedLoadingShelf(currentGridHeight)
+                        }
+                        return@IridePageLayout
+                    }
+                    if (!followedReleasesAdded && index + 1 >= followedReleasesPosition &&
+                        shelfOrder.canAdd(hasFourRows = true)
+                    ) {
+                        addFollowedReleases()
+                        followedReleasesAdded = true
+                    }
+                }
+
+                if (!followedReleasesAdded) {
+                    shelfOrder.added(hasFourRows = false)
+                    addFollowedReleases()
+                }
+                item(key = "home_charts") {
+                    NewReleaseChartsShelf(navController, chartViewModel, preload = false)
+                }
+                item(key = "reverie_archive_title") {
+                    SharedHomeSectionTitle(
+                        title = stringResource(R.string.reverie_archive_title),
+                        modifier = homeTitleMotion("reverie_archive"),
+                    )
+                }
+                if (reverieMonths.isNotEmpty()) {
+                    item(key = "reverie_archive") {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                            contentPadding = PaddingValues(horizontal = IrideFolio.HorizontalPadding),
+                            horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
+                        ) {
+                            items(reverieMonths, key = { it.toString() }) { month ->
+                                ReverieHomeCard(
+                                    month = month,
+                                    onClick = { navController.navigate("reverie/$month") },
+                                    modifier = Modifier.width(300.dp),
+                                )
                             }
                         }
-                        if (!followedReleasesAdded && index + 1 >= followedReleasesPosition &&
-                            shelfOrder.canAdd(hasFourRows = true)
-                        ) {
-                            addFollowedReleases()
-                            followedReleasesAdded = true
-                        }
                     }
-
+                } else {
+                    item(key = "reverie_upcoming") {
+                        com.metrolist.music.ui.component.ReverieAvailabilityCard(
+                            java.time.YearMonth.now(), firstFullReverieMonth,
+                            Modifier.padding(horizontal = IrideFolio.HorizontalPadding).padding(bottom = 24.dp),
+                        )
+                    }
+                }
                 item(key = "iride_features_title") {
                     SharedHomeSectionTitle(
                         title = stringResource(R.string.home_iride_features_title),
@@ -1771,13 +1868,35 @@ private fun HomeScreenContent(
                         }
                     }
                 }
-                if (!followedReleasesAdded) {
-                    shelfOrder.added(hasFourRows = false)
-                    addFollowedReleases()
-                }
+
             }
         }
     }
+    }
+}
+
+@Composable
+private fun HomeFeedLoadingShelf(thumbnailSize: Dp) {
+    ShimmerHost(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        showGradient = false,
+    ) {
+        Box(
+            Modifier.padding(horizontal = 20.dp).width(180.dp).height(24.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(4.dp)),
+        )
+        Spacer(Modifier.height(20.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().clipToBounds().padding(start = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(IrideFolio.ShelfItemSpacing),
+        ) {
+            repeat(4) {
+                Box(
+                    Modifier.width(thumbnailSize).height(thumbnailSize + 30.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp)),
+                )
+            }
+        }
     }
 }
 

@@ -406,8 +406,13 @@ private fun PageFrame(
     translateOverscroll: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val ambientBackground = LocalScreenFrostBackground.current
+    val pageBackground = rememberFrostBackdrop(
+        background = ambientBackground,
+        backgroundColor = MaterialTheme.colorScheme.surface,
+    )
     val backdrop = rememberFrostBackdrop(
-        background = LocalScreenFrostBackground.current,
+        background = ambientBackground,
         backgroundColor = MaterialTheme.colorScheme.surface,
         stableBlur = true,
     )
@@ -442,6 +447,7 @@ private fun PageFrame(
     CompositionLocalProvider(
         LocalOverscrollFactory provides null,
         LocalScreenFrostBackdrop provides backdrop,
+        LocalScreenFrostBackground provides pageBackground,
         LocalPageControlsProgress provides controlsProgress,
     ) {
         Box(
@@ -465,11 +471,18 @@ private fun PageFrame(
                     .recordFrostBackdrop(
                         backdrop,
                         enabled = controlsProgress > 0f || (backdrop?.recordingRequests ?: 0) > 0,
+                        trackScroll = true,
                     )
             ) {
                 // A sibling handles exposed background without competing with the list's fling.
                 Box(Modifier.fillMaxSize().irideFolioScrollReceiver(scrollState))
-                background()
+                Box(Modifier.fillMaxSize().recordFrostBackdrop(
+                    pageBackground, enabled = (pageBackground?.recordingRequests ?: 0) > 0,
+                )) {
+                    CompositionLocalProvider(LocalScreenFrostBackground provides ambientBackground) {
+                        background()
+                    }
+                }
                 content()
                 if (scrimProgress > 0f) {
                     Box(

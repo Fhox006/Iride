@@ -3,7 +3,6 @@ package com.metrolist.music.ui.screens.artist
 
 
 import android.content.Context
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -538,11 +537,15 @@ private fun ArtistScreenContent(
                                 onPlayClick = {
                                     if (shuffleEndpointForPlay != null) {
                                         playerConnection.playQueue(
-                                            YouTubeQueue(shuffleEndpointForPlay)
+                                            YouTubeQueue(
+                                                shuffleEndpointForPlay,
+                                                sourceRoute = "artist/${viewModel.artistId}",
+                                            )
                                         )
                                     } else if (librarySongs.isNotEmpty()) {
                                         playerConnection.playQueue(
                                             ListQueue(
+                                                sourceRoute = "artist/${viewModel.artistId}",
                                                 title = artistName.orEmpty(),
                                                 items =
                                                     librarySongs.shuffled().map { it.toMediaItem() },
@@ -695,6 +698,7 @@ private fun ArtistScreenContent(
                                                     } else {
                                                         playerConnection.playQueue(
                                                             ListQueue(
+                                                                sourceRoute = "artist/${viewModel.artistId}",
                                                                 title =
                                                                     libraryArtist?.artist?.name
                                                                         ?: "Unknown Artist",
@@ -926,6 +930,7 @@ private fun ArtistScreenContent(
                                                                 } else {
                                                                     playerConnection.playQueue(
                                                                         ListQueue(
+                                                                            sourceRoute = "artist/${viewModel.artistId}",
                                                                             title = section.title,
                                                                             items =
                                                                                 topSongs.map {
@@ -1051,7 +1056,8 @@ private fun ArtistScreenContent(
                                         section.title.contains("Album", ignoreCase = true)
                                     val isVideoSection =
                                         section.title.contains("Video", ignoreCase = true) ||
-                                            section.title.contains("Performance", ignoreCase = true)
+                                            section.title.contains("Performance", ignoreCase = true) ||
+                                            section.items.all { it is SongItem && it.isVideoSong }
                                     val rowState = rememberLazyListState()
                                     LazyRow(
                                         state = rowState,
@@ -1088,13 +1094,16 @@ private fun ArtistScreenContent(
                                                 isPlaying = isPlaying,
                                                 coroutineScope = coroutineScope,
                                                 thumbnailRatio =
-                                                    if (isVideoSection) 16f / 9f else 1f,
+                                                    if (isVideoSection) IrideFolio.VideoThumbnailRatio else 1f,
+                                                forceThumbnailRatio = isVideoSection,
+                                                thumbnailUrlOverride = if (isVideoSection && item is SongItem)
+                                                    com.metrolist.music.playback.youtubeVideoThumbnail(item.id, item.thumbnail) else null,
                                                 thumbnailCornerRadius =
-                                                    if (isVideoSection) 8.dp else 3.dp,
+                                                    if (isVideoSection) IrideFolio.VideoThumbnailRadius else 3.dp,
                                                 size =
                                                     when {
                                                         isAlbumSection -> 180.dp
-                                                        isVideoSection -> 110.dp
+                                                        isVideoSection -> IrideFolio.VideoThumbnailHeight
                                                         else -> 148.dp
                                                     },
                                                 modifier =
@@ -1102,9 +1111,9 @@ private fun ArtistScreenContent(
                                                             onClick = {
                                                                 when (item) {
                                                                     is SongItem -> {
-                                                                        if (isVideoSection) {
-                                                                            navController.navigate(
-                                                                                "video_player/${item.id}?title=${Uri.encode(item.title)}"
+                                                                        if (isVideoSection || item.isVideoSong) {
+                                                                            if (!isGuest) playerConnection.videoPlayback.playVideo(
+                                                                                item.toMediaMetadata(), "artist/${viewModel.artistId}",
                                                                             )
                                                                         } else if (!isGuest) {
                                                                             playerConnection
@@ -1117,6 +1126,7 @@ private fun ArtistScreenContent(
                                                                                         ),
                                                                                         item
                                                                                             .toMediaMetadata(),
+                                                                                        sourceRoute = "artist/${viewModel.artistId}",
                                                                                     )
                                                                                 )
                                                                         }
@@ -1158,6 +1168,7 @@ private fun ArtistScreenContent(
                                                                                         ),
                                                                                         item
                                                                                             .toMediaMetadata(),
+                                                                                        sourceRoute = "artist/${viewModel.artistId}",
                                                                                     )
                                                                                 )
                                                                         }
@@ -1471,7 +1482,7 @@ fun RecentAlbumPanel(
                 },
             color =
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (useMonospace) 0.5f else 1f
+                    alpha = if (useMonospace) 0.75f else 1f
                 ),
             modifier = Modifier.padding(bottom = 8.dp).revealMask(enterProgress),
         )

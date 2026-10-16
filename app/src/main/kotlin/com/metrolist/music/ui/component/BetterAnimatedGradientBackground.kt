@@ -76,6 +76,13 @@ fun BetterAnimatedGradientBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .invalidateFrostOnChanges {
+                angle0
+                angle1
+                angle2
+                angle3
+                resumeFadeAlpha
+            }
             .graphicsLayer {
                 alpha = resumeFadeAlpha * artworkOpacity
                 colorFilter = ColorFilter.colorMatrix(

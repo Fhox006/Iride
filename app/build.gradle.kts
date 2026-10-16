@@ -33,8 +33,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.1.0-alpha29"
+        versionCode = 30
+        versionName = "0.1.0-alpha30"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -219,6 +219,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation("net.java.dev.jna:jna:5.19.1@aar")
+    implementation("org.apache.commons:commons-compress:1.27.1")
     testImplementation(libs.junit)
 
     implementation(libs.guava)

@@ -84,7 +84,7 @@ data class GenreFilterState(
         get() {
             if (isLoading) return displayOrder
             val counts = genreCounts
-            return displayOrder.filter { (counts[it] ?: 0) >= 2 }
+            return displayOrder.filter { (counts[it] ?: 0) > 0 }
         }
 
     fun matches(songId: String): Boolean =
@@ -97,7 +97,6 @@ private const val INITIAL_PILL_RENDER_DELAY_MS = 120L
 
 private fun genreOrder(genreBySongId: Map<String, List<String>>): List<String> =
     genreBySongId.values.flatten().groupingBy { it }.eachCount()
-        .filterValues { it >= 2 }
         .entries
         .sortedByDescending { it.value }
         .map { it.key }
@@ -128,12 +127,18 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): G
 
     LaunchedEffect(ids) {
         selectedGenre = null
-        val missing = songs.filter { it.id !in genres }
+        val cached = songs.mapNotNull { info ->
+            GenreProvider.cachedGenres(info.id)?.takeIf { it.isNotEmpty() }?.let { info.id to it }
+        }.toMap()
+        genres = cached
+        stableGenres = cached
+        val initialOrder = genreOrder(cached)
+        if (savedOrder == null && initialOrder.isNotEmpty()) displayOrder = initialOrder
+        val missing = songs.filter { it.id !in cached }
         if (missing.isEmpty()) {
-            stableGenres = genres
             isLoading = false
-            val finalOrder = genreOrder(genres)
-            if (savedOrder == null) displayOrder = finalOrder
+            val finalOrder = savedOrder ?: initialOrder
+                    displayOrder = finalOrder
             cacheKey?.let { GenreProvider.saveOrder(it, finalOrder) }
             return@LaunchedEffect
         }
@@ -159,12 +164,11 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): G
         while (fetchJob.isActive) {
             delay(PILL_SNAPSHOT_INTERVAL_MS)
             stableGenres = genres
-            if (savedOrder == null) displayOrder = genreOrder(genres)
         }
         stableGenres = genres
         isLoading = false
         val finalOrder = genreOrder(genres)
-        if (savedOrder == null) displayOrder = finalOrder
+        displayOrder = if (displayOrder.isEmpty()) finalOrder else displayOrder + finalOrder.filterNot(displayOrder::contains)
         cacheKey?.let { GenreProvider.saveOrder(it, finalOrder) }
     }
 
@@ -203,7 +207,6 @@ fun GenrePillsRow(
                         text = genre,
                         selected = selected,
                         onClick = { state.onSelect(genre) },
-                        modifier = Modifier.animateItem(),
                     )
                 }
             }

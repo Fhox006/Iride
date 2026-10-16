@@ -178,6 +178,12 @@ fun TopScreenGradientBackground(
         modifier = modifier
             .fillMaxWidth()
             .height(TopGradientHeight)
+            .invalidateFrostOnChanges {
+                gradientColors
+                displayedThumbnail
+                incomingThumbnail
+                crossfadeProgress.value
+            }
             .irideBackgroundGrain(fadeOut = true),
     ) {
         when (playerBackground) {
@@ -269,6 +275,12 @@ private fun TopGradientBlobs(colors: List<Color>, bgColor: Color) {
         modifier = Modifier
             .fillMaxWidth()
             .height(TopGradientHeight)
+            .invalidateFrostOnChanges {
+                c0
+                c1
+                shift
+                resumeFadeAlpha
+            }
             .graphicsLayer { alpha = resumeFadeAlpha },
     ) {
         val w = size.width

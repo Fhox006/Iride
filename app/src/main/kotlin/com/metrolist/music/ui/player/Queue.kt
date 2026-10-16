@@ -172,45 +172,22 @@ private sealed class QueueSlot(val key: Any) {
 // so it's approximated from adjacent high-energy genre tags rather than faked.
 // Not private: IrideMp3Player.kt's queue preview reuses the exact same filter set/logic
 // instead of duplicating it, so the two UP NEXT surfaces (old + New Iride UI player) can't drift.
-const val AUTOMIX_FILTER_ALL = "ALL"
-const val AUTOMIX_FILTER_POPULAR = "POPULAR"
-const val AUTOMIX_FILTER_DISCOVER = "DISCOVER"
-const val AUTOMIX_FILTER_FAMILIAR = "FAMILIAR"
-const val AUTOMIX_FILTER_PARTY = "PARTY"
-const val AUTOMIX_FILTER_WORKOUT = "WORKOUT"
-const val AUTOMIX_FILTER_DEEP_CUTS = "DEEP CUTS"
-val AUTOMIX_STATIC_FILTERS = listOf(
-    AUTOMIX_FILTER_ALL, AUTOMIX_FILTER_POPULAR, AUTOMIX_FILTER_DISCOVER, AUTOMIX_FILTER_FAMILIAR,
-    AUTOMIX_FILTER_PARTY, AUTOMIX_FILTER_WORKOUT, AUTOMIX_FILTER_DEEP_CUTS,
-)
-private val PARTY_TAG_KEYWORDS = listOf("dance", "electro", "edm", "house", "pop")
-private val WORKOUT_TAG_KEYWORDS = listOf("rock", "metal", "hip", "rap", "edm")
-
 fun filterAutomix(
     items: List<androidx.media3.common.MediaItem>,
     filter: String,
     familiarArtists: Set<String>,
     genreBySongId: Map<String, List<String>>,
+    fallbackToAll: Boolean = true,
 ): List<androidx.media3.common.MediaItem> {
-    if (items.isEmpty() || filter == AUTOMIX_FILTER_ALL || filter == AUTOMIX_FILTER_POPULAR) return items
-    val filtered = when (filter) {
-        AUTOMIX_FILTER_DISCOVER -> items.filter { item ->
-            item.metadata?.artists?.none { it.name in familiarArtists } == true
-        }
-        AUTOMIX_FILTER_FAMILIAR -> items.filter { item ->
-            item.metadata?.artists?.any { it.name in familiarArtists } == true
-        }
-        AUTOMIX_FILTER_DEEP_CUTS -> items.drop(items.size / 2)
-        AUTOMIX_FILTER_PARTY -> items.filter { item ->
-            genreBySongId[item.mediaId]?.any { tag -> PARTY_TAG_KEYWORDS.any { tag.contains(it, true) } } == true
-        }
-        AUTOMIX_FILTER_WORKOUT -> items.filter { item ->
-            genreBySongId[item.mediaId]?.any { tag -> WORKOUT_TAG_KEYWORDS.any { tag.contains(it, true) } } == true
-        }
-        // Trailing dynamic chip: exact match against a real detected genre tag.
-        else -> items.filter { item -> genreBySongId[item.mediaId]?.any { it.equals(filter, true) } == true }
-    }
-    return filtered.ifEmpty { items }
+    val filtered =
+        matchingQueueMoodItems(
+            items,
+            filter,
+            familiarArtists,
+            artists = { it.metadata?.artists?.map { artist -> artist.name } },
+            genres = { genreBySongId[it.mediaId].orEmpty() },
+        )
+    return if (fallbackToAll && filtered.isEmpty()) items else filtered
 }
 
 @SuppressLint("UnrememberedMutableState")
@@ -239,6 +216,7 @@ fun InlineQueuePanel(
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val isRadio by playerConnection.service.isAutoMixQueueActive.collectAsState()
+    val automaticRecommendations by playerConnection.service.isAutomaticRecommendations.collectAsState()
     val automix by playerConnection.service.automixItems.collectAsState()
 
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -519,7 +497,7 @@ fun InlineQueuePanel(
         pills = {
             PlayerPill(
                 icon = R.drawable.radio,
-                isActive = isRadio,
+                isActive = isRadio && !automaticRecommendations,
                 enabled = !isListenTogetherGuest,
                 textButtonColor = textButtonColor,
                 iconButtonColor = iconButtonColor,
@@ -955,8 +933,7 @@ fun InlineQueuePanel(
                                                                     val navigated = castHandler?.navigateToMediaIfInQueue(window.mediaItem.mediaId) ?: false
                                                                     if (!navigated) playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
                                                                 } else {
-                                                                    playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
-                                                                    playerConnection.player.playWhenReady = true
+                                                                    playerConnection.playQueueItem(window.firstPeriodIndex)
                                                                 }
                                                             }
                                                         }

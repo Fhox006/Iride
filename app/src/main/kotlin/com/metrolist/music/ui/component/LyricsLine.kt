@@ -41,15 +41,24 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas as GraphicsCanvas
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -57,7 +66,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -66,10 +78,10 @@ import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.WordTimestamp
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.screens.settings.LyricsPosition
-import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.theme.SatoshiFontFamily
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
@@ -103,6 +115,36 @@ private const val BLOOM_MAX_CHARS = 14
 private const val BLOOM_MAX_ALPHA = 0.45f
 private const val BLOOM_MIN_RADIUS_DP = 4f
 private const val BLOOM_MAX_RADIUS_DP = 16f
+
+private data class LyricsVisualLine(
+    val glyphMask: ImageBitmap,
+    val offset: Offset,
+    val layerPaint: Paint = Paint(),
+) {
+    val size: Size = Size(glyphMask.width.toFloat(), glyphMask.height.toFloat())
+    val top: Float get() = offset.y
+    val bottom: Float get() = offset.y + glyphMask.height
+}
+
+private fun DrawScope.drawLyricsGlyphs(
+    line: LyricsVisualLine,
+    color: Color,
+    topLeft: Offset = line.offset,
+    brush: Brush? = null,
+) {
+    if (brush == null) {
+        drawImage(line.glyphMask, topLeft = topLeft, colorFilter = ColorFilter.tint(color))
+    } else {
+        val canvas = drawContext.canvas
+        canvas.saveLayer(Rect(topLeft, line.size), line.layerPaint)
+        try {
+            drawImage(line.glyphMask, topLeft = topLeft)
+            drawRect(brush = brush, topLeft = topLeft, size = line.size, blendMode = BlendMode.SrcIn)
+        } finally {
+            canvas.restore()
+        }
+    }
+}
 
 private fun String.containsRtl(): Boolean {
     for (c in this) {
@@ -344,6 +386,7 @@ internal fun LyricsLine(
                     subText?.let {
                         Text(
                             text = it,
+                            fontFamily = lyricStyle.fontFamily,
                             fontSize = 18.sp,
                             color = expressiveAccent.copy(alpha = 0.6f),
                             textAlign = agentTextAlign,
@@ -357,6 +400,7 @@ internal fun LyricsLine(
                 transText?.let {
                     Text(
                         text = it,
+                        fontFamily = lyricStyle.fontFamily,
                         fontSize = 16.sp,
                         color = expressiveAccent.copy(alpha = 0.5f),
                         textAlign = agentTextAlign,
@@ -397,6 +441,7 @@ private fun WordLevelLyrics(
     alignment: TextAlign
 ) {
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val textMeasurer = rememberTextMeasurer()
 
     var smoothPosition by remember { mutableLongStateOf(currentPositionState + lyricsOffset) }
@@ -514,7 +559,6 @@ private fun WordLevelLyrics(
     }
 
     val waveMaxAmpPx = with(density) { WAVE_MAX_AMP_DP.dp.toPx() }
-    val descentPadPx = with(density) { lyricStyle.fontSize.toPx() * 0.12f }
 
     val remappedWordTimesMs = remember(effectiveWords) {
         if (effectiveWords.size <= 1) {
@@ -565,6 +609,76 @@ private fun WordLevelLyrics(
 
         val isRtlText = remember(mainText) { mainText.containsRtl() }
 
+        val visualLines = remember(layoutResult, textMeasurer, density, layoutDirection) {
+            val paintPadding = ceil(with(density) { lyricStyle.fontSize.toPx() }).toInt().coerceAtLeast(1)
+            List(layoutResult.lineCount) { lineIndex ->
+                val start = layoutResult.getLineStart(lineIndex)
+                val end = layoutResult.getLineEnd(lineIndex, visibleEnd = true)
+                val lineLayout = textMeasurer.measure(
+                    text = mainText.substring(start, end),
+                    style = lyricStyle.copy(
+                        textDirection = if (layoutResult.getParagraphDirection(start) == ResolvedTextDirection.Rtl) {
+                            TextDirection.Rtl
+                        } else {
+                            TextDirection.Ltr
+                        },
+                    ),
+                    constraints = Constraints.fixedWidth(layoutResult.size.width),
+                    softWrap = false,
+                    overflow = TextOverflow.Visible,
+                )
+                val mask = ImageBitmap(
+                    width = lineLayout.size.width + paintPadding * 2,
+                    height = lineLayout.size.height + paintPadding * 2,
+                )
+                // Paint overflow belongs to the glyph mask, never to the chosen line height.
+                CanvasDrawScope().draw(
+                    density = density,
+                    layoutDirection = layoutDirection,
+                    canvas = GraphicsCanvas(mask),
+                    size = Size(mask.width.toFloat(), mask.height.toFloat()),
+                ) {
+                    drawText(lineLayout, topLeft = Offset(paintPadding.toFloat(), paintPadding.toFloat()), color = Color.White)
+                }
+                LyricsVisualLine(
+                    glyphMask = mask,
+                    offset = Offset(
+                        x = layoutResult.getLineLeft(lineIndex) - lineLayout.getLineLeft(0) - paintPadding,
+                        y = layoutResult.getLineBaseline(lineIndex) - lineLayout.getLineBaseline(0) - paintPadding,
+                    ),
+                )
+            }
+        }
+
+        val clusterLineIndices = remember(layoutResult, clusterCharOffsets) {
+            IntArray(clusterCount) { layoutResult.getLineForOffset(clusterCharOffsets[it]) }
+        }
+        val clusterBounds = remember(layoutResult, clusterCharOffsets) {
+            Array(clusterCount) { layoutResult.getBoundingBox(clusterCharOffsets[it]) }
+        }
+
+        val clusterClips = remember(visualLines, clusterLineIndices, clusterBounds, graphemeClusters) {
+            val cellsByLine = Array(visualLines.size) { mutableListOf<LyricsGlyphCell>() }
+            clusterBounds.forEachIndexed { clusterIndex, bounds ->
+                cellsByLine[clusterLineIndices[clusterIndex]].add(
+                    LyricsGlyphCell(
+                        clusterIndex = clusterIndex,
+                        left = minOf(bounds.left, bounds.right),
+                        right = maxOf(bounds.left, bounds.right),
+                        isWhitespace = graphemeClusters[clusterIndex].all { it.isWhitespace() },
+                    )
+                )
+            }
+            arrayOfNulls<LyricsGlyphCell>(clusterCount).also { clips ->
+                cellsByLine.forEachIndexed { lineIndex, cells ->
+                    val line = visualLines[lineIndex]
+                    lyricsGlyphClips(cells, line.offset.x, line.offset.x + line.size.width).forEach {
+                        clips[it.clusterIndex] = it
+                    }
+                }
+            }
+        }
+
         val wordBoundsPx = remember(layoutResult, charToWordData, clusterCharOffsets, effectiveWords.size) {
             val (wordIdxMap, _, _) = charToWordData
             val bounds = Array(effectiveWords.size) {
@@ -599,6 +713,138 @@ private fun WordLevelLyrics(
             return (0.35f + 0.65f * lengthFactor) * shape
         }
 
+        fun DrawScope.drawKaraokeGlyphs(onlyWordIndex: Int? = null) {
+            if (mainText.isEmpty()) return
+            if (!isActiveLine) {
+                drawText(layoutResult, color = lineColor)
+            } else {
+                val (wordIdxMap, _, _) = charToWordData
+                val wordFactors = effectiveWords.indices.map { wordIdx ->
+                    val (wStartMs, wEndMs) = remappedWordTimesMs[wordIdx]
+                    val isWordSung = smoothPosition > wEndMs
+                    val sungFactor = if (isWordSung) 1f
+                    else if (smoothPosition >= wStartMs) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                    else 0f
+                    sungFactor to isWordSung
+                }
+
+                for (i in 0 until clusterCount) {
+                    val glyphClip = clusterClips[i] ?: continue
+                    val charBounds = clusterBounds[i]
+                    val line = visualLines[clusterLineIndices[i]]
+                    val wordIdx = wordIdxMap[i]
+                    if (onlyWordIndex != null && wordIdx != onlyWordIndex) continue
+
+                    if (wordIdx == -1) {
+                        val unmappedLeft = glyphClip.left
+                        val unmappedRight = glyphClip.right
+                        clipRect(left = unmappedLeft, top = line.top, right = unmappedRight, bottom = line.bottom) {
+                            drawLyricsGlyphs(line, color = lineColor.copy(alpha = focusedAlpha))
+                        }
+                        continue
+                    }
+
+                    val (sungFactor, isWordSung) = wordFactors[wordIdx]
+                    val left = glyphClip.left
+                    val right = glyphClip.right
+
+                    if (isRtlText) {
+                        val alpha = focusedAlpha + (1f - focusedAlpha) * sungFactor
+                        clipRect(left = left, top = line.top, right = right, bottom = line.bottom) {
+                            drawLyricsGlyphs(line, color = expressiveAccent.copy(alpha = alpha))
+                        }
+                        continue
+                    }
+
+                    val originalWord = words[effectiveToOriginalIdx[wordIdx]]
+                    val bb = wordBoundsPx[wordIdx]
+                    val wLeft = bb[0]
+                    val wRight = bb[2]
+                    val wordWidthPx = (wRight - wLeft).coerceAtLeast(1f)
+
+                    val isLongWord = originalWord.text.length >= LONG_WORD_GLOW_CHARS
+                    val longWordGlow = if (isLongWord && !isWordSung) sungFactor * LONG_WORD_GLOW_BOOST else 0f
+                    val dimAlpha = (focusedAlpha * NOT_STARTED_ALPHA_FACTOR + longWordGlow).coerceAtMost(1f)
+
+                    var waveOffset = 0f
+                    if (!isWordSung && sungFactor > 0f) {
+                        val spanStartMs = (originalWord.startTime * 1000).toLong()
+                        val spanEndMs = (originalWord.endTime * 1000).toLong()
+                        val spanDurationMs = (spanEndMs - spanStartMs).toFloat().coerceAtLeast(1f)
+                        if (spanDurationMs > WAVE_DURATION_MIN_MS) {
+                            val timeIntoWord = (smoothPosition - spanStartMs).toFloat()
+                            val timeToEnd = (spanEndMs - smoothPosition).toFloat()
+                            val attackMs = minOf(WAVE_ATTACK_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
+                            val releaseMs = minOf(WAVE_RELEASE_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
+                            val rawAttack = (timeIntoWord / attackMs).coerceIn(0f, 1f)
+                            val rawRelease = (timeToEnd / releaseMs).coerceIn(0f, 1f)
+                            val attack = easeOutCubic(rawAttack)
+                            val release = smoothstep(rawRelease)
+                            val envelope = attack * release
+                            if (envelope > 0.001f) {
+                                val durationWeight = smoothstep(
+                                    ((spanDurationMs - WAVE_DURATION_MIN_MS) / (WAVE_DURATION_FULL_MS - WAVE_DURATION_MIN_MS)).coerceIn(0f, 1f)
+                                )
+                                val charCenterX = (charBounds.left + charBounds.right) / 2f
+                                val sweepXForLift = wLeft + sungFactor * wordWidthPx
+                                val sigma = wordWidthPx * 0.28f
+                                val dist = charCenterX - sweepXForLift
+                                val bump = exp(-(dist * dist) / (2f * sigma * sigma))
+                                waveOffset = -(envelope * durationWeight * bump * waveMaxAmpPx)
+                            }
+                        }
+                    }
+
+                    val cTop = line.top + waveOffset
+                    val cBottom = line.bottom + waveOffset
+                    val textOffset = line.offset + Offset(0f, waveOffset)
+
+                    if (sungFactor == 0f) {
+                        clipRect(left = left, top = cTop, right = right, bottom = cBottom) {
+                            drawLyricsGlyphs(line, topLeft = textOffset, color = expressiveAccent.copy(alpha = dimAlpha))
+                        }
+                    } else if (isWordSung) {
+                        clipRect(left = left, top = cTop, right = right, bottom = cBottom) {
+                            drawLyricsGlyphs(line, topLeft = textOffset, color = expressiveAccent)
+                        }
+                    } else {
+                        val featherPx = (wordWidthPx * SWEEP_FEATHER_FRACTION).coerceIn(sweepFeatherMinPx, sweepFeatherMaxPx)
+                        val sweepX = wLeft + sungFactor * wordWidthPx
+                        val solidRight = (sweepX - featherPx).coerceAtLeast(wLeft)
+                        val featherRight = sweepX.coerceAtMost(wRight)
+
+                        val solidPartRight = solidRight.coerceIn(left, right)
+                        val featherPartRight = featherRight.coerceIn(left, right)
+
+                        if (solidPartRight > left) {
+                            clipRect(left = left, top = cTop, right = solidPartRight, bottom = cBottom) {
+                                drawLyricsGlyphs(line, topLeft = textOffset, color = expressiveAccent)
+                            }
+                        }
+                        if (featherPartRight > solidPartRight) {
+                            clipRect(left = solidPartRight, top = cTop, right = featherPartRight, bottom = cBottom) {
+                                drawLyricsGlyphs(
+                                    line,
+                                    color = expressiveAccent,
+                                    topLeft = textOffset,
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(expressiveAccent, expressiveAccent.copy(alpha = dimAlpha)),
+                                        startX = solidRight,
+                                        endX = featherRight
+                                    )
+                                )
+                            }
+                        }
+                        if (right > featherPartRight) {
+                            clipRect(left = featherPartRight, top = cTop, right = right, bottom = cBottom) {
+                                drawLyricsGlyphs(line, topLeft = textOffset, color = expressiveAccent.copy(alpha = dimAlpha))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -624,12 +870,7 @@ private fun WordLevelLyrics(
                 ) {
                     val idx = activeWordIndex()
                     if (idx != -1) {
-                        val bb = wordBoundsPx[idx]
-                        if (bb[2] > bb[0]) {
-                            clipRect(left = bb[0], top = bb[1], right = bb[2], bottom = bb[3]) {
-                                drawText(layoutResult, color = expressiveAccent)
-                            }
-                        }
+                        drawKaraokeGlyphs(onlyWordIndex = idx)
                     }
                 }
             }
@@ -638,168 +879,7 @@ private fun WordLevelLyrics(
                 .matchParentSize()
                 .graphicsLayer(clip = false)
             ) {
-                if (mainText.isEmpty()) return@Canvas
-                if (!isActiveLine) {
-                    drawText(layoutResult, color = lineColor)
-                } else {
-                    if (isRtlText) {
-                        val (wordIdxMap, _, _) = charToWordData
-                        val wordFactors = effectiveWords.mapIndexed { wordIdx, word ->
-                            val (wStartMs, wEndMs) = remappedWordTimesMs[wordIdx]
-                            val isWordSung = smoothPosition > wEndMs
-                            val isWordActive = smoothPosition in wStartMs..wEndMs
-                            val sungFactor = if (isWordSung) 1f
-                            else if (smoothPosition >= wStartMs) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                            else 0f
-                            Triple(sungFactor, isWordSung, isWordActive)
-                        }
-
-                        drawText(layoutResult, color = lineColor.copy(alpha = focusedAlpha))
-
-                        effectiveWords.indices.forEach { wIdx ->
-                            val (sungFactor, isWordSung, isWordActive) = wordFactors[wIdx]
-
-                            var left = Float.MAX_VALUE
-                            var right = Float.MIN_VALUE
-                            var top = Float.MAX_VALUE
-                            var bottom = Float.MIN_VALUE
-                            var found = false
-
-                            for (i in 0 until clusterCount) {
-                                if (wordIdxMap[i] == wIdx) {
-                                    val bounds = layoutResult.getBoundingBox(clusterCharOffsets[i])
-                                    left = minOf(left, bounds.left, bounds.right)
-                                    right = maxOf(right, bounds.left, bounds.right)
-                                    top = minOf(top, bounds.top)
-                                    bottom = maxOf(bottom, bounds.bottom)
-                                    found = true
-                                }
-                            }
-
-                            if (found) {
-                                if (isWordSung) {
-                                    clipRect(left = left, top = top, right = right, bottom = bottom) {
-                                        drawText(layoutResult, color = expressiveAccent)
-                                    }
-                                } else if (isWordActive && sungFactor > 0f) {
-                                    clipRect(left = left, top = top, right = right, bottom = bottom) {
-                                        drawText(layoutResult, color = expressiveAccent.copy(alpha = focusedAlpha + (1f - focusedAlpha) * sungFactor))
-                                    }
-                                }
-                            }
-                        }
-                        return@Canvas
-                    }
-
-                    val (wordIdxMap, _, _) = charToWordData
-                    val wordFactors = effectiveWords.mapIndexed { wordIdx, word ->
-                        val (wStartMs, wEndMs) = remappedWordTimesMs[wordIdx]
-                        val isWordSung = smoothPosition > wEndMs
-                        val sungFactor = if (isWordSung) 1f
-                        else if (smoothPosition >= wStartMs) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                        else 0f
-                        Triple(sungFactor, word, isWordSung)
-                    }
-
-                    for (i in 0 until clusterCount) {
-                        val charBounds = layoutResult.getBoundingBox(clusterCharOffsets[i])
-                        val wordIdx = wordIdxMap[i]
-                        val hasDescender = graphemeClusters[i].any { c -> c.lowercaseChar() in "gjpqy" }
-
-                        if (wordIdx == -1) {
-                            val unmappedLeft = minOf(charBounds.left, charBounds.right)
-                            val unmappedRight = maxOf(charBounds.left, charBounds.right)
-                            clipRect(left = unmappedLeft, top = charBounds.top, right = unmappedRight, bottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f)) {
-                                drawText(layoutResult, color = lineColor.copy(alpha = focusedAlpha))
-                            }
-                            continue
-                        }
-
-                        val (sungFactor, _, isWordSung) = wordFactors[wordIdx]
-                        val originalWord = words[effectiveToOriginalIdx[wordIdx]]
-                        val bb = wordBoundsPx[wordIdx]
-                        val wLeft = bb[0]
-                        val wRight = bb[2]
-                        val wordWidthPx = (wRight - wLeft).coerceAtLeast(1f)
-
-                        val isLongWord = originalWord.text.length >= LONG_WORD_GLOW_CHARS
-                        val longWordGlow = if (isLongWord && !isWordSung) sungFactor * LONG_WORD_GLOW_BOOST else 0f
-                        val dimAlpha = (focusedAlpha * NOT_STARTED_ALPHA_FACTOR + longWordGlow).coerceAtMost(1f)
-
-                        var waveOffset = 0f
-                        if (!isWordSung && sungFactor > 0f) {
-                            val spanStartMs = (originalWord.startTime * 1000).toLong()
-                            val spanEndMs = (originalWord.endTime * 1000).toLong()
-                            val spanDurationMs = (spanEndMs - spanStartMs).toFloat().coerceAtLeast(1f)
-                            if (spanDurationMs > WAVE_DURATION_MIN_MS) {
-                                val timeIntoWord = (smoothPosition - spanStartMs).toFloat()
-                                val timeToEnd = (spanEndMs - smoothPosition).toFloat()
-                                val attackMs = minOf(WAVE_ATTACK_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
-                                val releaseMs = minOf(WAVE_RELEASE_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
-                                val rawAttack = (timeIntoWord / attackMs).coerceIn(0f, 1f)
-                                val rawRelease = (timeToEnd / releaseMs).coerceIn(0f, 1f)
-                                val attack = easeOutCubic(rawAttack)
-                                val release = smoothstep(rawRelease)
-                                val envelope = attack * release
-                                if (envelope > 0.001f) {
-                                    val durationWeight = smoothstep(
-                                        ((spanDurationMs - WAVE_DURATION_MIN_MS) / (WAVE_DURATION_FULL_MS - WAVE_DURATION_MIN_MS)).coerceIn(0f, 1f)
-                                    )
-                                    val charCenterX = (charBounds.left + charBounds.right) / 2f
-                                    val sweepXForLift = wLeft + sungFactor * wordWidthPx
-                                    val sigma = wordWidthPx * 0.28f
-                                    val dist = charCenterX - sweepXForLift
-                                    val bump = exp(-(dist * dist) / (2f * sigma * sigma))
-                                    waveOffset = -(envelope * durationWeight * bump * waveMaxAmpPx)
-                                }
-                            }
-                        }
-
-                        val cTop = charBounds.top + waveOffset
-                        val cBottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f) + waveOffset
-
-                        val left = minOf(charBounds.left, charBounds.right)
-                        val right = maxOf(charBounds.left, charBounds.right)
-
-                        if (isWordSung) {
-                            clipRect(left = left, top = cTop, right = right, bottom = cBottom) {
-                                drawText(layoutResult, topLeft = Offset(0f, waveOffset), color = expressiveAccent)
-                            }
-                        } else {
-                            val featherPx = (wordWidthPx * SWEEP_FEATHER_FRACTION).coerceIn(sweepFeatherMinPx, sweepFeatherMaxPx)
-                            val sweepX = wLeft + sungFactor * wordWidthPx
-                            val solidRight = (sweepX - featherPx).coerceAtLeast(wLeft)
-                            val featherRight = sweepX.coerceAtMost(wRight)
-
-                            val solidPartRight = solidRight.coerceIn(left, right)
-                            val featherPartRight = featherRight.coerceIn(left, right)
-
-                            if (solidPartRight > left) {
-                                clipRect(left = left, top = cTop, right = solidPartRight, bottom = cBottom) {
-                                    drawText(layoutResult, topLeft = Offset(0f, waveOffset), color = expressiveAccent)
-                                }
-                            }
-                            if (featherPartRight > solidPartRight) {
-                                clipRect(left = solidPartRight, top = cTop, right = featherPartRight, bottom = cBottom) {
-                                    drawText(
-                                        layoutResult,
-                                        topLeft = Offset(0f, waveOffset),
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(expressiveAccent, expressiveAccent.copy(alpha = dimAlpha)),
-                                            startX = solidRight,
-                                            endX = featherRight
-                                        )
-                                    )
-                                }
-                            }
-                            if (right > featherPartRight) {
-                                clipRect(left = featherPartRight, top = cTop, right = right, bottom = cBottom) {
-                                    drawText(layoutResult, topLeft = Offset(0f, waveOffset), color = expressiveAccent.copy(alpha = dimAlpha))
-                                }
-                            }
-                        }
-                    }
-                }
+                drawKaraokeGlyphs()
             }
         }
     }

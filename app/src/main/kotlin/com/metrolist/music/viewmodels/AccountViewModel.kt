@@ -21,13 +21,18 @@ import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,10 +43,13 @@ enum class AccountContentType {
 }
 
 @HiltViewModel
+@OptIn(FlowPreview::class)
 class AccountViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     database: MusicDatabase,
+    private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
+    private var refreshJob: Job? = null
     val playlists = MutableStateFlow<List<PlaylistItem>?>(null)
     val albums = MutableStateFlow<List<AlbumItem>?>(null)
     val artists = MutableStateFlow<List<ArtistItem>?>(null)
@@ -59,6 +67,8 @@ class AccountViewModel @Inject constructor(
         for (attempt in 0 until maxRetries) {
             try {
                 return block()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 lastError = e
                 if (attempt < maxRetries - 1) {
@@ -85,31 +95,44 @@ class AccountViewModel @Inject constructor(
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            loadPlaylists()
-            withRetry {
-                YouTube.library("FEmusic_liked_albums").completed().getOrThrow()
-            }?.let { albums.value = it.items.filterIsInstance<AlbumItem>() }
-            withRetry {
-                YouTube.library("FEmusic_library_corpus_artists").completed().getOrThrow()
-            }?.let {
-                artists.value = it.items.filterIsInstance<ArtistItem>().map { artist ->
-                    artist.copy(thumbnail = artist.thumbnail?.resize(544, 544))
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            launch {
+                loadPlaylists()
+            }
+            launch {
+                withRetry {
+                    YouTube.library("FEmusic_liked_albums").completed().getOrThrow()
+                }?.let { albums.value = it.items.filterIsInstance<AlbumItem>() }
+            }
+            launch {
+                withRetry {
+                    YouTube.library("FEmusic_library_corpus_artists").completed().getOrThrow()
+                }?.let {
+                    artists.value = it.items.filterIsInstance<ArtistItem>().map { artist ->
+                        artist.copy(thumbnail = artist.thumbnail?.resize(544, 544))
+                    }
                 }
             }
-        }
-        viewModelScope.launch {
-            withRetry { YouTube.newEpisodesPlaylistInfo().getOrThrow() }
-                ?.let { rdpnPlaylist.value = it }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            withRetry { YouTube.libraryPodcastChannels().getOrThrow() }
-                ?.let { podcastChannels.value = it.items.filterIsInstance<ArtistItem>() }
+            launch {
+                withRetry { YouTube.newEpisodesPlaylistInfo().getOrThrow() }
+                    ?.let { rdpnPlaylist.value = it }
+            }
+            launch(Dispatchers.IO) {
+                withRetry { YouTube.libraryPodcastChannels().getOrThrow() }
+                    ?.let { podcastChannels.value = it.items.filterIsInstance<ArtistItem>() }
+            }
         }
     }
 
     init {
         refresh()
+
+        viewModelScope.launch {
+            networkConnectivity.networkChanged.debounce(1_000L).collect {
+                if (networkConnectivity.networkStatus.value) refresh()
+            }
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data

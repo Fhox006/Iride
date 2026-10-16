@@ -131,7 +131,8 @@ import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.CategoryFilterState
 import com.metrolist.music.ui.component.CategoryPillsRow
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.CreatePlaylistDialog
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
@@ -390,6 +391,16 @@ fun LocalPlaylistScreen(
         mutableStateOf(false)
     }
 
+    var showAddMusic by rememberSaveable { mutableStateOf(false) }
+    if (showAddMusic) {
+        playlist?.playlist?.let { target ->
+            CreatePlaylistDialog(
+                onDismiss = { showAddMusic = false },
+                targetPlaylist = target,
+            )
+        }
+    }
+
     if (showEditDialog) {
         playlist?.playlist?.let { playlistEntity ->
             TextFieldDialog(
@@ -590,6 +601,7 @@ fun LocalPlaylistScreen(
         playlist?.let { current ->
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "local_playlist/${current.playlist.id}",
                     title = current.playlist.name,
                     items = songs.shuffled().map { it.song.toMediaItem() },
                 )
@@ -603,6 +615,7 @@ fun LocalPlaylistScreen(
             playlist?.let { current ->
                 playerConnection.playQueue(
                     ListQueue(
+                        sourceRoute = "local_playlist/${current.playlist.id}",
                         title = current.playlist.name,
                         items = songs.map { it.song.toMediaItem() },
                     )
@@ -817,6 +830,15 @@ fun LocalPlaylistScreen(
                 },
                 actions = {
                     if (!inSelectMode && locked && !isSearching) {
+                        if (playlist?.playlist?.isEditable == true) {
+                            IrideOutlineIconButton(
+                                onClick = { showAddMusic = true },
+                                icon = R.drawable.add,
+                                contentDescription = stringResource(R.string.playlist_draft_add_music),
+                                size = 40.dp,
+                                iconSize = 20.dp,
+                            )
+                        }
                         playlist?.let { current ->
                             IrideOutlineIconButton(
                                 onClick = onTopBarLikeClick,
@@ -863,7 +885,7 @@ fun LocalPlaylistScreen(
                     else null,
             ) {
                 playlist?.let { playlist ->
-                    if (playlist.songCount == 0 && playlist.playlist.remoteSongCount == 0) {
+                    if (playlist.songCount == 0 && (playlist.playlist.remoteSongCount ?: 0) == 0) {
                         item(key = "empty_playlist_title") {
                             IrideCollectionTitle(
                                 title = playlist.playlist.name,
@@ -871,24 +893,17 @@ fun LocalPlaylistScreen(
                             )
                         }
 
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-                        item(key = "empty_placeholder") {
-                            EmptyPlaceholder(
-                                icon = R.drawable.music_note,
-                                text = stringResource(R.string.playlist_is_empty),
-                                modifier = Modifier.animateItem(),
-                            )
+                        if (playlist.playlist.isEditable) {
+                            item(key = "empty_playlist_add") {
+                                IrideFolioPrimaryButton(
+                                    onClick = { showAddMusic = true },
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                                ) {
+                                    Icon(painterResource(R.drawable.add), null, Modifier.size(20.dp))
+                                    Spacer(Modifier.size(8.dp))
+                                    Text(stringResource(R.string.playlist_draft_add_music))
+                                }
+                            }
                         }
                     } else {
                         if (!isSearching) {
@@ -1119,6 +1134,7 @@ fun LocalPlaylistScreen(
                                                 } else {
                                                     playerConnection.playQueue(
                                                         ListQueue(
+                                                            sourceRoute = "local_playlist/${viewModel.playlistId}",
                                                             title = playlist!!.playlist.name,
                                                             items =
                                                                 songs.map { it.song.toMediaItem() },
@@ -1693,6 +1709,7 @@ fun LocalPlaylistHeader(
         val onShuffleClick: () -> Unit = {
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "local_playlist/${playlist.playlist.id}",
                     title = playlist.playlist.name,
                     items = songs.shuffled().map { it.song.toMediaItem() },
                 )
@@ -1701,6 +1718,7 @@ fun LocalPlaylistHeader(
         val onPlaylistPlayClick: () -> Unit = {
             playerConnection.playQueue(
                 ListQueue(
+                    sourceRoute = "local_playlist/${playlist.playlist.id}",
                     title = playlist.playlist.name,
                     items = songs.map { it.song.toMediaItem() },
                 )

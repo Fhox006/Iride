@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <cache-path name="reverie_images" path="reverie/" />
     <external-files-path
         name="external_files_documents"
         path="Documents/MetrolistExports/" />

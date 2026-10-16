@@ -36,6 +36,7 @@ import com.metrolist.music.utils.potoken.PoTokenGenerator
 import com.metrolist.music.utils.potoken.PoTokenResult
 import com.metrolist.music.utils.sabr.EjsNTransformSolver
 import okhttp3.OkHttpClient
+import kotlinx.coroutines.ensureActive
 import timber.log.Timber
 
 object YTPlayerUtils {
@@ -684,37 +685,86 @@ object YTPlayerUtils {
         val videoUrl: String,
         val audioUrl: String,
         val title: String?,
+        val durationSeconds: Long,
+        val expiresInSeconds: Int,
+        val userAgent: String,
+        val videoLength: Long?,
+        val audioLength: Long?,
+        val thumbnailUrl: String?,
     )
 
-    private fun findVideoFormat(playerResponse: PlayerResponse): PlayerResponse.StreamingData.Format? =
-        playerResponse.streamingData?.adaptiveFormats
-            ?.filter { !it.isAudio && it.isOriginal && it.mimeType.startsWith("video/mp4") && (it.height ?: 0) <= 1080 }
-            ?.maxByOrNull { it.height ?: 0 }
+    private fun findVideoFormat(playerResponse: PlayerResponse, maxHeight: Int): PlayerResponse.StreamingData.Format? {
+        val formats = playerResponse.streamingData?.adaptiveFormats
+            ?.filter { !it.isAudio && it.isOriginal && it.mimeType.startsWith("video/mp4") && (it.height ?: 0) <= maxHeight }
+            .orEmpty()
+        // Prefer hardware-friendly H.264, including a lower resolution over software AV1 decoding.
+        val avc = formats.filter { it.mimeType.contains("avc1") }
+        return avc.ifEmpty { formats }.maxWithOrNull(
+            compareBy<PlayerResponse.StreamingData.Format> { it.height ?: 0 }
+                .thenBy { if ((it.fps ?: 30) <= 30) 1 else 0 }
+                .thenBy { -it.bitrate },
+        )
+    }
 
     private fun findBestAudioFormat(playerResponse: PlayerResponse): PlayerResponse.StreamingData.Format? =
         playerResponse.streamingData?.adaptiveFormats
             ?.filter { it.isAudio && it.isOriginal }
             ?.maxByOrNull { it.bitrate + (if (it.mimeType.startsWith("audio/webm")) 10240 else 0) }
 
-    suspend fun resolveVideoStreams(videoId: String): Result<VideoPlaybackData> = runCatching {
-        val isLoggedIn = YouTube.cookie != null
-        val signatureTimestamp = getSignatureTimestampMuzzaOrNull(videoId)
+    suspend fun resolveVideoStreams(
+        videoId: String,
+        maxHeight: Int = 1080,
+    ): Result<VideoPlaybackData> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val isLoggedIn = YouTube.cookie != null
+            val signatureTimestamp = getSignatureTimestampMuzzaOrNull(videoId)
 
-        for (client in arrayOf(MUZZA_MAIN_CLIENT, *MUZZA_STREAM_FALLBACK_CLIENTS)) {
-            if (client.loginRequired && !isLoggedIn) continue
+            for (client in arrayOf(MUZZA_MAIN_CLIENT, *MUZZA_STREAM_FALLBACK_CLIENTS)) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (client.loginRequired && !isLoggedIn) continue
 
-            val response = YouTube.player(videoId, null, client, signatureTimestamp).getOrNull() ?: continue
-            if (response.playabilityStatus.status != "OK") continue
+                val response = YouTube.player(videoId, null, client, signatureTimestamp).getOrNull() ?: continue
+                if (response.playabilityStatus.status != "OK") continue
 
-            val videoFormat = findVideoFormat(response) ?: continue
-            val audioFormat = findBestAudioFormat(response) ?: continue
+                val videoFormat = findVideoFormat(response, maxHeight) ?: continue
+                val audioFormat = findBestAudioFormat(response) ?: continue
+                val videoUrl = NewPipeExtractor.getStreamUrl(videoFormat, videoId) ?: continue
+                val audioUrl = NewPipeExtractor.getStreamUrl(audioFormat, videoId) ?: continue
+                val videoLength = videoFormat.contentLength ?: Uri.parse(videoUrl).getQueryParameter("clen")?.toLongOrNull()
+                val audioLength = audioFormat.contentLength ?: Uri.parse(audioUrl).getQueryParameter("clen")?.toLongOrNull()
 
-            val videoUrl = NewPipeExtractor.getStreamUrl(videoFormat, videoId) ?: continue
-            val audioUrl = NewPipeExtractor.getStreamUrl(audioFormat, videoId) ?: continue
+                // A playable first fragment is insufficient: both files must support seeking beyond it.
+                if (!validateVideoStream(videoUrl, client.userAgent, videoLength) ||
+                    !validateVideoStream(audioUrl, client.userAgent, audioLength)
+                ) continue
 
-            return@runCatching VideoPlaybackData(videoUrl, audioUrl, response.videoDetails?.title)
+                return@runCatching VideoPlaybackData(
+                    videoUrl = videoUrl,
+                    audioUrl = audioUrl,
+                    title = response.videoDetails?.title,
+                    durationSeconds = response.videoDetails?.lengthSeconds?.toLongOrNull() ?: 0,
+                    expiresInSeconds = response.streamingData?.expiresInSeconds ?: 1800,
+                    userAgent = client.userAgent,
+                    videoLength = videoLength,
+                    audioLength = audioLength,
+                    thumbnailUrl = response.videoDetails?.thumbnail?.thumbnails?.maxByOrNull { it.width ?: 0 }?.url,
+                )
+            }
+            throw Exception("No playable video stream found for $videoId")
         }
-
-        throw Exception("No playable video stream found for $videoId")
     }
+
+    private fun validateVideoStream(url: String, userAgent: String, length: Long?): Boolean = try {
+        val offset = minOf(1024L * 1024L, (length ?: (2L * 1024L * 1024L)) / 2).coerceAtLeast(0)
+        val size = minOf(1024L, length?.let { it - offset } ?: 1024L).coerceAtLeast(1)
+        val request = okhttp3.Request.Builder().url(url)
+            .header("User-Agent", userAgent)
+            .header("Range", "bytes=$offset-${offset + size - 1}")
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            val correctRange = response.code == 206 &&
+                response.header("Content-Range")?.startsWith("bytes $offset-") == true
+            (correctRange || offset == 0L && response.isSuccessful) && response.body.source().request(size)
+        }
+    } catch (_: java.io.IOException) { false }
 }

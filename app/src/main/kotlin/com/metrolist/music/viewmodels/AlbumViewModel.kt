@@ -13,8 +13,6 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.pages.AlbumPage
 import com.metrolist.music.discovery.AlbumDiscoveryRepository
-import com.metrolist.music.discovery.AlbumDiscoveryContext
-import com.metrolist.music.discovery.DiscoveryLanguage
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.utils.NetworkConnectivityObserver
@@ -22,9 +20,7 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.TimeoutCancellationException
@@ -39,13 +35,10 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
-import java.util.Locale
 
 data class AlbumDiscoveryState(
     val albums: List<AlbumItem> = emptyList(),
-    val styleAlbums: List<AlbumItem> = emptyList(),
-    val albumsLoading: Boolean = true,
-    val styleLoading: Boolean = true,
+    val albumsLoading: Boolean = false,
 )
 
 @HiltViewModel
@@ -68,96 +61,55 @@ constructor(
     var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
     private val _discovery = MutableStateFlow(AlbumDiscoveryState())
     val discovery = _discovery.asStateFlow()
-    private val _discoveryLanguage = MutableStateFlow(
-        DiscoveryLanguage.all.firstOrNull { it.code == savedStateHandle.get<String>("discoveryLanguage") }
-            ?: DiscoveryLanguage.defaultFor(Locale.getDefault()),
-    )
-    val discoveryLanguage = _discoveryLanguage.asStateFlow()
-    private val stateHandle = savedStateHandle
     private var discoveryPage: AlbumPage? = null
-    private var discoverySource: Deferred<AlbumDiscoveryContext?>? = null
     private var mixJob: Job? = null
-    private var styleJob: Job? = null
     private var hideDiscoveryExplicit = false
-    private var discoveryConfigured = false
     private var discoveryActive = false
 
-    fun configureDiscovery(appLocale: Locale, hideExplicit: Boolean) {
-        val changed = hideDiscoveryExplicit != hideExplicit
+    fun configureDiscovery(hideExplicit: Boolean) {
+        if (hideDiscoveryExplicit == hideExplicit) return
         hideDiscoveryExplicit = hideExplicit
-        if (!discoveryConfigured) {
-            discoveryConfigured = true
-            if (!stateHandle.contains("discoveryLanguage")) _discoveryLanguage.value = DiscoveryLanguage.defaultFor(appLocale)
-        }
-        if (discoveryActive && discoveryPage != null && (changed || mixJob == null)) loadDiscovery(refreshMix = true)
+        _discovery.value = _discovery.value.copy(
+            albums = _discovery.value.albums.filter { !hideExplicit || !it.explicit },
+        )
+        if (discoveryActive) loadDiscovery()
     }
 
     fun activateDiscovery() {
         if (discoveryActive) return
         discoveryActive = true
-        loadDiscovery(refreshMix = true)
-    }
-
-    fun selectDiscoveryLanguage(language: DiscoveryLanguage) {
-        if (_discoveryLanguage.value == language) return
-        _discoveryLanguage.value = language
-        stateHandle["discoveryLanguage"] = language.code
-        loadDiscovery(refreshMix = false)
+        loadDiscovery()
     }
 
     fun refreshDiscovery() {
-        if (discoveryPage == null) retry() else loadDiscovery(refreshMix = true)
+        discoveryActive = true
+        if (discoveryPage == null) retry() else loadDiscovery()
     }
 
-    private fun loadDiscovery(refreshMix: Boolean) {
+    private fun loadDiscovery() {
         val page = discoveryPage ?: return
-        val source = discoverySource ?: viewModelScope.async(Dispatchers.IO) {
-            withTimeoutOrNull(10_000) { discoveryRepository.prepare(page) }
-        }.also { discoverySource = it }
-        val language = _discoveryLanguage.value
         val hideExplicit = hideDiscoveryExplicit
         val rotation = System.nanoTime()
-        if (refreshMix) {
-            mixJob?.cancel()
-            _discovery.value = _discovery.value.copy(albumsLoading = true)
-            mixJob = viewModelScope.launch {
-                try {
-                    val baseline = discoveryRepository.immediateAlbums(page, hideExplicit)
-                    _discovery.value = _discovery.value.copy(albums = baseline)
-                    withTimeoutOrNull(18_000) {
-                        val albums = discoveryRepository.youtubeMix(page, hideExplicit, rotation) {
-                            _discovery.value = _discovery.value.copy(albums = it)
-                        }
-                        _discovery.value = _discovery.value.copy(albums = albums)
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    Timber.w(error, "Album recommendations retain cached YouTube results")
-                } finally {
-                    if (currentCoroutineContext().isActive) _discovery.value = _discovery.value.copy(albumsLoading = false)
-                }
-            }
-        }
-        styleJob?.cancel()
-        _discovery.value = _discovery.value.copy(styleLoading = true)
-        styleJob = viewModelScope.launch {
+        mixJob?.cancel()
+        _discovery.value = _discovery.value.copy(albumsLoading = true)
+        mixJob = viewModelScope.launch {
             try {
-                val baseline = discoveryRepository.immediateAlbums(page, hideExplicit, language)
-                _discovery.value = _discovery.value.copy(styleAlbums = baseline)
-                val context = withTimeoutOrNull(1_500) { source.await() }
+                val baseline = discoveryRepository.immediateAlbums(page, hideExplicit)
+                _discovery.value = _discovery.value.copy(albums = baseline)
                 withTimeoutOrNull(18_000) {
-                    val albums = discoveryRepository.youtubeStyle(page, language, hideExplicit, rotation, context) {
-                        _discovery.value = _discovery.value.copy(styleAlbums = it)
+                    val albums = discoveryRepository.youtubeMix(page, hideExplicit, rotation) {
+                        _discovery.value = _discovery.value.copy(albums = it)
                     }
-                    _discovery.value = _discovery.value.copy(styleAlbums = albums)
+                    _discovery.value = _discovery.value.copy(albums = albums)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                Timber.w(error, "Album style recommendations retain cached YouTube results")
+                Timber.w(error, "Album recommendations retain cached YouTube results")
             } finally {
-                if (currentCoroutineContext().isActive) _discovery.value = _discovery.value.copy(styleLoading = false)
+                if (currentCoroutineContext().isActive) {
+                    _discovery.value = _discovery.value.copy(albumsLoading = false)
+                }
             }
         }
     }
@@ -200,9 +152,9 @@ constructor(
             )
             val page = AlbumPage(item, emptyList(), otherVersions.value)
             discoveryPage = page
-            val albums = discoveryRepository.immediateAlbums(page, hideDiscoveryExplicit, _discoveryLanguage.value)
-            _discovery.value = AlbumDiscoveryState(albums, albums, albumsLoading = false, styleLoading = false)
-            if (discoveryActive) loadDiscovery(refreshMix = true)
+            val albums = discoveryRepository.immediateAlbums(page, hideDiscoveryExplicit)
+            _discovery.value = AlbumDiscoveryState(albums = albums)
+            if (discoveryActive) loadDiscovery()
         }
     }
 
@@ -226,14 +178,11 @@ constructor(
                             }
                             _isLoading.value = false
                             discoveryPage = albumPage
-                            val versionIds = albumPage.otherVersions.map { it.id }.toSet()
-                            val initial = albumPage.similarAlbums.distinctBy { it.id }
-                                .filterNot { it.id == albumId || it.id in versionIds || (hideDiscoveryExplicit && it.explicit) }
-                                .ifEmpty { listOf(albumPage.album) }
-                            _discovery.value = AlbumDiscoveryState(albums = initial, styleAlbums = initial)
-                            discoverySource?.cancel()
-                            discoverySource = null
-                            if (discoveryActive) loadDiscovery(refreshMix = true)
+                            val initial = discoveryRepository.usableAlbums(
+                                albumPage, albumPage.similarAlbums, hideDiscoveryExplicit,
+                            )
+                            _discovery.value = AlbumDiscoveryState(albums = initial)
+                            if (discoveryActive) loadDiscovery()
                         }.onFailure {
                             reportException(it)
                             if (it.message?.contains("NOT_FOUND") == true) {
@@ -243,7 +192,7 @@ constructor(
                             }
                             _hasError.value = true
                             _isLoading.value = false
-                            _discovery.value = _discovery.value.copy(albumsLoading = false, styleLoading = false)
+                            _discovery.value = _discovery.value.copy(albumsLoading = false)
                             restoreCachedDiscovery()
                         }
 
@@ -272,13 +221,13 @@ constructor(
             } catch (e: TimeoutCancellationException) {
                 _hasError.value = true
                 _isLoading.value = false
-                _discovery.value = _discovery.value.copy(albumsLoading = false, styleLoading = false)
+                _discovery.value = _discovery.value.copy(albumsLoading = false)
                 restoreCachedDiscovery()
             } catch (e: Exception) {
                 reportException(e)
                 _hasError.value = true
                 _isLoading.value = false
-                _discovery.value = _discovery.value.copy(albumsLoading = false, styleLoading = false)
+                _discovery.value = _discovery.value.copy(albumsLoading = false)
                 restoreCachedDiscovery()
             }
         }

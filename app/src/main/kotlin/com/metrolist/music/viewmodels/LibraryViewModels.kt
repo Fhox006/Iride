@@ -50,6 +50,7 @@ import com.metrolist.music.constants.DismissedSuggestedFollowArtistsKey
 import com.metrolist.music.constants.RecentlySuggestedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
 import com.metrolist.music.db.entities.PlaylistEntity
@@ -60,6 +61,7 @@ import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.filterYoutubeShorts
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
+import com.metrolist.music.extensions.parseAlbumReleaseDate
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.playback.DownloadUtil
@@ -326,6 +328,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    private val musicBrainzRepository: MusicBrainzRepository,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -347,11 +350,60 @@ constructor(
                 )
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideExplicit) ->
-                database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
+                database.albumsLiked(sortType, sortType == AlbumSortType.YEAR || descending)
+                    .map { it.filterExplicitAlbums(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val downloadedAlbums = database.albumsDownloadedByDateDesc()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val downloadedAlbums = context.dataStore.data
+        .map {
+            Triple(
+                it[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE),
+                it[AlbumSortDescendingKey] ?: true,
+                it[HideExplicitKey] ?: false,
+            )
+        }.distinctUntilChanged()
+        .flatMapLatest { (sortType, descending, hideExplicit) ->
+            database.albumsDownloaded(sortType, sortType == AlbumSortType.YEAR || descending)
+                .map { it.filterExplicitAlbums(hideExplicit) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val attemptedReleaseDates = mutableSetOf<String>()
+            context.dataStore.data
+                .map { it[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE) == AlbumSortType.YEAR }
+                .distinctUntilChanged()
+                .flatMapLatest { byYear ->
+                    if (byYear) {
+                        combine(allAlbums, downloadedAlbums) { saved, downloaded ->
+                            (saved + downloaded).distinctBy { it.id }
+                        }
+                    } else {
+                        flowOf(emptyList())
+                    }
+                }.collect { albums ->
+                    for (album in albums) {
+                        val currentSort = context.dataStore.data.first()[AlbumSortTypeKey]
+                            .toEnum(AlbumSortType.CREATE_DATE)
+                        if (currentSort != AlbumSortType.YEAR) break
+                        val previousDate = album.album.releaseDate
+                        if (previousDate?.length == 10 && parseAlbumReleaseDate(previousDate) != null) continue
+                        val artistName = album.artists.firstOrNull()?.name ?: continue
+                        if (!attemptedReleaseDates.add(album.id)) continue
+                        val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
+                            albumTitle = album.title,
+                            artistName = artistName,
+                            year = album.album.year,
+                        ) ?: continue
+                        val parsedDate = parseAlbumReleaseDate(releaseDate) ?: continue
+                        if (album.album.year != null && parsedDate.year != album.album.year) continue
+                        val hasUsableDate = parseAlbumReleaseDate(previousDate) != null
+                        if (hasUsableDate && releaseDate.length <= (previousDate?.length ?: 0)) continue
+                        database.updateAlbumReleaseDate(album.id, releaseDate, previousDate)
+                    }
+                }
+        }
+    }
 
     val likedAlbumsSongs = database.songsInBookmarkedAlbums()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

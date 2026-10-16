@@ -37,4 +37,15 @@ class ArtistArtworkPresentationTest {
         assertEquals("spotify-b", presentation.choose("b", "spotify-b"))
         assertEquals("apple-a", presentation.current("a"))
     }
+
+    @Test
+    fun finalSelectionPromotesVisibleFallbackAndIgnoresItsLateRelease() {
+        presentation.choose("artist", "youtube")
+        presentation.retain("artist", "youtube")
+        presentation.select("artist", "apple")
+        presentation.retain("artist", "apple")
+        presentation.release("artist", "youtube")
+        time = 60_000_000_000L
+        assertEquals("apple", presentation.choose("artist", "spotify"))
+    }
 }

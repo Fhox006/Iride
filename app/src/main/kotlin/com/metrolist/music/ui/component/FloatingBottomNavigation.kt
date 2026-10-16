@@ -497,6 +497,8 @@ internal fun Modifier.frostedNavigationSurface(
     progress: Float = 1f,
     surfaceAlpha: Float? = null,
     observeBackdrop: Boolean = false,
+    backdropOpacity: Float = 1f,
+    opaqueBackground: Boolean = true,
 ): Modifier = composed {
     var position by remember { mutableStateOf(Offset.Zero) }
     val revealPaint = remember { Paint() }
@@ -516,14 +518,16 @@ internal fun Modifier.frostedNavigationSurface(
             if (backdropReady) {
                 // Fade each control locally; mutating the shared layer's alpha also changes menus
                 // and other controls that reference it in the same frame.
-                if (reveal < 1f) {
-                    revealPaint.alpha = reveal
+                val sampleOpacity = backdropOpacity.coerceIn(0f, 1f)
+                val sampleAlpha = reveal * sampleOpacity
+                if (sampleAlpha < 1f) {
+                    revealPaint.alpha = sampleAlpha
                     drawContext.canvas.saveLayer(Rect(Offset.Zero, size), revealPaint)
                 }
-                // Replace the sharp page even where the native blur loses coverage at its edges.
-                drawRect(surface.copy(alpha = 1f))
+                // Opaque panels replace the page; glass blends the blur over the visible content.
+                if (opaqueBackground && sampleOpacity == 1f) drawRect(surface.copy(alpha = 1f))
                 drawFrostedBackdrop(backdrop, position)
-                if (reveal < 1f) drawContext.canvas.restore()
+                if (sampleAlpha < 1f) drawContext.canvas.restore()
             }
             drawRect(
                 surface,

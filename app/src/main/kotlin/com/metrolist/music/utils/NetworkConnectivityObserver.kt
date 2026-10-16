@@ -9,7 +9,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,14 +18,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Simple NetworkConnectivityObserver based on OuterTune's implementation
- * Provides network connectivity monitoring for auto-play functionality
+ * Observes the default route and validated Internet access, including network handovers.
  */
 class NetworkConnectivityObserver(context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val _networkStatus = MutableStateFlow(true)
+    private val connectionState = DefaultNetworkState<Network>()
+    private val _networkStatus = MutableStateFlow(isCurrentlyConnected())
     val networkStatus: StateFlow<Boolean> = _networkStatus.asStateFlow()
 
     private val _networkChanged = MutableSharedFlow<Unit>(
@@ -37,30 +36,33 @@ class NetworkConnectivityObserver(context: Context) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            _networkStatus.value = isCurrentlyConnected()
-            _networkChanged.tryEmit(Unit)
+            publishChange(connectionState.available(network))
         }
 
         override fun onLost(network: Network) {
-            _networkStatus.value = isCurrentlyConnected()
-            _networkChanged.tryEmit(Unit)
+            publishChange(connectionState.lost(network))
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            _networkStatus.value = isCurrentlyConnected()
-            _networkChanged.tryEmit(Unit)
+            publishChange(
+                connectionState.capabilitiesChanged(
+                    network,
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+                )
+            )
         }
     }
 
-    init {
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-            .build()
+    private fun publishChange(changed: Boolean) {
+        if (!changed) return
+        _networkStatus.value = connectionState.connected
+        _networkChanged.tryEmit(Unit)
+    }
 
+    init {
         try {
-            connectivityManager.registerNetworkCallback(request, networkCallback)
-            _networkStatus.value = isCurrentlyConnected()
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
         } catch (e: Exception) {
             _networkStatus.value = true
         }
@@ -78,7 +80,8 @@ class NetworkConnectivityObserver(context: Context) {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
 
-            networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         } catch (e: Exception) {
             false
         }

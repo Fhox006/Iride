@@ -123,6 +123,30 @@ import com.metrolist.music.ui.utils.rememberReducedMotion
  * continuano a muoversi con la stessa resistenza progressiva e molla della pagina. Il contenuto
  * resta nel clip del pannello; superficie e scrollbar rimangono ferme durante il trascinamento.
  *
+ * PLAYER E SCORRIMENTO
+ *
+ * Ogni sezione Folio, inclusi menu, coda e cronologia del player, usa irideFolioGestures:
+ * inerzia nativa, resistenza progressiva ai bordi e ritorno elastico, senza stretch Android.
+ * Il fullscreen si richiama accanto alla stella; nella coda lo stesso slot passa alla cronologia.
+ * IrideMp3DisplayHost sposta la composizione dell'intero display, incluso il footer, tra le finestre.
+ * Nessun secondo pannello sostituisce l'originale: geometria, inset, raggi e trasporto dipendono
+ * dallo stesso avanzamento reversibile. IrideFolioPlayerPanel allarga il footer fino ai bordi;
+ * il minutaggio resta sopra la barra, titolo e autore restano sotto. Fullscreen resta a destra;
+ * i tre puntini restano disponibili anche in fullscreen. Il viewport si estende
+ * gradualmente dietro al footer: quando i controlli sfumano non resta una fascia vuota.
+ * Il bordo superiore del footer ? concavo, con la curva rivolta verso il viewport. Gli inset
+ * originali vengono ripristinati prima del rientro e il passaggio tra finestre avviene
+ * solo dopo aver disegnato la geometria finale, senza un secondo ridimensionamento.
+ * Il trasporto separato usa IrideMp3WheelGeometry: simboli, dimensioni e centri sono quelli
+ * della ghiera, senza una seconda scala. Il video resta nel display verticale: il sensore
+ * ruota solo la superficie del filmato. I testi rispettano l?allineamento salvato e leggono
+ * la posizione viva del player; solo una vera anteprima di seek la sostituisce. Il pannello nero e le azioni
+ * contestuali sfumano insieme; condividi, traduci e canta occupano tre parti uguali in alto,
+ * senza box, e mascherano solo il testo sottostante. I filtri usano IrideFolioChoiceButton
+ * compatto, senza riempimenti bianchi, dentro lo stesso viewport dei brani. Il filtro mostra
+ * corrispondenze reali, anche nessuna, e ne anticipa la riproduzione senza eliminare gli altri
+ * brani. ALL ripristina l'ordine manuale. Solo la cronologia mostra IridePageTitle.
+ *
  * CONTROLLI DELLE COLLEZIONI
  *
  * Artisti, album e playlist (incluse automatiche e Top) usano
@@ -229,6 +253,7 @@ object IrideFolio {
     const val FrostedSurfaceOpacity = 0.25f
     const val FrostedFallbackOpacity = 0.45f
     const val FrostedLightTintOpacity = 0.10f
+    const val FrostedGlassBackdropOpacity = 0.20f
     const val FrostedLightSurfaceOpacity = 0.50f
     const val FloatingPillSurfaceOpacity = 0.84f
     const val FloatingPillFallbackOpacity = 0.96f
@@ -255,6 +280,23 @@ object IrideFolio {
     const val LyricsGrainOpacity = 0.05f
     const val SurfaceGrainOpacity = 0.05f
     const val ButtonGrainOpacity = 0.065f
+    const val VideoThumbnailRatio = 16f / 9f
+    val VideoThumbnailHeight = 112.dp
+    val VideoThumbnailRadius = 12.dp
+    val PlayerDisplayInset = 8.dp
+    val PlayerViewportFooterGap = 12.dp
+    val PlayerPanelCornerRadius = 18.dp
+    val PlayerTransportSpacing = 12.dp
+    val PlayerTransportHeight = 48.dp
+    val PlayerOverlayHeight = 80.dp
+    val PlayerOverlayTopSpacing = 0.dp
+    val CompactButtonMinHeight = 28.dp
+    const val CompactChoiceSelectedOpacity = 0.08f
+    const val CompactChoiceSelectedBorderOpacity = 0.3f
+    val CompactButtonHorizontalPadding = 8.dp
+    val PlayerActionSize = 40.dp
+    val PlayerActionTouchTargetSize = 48.dp
+    val PlayerActionIconSize = 20.dp
     val HorizontalPadding = 20.dp
     // Horizontal shelves in Home and Discovery share one typographic hierarchy.
     val ShelfSectionFontSize = 24.sp
@@ -361,6 +403,14 @@ object IrideFolio {
     val DialogSectionSpacing = 16.dp
     val DialogActionSpacing = 8.dp
     val DialogActionsTopSpacing = 24.dp
+    // Playlist drafts use a full Folio page, with an editable identity and shared song rows.
+    val EditorMaxWidth = 720.dp
+    val PlaylistDraftArtworkSize = 96.dp
+    val PlaylistDraftArtworkShape = RoundedCornerShape(12.dp)
+    val PlaylistDraftSectionGap = 20.dp
+    val PlaylistDraftNameFontSize = 22.sp
+    val PlaylistDraftNameLineHeight = 29.sp
+    val PlaylistPickerMaxHeight = 560.dp
     // Collection transport controls share one renderer across artists, albums and playlists.
     val CollectionPanelShape = RoundedCornerShape(percent = 50)
     val CollectionPanelBorderWidth = 1.dp
@@ -598,7 +648,7 @@ internal fun Modifier.irideFolioControlSurface(
             else layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
         }
         .frostedNavigationSurface(
-            backdrop,
+            backdrop ?: LocalFolioButtonBackdrop.current ?: LocalScreenFrostBackground.current,
             IrideFolio.frostedSurfaceColor(artworkInk ?: Color.White, artworkBackground),
             IrideFolio.ControlsShape,
             surfaceProgress,

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.data.remote
 
+import com.metrolist.music.extensions.parseAlbumReleaseDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,6 +38,7 @@ class MusicBrainzRepository @Inject constructor() {
             val releaseGroups = JSONObject(response).optJSONArray("release-groups") ?: return@withContext null
 
             var bestMbid: String? = null
+            var firstReleaseDate: String? = null
             for (i in 0 until releaseGroups.length()) {
                 val rg = releaseGroups.getJSONObject(i)
                 val rgTitle = rg.optString("title")
@@ -53,30 +55,34 @@ class MusicBrainzRepository @Inject constructor() {
 
                 if (year == null || rgDate.startsWith(year.toString())) {
                     bestMbid = rgMbid
+                    firstReleaseDate = rgDate.takeIf { parseAlbumReleaseDate(it) != null }
                     break
                 }
             }
             if (bestMbid == null) return@withContext null
+            // The release group's first date avoids choosing an arbitrary regional reissue.
+            if (firstReleaseDate?.length == 10) return@withContext firstReleaseDate
 
             val releaseUrl = URL("https://musicbrainz.org/ws/2/release?release-group=$bestMbid&fmt=json")
-            val releaseResponse = makeGetRequest(releaseUrl) ?: return@withContext null
+            val releaseResponse = makeGetRequest(releaseUrl) ?: return@withContext firstReleaseDate
             val releasesJson = JSONObject(releaseResponse)
-            val releases = releasesJson.optJSONArray("releases") ?: return@withContext null
+            val releases = releasesJson.optJSONArray("releases") ?: return@withContext firstReleaseDate
 
             var bestDate: String? = null
+            val releaseYear = year ?: parseAlbumReleaseDate(firstReleaseDate)?.year
 
             for (i in 0 until releases.length()) {
                 val release = releases.getJSONObject(i)
                 val date = release.optString("date")
-                if (date.isNotEmpty()) {
+                val parsedDate = parseAlbumReleaseDate(date) ?: continue
+                if (releaseYear == null || parsedDate.year == releaseYear) {
                     if (bestDate == null || isBetterDate(date, bestDate)) {
                         bestDate = date
                     }
-                    if (date.length == 10) break
                 }
             }
 
-            bestDate
+            bestDate ?: firstReleaseDate
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
@@ -109,6 +115,6 @@ class MusicBrainzRepository @Inject constructor() {
     }
 
     private fun isBetterDate(newDate: String, oldDate: String): Boolean {
-        return newDate.length > oldDate.length
+        return newDate.length > oldDate.length || (newDate.length == oldDate.length && newDate < oldDate)
     }
 }

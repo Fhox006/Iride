@@ -408,7 +408,19 @@ fun BottomSheetPlayer(
 
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val videoOpenRequest by playerConnection.videoPlayback.openPlayerRequests.collectAsState()
+    val videoPlaybackState by playerConnection.videoPlayback.state.collectAsState()
+    var consumedVideoOpenRequest by rememberSaveable { mutableStateOf(0L) }
+    LaunchedEffect(videoOpenRequest, videoPlaybackState.isVideo, videoPlaybackState.mediaId, mediaMetadata?.id) {
+        if (videoOpenRequest > consumedVideoOpenRequest &&
+            mediaMetadata?.id?.let(playerConnection.videoPlayback::isOpenPlayerReady) == true
+        ) {
+            consumedVideoOpenRequest = videoOpenRequest
+            state.expandSoft()
+        }
+    }
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val favoriteSong by playerConnection.favoriteSong.collectAsState(initial = null)
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
 
     val lyricsViewModel: LyricsViewModel = hiltViewModel()
@@ -895,12 +907,11 @@ fun BottomSheetPlayer(
             null
         }
 
-    BottomSheet(
+    com.metrolist.music.ui.component.IrideFolioDragPanel(
         state = state,
         modifier = modifier,
         clickableHeight = if (curtainMode) state.collapsedBound else MiniPlayerHeight,
-        collapsedClickEnabled = !curtainMode,
-        selfPositions = true,
+        curtainMode = curtainMode,
         // New Iride UI: the curtain is always mounted (see MainActivity's curtainActive), but with
         // no track loaded there's nothing to expand into — IrideMp3PlayerContent below only renders
         // for a non-null mediaMetadata, so disable both the tap and the drag-to-expand gesture until
@@ -908,9 +919,6 @@ fun BottomSheetPlayer(
         isExpandable = if (curtainMode) mediaMetadata != null else true,
         // The expanded panel leaves a glimpse of the app above its rounded top edge.
         expandedTopInset = expandedTopInset,
-        backgroundAlwaysOpaque = false,
-        backgroundFollowsContent = curtainMode,
-        topEdgeColor = Color.Transparent,
         background = background@{
             // The expanded MP3 content owns its artwork gradient.
             if (curtainMode) {
@@ -1454,7 +1462,7 @@ fun BottomSheetPlayer(
                                 )
                             } else {
                                 val isEpisode = currentSong?.song?.isEpisode == true
-                                val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
+                                val isFavorite = if (isEpisode) favoriteSong?.song?.inLibrary != null else favoriteSong?.song?.liked == true
                                 Icon(
                                     painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
                                     contentDescription = null,
@@ -1722,7 +1730,8 @@ fun BottomSheetPlayer(
             }
         }
 
-        when (LocalConfiguration.current.orientation) {
+        // The MP3 panel owns video fullscreen; rotation must not replace its composition.
+        when (if (curtainMode) Configuration.ORIENTATION_PORTRAIT else LocalConfiguration.current.orientation) {
             Configuration.ORIENTATION_LANDSCAPE -> {
                 // Calculate vertical padding like OuterTune
                 val density = LocalDensity.current
@@ -1879,7 +1888,7 @@ fun BottomSheetPlayer(
 
             else -> {
                 val isEpisode = currentSong?.song?.isEpisode == true
-                val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
+                val isFavorite = if (isEpisode) favoriteSong?.song?.inLibrary != null else favoriteSong?.song?.liked == true
 
                 mediaMetadata?.let {
                     IrideMp3PlayerContent(
@@ -1926,7 +1935,8 @@ fun BottomSheetPlayer(
                                 )
                             }
                         },
-                        isShuffleActive = playerConnection.service.isAutoMixQueueActive.collectAsState().value,
+                        isShuffleActive = playerConnection.service.isAutoMixQueueActive.collectAsState().value &&
+                            !playerConnection.service.isAutomaticRecommendations.collectAsState().value,
                         onShuffleClick = {
                             if (!isListenTogetherGuest) {
                                 playerConnection.toggleRadio(it)

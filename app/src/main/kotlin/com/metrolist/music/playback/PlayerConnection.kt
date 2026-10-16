@@ -61,6 +61,7 @@ class PlayerConnection(
     }
 
     val service = binder.service
+    val videoPlayback get() = service.videoPlayback
     private val playerReadinessFlow = service.isPlayerReady
 
     val audioBandLevels: kotlinx.coroutines.flow.StateFlow<com.metrolist.music.playback.audio.AudioBandLevels> =
@@ -148,6 +149,7 @@ class PlayerConnection(
         )
 
     val mediaMetadata = MutableStateFlow(player.currentMetadata)
+    val favoriteSong = service.favoriteSong
     val currentSong =
         mediaMetadata.flatMapLatest {
             database.song(it?.id)
@@ -162,6 +164,7 @@ class PlayerConnection(
         }
 
     val queueTitle = MutableStateFlow<String?>(null)
+    val queueSourceRoute = service.queueSourceRoute
     val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
     val currentMediaItemIndex = MutableStateFlow(-1)
     val currentWindowIndex = MutableStateFlow(-1)
@@ -415,6 +418,17 @@ class PlayerConnection(
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekTo")
+        }
+    }
+
+    fun playQueueItem(index: Int) {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
+        if (index !in 0 until player.mediaItemCount) return
+        val castHandler = service.castConnectionHandler
+        if (castHandler?.isCasting?.value == true) {
+            castHandler.navigateToMediaIfInQueue(player.getMediaItemAt(index).mediaId)
+        } else {
+            service.playQueueItem(index)
         }
     }
 

@@ -28,6 +28,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -155,9 +156,15 @@ class ArtistGameViewModel @Inject constructor(
 
         val prepared = rounds.take(3).map { round ->
             viewModelScope.async {
-                val uri = audioService.resolveStreamUrl(round.correct.id) ?: return@async null
-                audioService.prepareRound(round.correct.id, uri, round.positionMs)
-                round.correct.id to uri
+                try {
+                    val uri = audioService.resolveStreamUrl(round.correct.id) ?: return@async null
+                    audioService.prepareRound(round.correct.id, uri, round.positionMs)
+                    round.correct.id to uri
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    null
+                }
             }
         }.awaitAll()
         prepared.filterNotNull().forEach { (id, uri) -> resolvedUrls[id] = uri }
@@ -224,16 +231,25 @@ class ArtistGameViewModel @Inject constructor(
         val nextIndex = playing.roundIndex + 1
         val hasNext = nextIndex < playing.totalRounds
         val startAudioJob = if (correct && hasNext) {
-            viewModelScope.launch { audioService.playPreparedAwaitStart(rounds[nextIndex].correct.id) }
+            viewModelScope.async {
+                try {
+                    audioService.playPreparedAwaitStart(rounds[nextIndex].correct.id)
+                    true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    false
+                }
+            }
         } else {
             null
         }
         roundJob?.cancel()
         roundJob = viewModelScope.launch {
             delay(if (correct) 200 else 3000)
-            startAudioJob?.join()
+            val audioAlreadyPlaying = startAudioJob?.await() == true
             if (hasNext) {
-                startRound(nextIndex, audioAlreadyPlaying = correct)
+                startRound(nextIndex, audioAlreadyPlaying = audioAlreadyPlaying)
             } else {
                 finishGame()
             }

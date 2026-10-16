@@ -30,7 +30,9 @@ fun Lyrics(
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
     textScale: Float = 1f,
-    fullness: () -> Float = { 0f },
+    singleLineOnly: Boolean = false,
+    compactPresentation: Boolean = false,
+    fullness: () -> Float = { if (isFullScreen) 1f else 0f },
     morphing: () -> Boolean = { false },
 ) {
     val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = true)
@@ -47,6 +49,8 @@ fun Lyrics(
             showPills = showPills,
             pillsController = pillsController,
             textScale = textScale,
+            singleLineOnly = singleLineOnly,
+            compactPresentation = compactPresentation,
             fullness = fullness,
             morphing = morphing,
         )
@@ -73,6 +77,9 @@ fun Lyrics(
             showLyrics = showLyrics,
             pillsController = pillsController,
             textScale = textScale,
+            singleLineOnly = singleLineOnly,
+            compactPresentation = compactPresentation,
+            fullness = fullness,
         )
     }
 }

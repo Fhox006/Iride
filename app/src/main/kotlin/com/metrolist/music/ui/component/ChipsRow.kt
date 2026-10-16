@@ -24,6 +24,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -178,7 +179,7 @@ fun <E> ChipsRow(
 
 /**
  * Compact two-or-more-option pill switcher in the New Iride UI style: small underlined
- * text labels side by side, no background capsule so options never visually overlap.
+ * text labels side by side over the same blurred glass as Folio buttons.
  * Meant for header trailing slots (library saved/downloaded, search online/library, ...).
  *
  * The underline is a single shared indicator that glides smoothly from one label to the other on
@@ -205,7 +206,9 @@ fun <E> IrideSegmentedToggle(
     val indicatorX by animateFloatAsState(targetBounds?.first ?: 0f, indicatorAnimSpec, label = "irideSegmentedIndicatorX")
     val indicatorWidth by animateFloatAsState(targetBounds?.second ?: 0f, indicatorAnimSpec, label = "irideSegmentedIndicatorWidth")
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.width(IntrinsicSize.Max)
+        .irideFolioGlassSurface(LocalScreenFrostBackground.current)
+        .padding(horizontal = 12.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             options.forEachIndexed { index, (value, label) ->
                 val isSelected = selected == value

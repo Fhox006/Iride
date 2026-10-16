@@ -16,6 +16,9 @@ import kotlinx.coroutines.withContext
 class YouTubeQueue(
     private var endpoint: WatchEndpoint,
     override val preloadItem: MediaMetadata? = null,
+    override val sourceRoute: String? = endpoint.playlistId
+        ?.takeUnless { it.startsWith("RD") }
+        ?.let { "online_playlist/$it" },
 ) : Queue {
     private var continuation: String? = null
     private var retryCount = 0

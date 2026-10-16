@@ -10,6 +10,7 @@ import com.metrolist.music.data.remote.ChartTrackMatcher
 import com.metrolist.music.data.remote.DailyChart
 import com.metrolist.music.data.remote.DailyChartParser
 import com.metrolist.music.data.remote.isCurrentFor
+import com.metrolist.music.data.remote.isUsableFor
 import com.metrolist.music.data.remote.withRankMovements
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.HttpClient
@@ -94,12 +95,12 @@ class DailyChartRepository @Inject constructor(
             directory.listFiles().orEmpty().filter { it.name.matches(Regex("(?:global|[a-z]{2})\\.json")) }.forEach { file ->
                 val market = ChartMarket(file.nameWithoutExtension)
                 chartLocks.computeIfAbsent(market.code) { Mutex() }.withLock {
-                    val cached = read<DailyChart>(file)?.takeIf { it.isCurrentFor(market) }
+                    val cached = read<DailyChart>(file)?.takeIf { it.isUsableFor(market) }
                     if (cached != null) {
                         mutableCharts.update { states ->
                             if (states[market.code]?.chart != null) states else states + (market.code to ChartState(cached))
                         }
-                    } else AtomicFile(file).delete()
+                    }
                 }
             }
             loadedCache = true
@@ -111,8 +112,7 @@ class DailyChartRepository @Inject constructor(
         chartLocks.computeIfAbsent(market.code) { Mutex() }.withLock {
             val file = File(directory, "${market.code}.json")
             val oldState = mutableCharts.value[market.code]
-            val cached = (oldState?.chart ?: read<DailyChart>(file))?.takeIf { it.isCurrentFor(market) }
-            if (cached == null) AtomicFile(file).delete()
+            val cached = (oldState?.chart ?: read<DailyChart>(file))?.takeIf { it.isUsableFor(market) }
             val now = System.currentTimeMillis()
             val nextAttempt = nextChartAttempt[market.code] ?: 0L
             if (!force && cached != null && !needsRefresh(cached.checkedAt, now)) {
@@ -126,8 +126,7 @@ class DailyChartRepository @Inject constructor(
                 val response = chartRequests.withPermit { client.get(market.url) }
                 if (response.status.value == 404) {
                     nextChartAttempt[market.code] = now + 86_400_000
-                    AtomicFile(file).delete()
-                    mutableCharts.update { it + (market.code to ChartState(refreshFailed = true, sourceMissing = true)) }
+                    mutableCharts.update { it + (market.code to ChartState(cached, refreshFailed = true, sourceMissing = true)) }
                     return@withLock
                 }
                 check(response.status.value == 200) { "Chart HTTP ${response.status.value}" }

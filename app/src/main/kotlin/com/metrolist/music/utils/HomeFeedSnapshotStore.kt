@@ -1,6 +1,7 @@
 package com.metrolist.music.utils
 
 import android.content.Context
+import android.util.AtomicFile
 import com.metrolist.innertube.pages.HomePage
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -10,7 +11,6 @@ import java.io.File
 
 object HomeFeedSnapshotStore {
     private const val FILE_NAME = "home_feed_snapshot.json"
-    private const val MAX_AGE_MS = 12 * 60 * 60 * 1000L
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -20,28 +20,33 @@ object HomeFeedSnapshotStore {
         val page: HomePage,
     )
 
+    @Synchronized
     fun load(context: Context): Snapshot? =
         runCatching {
-            val file = File(context.filesDir, FILE_NAME)
-            if (!file.exists()) return@runCatching null
-            if (System.currentTimeMillis() - file.lastModified() > MAX_AGE_MS) {
-                file.delete()
-                return@runCatching null
-            }
-            json.decodeFromString<Snapshot>(file.readText()).takeIf { it.page.sections.isNotEmpty() }
+            val file = AtomicFile(File(context.filesDir, FILE_NAME))
+            json.decodeFromString<Snapshot>(file.readFully().toString(Charsets.UTF_8))
+                .takeIf { it.page.sections.isNotEmpty() }
         }.getOrNull()
 
+    @Synchronized
     fun save(context: Context, page: HomePage) {
+        if (page.sections.isEmpty()) return
         runCatching {
-            val tmp = File(context.filesDir, "$FILE_NAME.tmp")
-            tmp.writeText(json.encodeToString(Snapshot(savedAt = System.currentTimeMillis(), page = page)))
-            val dst = File(context.filesDir, FILE_NAME)
-            if (dst.exists()) dst.delete()
-            if (!tmp.renameTo(dst)) tmp.delete()
+            val data = json.encodeToString(Snapshot(savedAt = System.currentTimeMillis(), page = page))
+            val file = AtomicFile(File(context.filesDir, FILE_NAME))
+            val output = file.startWrite()
+            try {
+                output.write(data.toByteArray(Charsets.UTF_8))
+                file.finishWrite(output)
+            } catch (e: Exception) {
+                file.failWrite(output)
+                throw e
+            }
         }
     }
 
+    @Synchronized
     fun clear(context: Context) {
-        runCatching { File(context.filesDir, FILE_NAME).delete() }
+        AtomicFile(File(context.filesDir, FILE_NAME)).delete()
     }
 }

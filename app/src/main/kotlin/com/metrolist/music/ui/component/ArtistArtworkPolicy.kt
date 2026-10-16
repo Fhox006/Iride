@@ -68,7 +68,9 @@ private fun artistArtworkSelectionScore(source: ArtistArtworkSource, quality: Ar
 
 private fun canReplaceAppleArtwork(apple: ArtistArtworkQuality, alternative: ArtistArtworkQuality): Boolean {
     if (alternative.borderScore < 0.65f || alternative.definitionScore < 0.55f || alternative.photographic < 0.55f) return false
-    val technicallyBetter = alternative.technicalScore > apple.technicalScore + 0.08f
+    // A better score alone is insufficient: Apple must have a substantial visible defect.
+    val hasTechnicalDefect = apple.borderScore < 0.40f || apple.definitionScore < 0.40f
+    val technicallyBetter = hasTechnicalDefect && alternative.technicalScore > apple.technicalScore + 0.20f
     val replacesWeakNonPortrait = apple.portraitScore < 0.25f &&
         (apple.definition < 0.45f || apple.photographic < 0.45f || apple.blend < 0.5f) &&
         alternative.isGoodPortrait && alternative.definitionScore >= 0.60f
@@ -115,6 +117,8 @@ internal fun <T> preferredArtistArtwork(
     quality: (T) -> ArtistArtworkQuality = { ArtistArtworkQuality(0f, if (uniformCorners(it)) 1f else 0f, 1f) },
     incumbent: T? = null,
 ): T? {
+    // An established alternative has already used its one replacement opportunity.
+    if (incumbent != null && source(incumbent) != ArtistArtworkSource.APPLE_MUSIC) return incumbent
     val available = (candidates + listOfNotNull(incumbent)).distinct().filter(uniformCorners)
     // A well-defined portrait with a clean transition is a concrete reason to reject flat graphics.
     val acceptable = if (available.any { quality(it).isGoodPortrait }) {

@@ -14,6 +14,7 @@ val LocalHomeContentSnapshot = staticCompositionLocalOf<HomeContentSnapshot?> { 
 fun <T> StateFlow<T>.collectDeferredHomeState(
     key: String,
     identity: (T) -> Any? = { Unit },
+    mergeWhileVisible: (T, T) -> T = { current, _ -> current },
     hasContent: (T) -> Boolean = { value ->
         when (value) {
             null -> false
@@ -25,7 +26,7 @@ fun <T> StateFlow<T>.collectDeferredHomeState(
 ): State<T> {
     val snapshot = LocalHomeContentSnapshot.current
     val displayed = remember(snapshot, key, this) {
-        snapshot?.state(key, this, hasContent, identity) ?: this
+        snapshot?.state(key, this, hasContent, identity, mergeWhileVisible) ?: this
     }
     return displayed.collectAsStateWithLifecycle()
 }

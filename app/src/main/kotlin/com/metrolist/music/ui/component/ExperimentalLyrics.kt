@@ -80,6 +80,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -90,6 +91,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -239,9 +241,12 @@ fun ExperimentalLyrics(
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
     textScale: Float = 1f,
-    fullness: () -> Float = { 0f },
+    singleLineOnly: Boolean = false,
+    compactPresentation: Boolean = false,
+    fullness: () -> Float = { if (isFullScreen) 1f else 0f },
     morphing: () -> Boolean = { false },
 ) {
+    val currentSliderPositionProvider by rememberUpdatedState(sliderPositionProvider)
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
     val density = LocalDensity.current
@@ -250,7 +255,8 @@ fun ExperimentalLyrics(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
 
-    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val preferredLyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val lyricsTextPosition = preferredLyricsTextPosition
     val changeLyrics by rememberPreference(LyricsClickKey, true)
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
     val romanizeAsMain by rememberPreference(LyricsRomanizeAsMainKey, false)
@@ -589,7 +595,7 @@ fun ExperimentalLyrics(
             // sampling, and the extrapolation below keeps position smooth either way.
             delay(if (playerConnection.player.isPlaying) 16L else 80L)
             val now = System.currentTimeMillis()
-            val sliderPosition = sliderPositionProvider()
+            val sliderPosition = currentSliderPositionProvider()
             isSeeking = sliderPosition != null
 
             val position = if (isSeeking) {
@@ -800,7 +806,7 @@ fun ExperimentalLyrics(
 
         // End-of-lyrics settle: drift the whole block toward the lower part of the screen
         // once the final line has been sung, and release it again on seek back.
-        val endSettleTargetPx = (maxHeightPx * END_SETTLE_ANCHOR_RATIO - anchorY).coerceAtLeast(0f)
+        val endSettleTargetPx = if (singleLineOnly || compactPresentation) 0f else (maxHeightPx * END_SETTLE_ANCHOR_RATIO - anchorY).coerceAtLeast(0f)
         LaunchedEffect(lyricsEnded, endSettleTargetPx) {
             endSettleOffset.animateTo(
                 if (lyricsEnded) endSettleTargetPx else 0f,
@@ -1198,6 +1204,12 @@ fun ExperimentalLyrics(
                 mergedLyricsList.forEachIndexed { listIndex, listItem ->
                     key(listItem) {
                         val distance = abs(listIndex - activeListIndex)
+                        val compactOpacity by animateFloatAsState(
+                            targetValue = if (!singleLineOnly || !isSynced ||
+                                listIndex == activeListIndex || isSelectionModeActive) 1f else 0f,
+                            animationSpec = tween(350),
+                            label = "compactLyricOpacity_$listIndex",
+                        )
                         val targetOffset = anchorY + positions.getOrDefault(listIndex, (listIndex - activeListIndex) * lineHeightPx)
                         val frozenOffset = remember { mutableFloatStateOf(targetOffset) }
                         LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout) {
@@ -1218,11 +1230,14 @@ fun ExperimentalLyrics(
                             else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
+                        val lineOpacity = if (compactPresentation && isSynced &&
+                            listIndex != activeListIndex && !isSelectionModeActive) fullness() else compactOpacity
                         Box(
                             modifier = Modifier.fillMaxWidth().layout { m, c ->
                                 val p = m.measure(c.copy(maxHeight = Constraints.Infinity))
                                 layout(p.width, 0) { p.place(0, 0) }
                             }.offset { IntOffset(0, (animatedOffset + userManualOffset + endSettleOffset.value).roundToInt()) }
+                                .graphicsLayer { alpha = lineOpacity }
                         ) {
                             when (listItem) {
                                 is LyricsListItem.Indicator -> {
