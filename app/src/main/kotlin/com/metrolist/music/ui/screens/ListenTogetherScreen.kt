@@ -37,8 +37,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -486,7 +485,7 @@ private fun HeaderSection(isInRoom: Boolean = false) {
         Box(
             modifier =
                 Modifier.size(80.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -531,7 +530,7 @@ private fun ConnectionStatusCard(
                             stiffness = Spring.StiffnessLow,
                         )
                 ),
-        shape = RoundedCornerShape(20.dp),
+        shape = FolioShape(20.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -557,7 +556,7 @@ private fun ConnectionStatusCard(
                 Box(
                     modifier =
                         Modifier.size(10.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                             .background(
                                 color =
                                     when (connectionState) {
@@ -606,7 +605,7 @@ private fun ConnectionStatusCard(
             ) {
                 Spacer(modifier = Modifier.height(12.dp))
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxWidth().clip(FolioShape(8.dp)),
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -660,7 +659,7 @@ private fun RoomStatusCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = FolioShape(24.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -776,7 +775,7 @@ private fun ConnectedUsersSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = FolioShape(20.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -822,7 +821,7 @@ private fun UserAvatar(
         Box(contentAlignment = Alignment.Center) {
             Surface(
                 modifier = Modifier.size(56.dp),
-                shape = CircleShape,
+                shape = FolioShape(32),
                 color =
                     when {
                         user.isHost -> MaterialTheme.colorScheme.primary
@@ -852,7 +851,7 @@ private fun UserAvatar(
                 Surface(
                     modifier =
                         Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).size(20.dp),
-                    shape = CircleShape,
+                    shape = FolioShape(32),
                     color =
                         if (user.isHost) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.secondary,
@@ -913,7 +912,7 @@ private fun PendingJoinRequestsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = FolioShape(20.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -935,7 +934,7 @@ private fun PendingJoinRequestsSection(
                 ) {
                     Surface(
                         modifier = Modifier.size(40.dp),
-                        shape = CircleShape,
+                        shape = FolioShape(32),
                         color = MaterialTheme.colorScheme.secondary,
                     ) {
                         Box(
@@ -987,7 +986,7 @@ private fun PendingSuggestionsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = FolioShape(20.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -1069,7 +1068,7 @@ private fun JoinCreateRoomSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = FolioShape(24.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -1100,7 +1099,7 @@ private fun JoinCreateRoomSection(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = FolioShape(16.dp),
                 colors =
                     OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -1132,7 +1131,7 @@ private fun JoinCreateRoomSection(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = FolioShape(16.dp),
                 colors =
                     OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -1153,7 +1152,7 @@ private fun JoinCreateRoomSection(
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = FolioShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
                     Row(
@@ -1185,7 +1184,7 @@ private fun JoinCreateRoomSection(
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = FolioShape(12.dp),
                     color = MaterialTheme.colorScheme.errorContainer,
                 ) {
                     Row(
@@ -1253,7 +1252,7 @@ private fun JoinCreateRoomSection(
 private fun SettingsLinkCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = FolioShape(16.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -1328,7 +1327,7 @@ private fun UserActionDialog(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onKick),
-                shape = RoundedCornerShape(12.dp),
+                shape = FolioShape(12.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
             ) {
                 Row(
@@ -1360,7 +1359,7 @@ private fun UserActionDialog(
 
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onPermanentKick),
-                shape = RoundedCornerShape(12.dp),
+                shape = FolioShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 Row(
@@ -1391,7 +1390,7 @@ private fun UserActionDialog(
 
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onTransferOwnership),
-                shape = RoundedCornerShape(12.dp),
+                shape = FolioShape(12.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Row(

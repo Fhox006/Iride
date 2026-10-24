@@ -11,7 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,10 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -143,7 +141,6 @@ fun AutoPlaylistScreen(
     val menuState = LocalMenuState.current
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
-    val haptic = LocalHapticFeedback.current
     val uploadUnsupportedFormatStr = stringResource(R.string.upload_unsupported_format)
     val uploadFileTooLargeStr = stringResource(R.string.upload_file_too_large)
     val uploadFailedStr = stringResource(R.string.upload_failed)
@@ -903,7 +900,7 @@ fun AutoPlaylistScreen(
                                 },
                                 modifier =
                                     Modifier.fillMaxWidth()
-                                        .combinedClickable(
+                                        .irideFolioCombinedClickable(
                                             onClick = {
                                                 if (inSelectMode) {
                                                     onCheckedChange(song.id !in selection)
@@ -925,14 +922,7 @@ fun AutoPlaylistScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                if (!inSelectMode) {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
-                                                    inSelectMode = true
-                                                    onCheckedChange(true)
-                                                    selectionAnchorSongId = song.id
-                                                } else {
+                                                if (inSelectMode) {
                                                     val anchorIndex =
                                                         selectionAnchorSongId?.let { anchorSongId ->
                                                             filteredSongs.indexOfFirst {
@@ -955,6 +945,14 @@ fun AutoPlaylistScreen(
                                                                 selection.add(rangeSongId)
                                                             }
                                                         }
+                                                    }
+                                                } else {
+                                                    menuState.show(anchored = true) {
+                                                        SongMenu(
+                                                            originalSong = song,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
                                                     }
                                                 }
                                             },

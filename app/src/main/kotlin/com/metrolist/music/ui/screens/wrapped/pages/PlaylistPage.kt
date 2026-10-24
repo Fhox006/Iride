@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -98,7 +97,7 @@ fun PlaylistPage() {
                 contentDescription = stringResource(R.string.album_cover_desc),
                 modifier = Modifier
                     .size(256.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(FolioShape(3.dp))
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
@@ -116,7 +115,7 @@ fun PlaylistPage() {
                         manager.createPlaylist(playlistImageName)
                     }
                 },
-                shape = CircleShape,
+                shape = FolioShape(32),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 modifier = Modifier.height(50.dp)
             ) {

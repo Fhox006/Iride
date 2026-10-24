@@ -19,7 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.rememberPreference
@@ -62,7 +62,7 @@ fun <T> EnumDialog(
                 ) {
                     Text(
                         text = valueText(value),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = IBMPlexMonoFontFamily),
                         color = MaterialTheme.colorScheme.textPrimary,
                     )
                     if (valueDescription != null) {

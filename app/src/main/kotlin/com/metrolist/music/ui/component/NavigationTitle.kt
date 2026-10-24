@@ -1,19 +1,20 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,12 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,10 +44,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.textSecondary
-import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.pressScale
 
 @Composable
@@ -76,18 +71,12 @@ fun NavigationTitle(
     titleMaxLines: Int = 1,
     trailingContent: (@Composable () -> Unit)? = null,
 ) {
+    val displayHeading = LocalFolioDisplayHeadings.current?.shelf
     val headerInteractionSource = remember { MutableInteractionSource() }
     val hairlineColor = MaterialTheme.colorScheme.strokeHairline
-    Column(
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         if (useIrideStyle && showDivider) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(1.dp),
-            ) {
+            Canvas(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp)) {
                 drawLine(
                     color = hairlineColor,
                     start = androidx.compose.ui.geometry.Offset.Zero,
@@ -96,179 +85,208 @@ fun NavigationTitle(
                 )
             }
         }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressScale(headerInteractionSource)
-            .clickable(
-                enabled = onClick != null,
-                interactionSource = headerInteractionSource,
-                indication = null,
-            ) {
-                onClick?.invoke()
-            }
-            .padding(
-                start = if (useIrideStyle) 20.dp else 12.dp,
-                end = if (useIrideStyle) 20.dp else 12.dp,
-                top = topPadding ?: if (useIrideStyle) 26.dp else 12.dp,
-                bottom = bottomPadding ?: if (useIrideStyle) 2.dp else 12.dp,
-            )
-    ) {
-        thumbnail?.invoke()
-
-        Column(
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.weight(1f)
-        ) {
-            label?.let { label ->
-                Text(
-                    text = label,
-                    style = if (useIrideStyle) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontSize = IrideFolio.ShelfLabelFontSize,
-                            lineHeight = IrideFolio.ShelfLabelFontSize * 1.4f,
-                            letterSpacing = (-0.1).sp,
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    },
-                    fontWeight = if (prominentTitle) FontWeight.Normal else null,
-                    color = if (prominentTitle) MaterialTheme.colorScheme.textSecondary else androidx.compose.ui.graphics.Color.Unspecified,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            Text(
-                text = when {
-                    prominentTitle -> title
-                    sentenceCaseTitle -> title.lowercase().replaceFirstChar { it.titlecase() }
-                    useIrideStyle -> title.uppercase()
-                    else -> title
-                },
-                style = if (prominentTitle) {
-                    MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = IrideFolio.ShelfTitleFontSize,
-                        lineHeight = IrideFolio.ShelfTitleFontSize * 1.35f,
-                    )
-                } else if (useIrideStyle) {
-                    MaterialTheme.typography.labelLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = 13.sp,
-                        letterSpacing = (-0.1).sp,
-                    )
-                } else {
-                    MaterialTheme.typography.titleLarge
-                },
-                fontWeight = FontWeight.Bold,
-                color = if (useIrideStyle) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.primary,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = titleMaxLines,
-            )
-        }
-
-        trailingContent?.invoke()
-
-        onPlayAllClick?.let { playAllClick ->
-            if (useIrideStyle) {
-                val playAllInteractionSource = remember { MutableInteractionSource() }
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = stringResource(R.string.play_all),
-                    tint = MaterialTheme.colorScheme.textSecondary,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .pressScale(playAllInteractionSource, pressedScale = 0.85f)
-                        .clickable(
-                            interactionSource = playAllInteractionSource,
-                            indication = null,
-                            onClick = playAllClick,
-                        ),
-                )
-            } else {
-                OutlinedButton(
-                    onClick = playAllClick,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .pressScale(headerInteractionSource)
+                    .clickable(
+                        enabled = onClick != null,
+                        interactionSource = headerInteractionSource,
+                        indication = null,
+                    ) {
+                        onClick?.invoke()
+                    }
+                    .padding(
+                        start = if (useIrideStyle) 20.dp else 12.dp,
+                        end = if (useIrideStyle) 20.dp else 12.dp,
+                        top = topPadding ?: if (useIrideStyle) 26.dp else 12.dp,
+                        bottom = bottomPadding ?: if (useIrideStyle) 2.dp else 12.dp,
                     ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                    modifier = Modifier
-                        .height(24.dp)
-                ) {
+        ) {
+            thumbnail?.invoke()
+
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f),
+            ) {
+                label?.let { label ->
                     Text(
-                        text = stringResource(R.string.play_all),
-                        style = MaterialTheme.typography.labelSmall
+                        text = label,
+                        style =
+                            if (useIrideStyle) {
+                                MaterialTheme.typography.labelLarge.copy(
+                                    fontFamily = folioTypewriterFontFamily(),
+                                    fontSize = IrideFolio.ShelfLabelFontSize,
+                                    lineHeight = IrideFolio.ShelfLabelFontSize * 1.4f,
+                                    letterSpacing = (-0.1).sp,
+                                )
+                            } else {
+                                MaterialTheme.typography.labelLarge
+                            },
+                        fontWeight = if (prominentTitle) FontWeight.Normal else null,
+                        color =
+                            if (prominentTitle) MaterialTheme.colorScheme.textSecondary
+                            else androidx.compose.ui.graphics.Color.Unspecified,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-        }
 
-        onRefreshClick?.let { refreshClick ->
-            val rotation = if (isRefreshing) {
-                val infiniteTransition = rememberInfiniteTransition(label = "refreshRotation")
-                val angle by infiniteTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(animation = tween(800, easing = LinearEasing)),
-                    label = "refreshRotationAngle",
+                Text(
+                    text =
+                        when {
+                            prominentTitle && displayHeading != null -> title.homeSentenceCase()
+                            prominentTitle -> title
+                            sentenceCaseTitle ->
+                                title.lowercase().replaceFirstChar { it.titlecase() }
+                            useIrideStyle -> title.lowercase()
+                            else -> title
+                        },
+                    style =
+                        if (prominentTitle) {
+                            displayHeading
+                                ?: MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = folioTypewriterFontFamily(),
+                                    fontSize = IrideFolio.ShelfTitleFontSize,
+                                    lineHeight = IrideFolio.ShelfTitleFontSize * 1.35f,
+                                )
+                        } else if (useIrideStyle) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = folioTypewriterFontFamily(),
+                                fontSize = 13.sp,
+                                letterSpacing = (-0.1).sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.titleLarge
+                        },
+                    fontWeight =
+                        if (prominentTitle && displayHeading != null) {
+                            displayHeading.fontWeight
+                        } else FontWeight.Bold,
+                    color =
+                        if (useIrideStyle) MaterialTheme.colorScheme.textPrimary
+                        else MaterialTheme.colorScheme.primary,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = titleMaxLines,
                 )
-                angle
-            } else {
-                0f
             }
-            val refreshInteractionSource = remember { MutableInteractionSource() }
-            Icon(
-                painter = painterResource(R.drawable.refresh),
-                contentDescription = stringResource(R.string.refresh),
-                tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .size(20.dp)
-                    .graphicsLayer { rotationZ = rotation }
-                    .pressScale(refreshInteractionSource, pressedScale = 0.85f)
-                    .clickable(
-                        interactionSource = refreshInteractionSource,
-                        indication = null,
-                        enabled = !isRefreshing,
-                        onClick = refreshClick,
-                    ),
-            )
-        }
 
-        if (useIrideStyle && onCollapseToggle != null) {
-            val rotation by animateFloatAsState(
-                targetValue = if (collapsed) 180f else 0f,
-                label = "collapseArrowRotation",
-            )
-            val collapseInteractionSource = remember { MutableInteractionSource() }
-            Icon(
-                painter = painterResource(R.drawable.expand_more),
-                contentDescription = stringResource(
-                    if (collapsed) R.string.expand_section else R.string.collapse_section
-                ),
-                tint = MaterialTheme.colorScheme.textSecondary,
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = rotation }
-                    .pressScale(collapseInteractionSource, pressedScale = 0.85f)
-                    .clickable(
-                        interactionSource = collapseInteractionSource,
-                        indication = null,
-                        onClick = onCollapseToggle,
-                    ),
-            )
-        } else if (showNavigationArrow && onClick != null) {
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary
-            )
+            trailingContent?.invoke()
+
+            onPlayAllClick?.let { playAllClick ->
+                if (useIrideStyle) {
+                    val playAllInteractionSource = remember { MutableInteractionSource() }
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = stringResource(R.string.play_all),
+                        tint = MaterialTheme.colorScheme.textSecondary,
+                        modifier =
+                            Modifier.size(20.dp)
+                                .pressScale(playAllInteractionSource, pressedScale = 0.85f)
+                                .clickable(
+                                    interactionSource = playAllInteractionSource,
+                                    indication = null,
+                                    onClick = playAllClick,
+                                ),
+                    )
+                } else {
+                    OutlinedButton(
+                        onClick = playAllClick,
+                        shape = FolioShape(12.dp),
+                        border =
+                            BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            ),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                        modifier = Modifier.height(24.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.play_all),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            }
+
+            onRefreshClick?.let { refreshClick ->
+                val rotation =
+                    if (isRefreshing) {
+                        val infiniteTransition =
+                            rememberInfiniteTransition(label = "refreshRotation")
+                        val angle by
+                            infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 360f,
+                                animationSpec =
+                                    infiniteRepeatable(
+                                        animation = tween(800, easing = LinearEasing)
+                                    ),
+                                label = "refreshRotationAngle",
+                            )
+                        angle
+                    } else {
+                        0f
+                    }
+                val refreshInteractionSource = remember { MutableInteractionSource() }
+                Icon(
+                    painter = painterResource(R.drawable.refresh),
+                    contentDescription = stringResource(R.string.refresh),
+                    tint =
+                        if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
+                        else MaterialTheme.colorScheme.primary,
+                    modifier =
+                        Modifier.size(20.dp)
+                            .graphicsLayer { rotationZ = rotation }
+                            .pressScale(refreshInteractionSource, pressedScale = 0.85f)
+                            .clickable(
+                                interactionSource = refreshInteractionSource,
+                                indication = null,
+                                enabled = !isRefreshing,
+                                onClick = refreshClick,
+                            ),
+                )
+            }
+
+            if (useIrideStyle && onCollapseToggle != null) {
+                val rotation by
+                    animateFloatAsState(
+                        targetValue = if (collapsed) 180f else 0f,
+                        label = "collapseArrowRotation",
+                    )
+                val collapseInteractionSource = remember { MutableInteractionSource() }
+                Icon(
+                    painter = painterResource(R.drawable.expand_more),
+                    contentDescription =
+                        stringResource(
+                            if (collapsed) R.string.expand_section else R.string.collapse_section
+                        ),
+                    tint = MaterialTheme.colorScheme.textSecondary,
+                    modifier =
+                        Modifier.size(18.dp)
+                            .graphicsLayer { rotationZ = rotation }
+                            .pressScale(collapseInteractionSource, pressedScale = 0.85f)
+                            .clickable(
+                                interactionSource = collapseInteractionSource,
+                                indication = null,
+                                onClick = onCollapseToggle,
+                            ),
+                )
+            } else if (showNavigationArrow && onClick != null) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_forward),
+                    contentDescription = null,
+                    tint =
+                        if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
+                        else MaterialTheme.colorScheme.primary,
+                )
+            }
         }
-    }
     }
 }
 

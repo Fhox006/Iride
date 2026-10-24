@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
@@ -25,7 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -51,7 +52,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.IrideMotion
@@ -154,7 +155,7 @@ fun AppNavigationRail(
                                 contentDescription = stringResource(screen.titleId),
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .clip(CircleShape)
+                                    .clip(FolioShape(32))
                             )
                         } else {
                             Crossfade(
@@ -250,7 +251,7 @@ fun AppNavigationBar(
                                 contentDescription = stringResource(screen.titleId),
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .clip(CircleShape)
+                                    .clip(FolioShape(32))
                             )
                         } else {
                             Crossfade(
@@ -341,7 +342,7 @@ fun TopNavigationBar(
                     Text(
                         text = stringResource(screen.titleId),
                         style = TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
                             letterSpacing = (-0.1).sp,
@@ -387,7 +388,7 @@ fun TopNavigationBar(
                         contentDescription = stringResource(Screens.Account.titleId),
                         modifier = Modifier
                             .size(28.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                     )
                 } else {
                     Icon(
@@ -461,7 +462,7 @@ fun TopNavigationBar(
             Text(
                 text = stringResource(screen.titleId),
                 style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     letterSpacing = (-0.1).sp,

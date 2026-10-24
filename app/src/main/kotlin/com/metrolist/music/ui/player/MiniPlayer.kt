@@ -37,8 +37,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,12 +57,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -396,9 +394,9 @@ private fun NewMiniPlayer(
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp))
+                    .clip(FolioShape(32.dp))
                     .background(color = backgroundColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp)),
+                    .border(1.dp, outlineColor.copy(alpha = 0.3f), FolioShape(32.dp)),
         ) {
             when (miniPlayerBackground) {
                 MiniPlayerBackgroundStyle.GRADIENT -> {
@@ -509,14 +507,12 @@ private fun NewMiniPlayerPlayButton(
                     val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
 
                     val path = Path()
-                    val rrect = RoundRect(
-                        left = topLeft.x,
-                        top = topLeft.y,
-                        right = topLeft.x + diameter,
-                        bottom = topLeft.y + diameter,
-                        cornerRadius = CornerRadius(diameter * 0.208f),
+                    path.addOutline(
+                        FolioShape((diameter * 0.208f).toDp()).createOutline(
+                            Size(diameter, diameter), layoutDirection, this,
+                        ),
                     )
-                    path.addRoundRect(rrect)
+                    path.translate(topLeft)
                     drawPath(path, color = trackColor, style = stroke)
                     val measure = PathMeasure()
                     measure.setPath(path, false)
@@ -530,8 +526,8 @@ private fun NewMiniPlayerPlayButton(
             modifier =
                 Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                    .clip(FolioShape(10.dp))
+                    .border(1.dp, outlineColor.copy(alpha = 0.3f), FolioShape(10.dp))
                     .clickable {
                         playerBottomSheetState.expandSoft()
                     },
@@ -545,7 +541,7 @@ private fun NewMiniPlayerPlayButton(
                     model = thumbnailUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.fillMaxSize().clip(FolioShape(10.dp)),
                 )
             }
         }
@@ -612,7 +608,7 @@ private fun PlayPauseIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
-        modifier = Modifier.clip(CircleShape),
+        modifier = Modifier.clip(FolioShape(32)),
         onClick = {
             if (isListenTogetherGuest) return@IconButton
             if (isCasting) {
@@ -650,7 +646,7 @@ private fun SkipNextIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
-        modifier = Modifier.clip(CircleShape),
+        modifier = Modifier.clip(FolioShape(32)),
         enabled = canSkipNext && !isListenTogetherGuest,
         onClick = { playerConnection.seekToNext() },
     ) {

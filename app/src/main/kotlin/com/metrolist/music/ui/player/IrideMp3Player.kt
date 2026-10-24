@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import com.metrolist.music.ui.component.SongMenuIconButton
 
 import androidx.activity.compose.BackHandler
@@ -12,7 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -46,7 +48,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,10 +74,10 @@ import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
@@ -135,7 +137,7 @@ import com.metrolist.music.ui.component.PillCoverRadius
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.theme.InterFontFamily
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.pressScale
@@ -160,8 +162,8 @@ private val IrideMp3InfoActionSize = 48.dp
 private val IrideMp3InfoActionIconSize = 28.dp
 private val IrideMp3InfoActionColor = Color.White.copy(alpha = 0.9f)
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
-internal val IrideMp3ArtworkShape = RoundedCornerShape(5.dp)
-private val IrideMp3MenuRowShape = RoundedCornerShape(8.dp)
+internal val IrideMp3ArtworkShape = FolioShape(5.dp)
+private val IrideMp3MenuRowShape = FolioShape(8.dp)
 private val IrideMp3MenuOrder = listOf(0, 1, 3, 2, 4)
 
 // Shared artist-line grey — single source of truth for both the static info block and the
@@ -195,18 +197,16 @@ private fun DrawScope.drawBridgeProgressRing(
     progress: Float,
 ) {
     val inset = strokeWidthPx / 2f
-    val path =
-        Path().apply {
-            addRoundRect(
-                RoundRect(
-                    left = inset,
-                    top = inset,
-                    right = size.width - inset,
-                    bottom = size.height - inset,
-                    cornerRadius = CornerRadius(cornerRadiusPx),
-                )
-            )
-        }
+    val path = Path().apply {
+        addOutline(
+            irideSquircle(cornerRadiusPx.toDp()).createOutline(
+                Size((size.width - 2f * inset).coerceAtLeast(0f), (size.height - 2f * inset).coerceAtLeast(0f)),
+                layoutDirection,
+                this@drawBridgeProgressRing,
+            ),
+        )
+        translate(Offset(inset, inset))
+    }
     val stroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
     drawPath(path, color = Color.White.copy(alpha = 0.2f), style = stroke)
     if (progress > 0f) {
@@ -553,7 +553,7 @@ fun IrideMp3PlayerContent(
                                                             coverShape,
                                                         )
                                                         .clip(coverShape)
-                                                        .combinedClickable(
+                                                        .irideFolioCombinedClickable(
                                                             interactionSource =
                                                                 remember {
                                                                     MutableInteractionSource()
@@ -655,7 +655,7 @@ fun IrideMp3PlayerContent(
                                                 Text(
                                                     text = time,
                                                     color = Color.White.copy(alpha = 0.75f),
-                                                    fontFamily = SpaceMonoFontFamily,
+                                                    fontFamily = IBMPlexMonoFontFamily,
                                                     fontSize = (10 * displayTextScale).sp,
                                                     lineHeight = (14 * displayTextScale).sp,
                                                 )
@@ -682,7 +682,7 @@ fun IrideMp3PlayerContent(
                                             Text(
                                                 text = mediaMetadata.title,
                                                 color = Color.White,
-                                                fontFamily = SpaceMonoFontFamily,
+                                                fontFamily = IBMPlexMonoFontFamily,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = (16 * displayTextScale).sp,
                                                 lineHeight = (21 * displayTextScale).sp,
@@ -693,7 +693,7 @@ fun IrideMp3PlayerContent(
                                                             iterations = 1,
                                                             initialDelayMillis = 2000,
                                                         )
-                                                        .combinedClickable(
+                                                        .irideFolioCombinedClickable(
                                                             interactionSource =
                                                                 remember {
                                                                     MutableInteractionSource()
@@ -709,7 +709,7 @@ fun IrideMp3PlayerContent(
                                                 fontSize = (12 * displayTextScale).sp,
                                                 lineHeight = (16 * displayTextScale).sp,
                                                 fontWeight = FontWeight.Normal,
-                                                fontFamily = SpaceMonoFontFamily,
+                                                fontFamily = IBMPlexMonoFontFamily,
                                                 onArtistClick = onArtistClick,
                                                 modifier = Modifier.fillMaxWidth(),
                                             )
@@ -803,7 +803,7 @@ private fun IrideMp3InfoActions(
         Box(
             Modifier.size(IrideFolio.ControlsTouchTargetSize)
                 .pressScale(favoriteInteraction, pressedScale = 0.92f)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .clickable(
                     interactionSource = favoriteInteraction,
                     indication = null,
@@ -860,7 +860,7 @@ private fun IrideMp3InfoActions(
             Box(
                 Modifier.size(IrideFolio.ControlsTouchTargetSize)
                     .pressScale(interaction, pressedScale = .92f)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
@@ -947,7 +947,7 @@ private fun IrideMp3Transport(
         Box(
             Modifier.size(geometry.centerSize)
                 .pressScale(interaction, pressedScale = .96f)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -1016,9 +1016,9 @@ internal fun IrideMp3Progress(
     ) {
         Canvas(Modifier.fillMaxWidth().height(3.dp)) {
             val radius = CornerRadius(size.height / 2f)
-            drawRoundRect(Color.White.copy(alpha = 0.18f), cornerRadius = radius)
+            drawFolioRoundRect(Color.White.copy(alpha = 0.18f), cornerRadius = radius)
             if (progress > 0f) {
-                drawRoundRect(
+                drawFolioRoundRect(
                     Color(0xFFE5E5E5),
                     size = Size(size.width * progress.coerceIn(0f, 1f), size.height),
                     cornerRadius = radius,
@@ -1055,19 +1055,19 @@ internal fun IrideMp3CurrentTrack(
         Column(Modifier.weight(1f).padding(start = 7.dp * textScale)) {
             Text(
                 stringResource(R.string.mp3_now_playing), color = Color.White,
-                fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold,
+                fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold,
                 fontSize = (14 * textScale).sp, lineHeight = (20 * textScale).sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
                 metadata.title, color = Color.White.copy(alpha = 0.55f),
-                fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.SemiBold,
+                fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.SemiBold,
                 fontSize = (11 * textScale).sp, lineHeight = (15 * textScale).sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
                 stringResource(R.string.mp3_time_left, (remaining.coerceAtLeast(0) + 999) / 1000),
-                color = Color.White.copy(alpha = 0.55f), fontFamily = SpaceMonoFontFamily,
+                color = Color.White.copy(alpha = 0.55f), fontFamily = IBMPlexMonoFontFamily,
                 fontWeight = FontWeight.SemiBold, fontSize = (11 * textScale).sp,
                 lineHeight = (15 * textScale).sp,
             )
@@ -1152,7 +1152,7 @@ private fun IrideMp3Menu(
                 Text(
                     text = stringResource(labels[index]),
                     color = Color.White,
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = (14 * textScale).sp,
                     lineHeight = (20 * textScale).sp,
@@ -1163,7 +1163,7 @@ private fun IrideMp3Menu(
                     Text(
                         text = stringResource(R.string.mp3_queue_description),
                         color = Color.White.copy(alpha = 0.55f),
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = (11 * textScale).sp,
                         lineHeight = (15 * textScale).sp,
@@ -1173,7 +1173,7 @@ private fun IrideMp3Menu(
                     Text(
                         text = stringResource(R.string.mp3_songs_left, songsLeft),
                         color = Color.White.copy(alpha = 0.55f),
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = (11 * textScale).sp,
                         lineHeight = (15 * textScale).sp,
@@ -1292,12 +1292,12 @@ internal fun IrideArtistText(
                         }
                     }
                 }
-                .combinedClickable(
+                .irideFolioCombinedClickable(
                     indication = null,
                     interactionSource = interactionSource,
                     onClick = {
-                        val layout = layoutResult ?: return@combinedClickable
-                        val pos = tapPosition ?: return@combinedClickable
+                        val layout = layoutResult ?: return@irideFolioCombinedClickable
+                        val pos = tapPosition ?: return@irideFolioCombinedClickable
                         val charOffset = layout.getOffsetForPosition(pos)
                         annotated
                             .getStringAnnotations("artist", charOffset, charOffset)
@@ -1382,7 +1382,7 @@ private fun IrideClickWheel(
                     } else {
                         Text(
                             stringResource(R.string.mp3_menu), color = Color.White,
-                            fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Medium,
+                            fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Medium,
                             fontSize = (12 * scale).sp, letterSpacing = 0.8.sp,
                         )
                     }
@@ -1477,7 +1477,7 @@ private fun IrideClickWheel(
                     CircleShape,
                 )
                 .semantics { contentDescription = centerDescription }
-                .combinedClickable(
+                .irideFolioCombinedClickable(
                     interactionSource = centerInteraction,
                     indication = null,
                     onClick = onCenterClick,
@@ -1598,7 +1598,7 @@ private fun BoxScope.WheelZone(
             modifier =
                 Modifier.size(size)
                     .pressScale(interactionSource, pressedScale = 0.92f)
-                    .clip(CircleShape),
+                    .clip(FolioShape(32)),
             contentAlignment = Alignment.Center,
             content = { content() },
         )

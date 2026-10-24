@@ -16,7 +16,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,7 +44,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioFrostedButton
 import com.metrolist.music.ui.component.irideFolioPlayerArtworkRequest
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlinx.coroutines.delay
@@ -189,7 +189,7 @@ internal fun IrideMp3Video(
             if (state.isVideo) {
                 Box(
                     Modifier.size(frameWidth, frameHeight)
-                        .clip(RoundedCornerShape(IrideFolio.PlayerPanelCornerRadius)),
+                        .clip(FolioShape(IrideFolio.PlayerPanelCornerRadius)),
                     contentAlignment = Alignment.Center,
                 ) {
                     AndroidView(
@@ -272,7 +272,7 @@ internal fun IrideMp3Video(
                         Text(
                             stringResource(R.string.mp3_video_seek_seconds, seconds),
                             color = Color.White,
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = 12.sp,
                         )
                     Row(Modifier.padding(horizontal = 4.dp).graphicsLayer { scaleX = direction }) {
@@ -301,7 +301,7 @@ internal fun IrideMp3Video(
                         Text(
                             stringResource(R.string.mp3_video_seek_seconds, seconds),
                             color = Color.White,
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = 12.sp,
                         )
                 }
@@ -315,7 +315,7 @@ internal fun IrideMp3Video(
                         else R.string.mp3_video_no_results
                     ),
                     color = Color.White,
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 12.sp,
                 )
                 Action(R.drawable.refresh, R.string.retry, !isGuest) {

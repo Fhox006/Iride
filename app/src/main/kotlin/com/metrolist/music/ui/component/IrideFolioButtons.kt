@@ -37,7 +37,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.utils.IrideMotion
@@ -190,7 +190,7 @@ fun IrideFolioChoiceButton(
             ) {
                 ProvideTextStyle(
                     MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 ) {
@@ -289,7 +289,7 @@ private fun IrideFolioButton(
     ) {
         ProvideTextStyle(
             MaterialTheme.typography.labelLarge.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 fontWeight = FontWeight.Bold,
             ),
         ) {

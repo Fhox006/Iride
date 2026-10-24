@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
 import com.metrolist.music.constants.IrideBaseBorderWidth
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
@@ -97,7 +97,7 @@ fun IrideGeneratedPlaylistHeader(
         Spacer(Modifier.height(IrideFolio.GeneratedPlaylistMetadataGap))
         Text(
             text = metadataLine,
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = IrideFolio.GeneratedPlaylistMetadataFontSize),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = IrideFolio.GeneratedPlaylistMetadataFontSize),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),

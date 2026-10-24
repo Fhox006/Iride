@@ -62,7 +62,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
 
-private const val ArtistArtworkSelectionPolicyVersion = 6
+private const val ArtistArtworkSelectionPolicyVersion = 8
 private const val ArtistArtworkPreviewResolution = 448
 
 internal data class ArtistArtworkRequest(

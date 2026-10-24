@@ -2,7 +2,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,11 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +57,7 @@ import com.metrolist.music.discovery.NewRelease
 import com.metrolist.music.discovery.NewReleaseKind
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textSecondary
 import sv.lib.squircleshape.SquircleShape
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,12 +70,12 @@ fun IrideFolioReleaseShelf(
     onClick: (NewRelease) -> Unit,
     onMenuClick: (NewRelease) -> Unit,
     resolvedSongIds: Map<String, String> = emptyMap(),
+    minimumRows: Int = 1,
 ) {
     if (releases.isNotEmpty() && releases.all { !it.isTrack }) {
         IrideFolioReleaseAlbumShelf(releases, resolvingId, onClick, onMenuClick)
         return
     }
-    val haptics = LocalHapticFeedback.current
     val player = LocalPlayerConnection.current
     val database = LocalDatabase.current
     val mediaMetadata by remember(player) {
@@ -92,6 +90,7 @@ fun IrideFolioReleaseShelf(
         loading = false,
         contentPadding = IrideFolio.HorizontalPadding - 4.dp,
         usePager = true,
+        minimumRows = minimumRows,
     ) { release, itemWidth ->
         val songId = resolvedSongIds[release.id]
         val librarySong by remember(database, songId) {
@@ -142,10 +141,9 @@ fun IrideFolioReleaseShelf(
                         )
                     }
                 },
-                modifier = Modifier.width(itemWidth).combinedClickable(
+                modifier = Modifier.width(itemWidth).irideFolioCombinedClickable(
                     onClick = { onClick(release) },
                     onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         onMenuClick(release)
                     },
                 ),
@@ -161,7 +159,6 @@ private fun IrideFolioReleaseAlbumShelf(
     onClick: (NewRelease) -> Unit,
     onMenuClick: (NewRelease) -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
     SharedYouTubePlaylistRow(releases, key = { it.id }, contentPadding = IrideFolio.HorizontalPadding) { release ->
         CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
             Column(Modifier.width(156.dp)) {
@@ -175,7 +172,7 @@ private fun IrideFolioReleaseAlbumShelf(
                             thumbnailUrl = release.artworkUrl,
                             isActive = false,
                             isPlaying = false,
-                            shape = RoundedCornerShape(7.dp),
+                            shape = FolioShape(7.dp),
                             hairlineBorder = true,
                         )
                         if (resolvingId == release.id) {
@@ -185,17 +182,16 @@ private fun IrideFolioReleaseAlbumShelf(
                             }
                         }
                     },
-                    modifier = Modifier.combinedClickable(
+                    modifier = Modifier.irideFolioCombinedClickable(
                         onClick = { onClick(release) },
                         onLongClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             onMenuClick(release)
                         },
                     ),
                 )
                 Text(
                     stringResource(if (release.kind == NewReleaseKind.EP) R.string.new_releases_ep else R.string.new_releases_album),
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = SpaceMonoFontFamily),
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = IBMPlexMonoFontFamily),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp),
                 )
@@ -214,6 +210,7 @@ fun IrideFolioReleaseSpotlight(
     onClick: (NewRelease) -> Unit,
 ) {
     val pager = rememberPagerState(pageCount = { releases.size })
+    val pagerPull = rememberRubberBandPull()
     val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
     val coverSize = IrideFolio.ReleaseSpotlightCoverSize * fontScale
     Column {
@@ -224,7 +221,9 @@ fun IrideFolioReleaseSpotlight(
             pageSpacing = 12.dp,
             key = { releases[it].id },
             overscrollEffect = null,
-            modifier = Modifier.fillMaxWidth().rubberBandOverscroll(Orientation.Horizontal, pager),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .rubberBandOverscroll(Orientation.Horizontal, pager, pagerPull),
         ) { index ->
             val release = releases[index]
             val photo by produceState<String?>(null, release.id, release.artistName, artworkEpoch) {
@@ -261,7 +260,7 @@ fun IrideFolioReleaseSpotlight(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(coverSize).clip(RoundedCornerShape(6.dp))) {
+                    Box(Modifier.size(coverSize).clip(FolioShape(6.dp))) {
                         AsyncImage(
                             model = release.artworkUrl,
                             contentDescription = null,
@@ -278,7 +277,7 @@ fun IrideFolioReleaseSpotlight(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                         Text(
                             stringResource(R.string.new_releases_just_released),
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = IrideFolio.ReleaseSpotlightMetadataSize,
                             lineHeight = IrideFolio.ReleaseSpotlightMetadataSize * 1.25f,
                             color = Color.White.copy(alpha = .75f),
@@ -288,7 +287,7 @@ fun IrideFolioReleaseSpotlight(
                         Spacer(Modifier.height(3.dp))
                         Text(
                             release.title,
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = IrideFolio.ReleaseSpotlightTitleSize,
                             lineHeight = IrideFolio.ReleaseSpotlightTitleLineHeight,
@@ -298,7 +297,7 @@ fun IrideFolioReleaseSpotlight(
                         )
                         Text(
                             release.artistName,
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = IrideFolio.ReleaseSpotlightArtistSize,
                             lineHeight = IrideFolio.ReleaseSpotlightArtistSize * 1.25f,
                             color = Color.White.copy(alpha = .85f),
@@ -308,7 +307,7 @@ fun IrideFolioReleaseSpotlight(
                         Spacer(Modifier.height(3.dp))
                         Text(
                             details(release),
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = IrideFolio.ReleaseSpotlightMetadataSize,
                             lineHeight = IrideFolio.ReleaseSpotlightMetadataSize * 1.25f,
                             color = Color.White.copy(alpha = .7f),
@@ -319,6 +318,10 @@ fun IrideFolioReleaseSpotlight(
                 }
             }
         }
-        CarouselPageIndicator(releases.size, pager.currentPage)
+        CarouselPageIndicator(
+            releases.size,
+            pager.currentPage,
+            overscrollOffset = pagerPull.offset,
+        )
     }
 }

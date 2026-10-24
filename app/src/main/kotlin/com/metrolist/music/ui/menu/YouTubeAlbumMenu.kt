@@ -65,6 +65,9 @@ import com.metrolist.music.ui.component.rememberMenuActionScope
 import com.metrolist.music.utils.reportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import com.metrolist.music.ui.component.MenuActionReadiness
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -78,14 +81,23 @@ fun YouTubeAlbumMenu(albumItem: AlbumItem, navController: NavController, onDismi
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val album by database.albumWithSongs(albumItem.id).collectAsState(initial = null)
     val coroutineScope = rememberMenuActionScope()
+    var albumLoadFailed by remember(albumItem.id) { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        database.album(albumItem.id).collect { album ->
-            if (album == null) {
-                YouTube.album(albumItem.id)
-                    .onSuccess { albumPage -> database.transaction { insert(albumPage) } }
-                    .onFailure { reportException(it) }
+    LaunchedEffect(albumItem.id) {
+        try {
+            val cached = database.albumWithSongs(albumItem.id).first()
+            if (cached == null) {
+                val page = YouTube.album(albumItem.id).getOrThrow()
+                database.withTransaction { insert(page) }
+                albumLoadFailed = page.songs.isEmpty()
+            } else {
+                albumLoadFailed = cached.songs.isEmpty()
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            albumLoadFailed = true
+            reportException(error)
         }
     }
 
@@ -440,8 +452,7 @@ fun YouTubeAlbumMenu(albumItem: AlbumItem, navController: NavController, onDismi
                 }
                 .map { action ->
                     if (
-                        album?.songs.isNullOrEmpty() &&
-                            action.actionId in
+                        action.actionId in
                                 setOf(
                                     R.string.play_next,
                                     R.string.add_to_queue,
@@ -450,7 +461,12 @@ fun YouTubeAlbumMenu(albumItem: AlbumItem, navController: NavController, onDismi
                                     R.string.add_to_library,
                                 )
                     )
-                        action.copy(onClick = null)
+                        action.copy(readiness = when {
+                            action.actionId == R.string.add_to_library && album != null -> MenuActionReadiness.Ready
+                            !album?.songs.isNullOrEmpty() -> MenuActionReadiness.Ready
+                            albumLoadFailed -> MenuActionReadiness.Unavailable
+                            else -> MenuActionReadiness.Pending
+                        })
                     else action
                 },
         visible =

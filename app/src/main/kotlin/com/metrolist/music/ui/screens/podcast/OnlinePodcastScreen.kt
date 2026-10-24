@@ -6,7 +6,7 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -46,10 +46,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -102,7 +100,6 @@ fun OnlinePodcastScreen(
     viewModel: OnlinePodcastViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
 
@@ -292,7 +289,7 @@ fun OnlinePodcastScreen(
                                 isActive = mediaMetadata?.id == episode.id,
                                 isPlaying = isPlaying,
                                 modifier =
-                                    Modifier.combinedClickable(
+                                    Modifier.irideFolioCombinedClickable(
                                             onClick = {
                                                 if (episode.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
@@ -317,9 +314,6 @@ fun OnlinePodcastScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     YouTubeSongMenu(
                                                         episode.asSongItem(),
@@ -377,9 +371,9 @@ private fun PodcastHeader(
                     .irideArtworkOverlayBorder(
                         IrideBaseBorderWidth,
                         MaterialTheme.colorScheme.strokeCard,
-                        RoundedCornerShape(8.dp),
+                        FolioShape(8.dp),
                     )
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(FolioShape(8.dp)),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -423,7 +417,7 @@ private fun PodcastHeader(
                 Text(
                     text =
                         stringResource(
-                            if (inLibrary) R.string.remove_from_library else R.string.add_to_library
+                            if (inLibrary) R.string.iride_remove_star else R.string.iride_star
                         )
                 )
             }

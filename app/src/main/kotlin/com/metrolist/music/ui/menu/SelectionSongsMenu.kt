@@ -60,7 +60,6 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.rememberMenuActionScope
-import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -84,8 +83,6 @@ fun SelectionSongMenu(
     val deletedNSongsTemplate = stringResource(R.string.deleted_n_songs)
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && listenTogetherManager.isHost == false
-
-    val allInLibrary by remember { mutableStateOf(songSelection.all { it.song.inLibrary != null }) }
 
     val allLiked by
         remember(songSelection) {
@@ -358,58 +355,6 @@ fun SelectionSongMenu(
                                 onClick = { showChoosePlaylistDialog = true },
                             )
                         )
-                        add(
-                            Material3MenuItemData(
-                                actionId = R.string.remove_from_library,
-                                title = {
-                                    Text(
-                                        text =
-                                            stringResource(
-                                                if (allInLibrary) R.string.remove_from_library
-                                                else R.string.add_to_library
-                                            )
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                if (allInLibrary) R.drawable.library_add_check
-                                                else R.drawable.library_add
-                                            ),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    if (allInLibrary) {
-                                        database.query {
-                                            songSelection.forEach { song ->
-                                                inLibrary(song.id, null)
-                                            }
-                                        }
-                                        coroutineScope.launch {
-                                            songSelection.forEach { song ->
-                                                YouTube.toggleSongLibrary(song.id, false)
-                                            }
-                                        }
-                                    } else {
-                                        database.transaction {
-                                            songSelection.forEach { song ->
-                                                insert(song.toMediaMetadata())
-                                                inLibrary(song.id, LocalDateTime.now())
-                                            }
-                                        }
-                                        coroutineScope.launch {
-                                            songSelection
-                                                .filter { it.song.inLibrary == null }
-                                                .forEach { song ->
-                                                    YouTube.toggleSongLibrary(song.id, true)
-                                                }
-                                        }
-                                    }
-                                },
-                            )
-                        )
                     }
                 )
                 addAll(
@@ -493,8 +438,8 @@ fun SelectionSongMenu(
                                     Text(
                                         text =
                                             stringResource(
-                                                if (allLiked) R.string.dislike_all
-                                                else R.string.like_all
+                                                if (allLiked) R.string.iride_unstar_all
+                                                else R.string.iride_star_all
                                             )
                                     )
                                 },
@@ -832,7 +777,14 @@ fun SelectionMediaMetadataMenu(
                         add(
                             Material3MenuItemData(
                                 actionId = R.string.like_all,
-                                title = { Text(text = stringResource(R.string.like_all)) },
+                                title = {
+                                    Text(
+                                        text = stringResource(
+                                            if (allLiked) R.string.iride_unstar_all
+                                            else R.string.iride_star_all
+                                        )
+                                    )
+                                },
                                 icon = {
                                     Icon(
                                         painter =

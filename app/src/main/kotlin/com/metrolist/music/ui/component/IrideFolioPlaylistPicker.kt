@@ -37,7 +37,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.Playlist
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textSecondary
 import sv.lib.squircleshape.SquircleShape
 
@@ -77,7 +77,7 @@ fun IrideFolioPlaylistPicker(
                 Text(
                     stringResource(R.string.playlist_picker_title),
                     style = MaterialTheme.typography.titleMedium,
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )

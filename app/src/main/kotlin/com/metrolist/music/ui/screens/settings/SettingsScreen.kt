@@ -35,8 +35,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,7 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
@@ -173,7 +172,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(FolioShape(16.dp))
                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                     .padding(12.dp)
             ) {
@@ -186,7 +185,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.advanced_mode_banner),
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 )
             }
@@ -344,7 +343,7 @@ private fun AccountProfileHeader(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val avatarShape = CircleShape
+        val avatarShape = FolioShape(32)
         val avatarModifier = Modifier
             .size(88.dp)
             .clip(avatarShape)
@@ -372,7 +371,7 @@ private fun AccountProfileHeader(
                 Text(
                     text = accountName.ifEmpty { stringResource(R.string.my_account) },
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp,
                     ),
@@ -383,7 +382,7 @@ private fun AccountProfileHeader(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = accountHandle,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
                         color = MaterialTheme.colorScheme.textSecondary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -394,7 +393,7 @@ private fun AccountProfileHeader(
                 Text(
                     text = stringResource(R.string.sign_in_desc),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         lineHeight = 22.sp,
                         letterSpacing = 0.sp,
                     ),

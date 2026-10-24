@@ -1,16 +1,15 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +22,15 @@ import com.metrolist.music.R
 
 internal fun folioContextActions(items: List<Material3MenuItemData>): List<Material3MenuItemData> =
     folioContextItems(items, actionId = { it.actionId }, section = { it.section })
+        .map { action ->
+            val title =
+                when (action.actionId) {
+                    R.string.play_next -> R.string.iride_menu_next
+                    R.string.add_to_queue -> R.string.iride_menu_queue
+                    else -> null
+                }
+            if (title == null) action else action.copy(title = { androidx.compose.material3.Text(stringResource(title)) })
+        }
 
 @Composable
 internal fun folioMenuAction(
@@ -48,7 +56,7 @@ internal fun folioLibraryAction(saved: Boolean, onClick: () -> Unit): Material3M
         label = R.string.add_to_library,
         icon = if (saved) R.drawable.favorite else R.drawable.favorite_border,
         onClick = onClick,
-        text = stringResource(if (saved) R.string.remove_from_library else R.string.add_to_library),
+        text = stringResource(if (saved) R.string.iride_remove_star else R.string.iride_star),
     )
 
 /**
@@ -67,7 +75,8 @@ internal fun IrideFolioContextMenu(
     val actions = folioContextActions(items)
     val sections =
         actions.groupBy { it.section ?: folioActionOrder(it.actionId).first }.values.toList()
-    val scrollState = rememberLazyListState()
+    val scrollState = rememberScrollState()
+    val overscrollPull = rememberRubberBandPull()
     val density = LocalDensity.current
     val height =
         with(density) {
@@ -80,48 +89,41 @@ internal fun IrideFolioContextMenu(
         }
     val content: @Composable (Boolean) -> Unit = { constrained ->
         Box {
-            LazyColumn(
-                state = scrollState,
-                overscrollEffect = null,
+            // Measure this small menu in full: lazy estimates change as dividers enter the viewport.
+            Column(
                 modifier =
                     Modifier.padding(
                         end = if (constrained) IrideFolio.ScrollbarTouchTargetWidth else 0.dp
-                    ).irideFolioGestures(scrollState),
-                contentPadding =
-                    PaddingValues(
+                    ).irideFolioGestures(scrollState, overscrollPull)
+                    .verticalScroll(scrollState, overscrollEffect = null)
+                    .padding(
                         horizontal = IrideFolio.MenuContentPadding,
                         vertical = IrideFolio.MenuVerticalPadding,
                     ),
             ) {
                 sections.forEachIndexed { index, section ->
-                    if (index > 0) item { IrideFolioMenuDivider() }
-                    items(section) { action ->
-                        IrideFolioMenuItem(
-                            text = action.title,
-                            enabled = action.onClick != null,
-                            selected = action.selected,
-                            leadingIcon =
-                                action.icon?.let { icon ->
-                                    {
-                                        Box(
-                                            Modifier.size(24.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            icon()
-                                        }
-                                    }
-                                },
-                            onClick = {
-                                action.onClick?.invoke()
-                                if (action.actionId !in retainOpenActions) onDismiss()
-                            },
-                        )
+                    if (index > 0) IrideFolioMenuDivider()
+                    section.forEach { action ->
+                        key(action.actionId) {
+                            IrideFolioContextMenuAction(
+                                action = action,
+                                onDismiss = onDismiss,
+                                retainOpen = action.actionId in retainOpenActions,
+                            )
+                        }
                     }
                 }
             }
             if (constrained)
                 Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
-                    IrideFolioScrollbar(scrollState, Modifier.fillMaxHeight())
+                    IrideFolioScrollbar(
+                        scrollState,
+                        Modifier.fillMaxHeight().padding(
+                            top = IrideFolio.MenuScrollbarTopInset,
+                            bottom = IrideFolio.MenuScrollbarBottomInset,
+                        ),
+                        overscrollPull,
+                    )
                 }
         }
     }
@@ -151,7 +153,7 @@ internal fun folioMenuArtwork(thumbnailUrl: String?, portrait: Boolean, fallback
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier =
-                Modifier.size(24.dp).clip(if (portrait) CircleShape else RoundedCornerShape(4.dp)),
+                Modifier.size(24.dp).clip(if (portrait) FolioShape(32) else FolioShape(4.dp)),
         )
     }
 }

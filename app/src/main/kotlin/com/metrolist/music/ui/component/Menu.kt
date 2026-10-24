@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -28,7 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -77,7 +77,7 @@ private fun IrideMenuItemRow(item: Material3MenuItemData) {
         Column(modifier = Modifier.weight(1f)) {
             ProvideTextStyle(
                 MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,
@@ -104,6 +104,8 @@ private fun IrideMenuItemRow(item: Material3MenuItemData) {
     }
 }
 
+enum class MenuActionReadiness { Pending, Ready, Unavailable }
+
 data class Material3MenuItemData(
     val icon: (@Composable () -> Unit)? = null,
     val title: @Composable () -> Unit,
@@ -114,4 +116,5 @@ data class Material3MenuItemData(
     val actionId: Int? = null,
     val selected: Boolean = false,
     val section: Int? = null,
+    val readiness: MenuActionReadiness = MenuActionReadiness.Ready,
 )

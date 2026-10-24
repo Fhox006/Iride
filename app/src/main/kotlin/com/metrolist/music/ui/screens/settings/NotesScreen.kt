@@ -6,7 +6,7 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -39,9 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,7 +63,7 @@ import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.menu.NoteRatingStars
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -134,7 +132,7 @@ fun NotesScreen(navController: NavController) {
                     label = {
                         Text(
                             text = stringResource(R.string.notes_tab_albums),
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     },
@@ -147,7 +145,7 @@ fun NotesScreen(navController: NavController) {
                     label = {
                         Text(
                             text = stringResource(R.string.notes_tab_tracks),
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     },
@@ -214,7 +212,7 @@ private fun EmptyNotesState(text: String) {
     ) {
         Text(
             text = text,
-            fontFamily = SpaceMonoFontFamily,
+            fontFamily = IBMPlexMonoFontFamily,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
     }
@@ -225,7 +223,6 @@ private fun LongPressToDeleteNoteRow(
     onDelete: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -257,12 +254,11 @@ private fun LongPressToDeleteNoteRow(
 
     Box(
         modifier =
-            Modifier.combinedClickable(
+            Modifier.irideFolioCombinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {},
                 onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     showDeleteDialog = true
                 },
             )
@@ -283,12 +279,12 @@ private fun NoteRow(
     Row(
         modifier =
             Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(FolioShape(10.dp))
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f))
                 .border(
                     1.dp,
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    RoundedCornerShape(10.dp),
+                    FolioShape(10.dp),
                 )
                 .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -298,13 +294,13 @@ private fun NoteRow(
                 model = coverUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(76.dp).clip(RoundedCornerShape(6.dp)),
+                modifier = Modifier.size(76.dp).clip(FolioShape(6.dp)),
             )
             Text(
                 text = title,
                 style =
                     MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     ),
                 color = MaterialTheme.colorScheme.onSurface,
@@ -327,7 +323,7 @@ private fun NoteRow(
                     text = noteTitle,
                     style =
                         MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                         ),
                     color = MaterialTheme.colorScheme.onSurface,

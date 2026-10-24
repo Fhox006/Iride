@@ -3,7 +3,7 @@ package com.metrolist.music.ui.screens.artist
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,8 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -58,7 +56,7 @@ import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.SongMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ArtistSongsViewModel
@@ -71,7 +69,6 @@ fun ArtistSongsScreen(
 ) {
     val menuState = LocalMenuState.current
     val queueAllSongsStr = stringResource(R.string.queue_all_songs)
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -196,7 +193,7 @@ fun ArtistSongsScreen(
                         },
                         modifier =
                             Modifier.fillMaxWidth()
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
                                             playerConnection.togglePlayPause()
@@ -212,7 +209,6 @@ fun ArtistSongsScreen(
                                         }
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             SongMenu(
                                                 originalSong = song,
@@ -241,7 +237,7 @@ fun ArtistSongsScreen(
                                     .uppercase(),
                             style =
                                 TextStyle(
-                                    fontFamily = SpaceMonoFontFamily,
+                                    fontFamily = IBMPlexMonoFontFamily,
                                     fontSize = 11.sp,
                                     letterSpacing = 1.sp,
                                 ),

@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.pressScale
@@ -117,7 +117,7 @@ private fun AddCategoryPill(
         Text(
             text = "+",
             style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
             color = MaterialTheme.colorScheme.textPrimary,
@@ -126,7 +126,7 @@ private fun AddCategoryPill(
         Text(
             text = stringResource(R.string.category_add),
             style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
             color = MaterialTheme.colorScheme.textPrimary,
@@ -189,7 +189,7 @@ private fun CategoryPill(
             Text(
                 text = name,
                 style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     letterSpacing = 0.5.sp,
                 ),
                 color = textColor,

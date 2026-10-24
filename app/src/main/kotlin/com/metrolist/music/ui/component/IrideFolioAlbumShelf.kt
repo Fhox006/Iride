@@ -1,6 +1,6 @@
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -45,7 +45,7 @@ fun IrideFolioAlbumShelf(
                     isActive = activeAlbumId == album.id,
                     isPlaying = isPlaying,
                     coroutineScope = coroutineScope,
-                    modifier = Modifier.combinedClickable(onClick = { onClick(album) }, onLongClick = { onLongClick(album) }),
+                    modifier = Modifier.irideFolioCombinedClickable(onClick = { onClick(album) }, onLongClick = { onLongClick(album) }),
                 )
             }
         }

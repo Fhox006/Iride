@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -157,7 +157,7 @@ fun LyricsImageCard(
     val painter = rememberAsyncImagePainter(
         ImageRequest.Builder(context).data(mediaMetadata.thumbnailUrl).crossfade(false).build(),
     )
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))) {
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(FolioShape(20.dp))) {
         val scale = maxWidth.value / LyricsShareStyle.Width
         val density = LocalDensity.current
         val fontScale = density.fontScale
@@ -211,7 +211,7 @@ fun LyricsImageCard(
                 ) {
                     Image(
                         painter, null, contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(coverSize).clip(RoundedCornerShape(coverRadius)),
+                        modifier = Modifier.size(coverSize).clip(FolioShape(coverRadius)),
                     )
                     Spacer(Modifier.width((LyricsShareStyle.CoverGap * scale).dp))
                     Column(Modifier.weight(1f)) {

@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,7 +80,7 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
@@ -261,7 +261,7 @@ fun MyAccountScreen(navController: NavController) {
                 }
                 val rowTextStyle =
                     MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontSize = 15.sp,
                         letterSpacing = (-0.1).sp,
                         fontWeight = FontWeight.Bold,
@@ -272,7 +272,7 @@ fun MyAccountScreen(navController: NavController) {
                     text = stringResource(R.string.settings_section_sync_data),
                     style =
                         MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             letterSpacing = (-0.1).sp,
                             fontWeight = FontWeight.Bold,
                         ),
@@ -282,7 +282,7 @@ fun MyAccountScreen(navController: NavController) {
 
                 if (advancedMode) Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = FolioShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
@@ -495,10 +495,10 @@ fun MyAccountScreen(navController: NavController) {
                             ) else null),
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.download),
-                                title = { Text(stringResource(R.string.spotify_exportify_title)) },
+                                title = { Text(stringResource(R.string.music_import_title)) },
                                 description = {
                                     Text(
-                                        stringResource(R.string.spotify_exportify_description),
+                                        stringResource(R.string.music_import_description),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                 },
@@ -510,7 +510,7 @@ fun MyAccountScreen(navController: NavController) {
                                         modifier = Modifier.size(18.dp),
                                     )
                                 },
-                                onClick = { navController.navigate("spotify_import") },
+                                onClick = { navController.navigate("music_import") },
                             ),
                         ),
                     useLowContrast = true,
@@ -527,7 +527,7 @@ fun MyAccountScreen(navController: NavController) {
                                         Box(
                                             modifier =
                                                 Modifier.size(40.dp)
-                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clip(FolioShape(12.dp))
                                                     .background(
                                                         MaterialTheme.colorScheme.error.copy(
                                                             alpha = 0.1f
@@ -550,20 +550,6 @@ fun MyAccountScreen(navController: NavController) {
                                         )
                                     },
                                     onClick = { showLogoutDialog = true },
-                                )
-                            ),
-                        useLowContrast = true,
-                    )
-                } else {
-                    Material3SettingsGroup(
-                        items =
-                            listOf(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.person),
-                                    title = {
-                                        Text(stringResource(R.string.account_youtube_music_sign_in))
-                                    },
-                                    onClick = { navController.navigate("login") },
                                 )
                             ),
                         useLowContrast = true,

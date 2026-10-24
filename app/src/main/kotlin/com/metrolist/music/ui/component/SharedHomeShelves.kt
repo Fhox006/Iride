@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -59,6 +59,7 @@ fun <T> SharedQuickPicksCarousel(
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
     usePager: Boolean = false,
+    minimumRows: Int = 1,
     itemContent: @Composable (item: T, itemWidth: Dp) -> Unit,
 ) {
     if (loading) {
@@ -68,15 +69,17 @@ fun <T> SharedQuickPicksCarousel(
                     Modifier.fillMaxWidth()
                         .padding(horizontal = contentPadding)
                         .height(ListItemHeight * 4)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(FolioShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             )
+            if (usePager) Spacer(Modifier.height(IrideFolio.ShelfPagerFooterHeight))
         }
     } else if (items.isNotEmpty() && usePager) {
         QuickPicksPager(
             items = items,
             itemKey = key,
             contentPadding = contentPadding,
+            minimumRows = minimumRows,
             modifier = modifier,
             itemContent = itemContent,
         )
@@ -97,17 +100,19 @@ private fun <T> QuickPicksPager(
     items: List<T>,
     itemKey: (T) -> Any,
     contentPadding: Dp,
+    minimumRows: Int,
     modifier: Modifier = Modifier,
     itemContent: @Composable (item: T, itemWidth: Dp) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val rows = minOf(4, items.size)
+        val rows = maxOf(minimumRows, minOf(4, items.size)).coerceIn(1, 4)
         val columnSpacing = 12.dp
         val contentWidth = (maxWidth - contentPadding * 2).coerceAtLeast(0.dp)
         val columns = if ((contentWidth - columnSpacing) / 2 >= 320.dp) 2 else 1
         val itemsPerPage = rows * columns
         val pageCount = (items.size + itemsPerPage - 1) / itemsPerPage
         val pagerState = rememberPagerState(pageCount = { pageCount })
+        val pagerPull = rememberRubberBandPull()
 
         Column(modifier = Modifier.fillMaxWidth()) {
             HorizontalPager(
@@ -121,6 +126,7 @@ private fun <T> QuickPicksPager(
                         .rubberBandOverscroll(
                             androidx.compose.foundation.gestures.Orientation.Horizontal,
                             pagerState,
+                            pagerPull,
                         ),
             ) { page ->
                 Row(
@@ -148,10 +154,13 @@ private fun <T> QuickPicksPager(
                     }
                 }
             }
-            CarouselPageIndicator(
-                pageCount = pageCount,
-                currentPage = pagerState.currentPage,
-            )
+            Box(Modifier.fillMaxWidth().height(IrideFolio.ShelfPagerFooterHeight)) {
+                CarouselPageIndicator(
+                    pageCount = pageCount,
+                    currentPage = pagerState.currentPage,
+                    overscrollOffset = pagerPull.offset,
+                )
+            }
         }
     }
 }

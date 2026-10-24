@@ -5,11 +5,6 @@
 package com.metrolist.music.ui.screens
 
 import android.app.Activity
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
@@ -198,22 +193,6 @@ fun NavGraphBuilder.NavigationBuilder(
     composable(
         route = "search/{query}",
         arguments = listOf(navArgument("query") { type = NavType.StringType }),
-        enterTransition = { fadeIn(tween(250)) },
-        exitTransition = {
-            if (targetState.destination.route?.startsWith("search/") == true) {
-                fadeOut(tween(200))
-            } else {
-                fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
-            }
-        },
-        popEnterTransition = {
-            if (initialState.destination.route?.startsWith("search/") == true) {
-                fadeIn(tween(250))
-            } else {
-                fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
-            }
-        },
-        popExitTransition = { fadeOut(tween(200)) }
     ) { backStackEntry ->
         OnlineSearchResult(
             navController = navController,
@@ -375,6 +354,14 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("settings/my_account") {
         MyAccountScreen(navController)
+    }
+
+    composable("music_import") {
+        MusicImportScreen(navController)
+    }
+
+    composable("apple_music_import") {
+        AppleMusicImportScreen(navController)
     }
 
     composable("settings/interface") {

@@ -32,7 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -84,7 +84,7 @@ import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.utils.ComposeToImage
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -165,9 +165,9 @@ private fun TranslationCard(
 ) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
+            .clip(FolioShape(50))
             .background(Color.White.copy(alpha = 0.10f))
-            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), FolioShape(50))
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -312,7 +312,7 @@ internal fun LyricsColorPickerDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(FolioShape(12.dp))
             ) {
                 LyricsImageCard(
                     lyricText = frozenTxt,
@@ -366,12 +366,12 @@ internal fun LyricsColorPickerDialog(
                                 modifier = Modifier
                                     .weight(1f)
                                     .aspectRatio(1f)
-                                    .background(color, RoundedCornerShape(8.dp))
+                                    .background(color, FolioShape(8.dp))
                                     .clickable { previewBackgroundColor = color }
                                     .border(
                                         2.dp,
                                         if (previewBackgroundColor == color) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                        RoundedCornerShape(8.dp)
+                                        FolioShape(8.dp)
                                     )
                             )
                         }
@@ -504,8 +504,8 @@ internal fun LyricsApiSetupDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, FolioShape(8.dp))
                     .verticalScroll(rememberScrollState()),
             ) {
                 sortedLanguages.forEach { entry ->
@@ -606,7 +606,7 @@ internal fun LyricsLanguagePickerDialog(
                 placeholder = { Text("Search language") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = FolioShape(12.dp),
             )
 
             androidx.compose.foundation.lazy.LazyColumn(
@@ -621,7 +621,7 @@ internal fun LyricsLanguagePickerDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(FolioShape(10.dp))
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else androidx.compose.ui.graphics.Color.Transparent
@@ -695,11 +695,11 @@ internal fun GeminiSetupDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         val titleStyle = MaterialTheme.typography.headlineSmall.copy(
-            fontFamily = SpaceMonoFontFamily,
+            fontFamily = IBMPlexMonoFontFamily,
             fontWeight = FontWeight.Bold,
         )
-        val bodyStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-        val smallStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
+        val bodyStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = IBMPlexMonoFontFamily)
+        val smallStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily)
         Column(
             modifier = Modifier
                 .padding(IrideFolio.DialogContentPadding)
@@ -773,8 +773,8 @@ internal fun GeminiSetupDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, FolioShape(8.dp))
                     .verticalScroll(rememberScrollState())
                     .alpha(if (isApiKeyValid) 1f else 0.38f),
             ) {
@@ -784,7 +784,7 @@ internal fun GeminiSetupDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(FolioShape(8.dp))
                             .background(
                                 if (selectedLanguage == code) MaterialTheme.colorScheme.fillSelected
                                 else Color.Transparent,

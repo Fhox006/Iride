@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
@@ -197,7 +197,7 @@ fun BottomSheet(
             }
             .graphicsLayer {
                 if (selfPositions) {
-                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
+                    shape = FolioShape(topStart = cornerRadius, topEnd = cornerRadius)
                     clip = true
                 }
             }

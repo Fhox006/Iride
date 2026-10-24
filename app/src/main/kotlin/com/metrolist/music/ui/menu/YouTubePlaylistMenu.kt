@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -81,6 +81,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import com.metrolist.music.ui.component.MenuActionReadiness
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -95,9 +97,18 @@ fun YouTubePlaylistMenu(
     showPageControls: Boolean = true,
 ) {
     var menuSongs by remember(playlist.id, songs) { mutableStateOf(songs) }
+    var songsLoadFailed by remember(playlist.id, songs) { mutableStateOf(false) }
     LaunchedEffect(playlist.id, songs) {
         if (songs.isEmpty()) {
-            menuSongs = YouTube.playlist(playlist.id).completed().getOrNull()?.songs.orEmpty()
+            try {
+                menuSongs = YouTube.playlist(playlist.id).completed().getOrThrow().songs
+                songsLoadFailed = menuSongs.isEmpty()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                songsLoadFailed = true
+                reportException(error)
+            }
         }
     }
     val context = LocalContext.current
@@ -237,7 +248,7 @@ fun YouTubePlaylistMenu(
                                 contentDescription = null,
                                 modifier =
                                     Modifier.fillMaxSize()
-                                        .clip(RoundedCornerShape(ThumbnailCornerRadius)),
+                                        .clip(FolioShape(ThumbnailCornerRadius)),
                             )
                         }
                     },
@@ -436,96 +447,94 @@ fun YouTubePlaylistMenu(
                     )
                     addAll(
                         buildList {
-                            if (menuSongs.isNotEmpty()) {
-                                add(
-                                    when (downloadState) {
-                                        Download.STATE_COMPLETED -> {
-                                            Material3MenuItemData(
-                                                actionId = R.string.remove_download,
-                                                title = {
-                                                    Text(
-                                                        text =
-                                                            stringResource(R.string.remove_download)
-                                                    )
-                                                },
-                                                icon = {
-                                                    Icon(
-                                                        painter =
-                                                            painterResource(R.drawable.offline),
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                onClick = { showRemoveDownloadDialog = true },
-                                            )
-                                        }
-
-                                        Download.STATE_QUEUED,
-                                        Download.STATE_DOWNLOADING -> {
-                                            Material3MenuItemData(
-                                                actionId = R.string.downloading,
-                                                title = {
-                                                    Text(
-                                                        text =
-                                                            stringResource(
-                                                                R.string.folio_cancel_download
-                                                            )
-                                                    )
-                                                },
-                                                icon = {
-                                                    CircularProgressIndicator(
-                                                        modifier = Modifier.size(24.dp),
-                                                        strokeWidth = 2.dp,
-                                                    )
-                                                },
-                                                onClick = { showRemoveDownloadDialog = true },
-                                            )
-                                        }
-
-                                        else -> {
-                                            Material3MenuItemData(
-                                                actionId = R.string.action_download,
-                                                title = {
-                                                    Text(
-                                                        text =
-                                                            stringResource(R.string.action_download)
-                                                    )
-                                                },
-                                                description = {
-                                                    Text(
-                                                        text =
-                                                            stringResource(R.string.download_desc)
-                                                    )
-                                                },
-                                                icon = {
-                                                    Icon(
-                                                        painter =
-                                                            painterResource(R.drawable.download),
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                onClick = {
-                                                    menuSongs.forEach { song ->
-                                                        val downloadRequest =
-                                                            DownloadRequest.Builder(
-                                                                    song.id,
-                                                                    song.id.toUri(),
-                                                                )
-                                                                .setCustomCacheKey(song.id)
-                                                                .setData(song.title.toByteArray())
-                                                                .build()
-                                                        DownloadService.sendAddDownload(
-                                                            context,
-                                                            ExoDownloadService::class.java,
-                                                            downloadRequest,
-                                                            false,
-                                                        )
-                                                    }
-                                                },
-                                            )
-                                        }
+                            add(
+                                when (downloadState) {
+                                    Download.STATE_COMPLETED -> {
+                                        Material3MenuItemData(
+                                            actionId = R.string.remove_download,
+                                            title = {
+                                                Text(
+                                                    text =
+                                                        stringResource(R.string.remove_download)
+                                                )
+                                            },
+                                            icon = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(R.drawable.offline),
+                                                    contentDescription = null,
+                                                )
+                                            },
+                                            onClick = { showRemoveDownloadDialog = true },
+                                        )
                                     }
-                                )
-                            }
+
+                                    Download.STATE_QUEUED,
+                                    Download.STATE_DOWNLOADING -> {
+                                        Material3MenuItemData(
+                                            actionId = R.string.downloading,
+                                            title = {
+                                                Text(
+                                                    text =
+                                                        stringResource(
+                                                            R.string.folio_cancel_download
+                                                        )
+                                                )
+                                            },
+                                            icon = {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp,
+                                                )
+                                            },
+                                            onClick = { showRemoveDownloadDialog = true },
+                                        )
+                                    }
+
+                                    else -> {
+                                        Material3MenuItemData(
+                                            actionId = R.string.action_download,
+                                            title = {
+                                                Text(
+                                                    text =
+                                                        stringResource(R.string.action_download)
+                                                )
+                                            },
+                                            description = {
+                                                Text(
+                                                    text =
+                                                        stringResource(R.string.download_desc)
+                                                )
+                                            },
+                                            icon = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(R.drawable.download),
+                                                    contentDescription = null,
+                                                )
+                                            },
+                                            onClick = {
+                                                menuSongs.forEach { song ->
+                                                    val downloadRequest =
+                                                        DownloadRequest.Builder(
+                                                                song.id,
+                                                                song.id.toUri(),
+                                                            )
+                                                            .setCustomCacheKey(song.id)
+                                                            .setData(song.title.toByteArray())
+                                                            .build()
+                                                    DownloadService.sendAddDownload(
+                                                        context,
+                                                        ExoDownloadService::class.java,
+                                                        downloadRequest,
+                                                        false,
+                                                    )
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
+                            )
                             add(
                                 Material3MenuItemData(
                                     actionId = R.string.export_playlist,
@@ -693,8 +702,7 @@ fun YouTubePlaylistMenu(
                 }
                 .map { action ->
                     if (
-                        menuSongs.isEmpty() &&
-                            action.actionId in
+                        action.actionId in
                                 setOf(
                                     R.string.play_next,
                                     R.string.add_to_queue,
@@ -702,7 +710,11 @@ fun YouTubePlaylistMenu(
                                     R.string.action_download,
                                 )
                     )
-                        action.copy(onClick = null)
+                        action.copy(readiness = when {
+                            menuSongs.isNotEmpty() -> MenuActionReadiness.Ready
+                            songsLoadFailed -> MenuActionReadiness.Unavailable
+                            else -> MenuActionReadiness.Pending
+                        })
                     else action
                 },
         visible =

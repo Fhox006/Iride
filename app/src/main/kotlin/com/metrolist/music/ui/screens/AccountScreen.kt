@@ -8,7 +8,7 @@ package com.metrolist.music.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,8 +29,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -218,12 +216,11 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("online_playlist/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             YouTubePlaylistMenu(
                                                 playlist = item,
@@ -255,12 +252,11 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("album/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             YouTubeAlbumMenu(
                                                 albumItem = item,
@@ -292,12 +288,11 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("artist/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             YouTubeArtistMenu(
                                                 artist = item,
@@ -435,7 +430,7 @@ private fun SePlaylistAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -447,7 +442,7 @@ private fun SePlaylistAccountItem(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(FolioShape(8.dp)),
                 )
             } else {
                 Icon(
@@ -504,7 +499,7 @@ private fun PodcastAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -516,7 +511,7 @@ private fun PodcastAccountItem(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(FolioShape(8.dp)),
                 )
             } else {
                 Icon(
@@ -570,7 +565,7 @@ private fun PodcastChannelAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(CircleShape),
+                    .clip(FolioShape(32)),
         )
         Spacer(Modifier.width(12.dp))
         Text(

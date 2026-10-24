@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="sharedpref" path="music_service_accounts.xml" />
         <exclude
             domain="file"
             path="./exoplayer" />
@@ -15,6 +16,7 @@
             path="datastore/" />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="sharedpref" path="music_service_accounts.xml" />
         <exclude
             domain="file"
             path="./exoplayer" />

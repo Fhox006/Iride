@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -87,13 +87,13 @@ fun IrideFolioDialog(
         val typography = MaterialTheme.typography
         MaterialTheme(
             typography = typography.copy(
-                headlineSmall = typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                titleLarge = typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                titleMedium = typography.titleMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                bodyLarge = typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                bodyMedium = typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
-                bodySmall = typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
-                labelLarge = typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
+                headlineSmall = typography.headlineSmall.copy(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold),
+                titleLarge = typography.titleLarge.copy(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold),
+                titleMedium = typography.titleMedium.copy(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold),
+                bodyLarge = typography.bodyLarge.copy(fontFamily = IBMPlexMonoFontFamily),
+                bodyMedium = typography.bodyMedium.copy(fontFamily = IBMPlexMonoFontFamily),
+                bodySmall = typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
+                labelLarge = typography.labelLarge.copy(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold),
             ),
         ) {
             Surface(

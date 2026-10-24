@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,9 +47,7 @@ import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.ReverieArchiveDialog
 import com.metrolist.music.ui.component.ReverieMonthSelector
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
-import com.metrolist.music.ui.component.IrideFolioPrimaryIconButton
-import com.metrolist.music.ui.component.IrideFolio
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.rememberPreference
@@ -96,13 +93,6 @@ fun StatsScreen(
         modifier = Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         navigationIcon = { IridePageBackButton(navController) },
-        actions = {
-            if (reverieMonths.isNotEmpty()) IrideFolioPrimaryIconButton(
-                onClick = { showReverieArchive = true }, size = IrideFolio.ControlsTouchTargetSize, enabled = true,
-            ) {
-                Icon(painterResource(R.drawable.play), stringResource(R.string.reverie_open_archive), modifier = Modifier.size(20.dp))
-            }
-        },
     ) {
         item(key = "monthly_selector") {
             ReverieMonthSelector(
@@ -221,7 +211,7 @@ private fun StatsEmptyState(
             text = text,
             style =
                 MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     lineHeight = 22.sp,
                     letterSpacing = 0.sp,
                 ),

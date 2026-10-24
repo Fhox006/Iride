@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -168,7 +170,7 @@ internal fun IrideFolioDragHandle(
                 .coerceAtLeast(0f)
             val width = lerp(collapsedWidth, 96.dp.toPx().coerceAtMost(collapsedWidth), morph)
             val thickness = lerp(IrideFolio.MiniPlayerDividerStroke.toPx(), 4.dp.toPx(), morph)
-            drawRoundRect(
+            drawFolioRoundRect(
                 color = lerpColor(
                     contentColor.copy(alpha = IrideFolio.MiniPlayerDividerOpacity),
                     Color(0xFFC4C4C4),

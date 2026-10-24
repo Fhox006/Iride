@@ -1,8 +1,4 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
@@ -14,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +37,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 internal val LocalSongMenuPopupState = compositionLocalOf<MenuState?> { null }
@@ -57,19 +54,51 @@ class MenuState(
     isVisible: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
+    internal var sourceTypography: androidx.compose.material3.Typography? = null
+    internal var presentationTypography by
+        mutableStateOf<androidx.compose.material3.Typography?>(null)
+        private set
+
     var isVisible by mutableStateOf(isVisible)
     var content by mutableStateOf(content)
     var anchored by mutableStateOf(false)
         private set
+
     internal var pointerAnchor: androidx.compose.ui.geometry.Rect? = null
     internal var popupAnchor by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
         private set
 
-    fun show(content: @Composable ColumnScope.() -> Unit) = show(anchored = false, content = content)
+    internal var pendingPressMotion: IrideFolioContextMotion? = null
+    internal var popupMotion by mutableStateOf<IrideFolioContextMotion?>(null)
+        private set
+
+    fun show(content: @Composable ColumnScope.() -> Unit) =
+        show(anchored = false, content = content)
 
     fun show(anchored: Boolean, content: @Composable ColumnScope.() -> Unit) {
+        show(anchored, pendingPressMotion, content)
+    }
+
+    internal fun capturePressMotion(): IrideFolioContextMotion? = pendingPressMotion?.also {
+        it.reserveForMenu()
+    }
+
+    internal fun showFromPress(
+        motion: IrideFolioContextMotion?,
+        content: @Composable ColumnScope.() -> Unit,
+    ) = show(anchored = true, motion = motion, content = content)
+
+    private fun show(
+        anchored: Boolean,
+        motion: IrideFolioContextMotion?,
+        content: @Composable ColumnScope.() -> Unit,
+    ) {
+        presentationTypography = sourceTypography
         this.anchored = anchored
-        popupAnchor = pointerAnchor
+        val presentation = if (anchored) motion ?: IrideFolioContextMotion() else null
+        if (popupMotion !== presentation) popupMotion?.abandon()
+        popupMotion = presentation?.also { it.attachMenu() }
+        popupAnchor = motion?.sourceBounds ?: pointerAnchor
         pointerAnchor = null
         isVisible = true
         this.content = content
@@ -145,9 +174,20 @@ fun BottomSheetMenu(
     val focusManager = LocalFocusManager.current
     val actionScope = androidx.compose.runtime.rememberCoroutineScope()
     if (state.anchored) {
-        if (state.isVisible) {
-            CompositionLocalProvider(LocalSongMenuPopupState provides state, LocalMenuActionScope provides actionScope) {
-                Column(content = state.content)
+        val motion = state.popupMotion
+        val reducedMotion = rememberReducedMotion()
+        LaunchedEffect(motion, state.isVisible, motion?.panelReady, reducedMotion) {
+            // Begin the shared pop only once the panel has real geometry to draw from.
+            if (!state.isVisible || motion?.panelReady == true) {
+                motion?.present(state.isVisible, reducedMotion)
+            }
+        }
+        if (state.isVisible || motion?.retainMenu == true) {
+            CompositionLocalProvider(
+                LocalSongMenuPopupState provides state,
+                LocalMenuActionScope provides actionScope,
+            ) {
+                Column { MenuPresentationContent(state) }
             }
         }
         return
@@ -163,24 +203,37 @@ fun BottomSheetMenu(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.textPrimary,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        shape = FolioShape(topStart = 16.dp, topEnd = 16.dp),
         dragHandle = {
             Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .size(width = 40.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                modifier =
+                    Modifier.padding(vertical = 12.dp)
+                        .size(width = 40.dp, height = 4.dp)
+                        .clip(FolioShape(2.dp))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
             )
         },
-        modifier = modifier.fillMaxHeight()
+        modifier = modifier.fillMaxHeight(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        ) {
-            state.content(this)
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+            MenuPresentationContent(state)
         }
     }
+}
+
+/** Preserve the source type while the global host retains its captured, grainy backdrop. */
+@Composable
+private fun ColumnScope.MenuPresentationContent(state: MenuState) {
+    val columnScope = this
+    val typography = state.presentationTypography
+    if (typography == null) state.content(columnScope)
+    else
+        MaterialTheme(typography = typography) {
+            CompositionLocalProvider(
+                LocalFolioTypewriterFont provides typography.bodyLarge.fontFamily,
+                androidx.compose.material3.LocalTextStyle provides typography.bodyLarge,
+            ) {
+                state.content(columnScope)
+            }
+        }
 }

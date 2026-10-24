@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.height
@@ -38,7 +40,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
@@ -70,7 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import kotlin.math.roundToInt
 
 @Composable
@@ -165,7 +166,7 @@ fun <E> ChipsRow(
                     selectedTrailingIconColor = onSelectedContainerColor,
                 ),
                 onClick = { onValueUpdate(value) },
-                shape = CircleShape,
+                shape = FolioShape(32),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = currentValue == value,
@@ -300,7 +301,7 @@ fun <Int> ChoiceChipsRow(
                             OptionStats.CONTINUOUS -> stringResource(id = R.string.continuous)
                         },
                         style = TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
                             letterSpacing = (-0.1).sp,
@@ -422,7 +423,7 @@ fun <Int> ChoiceChipsRow(
                         modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
                     )
                 },
-                shape = CircleShape,
+                shape = FolioShape(32),
                 border = null,
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = containerColor,
@@ -468,7 +469,7 @@ fun <Int> ChoiceChipsRow(
                             containerColor = containerColor,
                         ),
                         onClick = { onValueUpdate(value) },
-                        shape = CircleShape,
+                        shape = FolioShape(32),
                         border = null
                     )
                 }

@@ -84,11 +84,12 @@ object SpotifyExportParser {
         val rows = CsvRows(PushbackReader(InputStreamReader(input, Charsets.UTF_8), 1))
         val header = rows.next()?.map { it.trim().removePrefix("\uFEFF").lowercase(Locale.ROOT) }
             ?: throw IllegalArgumentException()
-        val titleIndex = header.indexOfFirst { it in SpotifyExportColumns.titles }
-        val artistIndex = header.indexOfFirst { it in SpotifyExportColumns.artists }
+        val playlisted = header.containsAll(listOf("title", "artist", "source platform", "source url"))
+        val titleIndex = header.indexOfFirst { it in SpotifyExportColumns.titles || (playlisted && it == "title") }
+        val artistIndex = header.indexOfFirst { it in SpotifyExportColumns.artists || (playlisted && it == "artist") }
         require(titleIndex >= 0 && artistIndex >= 0)
-        val uriIndex = header.indexOfFirst { it in SpotifyExportColumns.uris }
-        val durationIndex = header.indexOfFirst { it in SpotifyExportColumns.durations }
+        val uriIndex = header.indexOfFirst { it in SpotifyExportColumns.uris || (playlisted && it == "source url") }
+        val durationIndex = header.indexOfFirst { it in SpotifyExportColumns.durations || (playlisted && it == "duration") }
         val legacyArtists = header.getOrNull(durationIndex) == "duration (ms)"
         val tracks = mutableListOf<SpotifyExportTrack>()
         while (true) {
@@ -97,8 +98,10 @@ object SpotifyExportParser {
             if (tracks.size >= MAX_TRACKS) throw SpotifyExportTooLargeException()
             tracks += SpotifyExportTrack(
                 title = row.getOrNull(titleIndex).orEmpty().trim(),
-                artists = parseArtists(row.getOrNull(artistIndex).orEmpty(), legacyArtists),
-                durationSeconds = row.getOrNull(durationIndex)?.trim()?.toLongOrNull()
+                artists = if (playlisted) listOf(row.getOrNull(artistIndex).orEmpty().trim()).filter(String::isNotEmpty)
+                    else parseArtists(row.getOrNull(artistIndex).orEmpty(), legacyArtists),
+                durationSeconds = if (playlisted) parseClockDuration(row.getOrNull(durationIndex))
+                    else row.getOrNull(durationIndex)?.trim()?.toLongOrNull()
                     ?.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.let { (it / 1000).toInt() },
                 spotifyUri = row.getOrNull(uriIndex).orEmpty().trim(),
             )
@@ -109,6 +112,16 @@ object SpotifyExportParser {
 
     private fun playlistName(fileName: String) = fileName.substringAfterLast('/').substringAfterLast('\\')
         .substringBeforeLast('.').replace('_', ' ').trim().ifEmpty { "Spotify" }
+
+    /** Playlisted exports display durations (m:ss or h:mm:ss), while Exportify uses milliseconds. */
+    private fun parseClockDuration(value: String?): Int? {
+        val parts = value?.trim()?.split(':') ?: return null
+        if (parts.size !in 2..3) return null
+        val numbers = parts.map { it.toLongOrNull()?.takeIf { number -> number in 0..Int.MAX_VALUE.toLong() } ?: return null }
+        if (numbers.drop(1).any { it >= 60 }) return null
+        val seconds = numbers.fold(0L) { total, part -> total * 60 + part }
+        return seconds.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt()
+    }
 
     private fun parseArtists(value: String, legacy: Boolean): List<String> {
         val names = if (legacy || ';' in value) value.split(';') else value.split(UNESCAPED_COMMA)

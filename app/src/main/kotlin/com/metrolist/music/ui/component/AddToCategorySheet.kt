@@ -25,8 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.ui.component.IrideSearchBox
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -107,13 +106,13 @@ fun AddToCategorySheet(
         onDismissRequest = onDismissRequest,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.textPrimary,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        shape = FolioShape(topStart = 16.dp, topEnd = 16.dp),
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
                     .size(width = 40.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(FolioShape(2.dp))
                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
             )
         },
@@ -127,7 +126,7 @@ fun AddToCategorySheet(
             Text(
                 text = stringResource(R.string.add_to_category),
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                 ),
                 color = MaterialTheme.colorScheme.textPrimary,
@@ -204,13 +203,13 @@ private fun CategoryRow(
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .background(dotColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)),
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = entry.category.name,
-            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = IBMPlexMonoFontFamily),
             color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -218,7 +217,7 @@ private fun CategoryRow(
         )
         Text(
             text = pluralStringResource(R.plurals.n_song, entry.songCount, entry.songCount),
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
             color = MaterialTheme.colorScheme.textSecondary,
         )
         Spacer(Modifier.width(12.dp))
@@ -251,7 +250,7 @@ private fun NewCategoryRow(onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text(
             text = stringResource(R.string.new_category),
-            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = IBMPlexMonoFontFamily),
             color = MaterialTheme.colorScheme.textPrimary,
         )
     }
@@ -294,10 +293,10 @@ private fun CreateCategoryDialog(
                             .border(
                                 width = if (selected) 2.dp else 0.dp,
                                 color = if (selected) MaterialTheme.colorScheme.textPrimary else Color.Transparent,
-                                shape = CircleShape,
+                                shape = FolioShape(32),
                             )
                             .padding(4.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                             .background(color),
                     ) {}
                 }

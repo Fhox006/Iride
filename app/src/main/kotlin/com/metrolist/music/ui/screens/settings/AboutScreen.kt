@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,7 +56,7 @@ import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.DiagnosticLog
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -117,7 +117,7 @@ fun AboutScreen(navController: NavController) {
                 ) {
                     Surface(
                         modifier = Modifier.size(60.dp),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = FolioShape(18.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     ) {
@@ -133,7 +133,7 @@ fun AboutScreen(navController: NavController) {
                     Column {
                         Text(
                             text = stringResource(R.string.about_iride_name),
-                            style = MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily),
+                            style = MaterialTheme.typography.titleLarge.copy(fontFamily = IBMPlexMonoFontFamily),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                         )

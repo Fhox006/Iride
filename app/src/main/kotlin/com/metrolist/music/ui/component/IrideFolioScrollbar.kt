@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableState
@@ -30,7 +32,11 @@ private class FolioScrollbarBounds {
 
 /** A shared Folio scroll indicator and drag target, usable with lists or scrollable columns. */
 @Composable
-internal fun IrideFolioScrollbar(scrollState: ScrollableState, modifier: Modifier = Modifier) {
+internal fun IrideFolioScrollbar(
+    scrollState: ScrollableState,
+    modifier: Modifier = Modifier,
+    overscrollPull: RubberBandPull? = null,
+) {
     val indicator = scrollState.scrollIndicatorState ?: return
     val bounds = remember { FolioScrollbarBounds() }
     val scope = rememberCoroutineScope()
@@ -38,6 +44,7 @@ internal fun IrideFolioScrollbar(scrollState: ScrollableState, modifier: Modifie
     val ink = LocalContentColor.current
     val padding = with(density) { IrideFolio.ScrollbarVerticalPadding.toPx() }
     val minimumThumbHeight = with(density) { IrideFolio.ScrollbarMinimumThumbHeight.toPx() }
+    val overscrollOffset = overscrollPull?.offset ?: 0f
     val thumb: () -> FolioScrollbarThumb? = {
         folioScrollbarThumb(
             trackHeight = bounds.height - padding * 2,
@@ -79,16 +86,27 @@ internal fun IrideFolioScrollbar(scrollState: ScrollableState, modifier: Modifie
         val width = IrideFolio.ScrollbarWidth.toPx()
         val x = size.width - IrideFolio.ScrollbarEdgeInset.toPx() - width
         val radius = CornerRadius(width / 2)
-        drawRoundRect(
+        val trackHeight = size.height - padding * 2
+        val compression =
+            (kotlin.math.abs(overscrollOffset) / (trackHeight * 0.55f).coerceAtLeast(1f))
+                .coerceIn(0f, 0.65f)
+        val thumbHeight = (metrics.height * (1f - compression)).coerceAtLeast(minimumThumbHeight)
+        val thumbTravel = trackHeight - thumbHeight
+        val thumbOffset = when {
+            overscrollOffset > 0f -> 0f
+            overscrollOffset < 0f -> thumbTravel
+            else -> metrics.offset
+        }
+        drawFolioRoundRect(
             color = ink.copy(alpha = IrideFolio.ScrollbarTrackOpacity),
             topLeft = Offset(x, padding),
             size = Size(width, size.height - padding * 2),
             cornerRadius = radius,
         )
-        drawRoundRect(
+        drawFolioRoundRect(
             color = ink.copy(alpha = IrideFolio.ScrollbarThumbOpacity),
-            topLeft = Offset(x, padding + metrics.offset),
-            size = Size(width, metrics.height),
+            topLeft = Offset(x, padding + thumbOffset),
+            size = Size(width, thumbHeight),
             cornerRadius = radius,
         )
     }

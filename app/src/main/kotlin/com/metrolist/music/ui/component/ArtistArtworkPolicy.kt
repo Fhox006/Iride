@@ -129,11 +129,10 @@ internal fun <T> preferredArtistArtwork(
     val apple = acceptable.filter { source(it) == ArtistArtworkSource.APPLE_MUSIC }.maxByOrNull { quality(it).score }
     val appleQuality = apple?.let(quality)
     val appleScore = appleQuality?.let { artistArtworkSelectionScore(ArtistArtworkSource.APPLE_MUSIC, it) }
-    val eligible = acceptable.filter {
-        source(it) == ArtistArtworkSource.APPLE_MUSIC || appleQuality == null || appleScore == null ||
-            (canReplaceAppleArtwork(appleQuality, quality(it)) &&
-                artistArtworkSelectionScore(source(it), quality(it)) > appleScore + 0.08f)
-    }
+    // Keep Apple Music as the stable first choice whenever it has a valid artist portrait.
+    // Other providers are fallbacks only; score-based switching made the profile photo change
+    // between sources as candidates arrived or quality caches were restored.
+    val eligible = if (apple != null) listOf(apple) else acceptable
     val scores = eligible.map { it to artistArtworkSelectionScore(source(it), quality(it)) }
     val bestScore = scores.maxOf { it.second }
     scores.firstOrNull { it.first == incumbent }?.let {

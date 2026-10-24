@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -211,7 +211,7 @@ fun WrappedIntro(onNext: () -> Unit) {
         ) {
             Button(
                 onClick = onNext,
-                shape = RoundedCornerShape(50),
+                shape = FolioShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White)
             ) {
                 Text(

@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -87,12 +86,12 @@ fun DebugBubble(
             Column(horizontalAlignment = Alignment.End) {
                 Surface(
                     onClick = { expanded = !expanded },
-                    shape = CircleShape,
+                    shape = FolioShape(32),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                     shadowElevation = 8.dp,
                     modifier = Modifier
                         .size(52.dp)
-                        .shadow(8.dp, CircleShape)
+                        .shadow(8.dp, FolioShape(32))
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
@@ -117,7 +116,7 @@ fun DebugBubble(
                     exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shadowElevation = 8.dp,
                         modifier = Modifier

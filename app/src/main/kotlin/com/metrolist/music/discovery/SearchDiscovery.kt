@@ -23,6 +23,9 @@ internal object SearchDiscovery {
     fun recognizeSong(query: String, songs: List<SongItem>, topItem: YTItem?): SongItem? {
         val normalizedQuery = normalize(query)
         if (normalizedQuery.isBlank()) return null
+        // An artist query such as "Anna" must not become a song seed when a track
+        // happens to share the artist's name.
+        if (topItem is ArtistItem && normalize(topItem.title) == normalizedQuery) return null
         val tracks = songs.filter { !it.isVideoSong && !it.isEpisode }.distinctBy { it.id }.take(4)
         tracks.firstOrNull { song ->
             normalize(song.title) == normalizedQuery || song.artists.any { artist ->
@@ -30,10 +33,8 @@ internal object SearchDiscovery {
                     normalize("${artist.name} ${song.title}") == normalizedQuery
             }
         }?.let { return it }
-        if (topItem !is SongItem || topItem.isEpisode) return null
-        return tracks.firstOrNull {
-            it.id == topItem.id || normalize(it.title) == normalize(topItem.title)
-        }
+        // A broad search's first result alone does not establish song intent.
+        return null
     }
 
     fun songs(results: List<SongItem>, seed: SongItem?, recommendations: List<SongItem>): List<SongItem> {

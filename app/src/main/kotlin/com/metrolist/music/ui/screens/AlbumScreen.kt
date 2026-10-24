@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.theme.FolioShape
+
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
@@ -20,7 +22,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +40,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -69,11 +70,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -146,7 +145,7 @@ import com.metrolist.music.ui.menu.albumScreenMenuSections
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -221,7 +220,6 @@ fun AlbumScreen(
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -639,8 +637,8 @@ fun AlbumScreen(
                         contentDescription =
                             stringResource(
                                 if (albumWithSongs?.album?.bookmarkedAt != null)
-                                    R.string.remove_from_library
-                                else R.string.add_to_library
+                                    R.string.iride_remove_star
+                                else R.string.iride_star
                             ),
                         size = 40.dp,
                         iconSize = 20.dp,
@@ -1027,7 +1025,7 @@ fun AlbumScreen(
                                     model = primaryArtist.thumbnailUrl,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(18.dp).clip(CircleShape),
+                                    modifier = Modifier.size(18.dp).clip(FolioShape(32)),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                             }
@@ -1063,7 +1061,7 @@ fun AlbumScreen(
                                     }
                                 },
                                 style =
-                                    TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                    TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
                             )
                         }
@@ -1079,7 +1077,7 @@ fun AlbumScreen(
                             )
                         Text(
                             text = metadataLine,
-                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().revealMask(metadataProgress),
@@ -1137,7 +1135,7 @@ fun AlbumScreen(
                                         text = stringResource(R.string.resume_album),
                                         style =
                                             MaterialTheme.typography.labelLarge.copy(
-                                                fontFamily = SpaceMonoFontFamily,
+                                                fontFamily = IBMPlexMonoFontFamily,
                                                 letterSpacing = (-0.1).sp,
                                             ),
                                         fontWeight = FontWeight.Bold,
@@ -1152,7 +1150,7 @@ fun AlbumScreen(
                                             ),
                                         style =
                                             TextStyle(
-                                                fontFamily = SpaceMonoFontFamily,
+                                                fontFamily = IBMPlexMonoFontFamily,
                                                 fontSize = 13.sp,
                                             ),
                                         color = MaterialTheme.colorScheme.textSecondary,
@@ -1255,7 +1253,7 @@ fun AlbumScreen(
                                     },
                                     modifier =
                                         Modifier.fillMaxWidth()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = {
                                                     if (inSelectMode) {
                                                         onCheckedChange(song.id !in selection)
@@ -1273,12 +1271,12 @@ fun AlbumScreen(
                                                     }
                                                 },
                                                 onLongClick = {
-                                                    if (!inSelectMode) {
-                                                        haptic.performHapticFeedback(
-                                                            HapticFeedbackType.LongPress
+                                                    menuState.show(anchored = true) {
+                                                        SongMenu(
+                                                            originalSong = song,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
                                                         )
-                                                        inSelectMode = true
-                                                        onCheckedChange(true)
                                                     }
                                                 },
                                             ),
@@ -1312,7 +1310,6 @@ fun AlbumScreen(
                             ),
                             onClick = { navController.navigate("album/${it.id}") },
                             onLongClick = { album ->
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 menuState.show(anchored = true) {
                                     YouTubeAlbumMenu(
                                         albumItem = album,
@@ -1342,7 +1339,6 @@ fun AlbumScreen(
                         coroutineScope = scope,
                         onClick = { navController.navigate("album/${it.id}") },
                         onLongClick = { album ->
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             menuState.show(anchored = true) {
                                 YouTubeAlbumMenu(albumItem = album, navController = navController, onDismiss = menuState::dismiss)
                             }

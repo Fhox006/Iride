@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
@@ -80,7 +80,7 @@ fun IrideSearchBox(
         ),
         label = "searchBoxCornerRadius",
     )
-    val shape = RoundedCornerShape(animatedCornerRadius)
+    val shape = FolioShape(animatedCornerRadius)
 
     Box(
         modifier = modifier
@@ -118,7 +118,7 @@ fun IrideSearchBox(
                     .onFocusChanged(onFocusChanged),
                 textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.95f),
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 15.sp,
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
@@ -129,7 +129,7 @@ fun IrideSearchBox(
                             text = placeholderText,
                             style = TextStyle(
                                 color = MaterialTheme.colorScheme.textSecondary,
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontSize = 15.sp,
                             ),
                         )

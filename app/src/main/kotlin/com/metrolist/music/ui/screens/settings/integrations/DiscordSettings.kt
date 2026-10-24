@@ -23,8 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -445,7 +444,7 @@ fun DiscordSettings(
                 }
 
                 Card(
-                    shape = RoundedCornerShape(28.dp),
+                    shape = FolioShape(28.dp),
                     colors =
                         CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -468,7 +467,7 @@ fun DiscordSettings(
                                 AsyncImage(
                                     model = discordAvatar,
                                     contentDescription = null,
-                                    modifier = Modifier.size(56.dp).clip(CircleShape),
+                                    modifier = Modifier.size(56.dp).clip(FolioShape(32)),
                                 )
                             } else {
                                 Icon(
@@ -487,14 +486,14 @@ fun DiscordSettings(
                                     }
                                 Surface(
                                     color = statusColor,
-                                    shape = CircleShape,
+                                    shape = FolioShape(32),
                                     modifier =
                                         Modifier.size(16.dp)
                                             .align(Alignment.BottomEnd)
                                             .border(
                                                 2.dp,
                                                 MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                CircleShape,
+                                                FolioShape(32),
                                             ),
                                     content = {},
                                 )
@@ -912,14 +911,14 @@ fun RichPresence(
                         contentDescription = null,
                         modifier =
                             Modifier.size(96.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(FolioShape(3.dp))
                                 .align(Alignment.TopStart)
                                 .run {
                                     if (song == null) {
                                         border(
                                             2.dp,
                                             MaterialTheme.colorScheme.onSurface,
-                                            RoundedCornerShape(3.dp),
+                                            FolioShape(3.dp),
                                         )
                                     } else {
                                         this
@@ -933,7 +932,7 @@ fun RichPresence(
                                 Modifier.border(
                                         2.dp,
                                         MaterialTheme.colorScheme.surfaceContainer,
-                                        CircleShape,
+                                        FolioShape(32),
                                     )
                                     .padding(2.dp)
                                     .align(Alignment.BottomEnd)
@@ -941,7 +940,7 @@ fun RichPresence(
                             AsyncImage(
                                 model = it,
                                 contentDescription = null,
-                                modifier = Modifier.size(32.dp).clip(CircleShape),
+                                modifier = Modifier.size(32.dp).clip(FolioShape(32)),
                             )
                         }
                     }

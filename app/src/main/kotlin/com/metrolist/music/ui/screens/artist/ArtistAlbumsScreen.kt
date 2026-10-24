@@ -46,7 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -134,7 +134,7 @@ fun ArtistAlbumsScreen(
                     Text(
                         text = pluralStringResource(R.plurals.n_album, albums.size, albums.size)
                             .uppercase(),
-                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = 0.5.sp),
+                        style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 12.sp, letterSpacing = 0.5.sp),
                         color = MaterialTheme.colorScheme.secondary,
                     )
                 }

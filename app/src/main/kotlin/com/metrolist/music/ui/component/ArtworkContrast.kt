@@ -18,32 +18,23 @@ internal fun isDarkArtworkPigment(pixel: Int): Boolean =
 internal fun artworkUsesDarkInk(pixel: Int): Boolean =
     pixel ushr 24 >= 128 && (artworkLuminance(pixel, attenuation = 0.90) + 0.05) / 0.05 >= 7.0
 
-/** Choose the stronger WCAG contrast without discarding the artist's original pigment. */
-internal fun artistArtworkUsesDarkInk(pixel: Int): Boolean {
-    val luminance = artworkLuminance(pixel)
-    return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
-}
-
-/** Keep the pigment, adjusting brightness only when secondary ink would be hard to read. */
+/** Darken the pigment until white text, including secondary text, remains readable. */
 internal fun readableArtistArtworkPigment(pixel: Int): Int {
-    val darkInk = artistArtworkUsesDarkInk(pixel)
-    val target = if (darkInk) 255 else 0
     fun blend(fraction: Double): Int = (0..2).fold(0xFF000000.toInt()) { color, channel ->
         val shift = channel * 8
         val value = (pixel ushr shift) and 255
-        color or ((value + (target - value) * fraction).roundToInt() shl shift)
+        color or ((value * (1.0 - fraction)).roundToInt() shl shift)
     }
     fun readable(background: Int): Boolean {
         val luminance = artworkLuminance(background)
         val inkLuminance = artworkLuminance((0..2).fold(0xFF000000.toInt()) { color, channel ->
             val shift = channel * 8
             val value = (background ushr shift) and 255
-            val ink = if (darkInk) 0 else 255
-            color or ((value * 0.30 + ink * 0.70).roundToInt() shl shift)
+            color or ((value * 0.30 + 255 * 0.70).roundToInt() shl shift)
         })
         val contrast = (maxOf(luminance, inkLuminance) + 0.05) / (minOf(luminance, inkLuminance) + 0.05)
         // Leave a little headroom for GPU channel rounding during alpha compositing.
-        return contrast >= 4.6
+        return contrast >= 3.1 && 1.05 / (luminance + 0.05) >= 4.6
     }
     val opaque = pixel or 0xFF000000.toInt()
     if (readable(opaque)) return opaque

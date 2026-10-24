@@ -4,7 +4,7 @@ package com.metrolist.music.ui.screens.artist
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,8 +29,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -85,7 +83,6 @@ fun ArtistItemsScreen(
     viewModel: ArtistItemsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -196,7 +193,7 @@ fun ArtistItemsScreen(
                             isActive = mediaMetadata?.id == item.id,
                             isPlaying = isPlaying,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         playerConnection.videoPlayback.playVideo(item.toMediaMetadata())
                                     },
@@ -371,7 +368,7 @@ fun ArtistItemsScreen(
                         fillMaxWidth = true,
                         coroutineScope = coroutineScope,
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.irideFolioCombinedClickable(
                                     onClick = {
                                         when (item) {
                                             is SongItem -> {
@@ -416,7 +413,6 @@ fun ArtistItemsScreen(
                                         }
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(
                                             anchored = true,
                                         ) {

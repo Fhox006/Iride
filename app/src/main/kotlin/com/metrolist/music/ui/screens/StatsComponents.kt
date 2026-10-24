@@ -5,10 +5,11 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,7 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.ui.theme.textSecondary
@@ -182,7 +183,7 @@ private fun IrideTopItemCard(
                 Text(
                     text = "#$rank",
                     style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         letterSpacing = (-0.1).sp,
@@ -195,7 +196,7 @@ private fun IrideTopItemCard(
         Text(
             text = title,
             style = TextStyle(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 letterSpacing = (-0.1).sp,
@@ -208,7 +209,7 @@ private fun IrideTopItemCard(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -260,7 +261,7 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
+        style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.textSecondary,
         modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp, end = 16.dp)
@@ -284,7 +285,7 @@ fun StatsDataBox(
     ) {
         Text(
             text = stringResource(R.string.listening_stats),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
             color = MaterialTheme.colorScheme.textSecondary,
             modifier = Modifier.padding(bottom = 14.dp)
         )
@@ -342,12 +343,12 @@ fun StatItem(
             )
             Text(
                 text = value,
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp),
+                style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
                 text = label.uppercase(),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 10.sp, letterSpacing = 0.5.sp),
+                style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 10.sp, letterSpacing = 0.5.sp),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
         }

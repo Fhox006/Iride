@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -489,14 +490,14 @@ fun BackupAndRestore(
                                 AsyncImage(
                                     model = preview.accountImageUrl,
                                     contentDescription = null,
-                                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                                    modifier = Modifier.size(40.dp).clip(FolioShape(32)),
                                     contentScale = ContentScale.Crop,
                                 )
                             } else {
                                 Box(
                                     modifier =
                                         Modifier.size(40.dp)
-                                            .clip(CircleShape)
+                                            .clip(FolioShape(32))
                                             .background(
                                                 MaterialTheme.colorScheme.secondaryContainer
                                             ),

@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -255,7 +255,7 @@ fun ThumbnailCarousel(
                             modifier = Modifier
                                 .width(36.dp)
                                 .height(5.dp)
-                                .clip(RoundedCornerShape(50))
+                                .clip(FolioShape(50))
                                 .background(Color.White.copy(alpha = 0.35f))
                         )
                     }
@@ -460,7 +460,7 @@ private fun CarouselSeekEffectOverlay(
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.7f), FolioShape(8.dp))
             .padding(8.dp)
     )
 }

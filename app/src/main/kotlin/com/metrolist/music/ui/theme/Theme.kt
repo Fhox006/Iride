@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
@@ -110,10 +112,19 @@ fun IrideTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        shapes = FolioShapes,
         typography = AppTypography,
         content = content
     )
 }
+
+private val FolioShapes = Shapes(
+    extraSmall = FolioShape(4.dp),
+    small = FolioShape(8.dp),
+    medium = FolioShape(12.dp),
+    large = FolioShape(16.dp),
+    extraLarge = FolioShape(28.dp),
+)
 
 suspend fun Bitmap.extractThemeColor(): Color = withContext(Dispatchers.Default) {
     val colorsToPopulation = Palette.from(this@extractThemeColor)

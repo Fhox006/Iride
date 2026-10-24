@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -23,9 +24,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -60,6 +64,43 @@ import com.metrolist.music.ui.utils.rememberReducedMotion
  * Questo file è il punto di riferimento per modificare il comportamento di TUTTE le pagine.
  * IridePageLayout (liste/griglie), IridePageFrame (contenuti verticali), IridePageTopBar e
  * LibraryGridPage sono adattatori dello stesso protocollo, non stili alternativi.
+ *
+ * MOTION E CARICAMENTO
+ *
+ * IrideFolioSection possiede un unico ingresso per titolo, controlli, contenuto e footer.
+ * Il blocco completo parte sollevato verso l'utente: il bordo superiore ruota in prospettiva
+ * intorno alla base e la scala rientra nel piano dello schermo con la molla SectionEntrance.
+ * irideDepthEnter possiede inclinazione, scala e distanza della camera; non traslare sull'asse Y.
+ * Non sovrapporre wipe del testo o variazioni animate delle dimensioni.
+ * L'ingresso parte quando il blocco entra nel viewport, una sola volta per sessione: il prefetch
+ * lazy non deve consumarlo. Nella Home i blocchi visibili entrano in ordine dall'alto verso
+ * il basso, con breve sfalsamento; quelli gia fuori schermo non bloccano il viewport attuale.
+ * Le liste con meno di quattro brani occupano solo le righe effettive, senza slot vuoti.
+ * IrideFolioSectionSkeleton sostituisce l'intero blocco durante l'attesa,
+ * senza anticipare il titolo reale. La preparazione delle prime copertine procede in parallelo
+ * alla composizione, con attesa massima SectionArtworkBudgetMillis; la rete non blocca la pagina.
+ * Le sezioni indipendenti non si attendono tra loro. I batch iniziali possono crescere senza
+ * cambiare ordine o altezza delle righe gi? presentate. IrideFolioMediaShelf instrada le tracce
+ * audio verso SharedQuickPicksCarousel e YouTubeListItem: copertina piccola, titolo e artista.
+ * Solo album, playlist, artisti e video reali usano tile grandi. Non usare YouTubeGridItem per
+ * trasformare una traccia audio in una card con play centrale, nemmeno in Trending o Similar to.
+ * La Home sperimenta due soli ruoli tipografici: Satoshi Bold nei titoli e IBM Plex Mono nel testo,
+ * nei controlli e nei menu long press. homeType converte uno stile tra i due ruoli; il display
+ * conserva proporzioni naturali, senza stiramenti, e maiuscole normali per la leggibilita.
+ * Il tema resta locale alla Home; i menu conservano la tipografia sorgente nella presentazione
+ * globale che cattura lo sfondo, cosi blur e grana mantengono la stessa sorgente Folio.
+ * Durante l'ingresso dei blocchi Home, la sfocatura usa raggio e curva del menu contestuale;
+ * si azzera a fine animazione e con movimento ridotto. I titoli non espongono refresh locali.
+ * Gli avatar degli artisti passano da rememberArtistThumbnail e ItemThumbnail: scelta del provider,
+ * riparazione e cache sono gli stessi della pagina artista. Un URL assente non elimina la sezione.
+ * Your mood usa soltanto i chip e gli endpoint reali del feed; non inventare categorie prive
+ * di endpoint ne richieste aggiuntive per scoprirle. Cache, retry e poster seguono il loader mood.
+ * La sincronizzazione resta un indicatore sovrapposto, senza occupare spazio nella lista.
+ * I mood mostrano skeleton durante la richiesta; la preparazione dei poster precede la
+ * pubblicazione iniziale dei mix. Aggiornare poi l'artwork senza sostituire le card visibili.
+ * Ogni carosello, selettore e pannello usa rubberBandOverscroll sull'asse corretto e disabilita
+ * lo stretch nativo. Il gesto orizzontale lascia il movimento verticale alla pagina.
+ * Con movimento ridotto, ingressi, shimmer, indicatori e ritorni elastici diventano statici.
  *
  * FILOSOFIA
  *
@@ -214,6 +255,8 @@ import com.metrolist.music.ui.utils.rememberReducedMotion
  * viewport. Usare IrideFolioWebView per inoltrare al frame i gesti rimasti ai bordi del documento.
  */
 object IrideFolio {
+    val ShelfPagerFooterHeight = 18.dp
+    val ShelfMosaicGap = 4.05.dp
     const val FadeDurationMillis = 440
     const val TopScrimOpacity = 1f
     val TopScrimFadeHeight = 12.dp
@@ -342,6 +385,7 @@ object IrideFolio {
     const val CollectionTitleMaxLines = 3
     val TitleTopSpacing = 8.dp
     val TitleBottomSpacing = 4.dp
+    const val SatoshiTextHeightScale = 0.9f
     val TitleFontSize = 34.sp
     val TitleLineHeight = 41.sp
     // Artist actions use 40 dp controls, with a 2 dp inset on each side.
@@ -364,7 +408,7 @@ object IrideFolio {
     val NavigationMotionEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
     val ControlsTopSpacing = 4.dp
     val ControlsCornerRadius = 18.dp
-    val ControlsShape = RoundedCornerShape(ControlsCornerRadius)
+    val ControlsShape = FolioShape(ControlsCornerRadius)
     val ControlsDividerWidth = 1.dp
     val ControlsDividerHeight = 20.dp
     val TitleAfterControls = ControlsTopSpacing + ControlsHeight + TitleTopSpacing
@@ -375,7 +419,9 @@ object IrideFolio {
     val MenuItemHeight = 42.dp
     val MenuContentPadding = 2.dp
     val MenuBorderWidth = 1.dp
-    val MenuContentShape = RoundedCornerShape(ControlsCornerRadius - MenuBorderWidth)
+    val MenuScrollbarTopInset = ControlsCornerRadius
+    val MenuScrollbarBottomInset = 8.dp
+    val MenuContentShape = FolioShape(ControlsCornerRadius - MenuBorderWidth)
     val MenuSectionHorizontalPadding = 14.dp
     val MenuSectionVerticalPadding = 2.dp
     val MenuDividerThickness = 1.dp
@@ -388,7 +434,7 @@ object IrideFolio {
     const val ScrollbarTrackOpacity = 0.12f
     const val ScrollbarThumbOpacity = 0.65f
     // Button and popup presentation belongs to Folio; callers supply only content and behavior.
-    val ButtonShape = RoundedCornerShape(percent = 50)
+    val ButtonShape = FolioShape(percent = 50)
     val ButtonMinHeight = 40.dp
     val ButtonHorizontalPadding = 20.dp
     val ButtonVerticalPadding = 10.dp
@@ -396,7 +442,7 @@ object IrideFolio {
     const val ButtonBorderOpacity = 0.22f
     const val ButtonDisabledOpacity = 0.4f
     const val ButtonPressedScale = 0.92f
-    val DialogShape = RoundedCornerShape(16.dp)
+    val DialogShape = FolioShape(16.dp)
     val DialogOuterPadding = 24.dp
     val DialogContentPadding = 24.dp
     val DialogBorderWidth = 1.dp
@@ -406,13 +452,13 @@ object IrideFolio {
     // Playlist drafts use a full Folio page, with an editable identity and shared song rows.
     val EditorMaxWidth = 720.dp
     val PlaylistDraftArtworkSize = 96.dp
-    val PlaylistDraftArtworkShape = RoundedCornerShape(12.dp)
+    val PlaylistDraftArtworkShape = FolioShape(12.dp)
     val PlaylistDraftSectionGap = 20.dp
     val PlaylistDraftNameFontSize = 22.sp
     val PlaylistDraftNameLineHeight = 29.sp
     val PlaylistPickerMaxHeight = 560.dp
     // Collection transport controls share one renderer across artists, albums and playlists.
-    val CollectionPanelShape = RoundedCornerShape(percent = 50)
+    val CollectionPanelShape = FolioShape(percent = 50)
     val CollectionPanelBorderWidth = 1.dp
     val CollectionPanelHorizontalPadding = 12.dp
     val CollectionPanelVerticalPadding = 8.dp
@@ -532,14 +578,20 @@ internal fun IrideFolioMenuButton(
     content: @Composable () -> Unit,
 ) {
     val progress = rememberIrideFolioFade(if (expanded) 1f else 0f)
+    val stroke = MaterialTheme.colorScheme.strokeCard
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier.size(IrideFolio.ControlSurfaceSize)
-                // Song buttons are inside the page snapshot. Sampling that snapshot here would
-                // make its graphics layer draw itself through its blur layer during the fade.
-                .irideFolioControlSurface(progress, backdrop = null, forceArtworkSurface = false),
+                .clip(IrideFolio.ControlsShape)
+                .border(
+                    IrideFolio.MenuBorderWidth,
+                    stroke.copy(alpha = stroke.alpha * progress),
+                    IrideFolio.ControlsShape,
+                ),
         )
-        IconButton(onClick = onClick, enabled = enabled, content = content)
+        CompositionLocalProvider(LocalRippleConfiguration provides null) {
+            IconButton(onClick = onClick, enabled = enabled, content = content)
+        }
     }
 }
 
@@ -597,6 +649,12 @@ internal fun IrideFolioMenuItem(
     onClick: () -> Unit,
 ) {
     val menuInk = LocalArtworkContentColor.current ?: Color.White
+    val opacity = remember { Animatable(1f) }
+    val reducedMotion = rememberReducedMotion()
+    LaunchedEffect(enabled, reducedMotion) {
+        val target = if (enabled) 1f else 0.38f
+        if (reducedMotion) opacity.snapTo(target) else opacity.animateTo(target, tween(160))
+    }
     DropdownMenuItem(
         enabled = enabled,
         text = text,
@@ -611,8 +669,13 @@ internal fun IrideFolioMenuItem(
                 textColor = menuInk,
                 leadingIconColor = menuInk,
                 trailingIconColor = menuInk,
+                disabledTextColor = menuInk,
+                disabledLeadingIconColor = menuInk,
+                disabledTrailingIconColor = menuInk,
             ),
-        modifier = Modifier.height(IrideFolio.MenuItemHeight).semantics { this.selected = selected },
+        modifier = Modifier.height(IrideFolio.MenuItemHeight)
+            .graphicsLayer { alpha = opacity.value }
+            .semantics { this.selected = selected },
     )
 }
 
@@ -664,8 +727,10 @@ internal fun Modifier.irideFolioControlSurface(
  * the child's state: both gesture detectors would grab a new touch during the same fling.
  */
 @Composable
-internal fun Modifier.irideFolioGestures(state: ScrollableState): Modifier =
-    rubberBandOverscroll(Orientation.Vertical, state)
+internal fun Modifier.irideFolioGestures(
+    state: ScrollableState,
+    pull: RubberBandPull = rememberRubberBandPull(),
+): Modifier = rubberBandOverscroll(Orientation.Vertical, state, pull)
 
 /** Use on siblings of the scrolling content, never on its parent. */
 internal fun Modifier.irideFolioScrollReceiver(state: ScrollableState): Modifier =

@@ -38,8 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -79,7 +78,7 @@ import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.shazamkit.models.RecognitionResult
 import com.metrolist.shazamkit.models.RecognitionStatus
 import java.time.LocalDateTime
@@ -285,11 +284,11 @@ private fun ReadyState(onStartRecognition: () -> Unit, useIrideStyle: Boolean = 
         Box(
             modifier =
                 Modifier.size(200.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .then(
                         if (useIrideStyle) {
                             Modifier.background(Color.Transparent)
-                                .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.15f), FolioShape(32))
                         } else {
                             Modifier.background(
                                 Brush.radialGradient(
@@ -309,14 +308,14 @@ private fun ReadyState(onStartRecognition: () -> Unit, useIrideStyle: Boolean = 
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                             else MaterialTheme.colorScheme.primary
                         )
                         .then(
                             if (useIrideStyle) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                                Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), FolioShape(32))
                             } else {
                                 Modifier
                             }
@@ -339,7 +338,7 @@ private fun ReadyState(onStartRecognition: () -> Unit, useIrideStyle: Boolean = 
             style =
                 if (useIrideStyle) {
                     MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 } else {
@@ -379,7 +378,7 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                 modifier =
                     Modifier.size(200.dp)
                         .scale(scale)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.10f)
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -390,7 +389,7 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                 modifier =
                     Modifier.size(180.dp)
                         .scale(scale * 0.9f)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.14f)
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -400,14 +399,14 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.1f)
                             else MaterialTheme.colorScheme.primary
                         )
                         .then(
                             if (useIrideStyle) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+                                Modifier.border(1.dp, Color.White.copy(alpha = 0.4f), FolioShape(32))
                             } else {
                                 Modifier
                             }
@@ -431,7 +430,7 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
             style =
                 if (useIrideStyle) {
                     MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 } else {
@@ -480,7 +479,7 @@ private fun ProcessingState(useIrideStyle: Boolean = false) {
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .border(
                             width = 4.dp,
                             brush =
@@ -511,7 +510,7 @@ private fun ProcessingState(useIrideStyle: Boolean = false) {
                                             )
                                     )
                                 },
-                            shape = CircleShape,
+                            shape = FolioShape(32),
                         )
             )
 
@@ -530,7 +529,7 @@ private fun ProcessingState(useIrideStyle: Boolean = false) {
             style =
                 if (useIrideStyle) {
                     MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 } else {
@@ -564,7 +563,7 @@ private fun SuccessState(
         Card(
             modifier = Modifier.size(180.dp).aspectRatio(1f),
             shape =
-                RoundedCornerShape(
+                FolioShape(
                     if (useIrideStyle) 5.dp else com.metrolist.music.constants.ThumbnailCornerRadius
                 ),
             elevation =
@@ -588,7 +587,7 @@ private fun SuccessState(
             text = result.title,
             style =
                 if (useIrideStyle) {
-                    MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily)
+                    MaterialTheme.typography.headlineSmall.copy(fontFamily = IBMPlexMonoFontFamily)
                 } else {
                     MaterialTheme.typography.headlineSmall
                 },
@@ -603,7 +602,7 @@ private fun SuccessState(
             text = result.artist,
             style =
                 if (useIrideStyle) {
-                    MaterialTheme.typography.titleMedium.copy(fontFamily = SpaceMonoFontFamily)
+                    MaterialTheme.typography.titleMedium.copy(fontFamily = IBMPlexMonoFontFamily)
                 } else {
                     MaterialTheme.typography.titleMedium
                 },
@@ -736,14 +735,14 @@ private fun NoMatchState(
         Box(
             modifier =
                 Modifier.size(120.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(
                         if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                         else MaterialTheme.colorScheme.errorContainer
                     )
                     .then(
                         if (useIrideStyle) {
-                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), FolioShape(32))
                         } else {
                             Modifier
                         }
@@ -764,7 +763,7 @@ private fun NoMatchState(
             text = stringResource(R.string.no_match_found),
             style =
                 if (useIrideStyle) {
-                    MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily)
+                    MaterialTheme.typography.titleLarge.copy(fontFamily = IBMPlexMonoFontFamily)
                 } else {
                     MaterialTheme.typography.titleLarge
                 },
@@ -823,14 +822,14 @@ private fun ErrorState(
         Box(
             modifier =
                 Modifier.size(120.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(
                         if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                         else MaterialTheme.colorScheme.errorContainer
                     )
                     .then(
                         if (useIrideStyle) {
-                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), FolioShape(32))
                         } else {
                             Modifier
                         }
@@ -851,7 +850,7 @@ private fun ErrorState(
             text = stringResource(R.string.recognition_error),
             style =
                 if (useIrideStyle) {
-                    MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily)
+                    MaterialTheme.typography.titleLarge.copy(fontFamily = IBMPlexMonoFontFamily)
                 } else {
                     MaterialTheme.typography.titleLarge
                 },

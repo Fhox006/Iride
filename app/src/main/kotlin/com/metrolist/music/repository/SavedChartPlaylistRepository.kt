@@ -133,7 +133,7 @@ class SavedChartPlaylistRepository @Inject constructor(
     private fun title(market: ChartMarket) = context.getString(R.string.new_charts_playlist_title, chartCountryName(market.code))
 
     private fun posterPath(market: ChartMarket, count: Int): String {
-        val file = File(covers, "v1_${market.code}_$count.png")
+        val file = File(covers, "v3_${market.code}_$count.png")
         if (!file.isFile || file.length() == 0L) {
             covers.mkdirs()
             val bitmap = renderChartPoster(context, market.code, count)

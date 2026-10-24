@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,7 +65,7 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.*
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.LyricsViewModel
@@ -492,7 +492,7 @@ internal fun IrideMp3Queue(
                                                     }
                                                 }
                                             }
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(FolioShape(8.dp))
                                             .background(Color.White.copy(alpha = 0.10f)),
                                         contentAlignment = Alignment.CenterStart,
                                     ) {
@@ -509,7 +509,7 @@ internal fun IrideMp3Queue(
                                 Mp3QueueRow(
                                     entry.metadata,
                                     modifier =
-                                        Modifier.clip(RoundedCornerShape(8.dp))
+                                        Modifier.clip(FolioShape(8.dp))
                                             .background(
                                                 if (isDragging) Color.White.copy(alpha = .10f)
                                                 else Color.Transparent
@@ -624,14 +624,13 @@ private class Mp3QueueScrollConnection(
 @Composable
 private fun Mp3QueueSectionTitle(text: String) {
     Column(
-        Modifier.fillMaxWidth().background(IrideMp3BackgroundColor)
-            .semantics { heading() }
+        Modifier.fillMaxWidth().semantics { heading() }
     ) {
         HorizontalDivider(color = Color.White.copy(alpha = .12f))
         Text(
             text,
             color = Color.White.copy(alpha = .65f),
-            fontFamily = SpaceMonoFontFamily,
+            fontFamily = IBMPlexMonoFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
             lineHeight = 15.sp,
@@ -664,7 +663,7 @@ private fun Mp3QueueRow(
             }
         }
         Row(
-            Modifier.weight(1f).clip(RoundedCornerShape(7.dp))
+            Modifier.weight(1f).clip(FolioShape(7.dp))
                 .clickable(enabled = enabled, onClick = onClick).padding(3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -684,7 +683,7 @@ private fun Mp3QueueRow(
             Column(Modifier.weight(1f).padding(start = 8.dp)) {
                 Text(
                     metadata.title,
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
@@ -694,7 +693,7 @@ private fun Mp3QueueRow(
                 )
                 Text(
                     metadata.artists.joinToString { it.name },
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
                     color = Color.White.copy(alpha = .55f),
@@ -708,7 +707,7 @@ private fun Mp3QueueRow(
 
 @Composable
 private fun Mp3EmptyText(text: String) {
-    Text(text, color = Color.White.copy(alpha = .5f), fontFamily = SpaceMonoFontFamily, fontSize = 11.sp, modifier = Modifier.padding(12.dp))
+    Text(text, color = Color.White.copy(alpha = .5f), fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp, modifier = Modifier.padding(12.dp))
 }
 
 @Composable

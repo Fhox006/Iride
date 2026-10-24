@@ -38,7 +38,7 @@ private const val CURSOR_BLINKS_AT_END = 2
  * Types [text] out one character at a time, with a block cursor riding the last character.
  *
  * The hero moment of a screen, so at most one per screen — everything else in the Iride motion
- * vocabulary reveals with [com.metrolist.music.ui.utils.revealMask] instead. Space Mono makes this
+ * vocabulary reveals with [com.metrolist.music.ui.utils.revealMask] instead. IBM Plex Mono makes this
  * work: a monospace face means no character is wider than another, so nothing shuffles as the line
  * grows.
  *

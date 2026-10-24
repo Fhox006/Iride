@@ -483,6 +483,10 @@ class MusicService :
 
     fun setKaraokeControlsVisible(visible: Boolean) {
         vocalControlsVisible = visible
+        if (!visible && vocalState.value.voiceLevel >= 1f) {
+            cancelVocalPreparation()
+            return
+        }
         updateVocalPreparationPriority()
         if (visible) activateKaraoke()
     }
@@ -495,6 +499,8 @@ class MusicService :
     }
 
     private fun warmKaraokeIfAvailable() {
+        // A second decoder and the separation model must only run on explicit karaoke use.
+        if (!vocalControlsVisible && vocalState.value.voiceLevel >= 1f) return
         val item = player.currentMediaItem ?: return
         if (player.playbackState == Player.STATE_READY && !videoPlayback.isVideoItem(item) &&
             item.metadata?.isEpisode == false && castConnectionHandler?.isCasting?.value != true &&
@@ -516,6 +522,8 @@ class MusicService :
                 error = getString(R.string.vocal_local_playback_only))
             return
         }
+        // Let the playback decoder acquire its resources before starting the optional decoder.
+        if (player.playbackState != Player.STATE_READY) return
         val mediaId = item.mediaId
         val durationMs = player.duration.takeIf { it > 0 } ?: (item.metadata?.duration ?: 0) * 1000L
         val request = ++vocalRequest
@@ -594,6 +602,8 @@ class MusicService :
                 positionJob.cancel()
                 if (request == vocalRequest) {
                     vocalPreparationJob = null
+                    vocalTimeline = null
+                    vocalState.update { it.copy(audioReady = false) }
                 }
             }
         }
@@ -2984,6 +2994,14 @@ class MusicService :
         if (!playerInitialized.value) {
             Timber.tag(TAG).e(error, "Player error occurred but player not initialized")
             return
+        }
+
+        if (vocalPreparationJob != null || vocalTimeline != null) {
+            // Recovery needs the playback decoder's resources, without restarting karaoke on READY.
+            cancelVocalPreparation()
+            vocalState.update {
+                it.copy(phase = VocalPreparation.Error, error = getString(R.string.vocal_preparation_failed))
+            }
         }
 
         val mediaId = player.currentMediaItem?.mediaId

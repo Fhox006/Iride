@@ -18,8 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import java.time.YearMonth
@@ -61,14 +60,14 @@ fun ReverieHomeCard(month: YearMonth, onClick: () -> Unit, modifier: Modifier = 
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(6.dp),
+        shape = FolioShape(6.dp),
         color = Color(palette.background),
         contentColor = ReverieInk,
     ) {
         Column(Modifier.irideSurfaceGrain(.18f)) {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp)) {
                 Text(stringResource(R.string.reverie_edition, month.format(DateTimeFormatter.ofPattern("MM.yyyy"))),
-                    fontFamily = SpaceMonoFontFamily, fontSize = 10.sp, letterSpacing = 1.sp)
+                    fontFamily = IBMPlexMonoFontFamily, fontSize = 10.sp, letterSpacing = 1.sp)
                 Text(stringResource(R.string.reverie_name).uppercase(Locale.ROOT),
                     fontFamily = ReverieTitleFont, fontSize = 44.sp, lineHeight = 52.sp,
                     modifier = Modifier.padding(top = 8.dp))
@@ -78,11 +77,11 @@ fun ReverieHomeCard(month: YearMonth, onClick: () -> Unit, modifier: Modifier = 
             }
             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())),
-                    fontFamily = SpaceMonoFontFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    fontFamily = IBMPlexMonoFontFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.reverie_home_action), fontFamily = SpaceMonoFontFamily, fontSize = 11.sp)
-                    Box(Modifier.size(36.dp).background(Color(palette.accent), CircleShape), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.reverie_home_action), fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp)
+                    Box(Modifier.size(36.dp).background(Color(palette.accent), FolioShape(32)), contentAlignment = Alignment.Center) {
                         Icon(painterResource(R.drawable.play), null, tint = Color(0xFFF2F0EB), modifier = Modifier.size(20.dp))
                     }
                 }
@@ -110,7 +109,7 @@ fun ReverieMonthSelector(
             ) {
                 Text(
                     selectedMonth.year.toString(),
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.textPrimary,
@@ -143,7 +142,7 @@ fun ReverieMonthSelector(
                 },
                 currentValue = selectedMonth,
                 onValueUpdate = onSelect,
-                labelStyle = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                labelStyle = MaterialTheme.typography.labelLarge.copy(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
                 horizontalPadding = 8.dp,
                 useIrideStyle = true,
                 modifier = Modifier.weight(1f),
@@ -193,7 +192,7 @@ fun ReverieArchiveDialog(
                             Text(
                                 month.format(DateTimeFormatter.ofPattern("MMMM", Locale.getDefault())),
                                 modifier = Modifier.weight(1f),
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                             )
                             Icon(painterResource(R.drawable.play), stringResource(R.string.reverie_play_month), modifier = Modifier.size(22.dp))
                         }
@@ -211,7 +210,7 @@ fun ReverieAvailabilityCard(month: YearMonth, firstFullMonth: YearMonth?, modifi
     val upcoming = month >= current
     val first = if (partial) requireNotNull(firstFullMonth) else firstFullMonth?.coerceAtLeast(current) ?: current
     val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(modifier.fillMaxWidth(), shape = FolioShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.irideSurfaceGrain(.12f).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.reverie_name), fontFamily = ReverieTitleFont, fontSize = 26.sp)
             Text(stringResource(when {
@@ -219,7 +218,7 @@ fun ReverieAvailabilityCard(month: YearMonth, firstFullMonth: YearMonth?, modifi
                 upcoming -> R.string.reverie_coming_month
                 else -> R.string.reverie_insufficient_month
             }, first.format(formatter), first.plusMonths(1).atDay(1).format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()))),
-                fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, lineHeight = 19.sp,
+                fontFamily = IBMPlexMonoFontFamily, fontSize = 12.sp, lineHeight = 19.sp,
                 color = MaterialTheme.colorScheme.textSecondary)
         }
     }

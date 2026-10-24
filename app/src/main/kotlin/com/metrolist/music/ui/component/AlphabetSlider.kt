@@ -20,8 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,7 +83,7 @@ fun AlphabetSlider(
     Box(
         modifier = modifier
             .width(width)
-            .clip(RoundedCornerShape(CollapsedWidth / 2))
+            .clip(FolioShape(CollapsedWidth / 2))
             .background(
                 MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = bgAlpha),
             )
@@ -126,7 +125,7 @@ fun AlphabetSlider(
                     Box(
                         modifier = Modifier
                             .size(18.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                             ),

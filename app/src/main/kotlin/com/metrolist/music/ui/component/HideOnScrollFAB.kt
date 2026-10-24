@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
@@ -26,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -50,7 +51,7 @@ import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.theme.strokeCard
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 
 /**
  * New Iride UI: flat, monochrome, borderless-fill replacement for the default Material
@@ -71,9 +72,9 @@ private fun IrideFlatFAB(
         modifier = modifier
             .size(56.dp)
             .pressScale(interactionSource, pressedScale = 0.92f)
-            .clip(CircleShape)
+            .clip(FolioShape(32))
             .background(Color.Black.copy(alpha = 0.85f))
-            .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, FolioShape(32))
             .semantics { description?.let { contentDescription = it } }
             .clickable(
                 interactionSource = interactionSource,
@@ -85,7 +86,7 @@ private fun IrideFlatFAB(
         if (icon == R.drawable.add) {
             Text(
                 text = "+",
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 fontSize = 32.sp,
                 color = Color.White.copy(alpha = 0.9f),
             )

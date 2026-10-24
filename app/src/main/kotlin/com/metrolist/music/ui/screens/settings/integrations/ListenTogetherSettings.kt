@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -724,7 +724,7 @@ private fun ServerChooserDialog(
                 val isSelected = server.url == currentUrl
                 Card(
                     modifier = Modifier.fillMaxWidth().clickable { onSelect(server) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = FolioShape(16.dp),
                     colors =
                         CardDefaults.cardColors(
                             containerColor =
@@ -814,7 +814,7 @@ fun LogEntryItem(log: LogEntry) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = FolioShape(8.dp),
                 color =
                     when (log.level) {
                         LogLevel.ERROR -> MaterialTheme.colorScheme.errorContainer
@@ -896,7 +896,7 @@ fun BlockedUsersDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
                                 Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(FolioShape(12.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,

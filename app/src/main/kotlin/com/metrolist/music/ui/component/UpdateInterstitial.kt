@@ -44,7 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.metrolist.music.R
 import com.metrolist.music.constants.PendingUpdateNotesKey
 import com.metrolist.music.constants.PendingUpdateVersionNameKey
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.dataStore
@@ -135,7 +135,7 @@ fun UpdateInterstitialScreen(
 
                 Text(
                     text = stringResource(R.string.update_interstitial_title),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = IBMPlexMonoFontFamily),
                     fontWeight = FontWeight.Bold,
                     color = InterstitialInk,
                     textAlign = TextAlign.Center,
@@ -145,7 +145,7 @@ fun UpdateInterstitialScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.update_interstitial_version, versionName),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = IBMPlexMonoFontFamily),
                         color = InterstitialInk.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center,
                     )
@@ -156,7 +156,7 @@ fun UpdateInterstitialScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = stringResource(R.string.update_interstitial_whats_new),
-                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily),
+                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = IBMPlexMonoFontFamily),
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             color = InterstitialInk.copy(alpha = 0.45f),
@@ -166,13 +166,13 @@ fun UpdateInterstitialScreen(
                             Row(modifier = Modifier.padding(vertical = 2.dp)) {
                                 Text(
                                     text = "—",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = IBMPlexMonoFontFamily),
                                     color = InterstitialInk.copy(alpha = 0.45f),
                                     modifier = Modifier.padding(end = 10.dp),
                                 )
                                 Text(
                                     text = line,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = IBMPlexMonoFontFamily),
                                     color = InterstitialInk.copy(alpha = 0.9f),
                                 )
                             }
@@ -242,7 +242,7 @@ fun UpdateInterstitialScreen(
 private fun InterstitialCaption(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+        style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
         color = InterstitialInk.copy(alpha = 0.45f),
         textAlign = TextAlign.Center,
     )

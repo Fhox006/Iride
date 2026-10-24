@@ -1,7 +1,7 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -240,7 +240,7 @@ private fun ReleaseDiscoveryShelf(items: List<YTItem>, navController: NavControl
         YouTubeGridItem(
             item = item,
             size = when (item) { is ArtistItem -> 120.dp; is AlbumItem -> 156.dp; else -> 172.dp },
-            modifier = Modifier.combinedClickable(
+            modifier = Modifier.irideFolioCombinedClickable(
                 onClick = {
                     when (item) {
                         is ArtistItem -> navController.navigate("artist/${item.id}")

@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import com.metrolist.music.LocalDatabase
 
 /** Artist subpages inherit the same pinned portrait pigment and ink as the profile. */
@@ -28,7 +27,7 @@ internal fun IrideArtistPageSurface(artistId: String, content: @Composable () ->
     val tint = artwork?.tint ?: Color.Black
     IrideArtworkSurface(
         backgroundColor = tint,
-        contentColor = if (artistArtworkUsesDarkInk(tint.toArgb())) Color.Black else Color.White,
+        contentColor = Color.White,
         modifier = Modifier.fillMaxSize(),
     ) { content() }
 }

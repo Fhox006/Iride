@@ -4,7 +4,7 @@ package com.metrolist.music.ui.screens.search
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -30,7 +30,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -290,7 +289,7 @@ private fun LazyListScope.localSearchResultItems(
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
                                     modifier =
-                                        Modifier.combinedClickable(
+                                        Modifier.irideFolioCombinedClickable(
                                             onClick = {
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
@@ -316,9 +315,6 @@ private fun LazyListScope.localSearchResultItems(
                                                 }
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = item,
@@ -341,15 +337,12 @@ private fun LazyListScope.localSearchResultItems(
                                     isPlaying = isPlaying,
                                     coroutineScope = coroutineScope,
                                     modifier =
-                                        Modifier.combinedClickable(
+                                        Modifier.irideFolioCombinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("album/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     AlbumMenu(
                                                         originalAlbum = item,
@@ -365,15 +358,12 @@ private fun LazyListScope.localSearchResultItems(
                                 ArtistGridItem(
                                     artist = item,
                                     modifier =
-                                        Modifier.combinedClickable(
+                                        Modifier.irideFolioCombinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("artist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     ArtistMenu(
                                                         originalArtist = item,
@@ -389,15 +379,12 @@ private fun LazyListScope.localSearchResultItems(
                                 PlaylistGridItem(
                                     playlist = item,
                                     modifier =
-                                        Modifier.combinedClickable(
+                                        Modifier.irideFolioCombinedClickable(
                                             onClick = {
                                                 onDismiss()
                                                 navController.navigate("local_playlist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     PlaylistMenu(
                                                         playlist = item,
@@ -460,7 +447,7 @@ private fun LazyListScope.localSearchResultItems(
                             }
                         },
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.irideFolioCombinedClickable(
                                     onClick = {
                                         if (item.id == mediaMetadata?.id) {
                                             playerConnection.togglePlayPause()

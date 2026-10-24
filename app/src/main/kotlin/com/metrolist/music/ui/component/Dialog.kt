@@ -44,7 +44,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -228,7 +228,7 @@ fun TextFieldDialog(
         focusedLabelColor = MaterialTheme.colorScheme.textSecondary,
         unfocusedLabelColor = MaterialTheme.colorScheme.textSecondary,
     )
-    val fieldTextStyle = LocalTextStyle.current.copy(fontFamily = SpaceMonoFontFamily)
+    val fieldTextStyle = LocalTextStyle.current.copy(fontFamily = IBMPlexMonoFontFamily)
 
     LaunchedEffect(Unit) {
         if (autoFocus) {

@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.equalizer
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -29,7 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.eq.data.EQPreset
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import kotlin.math.abs
@@ -68,7 +70,7 @@ fun VerticalGainSlider(
         Text(
             text = EqCurve.formatGain(value),
             style = TextStyle(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp
             ),
@@ -156,7 +158,7 @@ fun VerticalGainSlider(
             }
 
             // Handle: small solid horizontal bar
-            drawRoundRect(
+            drawFolioRoundRect(
                 color = accent.copy(alpha = if (active) 1f else 0.75f),
                 topLeft = Offset(centerX - HandleWidth.toPx() / 2f, thumbY - HandleHeight.toPx() / 2f),
                 size = Size(HandleWidth.toPx(), HandleHeight.toPx()),
@@ -167,7 +169,7 @@ fun VerticalGainSlider(
         Text(
             text = label,
             style = TextStyle(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 fontSize = 9.sp
             ),
             color = MaterialTheme.colorScheme.textSecondary.copy(alpha = if (active) 1f else 0.7f),

@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.equalizer
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import com.metrolist.music.ui.component.IrideFolioChoiceMenu
 import com.metrolist.music.ui.component.IrideFolioMenuAction
 
@@ -16,7 +18,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -37,8 +39,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -92,7 +93,7 @@ import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -108,8 +109,8 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
-private val CardShape = RoundedCornerShape(22.dp)
-private val PillShape = RoundedCornerShape(50)
+private val CardShape = FolioShape(22.dp)
+private val PillShape = FolioShape(50)
 private val SavedGreen = Color(0xFF2ECC71)
 private val FlashRed = Color(0xFFE74C3C)
 
@@ -372,7 +373,7 @@ private fun DeviceEqCard(
                 .fillMaxWidth()
                 .heightIn(min = if (isGeneral) 200.dp else 196.dp)
                 .graphicsLayer { alpha = cardAlpha }
-                .combinedClickable(
+                .irideFolioCombinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = {},
@@ -481,7 +482,7 @@ private fun CardHeader(
             text = title,
             style =
                 TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     letterSpacing = (-0.1).sp,
@@ -493,7 +494,7 @@ private fun CardHeader(
             text = statusText,
             style =
                 TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 9.sp,
                     letterSpacing = 0.4.sp,
@@ -514,7 +515,7 @@ private fun DeviceIdentity(iconRes: Int, onIconClick: () -> Unit, modifier: Modi
         Box(
             modifier =
                 Modifier.size(56.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -572,7 +573,7 @@ private fun DeviceControls(
                         ),
                     style =
                         TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                         ),
@@ -589,7 +590,7 @@ private fun DeviceControls(
                 text = stringResource(R.string.eq_bass_boost),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
                     ),
@@ -607,12 +608,12 @@ private fun DeviceControls(
             ) {
                 Text(
                     text = stringResource(R.string.eq_bass_off),
-                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 8.sp),
+                    style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 8.sp),
                     color = MaterialTheme.colorScheme.textSecondary.copy(alpha = 0.65f),
                 )
                 Text(
                     text = stringResource(R.string.eq_bass_punch),
-                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 8.sp),
+                    style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 8.sp),
                     color = MaterialTheme.colorScheme.textSecondary.copy(alpha = 0.65f),
                 )
             }
@@ -637,7 +638,7 @@ private fun DeviceControls(
                         text = stringResource(R.string.eq_profile_label),
                         style =
                             TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
                             ),
@@ -648,7 +649,7 @@ private fun DeviceControls(
                         text = presetDisplayName(presetId, false),
                         style =
                             TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
                             ),
@@ -685,7 +686,7 @@ private fun DisconnectedState(modifier: Modifier = Modifier) {
             text = stringResource(R.string.eq_not_connected),
             style =
                 TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     letterSpacing = (-0.1).sp,
@@ -772,7 +773,7 @@ private fun SteppedFader(step: Int, onStepChange: (Int) -> Unit, modifier: Modif
                     cap = StrokeCap.Round,
                 )
             }
-            drawRoundRect(
+            drawFolioRoundRect(
                 color = accent.copy(alpha = 0.85f),
                 topLeft =
                     Offset(xFor(step) - handleWidth.toPx() / 2f, y - handleHeight.toPx() / 2f),
@@ -806,7 +807,7 @@ private fun StatusDot(isConnected: Boolean, flashing: Boolean, modifier: Modifie
         )
     Box(
         modifier =
-            modifier.size(8.dp).clip(CircleShape).background(fill).border(1.5.dp, ring, CircleShape)
+            modifier.size(8.dp).clip(FolioShape(32)).background(fill).border(1.5.dp, ring, FolioShape(32))
     )
 }
 
@@ -875,7 +876,7 @@ private fun CustomPanel(
                 text = stringResource(R.string.eq_reset_to_base),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                     ),
@@ -955,7 +956,7 @@ private fun BandTrimControls(
                     ),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                     ),
@@ -966,7 +967,7 @@ private fun BandTrimControls(
                 text = stringResource(R.string.eq_reset_band).uppercase(),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                     ),
@@ -1017,7 +1018,7 @@ private fun FlatSliderRow(
                 text = label,
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                     ),
@@ -1028,7 +1029,7 @@ private fun FlatSliderRow(
                 text = valueText,
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                     ),
@@ -1073,7 +1074,7 @@ private fun ExactGainDialog(
                 text = EqCurve.formatGain(gain),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 34.sp,
                     ),

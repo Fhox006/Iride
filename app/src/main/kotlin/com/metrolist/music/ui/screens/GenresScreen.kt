@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -353,7 +353,7 @@ private fun GenreChip(genre: GenreItem, onClick: () -> Unit) {
         modifier =
             Modifier.fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(FolioShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .clickable(onClick = onClick)
     ) {

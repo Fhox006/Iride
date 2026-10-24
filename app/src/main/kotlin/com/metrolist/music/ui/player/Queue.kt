@@ -29,7 +29,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -91,12 +91,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -203,7 +201,6 @@ fun InlineQueuePanel(
     openNonce: Int = 0,
 ) {
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -810,7 +807,7 @@ fun InlineQueuePanel(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .animateItem()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = {
                                                     menuState.show {
                                                         QueueMenu(
@@ -826,7 +823,6 @@ fun InlineQueuePanel(
                                                     }
                                                 },
                                                 onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 },
                                             ),
                                     )
@@ -919,7 +915,7 @@ fun InlineQueuePanel(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .animateItem()
-                                                .combinedClickable(
+                                                .irideFolioCombinedClickable(
                                                     onClick = {
                                                         if (!isListenTogetherGuest) {
                                                             if (isActive) {
@@ -939,7 +935,6 @@ fun InlineQueuePanel(
                                                         }
                                                     },
                                                     onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     },
                                                 ),
                                         )
@@ -991,10 +986,9 @@ fun InlineQueuePanel(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .animateItem()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = {},
                                                 onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 },
                                             ),
                                     )

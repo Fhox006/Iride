@@ -257,7 +257,7 @@ object ComposeToImage {
             val padding = 80f
 
             val monoFont = try {
-                ResourcesCompat.getFont(context, R.font.space_mono_regular)
+                ResourcesCompat.getFont(context, R.font.ibm_plex_mono_regular)
             } catch (_: Exception) {
                 null
             } ?: Typeface.MONOSPACE

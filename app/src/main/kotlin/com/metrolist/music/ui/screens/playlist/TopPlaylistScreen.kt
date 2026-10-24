@@ -8,7 +8,7 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,10 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -111,7 +109,6 @@ fun TopPlaylistScreen(
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
@@ -573,7 +570,7 @@ fun TopPlaylistScreen(
                                 },
                                 modifier =
                                     Modifier.fillMaxWidth()
-                                        .combinedClickable(
+                                        .irideFolioCombinedClickable(
                                             onClick = {
                                                 if (inSelectMode) {
                                                     onCheckedChange(song.id !in selection)
@@ -595,14 +592,7 @@ fun TopPlaylistScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                if (!inSelectMode) {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
-                                                    inSelectMode = true
-                                                    onCheckedChange(true)
-                                                    selectionAnchorSongId = song.id
-                                                } else {
+                                                if (inSelectMode) {
                                                     val anchorIndex =
                                                         selectionAnchorSongId?.let { anchorSongId ->
                                                             filteredSongs.indexOfFirst {
@@ -625,6 +615,14 @@ fun TopPlaylistScreen(
                                                                 selection.add(rangeSongId)
                                                             }
                                                         }
+                                                    }
+                                                } else {
+                                                    menuState.show(anchored = true) {
+                                                        SongMenu(
+                                                            originalSong = song,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
                                                     }
                                                 }
                                             },

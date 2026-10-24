@@ -55,8 +55,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -90,6 +89,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -121,15 +121,14 @@ import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.ImageLoader
-import androidx.compose.ui.graphics.asImageBitmap
 import coil3.asImage
-import coil3.request.allowHardware
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.compose.rememberConstraintsSizeResolver
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.size.Precision
 import com.metrolist.innertube.models.AlbumItem
@@ -168,7 +167,6 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.audio.AudioBandLevels
 import com.metrolist.music.repository.ChartPlaylistIdentity
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.strokeItemSoft
@@ -361,8 +359,8 @@ fun VinylPeekDisc(
             modifier =
                 Modifier.size(size)
                     .graphicsLayer { rotationZ = rotationDegrees }
-                    .shadow(elevation = 4.dp, shape = CircleShape, clip = false)
-                    .clip(CircleShape)
+                    .shadow(elevation = 4.dp, shape = FolioShape(32), clip = false)
+                    .clip(FolioShape(32))
                     .drawBehind {
                         drawRect(VinylPeekDiscBaseBottom)
                         val outerRadius = this.size.minDimension / 2f * 0.97f
@@ -386,34 +384,44 @@ fun VinylPeekDisc(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.strokeCard,
-                        shape = CircleShape,
+                        shape = FolioShape(32),
                     )
         ) {
             val labelModifier =
                 Modifier.align(Alignment.Center)
                     .fillMaxSize(VinylPeekDiscLabelFraction)
-                    .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
-                    .clip(CircleShape)
+                    .shadow(elevation = 2.dp, shape = FolioShape(32), clip = false)
+                    .clip(FolioShape(32))
                     .border(
                         width = 0.5.dp,
                         color = MaterialTheme.colorScheme.strokeCard,
-                        shape = CircleShape,
+                        shape = FolioShape(32),
                     )
             if (artwork != null) {
-                Image(artwork.asImageBitmap(), null, contentScale = ContentScale.Crop, modifier = labelModifier)
+                Image(
+                    artwork.asImageBitmap(),
+                    null,
+                    contentScale = ContentScale.Crop,
+                    modifier = labelModifier,
+                )
             } else {
-                Image(painter = painter, contentDescription = null, contentScale = ContentScale.Crop, modifier = labelModifier)
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = labelModifier,
+                )
             }
             Box(
                 modifier =
                     Modifier.align(Alignment.Center)
                         .fillMaxSize(VinylPeekDiscSpindleFraction)
-                        .clip(CircleShape)
+                        .clip(FolioShape(32))
                         .background(VinylPeekDiscBaseBottom)
                         .border(
                             width = 0.5.dp,
                             color = Color.Black.copy(alpha = 0.6f),
-                            shape = CircleShape,
+                            shape = FolioShape(32),
                         )
             )
         }
@@ -441,7 +449,7 @@ inline fun ListItem(
     showDivider: Boolean = true,
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
-    val highlightShape = RoundedCornerShape(ThumbnailCornerRadius)
+    val highlightShape = FolioShape(ThumbnailCornerRadius)
     val hPad = if (applyHPad) IrideFolio.SongRowHorizontalPadding else 0.dp
 
     Box(modifier = modifier.fillMaxWidth()) {
@@ -462,7 +470,8 @@ inline fun ListItem(
                             .heightIn(min = ListItemHeight)
                     }
                     else -> {
-                        Modifier.padding(horizontal = hPad, vertical = 0.dp).heightIn(min = ListItemHeight)
+                        Modifier.padding(horizontal = hPad, vertical = 0.dp)
+                            .heightIn(min = ListItemHeight)
                     }
                 },
         ) {
@@ -478,7 +487,7 @@ inline fun ListItem(
                                 .align(Alignment.Center)
                                 .background(
                                     Color.Black.copy(alpha = 0.25f),
-                                    RoundedCornerShape(ThumbnailCornerRadius),
+                                    FolioShape(ThumbnailCornerRadius),
                                 )
                     ) {
                         Icon(
@@ -669,8 +678,13 @@ fun GridItem(
         title = {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                fontWeight = FontWeight.Bold,
+                style =
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Start,
@@ -680,7 +694,10 @@ fun GridItem(
         subtitle = {
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                style =
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
                 color =
                     subtitleColor
                         ?: LocalLibraryTextColor.current
@@ -906,8 +923,13 @@ fun SongGridItem(
             AutoLinkFeaturedArtistEffect(song)
             Text(
                 text = song.song.title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                fontWeight = FontWeight.Bold,
+                style =
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee().fillMaxWidth(),
@@ -927,7 +949,10 @@ fun SongGridItem(
                 }
             Text(
                 text = subtitleText,
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                style =
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
                 color = LocalLibraryTextColor.current ?: MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -938,12 +963,18 @@ fun SongGridItem(
             val gridHeight = currentGridThumbnailHeight()
             val squircleRadius = maxWidth * 0.06f
             ItemThumbnail(
-                thumbnailUrl = if (song.song.isVideo) com.metrolist.music.playback.youtubeVideoThumbnail(song.id, song.song.thumbnailUrl)
+                thumbnailUrl =
+                    if (song.song.isVideo)
+                        com.metrolist.music.playback.youtubeVideoThumbnail(
+                            song.id,
+                            song.song.thumbnailUrl,
+                        )
                     else song.song.thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(if (song.song.isVideo) 16.dp else 5.dp),
-                modifier = if (song.song.isVideo) Modifier.fillMaxSize() else Modifier.size(gridHeight),
+                shape = FolioShape(if (song.song.isVideo) 16.dp else 5.dp),
+                modifier =
+                    if (song.song.isVideo) Modifier.fillMaxSize() else Modifier.size(gridHeight),
                 contentScaleOverride = if (song.song.isVideo) ContentScale.Crop else null,
                 softBorder = true,
             )
@@ -973,13 +1004,17 @@ fun ArtistListItem(
     },
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
-    val thumbnail = rememberArtistThumbnail(
-        id = artist.artist.id,
-        name = artist.artist.name,
-        youtubeUrl = artist.artist.thumbnailUrl,
-        channelId = artist.artist.channelId,
-        externalEnabled = !artist.artist.isLocal && !artist.artist.isPodcastChannel && !artist.artist.isPrivatelyOwnedArtist,
-    )
+    val thumbnail =
+        rememberArtistThumbnail(
+            id = artist.artist.id,
+            name = artist.artist.name,
+            youtubeUrl = artist.artist.thumbnailUrl,
+            channelId = artist.artist.channelId,
+            externalEnabled =
+                !artist.artist.isLocal &&
+                    !artist.artist.isPodcastChannel &&
+                    !artist.artist.isPrivatelyOwnedArtist,
+        )
     ListItem(
         title = artist.artist.name,
         subtitle =
@@ -1008,9 +1043,9 @@ fun ArtistListItem(
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
-                            CircleShape,
+                            FolioShape(32),
                         )
-                        .clip(CircleShape),
+                        .clip(FolioShape(32)),
             )
         },
         trailingContent = trailingContent,
@@ -1031,13 +1066,17 @@ fun ArtistGridItem(
     fillMaxWidth: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
 ) {
-    val thumbnail = rememberArtistThumbnail(
-        id = artist.artist.id,
-        name = artist.artist.name,
-        youtubeUrl = artist.artist.thumbnailUrl,
-        channelId = artist.artist.channelId,
-        externalEnabled = !artist.artist.isLocal && !artist.artist.isPodcastChannel && !artist.artist.isPrivatelyOwnedArtist,
-    )
+    val thumbnail =
+        rememberArtistThumbnail(
+            id = artist.artist.id,
+            name = artist.artist.name,
+            youtubeUrl = artist.artist.thumbnailUrl,
+            channelId = artist.artist.channelId,
+            externalEnabled =
+                !artist.artist.isLocal &&
+                    !artist.artist.isPodcastChannel &&
+                    !artist.artist.isPrivatelyOwnedArtist,
+        )
     GridItem(
         title = artist.artist.name,
         subtitle =
@@ -1052,7 +1091,9 @@ fun ArtistGridItem(
                         .data(thumbnail?.let { artistArtworkDownloadUrl(it, ThumbnailRequestSize) })
                         .size(ThumbnailRequestSize, ThumbnailRequestSize)
                         .precision(Precision.EXACT)
-                        .memoryCacheKey(thumbnail?.let { "iride_artist_thumbnail:$it:$ThumbnailRequestSize" })
+                        .memoryCacheKey(
+                            thumbnail?.let { "iride_artist_thumbnail:$it:$ThumbnailRequestSize" }
+                        )
                         .allowHardware(false)
                         .crossfade(false)
                         .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1066,9 +1107,9 @@ fun ArtistGridItem(
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
-                            CircleShape,
+                            FolioShape(32),
                         )
-                        .clip(CircleShape),
+                        .clip(FolioShape(32)),
             )
         },
         fillMaxWidth = fillMaxWidth,
@@ -1208,8 +1249,13 @@ fun AlbumGridItem(
         title = {
             Text(
                 text = album.album.title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                fontWeight = FontWeight.Bold,
+                style =
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee().fillMaxWidth(),
@@ -1222,7 +1268,10 @@ fun AlbumGridItem(
                         album.artists.joinToString { it.name },
                         album.album.year?.toString(),
                     ),
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                style =
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
                 color = LocalLibraryTextColor.current ?: MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1234,7 +1283,7 @@ fun AlbumGridItem(
                 thumbnailUrl = album.album.thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(5.dp),
+                shape = FolioShape(5.dp),
                 hairlineBorder = true,
             )
         },
@@ -1290,8 +1339,11 @@ fun PlaylistListItem(
             if (autoPlaylist) {
                 ""
             } else {
-                if ((playlist.songCount == 0 || ChartPlaylistIdentity.market(playlist.id) != null) &&
-                    playlist.playlist.remoteSongCount != null) {
+                if (
+                    (playlist.songCount == 0 ||
+                        ChartPlaylistIdentity.market(playlist.id) != null) &&
+                        playlist.playlist.remoteSongCount != null
+                ) {
                     pluralStringResource(
                         R.plurals.n_song,
                         playlist.playlist.remoteSongCount,
@@ -1397,8 +1449,13 @@ fun PlaylistGridItem(
         title = {
             Text(
                 text = playlist.playlist.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                fontWeight = FontWeight.Bold,
+                style =
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee().fillMaxWidth(),
@@ -1409,8 +1466,11 @@ fun PlaylistGridItem(
                 if (autoPlaylist) {
                     ""
                 } else {
-                    if ((playlist.songCount == 0 || ChartPlaylistIdentity.market(playlist.id) != null) &&
-                        playlist.playlist.remoteSongCount != null) {
+                    if (
+                        (playlist.songCount == 0 ||
+                            ChartPlaylistIdentity.market(playlist.id) != null) &&
+                            playlist.playlist.remoteSongCount != null
+                    ) {
                         pluralStringResource(
                             R.plurals.n_song,
                             playlist.playlist.remoteSongCount,
@@ -1426,7 +1486,10 @@ fun PlaylistGridItem(
                 }
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                style =
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = folioTypewriterFontFamily()
+                    ),
                 color = LocalLibraryTextColor.current ?: MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1435,7 +1498,7 @@ fun PlaylistGridItem(
         badges = badges,
         thumbnailContent = {
             val width = maxWidth
-            val shape = RoundedCornerShape(5.dp)
+            val shape = FolioShape(5.dp)
             val isStarredPlaylist =
                 playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID ||
                     playlist.playlist.id == PlaylistEntity.STARRED_PLAYLIST_ID
@@ -1529,7 +1592,7 @@ fun MediaMetadataListItem(
                 isSelected = isSelected,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                shape = FolioShape(ThumbnailCornerRadius),
                 modifier = Modifier.size(ListThumbnailSize),
                 softBorder = true,
             )
@@ -1578,16 +1641,25 @@ fun YouTubeListItem(
     hairlineBorder: Boolean = item !is SongItem,
     showDivider: Boolean = true,
 ) {
-    val artistThumbnail = if (item is ArtistItem) {
-        rememberArtistThumbnail(item.id, item.title, item.thumbnail, item.channelId, !item.isProfile)
-    } else null
+    val artistThumbnail =
+        if (item is ArtistItem) {
+            rememberArtistThumbnail(
+                item.id,
+                item.title,
+                item.thumbnail,
+                item.channelId,
+                !item.isProfile,
+            )
+        } else null
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
     val content: @Composable () -> Unit = {
         val hideDurationForStandard by
             rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         ListItem(
-            title = item.title,
+            title =
+                if (LocalFolioDisplayHeadings.current != null) item.title.homeSentenceCase()
+                else item.title,
             subtitle =
                 when (item) {
                     is SongItem -> {
@@ -1649,8 +1721,8 @@ fun YouTubeListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape =
-                        if (item is ArtistItem) CircleShape
-                        else RoundedCornerShape(ThumbnailCornerRadius),
+                        if (item is ArtistItem) FolioShape(32)
+                        else FolioShape(ThumbnailCornerRadius),
                     modifier = Modifier.size(ListThumbnailSize),
                     hairlineBorder = hairlineBorder,
                     softBorder = item is SongItem && !hairlineBorder,
@@ -1719,11 +1791,20 @@ fun YouTubeGridItem(
     useThumbnailOverride: Boolean = false,
     thumbnailPlaceholder: (@Composable () -> Unit)? = null,
 ) {
-    val artistThumbnail = if (item is ArtistItem) {
-        rememberArtistThumbnail(item.id, item.title, item.thumbnail, item.channelId, !item.isProfile)
-    } else null
+    val artistThumbnail =
+        if (item is ArtistItem) {
+            rememberArtistThumbnail(
+                item.id,
+                item.title,
+                item.thumbnail,
+                item.channelId,
+                !item.isProfile,
+            )
+        } else null
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
+    val displayTitle =
+        if (LocalFolioDisplayHeadings.current != null) item.title.homeSentenceCase() else item.title
     val effectiveThumbnailRatio =
         when {
             item is SongItem && item.isVideoSong -> IrideFolio.VideoThumbnailRatio
@@ -1736,10 +1817,14 @@ fun YouTubeGridItem(
         title = {
             if (showTitle) {
                 Text(
-                    text = item.title,
+                    text = displayTitle,
                     style =
-                        MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-                    fontWeight = FontWeight.Bold,
+                        MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = folioTypewriterFontFamily()
+                        ),
+                    fontWeight =
+                        if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                        else FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
@@ -1782,7 +1867,9 @@ fun YouTubeGridItem(
                 Text(
                     text = subtitle,
                     style =
-                        MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+                        MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = folioTypewriterFontFamily()
+                        ),
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1795,9 +1882,22 @@ fun YouTubeGridItem(
                 thumbnailRatio = effectiveThumbnailRatio,
                 thumbnailUrl =
                     if (useThumbnailOverride) thumbnailUrlOverride
-                    else thumbnailUrlOverride ?: artistThumbnail ?: if (item is SongItem && item.isVideoSong)
-                        com.metrolist.music.playback.youtubeVideoThumbnail(item.id, item.thumbnail) else item.thumbnail,
-                contentScaleOverride = if ((forceThumbnailRatio || item is SongItem && item.isVideoSong) && effectiveThumbnailRatio != 1f) ContentScale.Crop else null,
+                    else
+                        thumbnailUrlOverride
+                            ?: artistThumbnail
+                            ?: if (item is SongItem && item.isVideoSong)
+                                com.metrolist.music.playback.youtubeVideoThumbnail(
+                                    item.id,
+                                    item.thumbnail,
+                                )
+                            else item.thumbnail,
+                contentScaleOverride =
+                    if (
+                        (forceThumbnailRatio || item is SongItem && item.isVideoSong) &&
+                            effectiveThumbnailRatio != 1f
+                    )
+                        ContentScale.Crop
+                    else null,
                 artistArtwork = item is ArtistItem,
                 imageLoader = thumbnailImageLoader,
                 placeholder = thumbnailPlaceholder,
@@ -1806,10 +1906,14 @@ fun YouTubeGridItem(
                 shape =
                     thumbnailShape
                         ?: when {
-                            item is ArtistItem -> CircleShape
+                            item is ArtistItem -> FolioShape(32)
                             effectiveThumbnailRatio != 1f ->
-                                RoundedCornerShape(if (item is SongItem && item.isVideoSong) IrideFolio.VideoThumbnailRadius else thumbnailCornerRadius)
-                            else -> RoundedCornerShape(5.dp)
+                                FolioShape(
+                                    if (item is SongItem && item.isVideoSong)
+                                        IrideFolio.VideoThumbnailRadius
+                                    else thumbnailCornerRadius
+                                )
+                            else -> FolioShape(5.dp)
                         },
                 hairlineBorder = hairlineBorder,
                 softBorder = item is SongItem && !hairlineBorder,
@@ -1842,7 +1946,9 @@ fun LocalSongsGrid(
             Text(
                 title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1868,7 +1974,7 @@ fun LocalSongsGrid(
                 thumbnailUrl = thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                shape = FolioShape(ThumbnailCornerRadius),
                 modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
                 showCenterPlay = true,
                 playButtonVisible = false,
@@ -1895,7 +2001,9 @@ fun LocalArtistsGrid(
             Text(
                 title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1921,7 +2029,7 @@ fun LocalArtistsGrid(
                 thumbnailUrl = thumbnailUrl,
                 isActive = false,
                 isPlaying = false,
-                shape = CircleShape,
+                shape = FolioShape(32),
                 modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
                 showCenterPlay = false,
                 playButtonVisible = false,
@@ -1948,7 +2056,9 @@ fun LocalAlbumsGrid(
             Text(
                 title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight =
+                    if (LocalFolioTypewriterFont.current != null) FontWeight.Normal
+                    else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1974,7 +2084,7 @@ fun LocalAlbumsGrid(
                 thumbnailUrl = thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                shape = FolioShape(ThumbnailCornerRadius),
                 modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
                 showCenterPlay = false,
                 playButtonVisible = true,
@@ -2027,7 +2137,7 @@ fun ItemThumbnail(
                 .fillMaxSize()
                 .aspectRatio(thumbnailRatio)
                 .then(
-                    if (staticBorderWidth != null && selectionProgress <= 0f) {
+                    if (staticBorderWidth != null) {
                         Modifier.irideArtworkOverlayBorder(
                             staticBorderWidth,
                             staticBorderColor,
@@ -2071,13 +2181,22 @@ fun ItemThumbnail(
                     imageLoader = imageLoader ?: LocalContext.current.imageLoader,
                     model =
                         ImageRequest.Builder(LocalContext.current)
-                            .data(if (artistArtwork) thumbnailUrl?.let { artistArtworkDownloadUrl(it, requestResolution) }
-                                else thumbnailUrl?.resize(requestResolution, requestResolution))
+                            .data(
+                                if (artistArtwork)
+                                    thumbnailUrl?.let {
+                                        artistArtworkDownloadUrl(it, requestResolution)
+                                    }
+                                else thumbnailUrl?.resize(requestResolution, requestResolution)
+                            )
                             .apply {
                                 if (artistArtwork) {
                                     size(requestResolution, requestResolution)
                                     precision(Precision.EXACT)
-                                    memoryCacheKey(thumbnailUrl?.let { "iride_artist_thumbnail:$it:$requestResolution" })
+                                    memoryCacheKey(
+                                        thumbnailUrl?.let {
+                                            "iride_artist_thumbnail:$it:$requestResolution"
+                                        }
+                                    )
                                     allowHardware(false)
                                     crossfade(false)
                                 } else {
@@ -2122,8 +2241,9 @@ fun ItemThumbnail(
                 painter = painter,
                 contentDescription = null,
                 contentScale =
-                    contentScaleOverride ?: if (shape == CircleShape || cropAlbumArt) ContentScale.Crop
-                    else ContentScale.Fit,
+                    contentScaleOverride
+                        ?: if (shape == FolioShape(32) || cropAlbumArt) ContentScale.Crop
+                        else ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().then(sizeResolver).clip(shape),
             )
         }
@@ -2219,7 +2339,7 @@ fun LocalThumbnail(
                     .build(),
             contentDescription = null,
             contentScale =
-                if (shape == CircleShape || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                if (shape == FolioShape(32) || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
             modifier = Modifier.fillMaxSize().clip(shape),
         )
 
@@ -2238,7 +2358,7 @@ fun LocalThumbnail(
                     contentAlignment = Alignment.Center,
                     modifier =
                         Modifier.size(36.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                             .background(Color.Black.copy(alpha = 0.6f)),
                 ) {
                     Icon(
@@ -2261,7 +2381,7 @@ fun LocalThumbnail(
                     contentAlignment = Alignment.Center,
                     modifier =
                         Modifier.size(36.dp)
-                            .clip(CircleShape)
+                            .clip(FolioShape(32))
                             .background(Color.Black.copy(alpha = ActiveBoxAlpha)),
                 ) {
                     Icon(
@@ -2373,7 +2493,7 @@ fun BoxScope.OverlayPlayButton(visible: Boolean) {
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier.size(36.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(Color.Black.copy(alpha = ActiveBoxAlpha)),
         ) {
             Icon(
@@ -2404,7 +2524,7 @@ fun BoxScope.OverlayEditButton(
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier.size(36.dp)
-                    .clip(CircleShape)
+                    .clip(FolioShape(32))
                     .background(Color.Black.copy(alpha = ActiveBoxAlpha))
                     .padding(0.dp)
                     .clickable(onClick = onClick),
@@ -2483,7 +2603,7 @@ fun SwipeToSongBox(
     val queueBg = Color.White
     val queueTint = Color.Black
     val labelStyle = MaterialTheme.typography.labelLarge
-    val labelFontFamily = SpaceMonoFontFamily
+    val labelFontFamily = folioTypewriterFontFamily()
     val labelLetterSpacing = 0.5.sp
     val nextLabel = stringResource(R.string.swipe_label_next)
     val queueLabel = stringResource(R.string.swipe_label_queue)

@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -34,7 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -76,7 +76,7 @@ private fun IntegrationCardItemRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(FolioShape(12.dp))
                     .background(
                         MaterialTheme.colorScheme.primary.copy(
                             alpha = if (item.isHighlighted) 0.15f else 0.1f
@@ -159,7 +159,7 @@ private fun IrideIntegrationGroup(
             Text(
                 text = it,
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     letterSpacing = (-0.1).sp,
                 ),
                 fontWeight = FontWeight.Bold,
@@ -218,7 +218,7 @@ private fun IrideIntegrationItemRow(item: IntegrationCardItem) {
         Column(modifier = Modifier.weight(1f)) {
             ProvideTextStyle(
                 MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,

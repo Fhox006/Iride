@@ -20,8 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -42,7 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
@@ -82,10 +81,10 @@ fun NewActionButton(
     Column(
         modifier =
             modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(FolioShape(12.dp))
                 .border(
                     BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
-                    RoundedCornerShape(12.dp),
+                    FolioShape(12.dp),
                 )
                 .clickable(enabled = enabled) { performAction = true }
                 .padding(vertical = 14.dp),
@@ -104,7 +103,7 @@ fun NewActionButton(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 letterSpacing = (-0.1).sp,
             ),
             fontWeight = FontWeight.Bold,
@@ -271,7 +270,7 @@ fun NewIconButton(
             CardDefaults.cardColors(
                 containerColor = animatedBackground,
             ),
-        shape = CircleShape,
+        shape = FolioShape(32),
         elevation =
             CardDefaults.cardElevation(
                 defaultElevation = 2.dp,

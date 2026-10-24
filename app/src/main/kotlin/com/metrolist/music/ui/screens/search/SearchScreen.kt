@@ -353,8 +353,8 @@ fun SearchScreen(
     // Decode during result classification so the confirmed backdrop is already warm.
     LaunchedEffect(pendingArtist, submittedQuery) {
         pendingArtist?.let {
-            artworkLoader.prefetch(ArtistArtworkRequest(it.id, it.title, it.thumbnail, it.channelId,
-                it.id.startsWith("UC") && !it.isProfile))
+            artworkLoader.prefetch(ArtistArtworkRequest(it.id, it.title, null, it.channelId,
+                !it.isProfile))
         }
     }
     // Song results can promote an exact song above an initially returned artist. Wait for that
@@ -369,10 +369,11 @@ fun SearchScreen(
     } else if (firstArtist != null) {
         val loaded by rememberIrideArtistArtwork(
             artistId = firstArtist.id,
-            url = firstArtist.thumbnail?.resize(1200, 1200),
+            // Keep search artwork stable: let Apple Music supply the first displayed image.
+            url = null,
             artistName = firstArtist.title,
             channelId = firstArtist.channelId,
-            externalEnabled = firstArtist.id.startsWith("UC") && !firstArtist.isProfile,
+            externalEnabled = !firstArtist.isProfile,
         )
         loaded
     } else null

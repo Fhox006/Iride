@@ -8,7 +8,7 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,11 +56,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -130,7 +128,7 @@ import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSelectionSongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
@@ -165,7 +163,6 @@ fun OnlinePlaylistScreen(
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
@@ -616,8 +613,8 @@ fun OnlinePlaylistScreen(
                                 contentDescription =
                                     stringResource(
                                         if (dbPlaylist?.playlist?.bookmarkedAt != null)
-                                            R.string.remove_from_library
-                                        else R.string.add_to_library
+                                            R.string.iride_remove_star
+                                        else R.string.iride_star
                                     ),
                                 size = 40.dp,
                                 iconSize = 20.dp,
@@ -818,7 +815,7 @@ fun OnlinePlaylistScreen(
                                 isPlaying = isPlaying,
                                 isSelected = inSelectMode && songItem.id in selection,
                                 modifier =
-                                    Modifier.combinedClickable(
+                                    Modifier.irideFolioCombinedClickable(
                                             enabled = !hideExplicit || !songItem.explicit,
                                             onClick = {
                                                 if (inSelectMode) {
@@ -840,14 +837,7 @@ fun OnlinePlaylistScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                if (!inSelectMode) {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
-                                                    inSelectMode = true
-                                                    onCheckedChange(true)
-                                                    selectionAnchorSongId = songItem.id
-                                                } else {
+                                                if (inSelectMode) {
                                                     val anchorIndex =
                                                         selectionAnchorSongId?.let { anchorSongId ->
                                                             filteredSongs.indexOfFirst {
@@ -870,6 +860,14 @@ fun OnlinePlaylistScreen(
                                                                 selection.add(rangeSongId)
                                                             }
                                                         }
+                                                    }
+                                                } else {
+                                                    menuState.show(anchored = true) {
+                                                        YouTubeSongMenu(
+                                                            song = songItem,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
                                                     }
                                                 }
                                             },
@@ -1103,7 +1101,7 @@ private fun OnlinePlaylistHeader(
             )
         Text(
             text = metadataLine,
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().revealMask(metadataProgress),

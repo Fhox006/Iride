@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
@@ -26,7 +26,7 @@ fun IrideIconTile(
 ) {
     IrideIconFrame(
         modifier = modifier.size(size),
-        shape = RoundedCornerShape(12.dp),
+        shape = FolioShape(12.dp),
         backgroundColor = color,
         borderColor = MaterialTheme.colorScheme.strokeCard,
         content = content,

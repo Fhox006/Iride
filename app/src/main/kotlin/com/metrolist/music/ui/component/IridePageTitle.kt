@@ -10,7 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.SatoshiFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 
 @Composable
@@ -37,7 +37,7 @@ fun IridePageTitle(
     maxLines: Int = Int.MAX_VALUE,
 ) {
     Text(
-        text = title,
+        text = if (LocalFolioDisplayHeadings.current != null) title.homeSentenceCase() else title,
         modifier = modifier,
         style = iridePageTitleTextStyle(monospace),
         color = color,
@@ -48,10 +48,11 @@ fun IridePageTitle(
 
 @Composable
 fun iridePageTitleTextStyle(monospace: Boolean = true): TextStyle =
-    MaterialTheme.typography.headlineLarge
-        .copy(
-            fontSize = IrideFolio.TitleFontSize,
-            lineHeight = IrideFolio.TitleLineHeight,
-            fontWeight = FontWeight.Bold,
-        )
-        .let { if (monospace) it.copy(fontFamily = SpaceMonoFontFamily) else it }
+    LocalFolioDisplayHeadings.current?.page
+        ?: MaterialTheme.typography.headlineLarge
+            .copy(
+                fontSize = IrideFolio.TitleFontSize * IrideFolio.SatoshiTextHeightScale,
+                lineHeight = IrideFolio.TitleLineHeight,
+                fontWeight = FontWeight.Bold,
+            )
+            .copy(fontFamily = SatoshiFontFamily)

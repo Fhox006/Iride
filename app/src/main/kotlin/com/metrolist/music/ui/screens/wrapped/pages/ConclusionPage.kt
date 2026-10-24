@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.wrapped.pages
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -61,7 +62,7 @@ fun ConclusionPage(onClose: () -> Unit) {
             Spacer(modifier = Modifier.height(48.dp))
             Button(
                 onClick = onClose,
-                shape = CircleShape,
+                shape = FolioShape(32),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White)
             ) {
                 Text(

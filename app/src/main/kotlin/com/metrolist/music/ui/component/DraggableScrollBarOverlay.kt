@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -227,7 +229,7 @@ fun DraggableScrollbar(
             val color = if (isDragging) thumbColorActive else thumbColor
             val cornerRadiusPx = thumbCornerRadius.toPx()
 
-            drawRoundRect(
+            drawFolioRoundRect(
                 color = color,
                 topLeft = Offset(0f, animatedThumbY.value),
                 size = Size(this.size.width, constThumbHeight),

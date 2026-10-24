@@ -31,7 +31,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -448,7 +448,7 @@ private fun ThumbnailHeader(
             modifier = Modifier
                 .width(36.dp)
                 .height(5.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(FolioShape(50))
                 .background(Color.White.copy(alpha = 0.35f))
         )
     }
@@ -633,7 +633,7 @@ private fun SeekEffectOverlay(
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.7f), FolioShape(8.dp))
             .padding(8.dp)
     )
 }

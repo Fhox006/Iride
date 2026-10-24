@@ -71,7 +71,7 @@ data class SpotifyImportUiState(
     val canSave: Boolean
         get() = !reading && !saving && playlists.none {
             it.phase == SpotifyImportPhase.PENDING || it.phase == SpotifyImportPhase.RESOLVING
-        } && playlists.any { it.phase == SpotifyImportPhase.READY }
+        } && playlists.any { it.phase == SpotifyImportPhase.READY && it.matched > 0 }
 }
 
 @HiltViewModel
@@ -127,6 +127,25 @@ class SpotifyImportViewModel @Inject constructor(
         }
     }
 
+    private fun stageImports(playlists: List<SpotifyExportPlaylist>) {
+        val added = playlists.filter { export ->
+            staged.values.none { it.export.fingerprint == export.fingerprint }
+        }.distinctBy { it.fingerprint }.map { export ->
+            val id = UUID.randomUUID().toString()
+            staged[id] = StagedPlaylist(export, MutableList(export.tracks.size) { null })
+            SpotifyImportPlaylist(
+                id = id,
+                name = if (export.name.trim().equals("Liked", ignoreCase = true)) {
+                    context.getString(com.metrolist.music.R.string.spotify_exportify_liked_playlist_name)
+                } else export.name,
+                total = export.tracks.size,
+                phase = if (export.invalid) SpotifyImportPhase.FAILED else SpotifyImportPhase.PENDING,
+            )
+        }
+        mutableUiState.update { it.copy(playlists = it.playlists + added) }
+        added.filter { it.phase != SpotifyImportPhase.FAILED }.forEach { resolve(it.id) }
+    }
+
     private fun readExport(cleanup: (() -> Unit)? = null, open: () -> Pair<InputStream, String>) {
         activeReads++
         mutableUiState.update { it.copy(reading = true, error = null) }
@@ -138,25 +157,7 @@ class SpotifyImportViewModel @Inject constructor(
                 }
                 // An export completed during saving waits for that transaction before staging.
                 uiState.first { !it.saving }
-                val added = result.playlists.filter { export ->
-                    staged.values.none { it.export.fingerprint == export.fingerprint }
-                }.distinctBy { it.fingerprint }.map { export ->
-                    val id = UUID.randomUUID().toString()
-                    staged[id] = StagedPlaylist(export, MutableList(export.tracks.size) { null })
-                    SpotifyImportPlaylist(
-                        id = id,
-                        name = if (export.name.trim().equals("Liked", ignoreCase = true)) {
-                            context.getString(com.metrolist.music.R.string.spotify_exportify_liked_playlist_name)
-                        } else export.name,
-                        total = export.tracks.size,
-                        phase = if (export.invalid) SpotifyImportPhase.FAILED else SpotifyImportPhase.PENDING,
-                    )
-                }
-                // Publish the entire archive before starting any searches.
-                mutableUiState.update {
-                    it.copy(playlists = it.playlists + added)
-                }
-                added.filter { it.phase != SpotifyImportPhase.FAILED }.forEach { resolve(it.id) }
+                stageImports(result.playlists)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -312,7 +313,7 @@ class SpotifyImportViewModel @Inject constructor(
 
     fun saveReadyPlaylists() {
         if (!mutableUiState.value.canSave) return
-        val cards = mutableUiState.value.playlists.filter { it.phase == SpotifyImportPhase.READY }
+        val cards = mutableUiState.value.playlists.filter { it.phase == SpotifyImportPhase.READY && it.matched > 0 }
         mutableUiState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             try {

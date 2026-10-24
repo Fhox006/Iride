@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -228,7 +228,7 @@ private fun SearchBarInputField(
                         visualTransformation = VisualTransformation.None,
                         interactionSource = interactionSource,
                         placeholder = placeholder,
-                        shape = RoundedCornerShape(0.dp),
+                        shape = FolioShape(0.dp),
                         colors = colors,
                         contentPadding = PaddingValues(),
                         container = {},

@@ -1,7 +1,7 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,8 +29,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -171,7 +169,6 @@ fun OnlineSearchResultsBody(
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -193,7 +190,6 @@ fun OnlineSearchResultsBody(
     }
     val ytItemContent: @Composable (YTItem, Modifier, Boolean) -> Unit = { item, itemModifier, isSwipeable ->
         val longClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             menuState.show(
                 anchored = true,
             ) {
@@ -264,7 +260,7 @@ fun OnlineSearchResultsBody(
                 },
                 modifier =
                     itemModifier
-                        .combinedClickable(
+                        .irideFolioCombinedClickable(
                             onClick = {
                                 if (!pauseSearchHistory)
                                     database.recordSearchHistoryOpen(viewModel.query, item)
@@ -333,7 +329,7 @@ fun OnlineSearchResultsBody(
                             else -> 148.dp
                         },
                     modifier =
-                        Modifier.combinedClickable(
+                        Modifier.irideFolioCombinedClickable(
                                 onClick = {
                                     if (!pauseSearchHistory)
                                         database.recordSearchHistoryOpen(viewModel.query, rowItem)
@@ -371,7 +367,6 @@ fun OnlineSearchResultsBody(
                                     }
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     menuState.show(
                                         anchored = true,
                                     ) {

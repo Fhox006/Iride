@@ -26,7 +26,10 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /** Reuse native kernels while changing their radius, instead of fading a blurred copy over a sharp photo. */
-internal class ArtistPhotoBlurEffects(private val maximumRadius: Float) {
+internal class ArtistPhotoBlurEffects(
+    private val maximumRadius: Float,
+    private val tileMode: TileMode = TileMode.Clamp,
+) {
     private val effects = arrayOfNulls<RenderEffect>(97)
 
     fun at(progress: Float): RenderEffect? {
@@ -34,7 +37,7 @@ internal class ArtistPhotoBlurEffects(private val maximumRadius: Float) {
         val step = (progress.coerceIn(0f, 1f) * 96).roundToInt()
         if (step == 0) return null
         return effects[step] ?: BlurEffect(
-            maximumRadius * step / 96f, maximumRadius * step / 96f, TileMode.Clamp,
+            maximumRadius * step / 96f, maximumRadius * step / 96f, tileMode,
         ).also { effects[step] = it }
     }
 }

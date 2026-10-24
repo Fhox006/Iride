@@ -85,7 +85,7 @@ import com.metrolist.music.ui.component.rememberReverieMotionTime
 import com.metrolist.music.ui.component.reverieChapterTitle
 import com.metrolist.music.ui.component.reverieGestures
 import com.metrolist.music.ui.component.reveriePrintFinish
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.utils.shareReverieImage
@@ -154,7 +154,7 @@ fun ReverieScreen(navController: NavController, month: YearMonth, viewModel: Mon
                                     ReverieFilmState.Loading -> R.string.reverie_loading
                                     ReverieFilmState.Empty -> R.string.reverie_empty
                                     else -> R.string.reverie_error
-                                }), color = Color(0xFF24242A), fontFamily = SpaceMonoFontFamily, fontSize = 14.sp)
+                                }), color = Color(0xFF24242A), fontFamily = IBMPlexMonoFontFamily, fontSize = 14.sp)
                                 if (film == ReverieFilmState.Error) IrideFolioFrostedButton(onClick = { viewModel.load(month, retry = true) }) {
                                     Text(stringResource(R.string.reverie_retry), color = Color(0xFF24242A))
                                 }
@@ -346,7 +346,7 @@ private fun ReveriePlayback(
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 if (!audioPreparationFailed) CircularProgressIndicator(color = ink)
                 Text(stringResource(if (audioPreparationFailed) R.string.reverie_audio_prepare_error else R.string.reverie_audio_preparing_all,
-                    audioProgress.first, audioProgress.second), color = ink, fontFamily = SpaceMonoFontFamily)
+                    audioProgress.first, audioProgress.second), color = ink, fontFamily = IBMPlexMonoFontFamily)
                 if (audioPreparationFailed) IrideFolioFrostedButton(onClick = { preparationAttempt++ }) {
                     Text(stringResource(R.string.reverie_retry), color = ink)
                 }
@@ -362,7 +362,7 @@ private fun ReveriePlayback(
             ReverieTimeline(chapters, current, { elapsed.value }, ::seek)
             Row(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.reverie_edition, recap.month.format(DateTimeFormatter.ofPattern("MM / yyyy"))),
-                    color = ink, fontFamily = SpaceMonoFontFamily, maxLines = 1,
+                    color = ink, fontFamily = IBMPlexMonoFontFamily, maxLines = 1,
                     fontSize = 12.sp, letterSpacing = .5.sp, modifier = Modifier.weight(1f).padding(start = 8.dp))
                 ReverieFolioControls {
                     if (!finished) IconButton(onClick = { playing = !playing }, modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize)) {

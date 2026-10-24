@@ -31,7 +31,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.SatoshiFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 
 object LibraryPageDefaults {
@@ -45,6 +46,7 @@ fun LibrarySectionLabel(
     text: String,
     modifier: Modifier = Modifier,
     verticalPadding: Dp = 12.dp,
+    useHomeTitleFont: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -53,12 +55,15 @@ fun LibrarySectionLabel(
     ) {
         Text(
             text = text,
-            style =
-                MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 13.sp,
-                    letterSpacing = 0.2.sp,
-                ),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = if (useHomeTitleFont) SatoshiFontFamily else IBMPlexMonoFontFamily,
+                fontSize = if (useHomeTitleFont) {
+                    IrideFolio.ShelfSectionFontSize * IrideFolio.SatoshiTextHeightScale
+                } else {
+                    13.sp
+                },
+                letterSpacing = 0.2.sp,
+            ),
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
             modifier = Modifier.weight(1f),
@@ -102,7 +107,7 @@ private fun LibraryPlaybackAction(
     Surface(
         onClick = onClick,
         modifier = modifier.height(48.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+        shape = com.metrolist.music.ui.theme.FolioShape(18.dp),
         color = MaterialTheme.colorScheme.fillSubtle,
         contentColor = Color.White,
     ) {
@@ -119,7 +124,7 @@ private fun LibraryPlaybackAction(
             Spacer(Modifier.width(8.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = IBMPlexMonoFontFamily),
                 maxLines = 1,
             )
         }

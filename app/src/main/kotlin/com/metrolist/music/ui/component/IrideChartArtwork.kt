@@ -3,6 +3,7 @@ package com.metrolist.music.ui.component
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -21,7 +22,6 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.content.res.ResourcesCompat
@@ -31,7 +31,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val ChartPaper = Color(0xFFF2F0EB)
+private val ChartBackground = Color(0xFF19191D)
+private val ChartInk = android.graphics.Color.rgb(242, 240, 235)
 
 fun chartCountryName(code: String): String = when (code) {
     "global" -> "Global"
@@ -59,9 +60,9 @@ fun renderChartPoster(context: Context, code: String, count: Int, size: Int = 76
             size = Size(size.toFloat(), size.toFloat()),
         ) {
             drawChartPoster(code, chartCountryName(code), context.getString(R.string.new_charts_top_count, count),
-                ResourcesCompat.getFont(context, R.font.anton),
-                ResourcesCompat.getFont(context, R.font.space_mono_regular),
-                irideGrainBrush(density))
+                Typeface.create(ResourcesCompat.getFont(context, R.font.satoshi_variable), Typeface.BOLD),
+                checkNotNull(ResourcesCompat.getFont(context, R.font.ibm_plex_mono_bold)),
+                irideGrainBrush(density = 1f, soft = false))
         }
         return bitmap
     } catch (error: Throwable) {
@@ -69,55 +70,59 @@ fun renderChartPoster(context: Context, code: String, count: Int, size: Int = 76
         throw error
     }
 }
-/** Flat paper, Anton typography and flag geometry share the mood posters' ink and grain. */
+/** Dark covers pair Folio's Satoshi Bold with the artist carousel's IBM Plex Mono Bold. */
 @Composable
 fun IrideChartPoster(code: String, name: String, topLabel: String, modifier: Modifier) {
     val context = LocalContext.current
-    val density = LocalDensity.current.density
-    val grain = remember(density) { irideGrainBrush(density) }
-    val titleTypeface = remember(context) { ResourcesCompat.getFont(context, R.font.anton) }
-    val monoTypeface = remember(context) { ResourcesCompat.getFont(context, R.font.space_mono_regular) }
+    // Keep specks at one physical pixel rather than enlarging them with screen density.
+    val grain = remember { irideGrainBrush(density = 1f, soft = false) }
+    val titleTypeface = remember(context) {
+        Typeface.create(ResourcesCompat.getFont(context, R.font.satoshi_variable), Typeface.BOLD)
+    }
+    val monoTypeface = remember(context) {
+        checkNotNull(ResourcesCompat.getFont(context, R.font.ibm_plex_mono_bold))
+    }
 
     Canvas(modifier) { drawChartPoster(code, name, topLabel, titleTypeface, monoTypeface, grain) }
 }
 
 private fun DrawScope.drawChartPoster(
     code: String, name: String, topLabel: String,
-    titleTypeface: android.graphics.Typeface?, monoTypeface: android.graphics.Typeface?,
+    titleTypeface: Typeface, monoTypeface: Typeface,
     grain: androidx.compose.ui.graphics.Brush,
 ) {
-    val posterTitle = name.uppercase(Locale.ENGLISH)
-        val side = size.minDimension
-        drawRect(ChartPaper)
-        translate(side * .105f, side * .58f) {
-            drawFlagMotif(code, side * .79f, side * .31f)
-        }
-        drawRect(grain, alpha = .18f)
-        val canvas = drawContext.canvas.nativeCanvas
-        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.rgb(23, 23, 25)
-            typeface = monoTypeface
-            textSize = side * .066f
-        }
-        canvas.drawText(topLabel, side * .08f, side * .125f, labelPaint)
-        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.rgb(23, 23, 25)
-            typeface = titleTypeface
-            textSize = side * .235f
-        }
-        val width = (side * .84f).toInt().coerceAtLeast(1)
-        fun layout() = StaticLayout.Builder.obtain(posterTitle, 0, posterTitle.length, titlePaint, width)
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false)
-            .setLineSpacing(0f, .98f).build()
-        var title = layout()
-        while ((title.height > side * .355f || title.lineCount > 3) && titlePaint.textSize > side * .10f) {
-            titlePaint.textSize *= .94f
-            title = layout()
-        }
-        canvas.save()
-        canvas.translate(side * .08f, side * .195f)
-        title.draw(canvas)
-        canvas.restore()
+    val side = size.minDimension
+    drawRect(ChartBackground)
+    translate(side * .105f, side * .58f) {
+        drawFlagMotif(code, side * .79f, side * .31f)
+    }
+    drawRect(grain, alpha = .09f)
+    val canvas = drawContext.canvas.nativeCanvas
+    val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ChartInk
+        typeface = monoTypeface
+        textSize = side * .066f
+    }
+    canvas.drawText(topLabel, side * .08f, side * .125f, labelPaint)
+    val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ChartInk
+        typeface = titleTypeface
+        textSize = side * .235f
+        textScaleX = .9f
+    }
+    val width = (side * .84f).toInt().coerceAtLeast(1)
+    fun layout() = StaticLayout.Builder.obtain(name, 0, name.length, titlePaint, width)
+        .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false)
+        .setLineSpacing(0f, .98f).build()
+    var title = layout()
+    while ((title.height > side * .355f || title.lineCount > 3) && titlePaint.textSize > side * .10f) {
+        titlePaint.textSize *= .94f
+        title = layout()
+    }
+    canvas.save()
+    canvas.translate(side * .08f, side * .195f)
+    title.draw(canvas)
+    canvas.restore()
 }
 
 private val Red = Color(0xFFDF493F)

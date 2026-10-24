@@ -406,6 +406,7 @@ private fun PageFrame(
     translateOverscroll: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val pagePull = overscrollPull ?: rememberRubberBandPull()
     val ambientBackground = LocalScreenFrostBackground.current
     val pageBackground = rememberFrostBackdrop(
         background = ambientBackground,
@@ -453,17 +454,11 @@ private fun PageFrame(
         Box(
             modifier =
                 modifier.fillMaxSize()
-                    .then(
-                        if (overscrollPull != null) {
-                            Modifier.rubberBandOverscroll(
-                                Orientation.Vertical,
-                                scrollState,
-                                overscrollPull,
-                                translateContent = translateOverscroll,
-                            )
-                        } else {
-                            Modifier.irideFolioGestures(scrollState)
-                        }
+                    .rubberBandOverscroll(
+                        Orientation.Vertical,
+                        scrollState,
+                        pagePull,
+                        translateContent = false,
                     )
         ) {
             Box(
@@ -483,36 +478,42 @@ private fun PageFrame(
                         background()
                     }
                 }
-                content()
-                if (scrimProgress > 0f) {
-                    Box(
-                        Modifier.fillMaxWidth()
-                            .height(
-                                statusBarHeight +
-                                    IrideFolio.ControlsTopSpacing +
-                                    IrideFolio.ControlsHeight +
-                                    IrideFolio.TopScrimFadeHeight
-                            )
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer { alpha = scrimProgress }
-                            .background(scrimBrush)
-                    )
-                }
-                if (titleScrollOffset != null) {
-                    Box(Modifier.fillMaxSize().clipToBounds()) {
-                        IridePageTitle(
-                            title = title,
-                            monospace = true,
-                            modifier =
-                                Modifier.graphicsLayer {
-                                        translationY = -titleScrollOffset().coerceAtLeast(0).toFloat()
-                                    }
-                                    .padding(
-                                        start = IridePageLayoutDefaults.HorizontalPadding,
-                                        end = IridePageLayoutDefaults.HorizontalPadding,
-                                        top = statusBarHeight + header.titleTopSpacing,
-                                    ),
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        translationY = if (translateOverscroll) pagePull.offset else 0f
+                    }
+                ) {
+                    content()
+                    if (scrimProgress > 0f) {
+                        Box(
+                            Modifier.fillMaxWidth()
+                                .height(
+                                    statusBarHeight +
+                                        IrideFolio.ControlsTopSpacing +
+                                        IrideFolio.ControlsHeight +
+                                        IrideFolio.TopScrimFadeHeight
+                                )
+                                .align(Alignment.TopCenter)
+                                .graphicsLayer { alpha = scrimProgress }
+                                .background(scrimBrush)
                         )
+                    }
+                    if (titleScrollOffset != null) {
+                        Box(Modifier.fillMaxSize().clipToBounds()) {
+                            IridePageTitle(
+                                title = title,
+                                monospace = true,
+                                modifier =
+                                    Modifier.graphicsLayer {
+                                            translationY = -titleScrollOffset().coerceAtLeast(0).toFloat()
+                                        }
+                                        .padding(
+                                            start = IridePageLayoutDefaults.HorizontalPadding,
+                                            end = IridePageLayoutDefaults.HorizontalPadding,
+                                            top = statusBarHeight + header.titleTopSpacing,
+                                        ),
+                            )
+                        }
                     }
                 }
             }

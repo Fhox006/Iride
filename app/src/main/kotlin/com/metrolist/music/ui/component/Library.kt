@@ -5,13 +5,15 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import com.metrolist.music.ui.component.SongMenuIconButton
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -94,7 +95,7 @@ fun LibraryArtistGridItem(
     fillMaxWidth = true,
     modifier = modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 navController.navigate("artist/${artist.id}")
             },
@@ -167,7 +168,7 @@ fun LibraryAlbumGridItem(
     fillMaxWidth = true,
     modifier = modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 navController.navigate("album/${album.id}")
             },
@@ -204,7 +205,7 @@ fun LibraryContinueListeningAlbumItem(
         coroutineScope = coroutineScope,
         size = size,
         fillMaxWidth = true,
-        modifier = modifier.width(size).combinedClickable(
+        modifier = modifier.width(size).irideFolioCombinedClickable(
             onClick = {
                 onAlbumSelected()
                 navController.navigate("album/${album.id}")
@@ -235,7 +236,7 @@ private fun SuggestedFollowActions(
             modifier = Modifier
                 .clickable(onClick = onFollow)
                 .size(18.dp)
-                .background(MaterialTheme.colorScheme.onSurface, CircleShape),
+                .background(MaterialTheme.colorScheme.onSurface, FolioShape(32)),
         ) {
             Icon(
                 painter = painterResource(R.drawable.add),
@@ -277,7 +278,7 @@ fun LibrarySuggestedFollowArtistItem(
     },
     modifier = modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = { navController.navigate("artist/${artist.id}") },
             onLongClick = onDismiss,
         )
@@ -384,11 +385,11 @@ fun LibraryPlaylistGridItem(
             if (isActive) Modifier.border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                shape = com.metrolist.music.ui.theme.FolioShape(14.dp),
             ) else Modifier,
         )
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.browseId != null)
                     navController.navigate("online_playlist/${playlist.playlist.browseId}")

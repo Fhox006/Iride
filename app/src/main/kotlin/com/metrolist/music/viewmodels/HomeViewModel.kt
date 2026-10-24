@@ -247,6 +247,7 @@ class HomeViewModel @Inject constructor(
     val moodPage = MutableStateFlow<HomePage?>(null)
 
     val isHeroCarouselEnabled = MutableStateFlow(true)
+    val isHeroCarouselLoading = MutableStateFlow(true)
 
     val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
@@ -332,6 +333,7 @@ class HomeViewModel @Inject constructor(
     private val repairedHeroCovers = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed, force: Boolean = false) {
+        if (!force && heroCarouselItems.value.isNotEmpty()) return
         if (force) {
             previousFirstHeroArtistId = heroCarouselItems.value
                 .filterIsInstance<HeroCarouselItem.ArtistRadio>().firstOrNull()?.artistId
@@ -341,31 +343,42 @@ class HomeViewModel @Inject constructor(
         }
         lastHeroCarouselSeed = seed
         heroCarouselJob?.cancel()
-        heroCarouselJob = viewModelScope.launch(Dispatchers.IO) {
-            val radios = heroCarouselGenerator.generate(
-                homePage = homePage.value,
-                seed = seed,
-                previousArtistIds = previousHeroArtistIds,
-                previousFirstArtistId = previousFirstHeroArtistId,
-            )
-            coroutineContext.ensureActive()
-            if (radios.isEmpty()) return@launch
-            heroCarouselItems.value = radios
-            if (smartBootEnabled) persistHeroCarouselSnapshot(seed, radios)
-            val withCovers = heroCarouselGenerator.resolveMissingCovers(radios)
-            coroutineContext.ensureActive()
-            if (withCovers != radios) {
-                val coversById = withCovers.associateBy { it.artistId }
-                heroCarouselItems.update { current ->
-                    current.map { item ->
-                        if (item is HeroCarouselItem.ArtistRadio && item.coverUrl.isNullOrBlank()) {
-                            coversById[item.artistId] ?: item
-                        } else item
+        isHeroCarouselLoading.value = true
+        heroCarouselJob = viewModelScope.launch(Dispatchers.IO, start = kotlinx.coroutines.CoroutineStart.LAZY) {
+            val myJob = coroutineContext[Job]
+            try {
+                val radios = heroCarouselGenerator.generate(
+                    homePage = homePage.value,
+                    seed = seed,
+                    previousArtistIds = previousHeroArtistIds,
+                    previousFirstArtistId = previousFirstHeroArtistId,
+                )
+                coroutineContext.ensureActive()
+                if (radios.isEmpty()) return@launch
+                heroCarouselItems.value = radios
+                if (smartBootEnabled) persistHeroCarouselSnapshot(seed, radios)
+                val withCovers = heroCarouselGenerator.resolveMissingCovers(radios)
+                coroutineContext.ensureActive()
+                if (withCovers != radios) {
+                    val coversById = withCovers.associateBy { it.artistId }
+                    heroCarouselItems.update { current ->
+                        current.map { item ->
+                            if (item is HeroCarouselItem.ArtistRadio && item.coverUrl.isNullOrBlank()) {
+                                coversById[item.artistId] ?: item
+                            } else item
+                        }
                     }
+                    if (smartBootEnabled) persistHeroCarouselSnapshot(seed, heroCarouselItems.value)
                 }
-                if (smartBootEnabled) persistHeroCarouselSnapshot(seed, heroCarouselItems.value)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                reportException(error)
+            } finally {
+                if (heroCarouselJob === myJob) isHeroCarouselLoading.value = false
             }
         }
+        heroCarouselJob?.start()
     }
 
     fun repairHeroRadioCover(artistId: String) {
@@ -480,6 +493,26 @@ class HomeViewModel @Inject constructor(
     private var moodPosterJob: Job? = null
     private var moodPosterSize = 448
     private var requestedMoodParams: String? = null
+    val testPlaylistTrackThumbnails = MutableStateFlow<List<String>>(emptyList())
+    private var testPlaylistArtworkJob: Job? = null
+    private var testPlaylistArtworkId: String? = null
+
+    fun loadTestPlaylistArtwork(playlistId: String) {
+        if (testPlaylistArtworkId == playlistId) return
+        testPlaylistArtworkId = playlistId
+        testPlaylistTrackThumbnails.value = emptyList()
+        testPlaylistArtworkJob?.cancel()
+        testPlaylistArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            val thumbnails = YouTube.playlist(playlistId).getOrNull()
+                ?.songs
+                ?.take(4)
+                ?.mapNotNull { it.thumbnail.takeIf(String::isNotBlank) }
+                .orEmpty()
+            if (testPlaylistArtworkId == playlistId) {
+                testPlaylistTrackThumbnails.value = thumbnails
+            }
+        }
+    }
     private var requestedMoodFilters: Triple<Boolean, Boolean, Boolean>? = null
     private val moodPageCache = MoodPageCache(context)
 
@@ -605,9 +638,9 @@ class HomeViewModel @Inject constructor(
                     )
                     moodPage.value = filteredPage
                     val mixItems = MoodMixes.select(filteredPage.sections.flatMap { it.items })
-                    publishMoodMixes(mixItems, mood, revalidate = true)
                     loadedMoodParams.value = params
                     loadedMoodFilters = filters
+                    publishMoodMixes(mixItems, mood, revalidate = true)
                     preferredMoodParams.value = params
                     moodPageCache.write(cacheFile, filteredPage)
                     if (chipTitle != null) {
@@ -1038,6 +1071,8 @@ class HomeViewModel @Inject constructor(
                 buildForYouShelf(artist, fromTimeStamp, toTimeStamp, usedAlbumIds)?.let { shelf ->
                     usedAlbumIds += shelf.tiles.map { it.id }
                     shelves += shelf
+                    // Present the first viewport without waiting for the entire twenty-artist pool.
+                    if (shelves.size % 4 == 0) forYouShelves.value = shelves.toList()
                 }
             }
         }
@@ -1105,7 +1140,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadMoreForYouShelves() {
-        if (_isLoadingMoreForYou.value || forYouArtistPool.isEmpty()) return
+        if (isForYouLoading.value || _isLoadingMoreForYou.value || forYouArtistPool.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingMoreForYou.value = true
             val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
@@ -1197,13 +1232,16 @@ class HomeViewModel @Inject constructor(
                                         relatedEndpoint = endpoint
                                     )
                                 )
+                                synchronized(items) {
+                                    dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }
+                                }
                             }
                         }
                     }
                 }
             }.forEach { it.join() }
         }
-        dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
+        dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }
     }
 
     private fun eligibleQuickPicks(songs: List<Song>, hideExplicit: Boolean): List<Song> =
@@ -1754,6 +1792,7 @@ class HomeViewModel @Inject constructor(
     fun loadHomeData() = viewModelScope.launch { load() }
 
     private suspend fun load() {
+        refreshHomeFeed()
         refreshHeroCarousel(defaultHeroCarouselSeed(), force = true)
         isLoading.value = true
         phase1Complete.value = false
@@ -1816,7 +1855,6 @@ class HomeViewModel @Inject constructor(
             sectionsToRestart.forEach(::onSectionBecameVisible)
         }
 
-        refreshHomeFeed()
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit))

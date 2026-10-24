@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +54,6 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.YouTube
-import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
@@ -70,6 +70,7 @@ import com.metrolist.music.ui.component.IrideFolioContextMenu
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.ListItem
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.ui.component.MenuActionReadiness
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.folioLibraryAction
 import com.metrolist.music.ui.component.folioMenuAction
@@ -81,6 +82,8 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.saveToPublicDocuments
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import com.metrolist.music.utils.reportException
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -100,15 +103,30 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
             album.artists.firstOrNull()?.id
         else null
     val menuArtists = album.artists.filter { it.id != currentArtistId && it.id != homeArtistId }
-    var songs by remember { mutableStateOf(emptyList<Song>()) }
+    var songs by remember(album.id) { mutableStateOf(emptyList<Song>()) }
+    var songsResolved by remember(album.id) { mutableStateOf(false) }
 
     val coroutineScope = rememberMenuActionScope()
 
-    LaunchedEffect(Unit) { database.albumSongs(album.id).collect { songs = it } }
-
-    var otherVersions by remember { mutableStateOf(emptyList<AlbumItem>()) }
     LaunchedEffect(album.id) {
-        YouTube.album(album.id).onSuccess { otherVersions = it.otherVersions }
+        try {
+            database.albumSongs(album.id).collect {
+                songs = it
+                songsResolved = true
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            songsResolved = true
+            reportException(error)
+        }
+    }
+
+    var otherVersions by remember(album.id) {
+        mutableStateOf(AlbumOtherVersionsCache.get(album.id).orEmpty())
+    }
+    LaunchedEffect(album.id) {
+        AlbumOtherVersionsCache.fetch(album.id)?.let { otherVersions = it }
     }
 
     var downloadState by remember { mutableIntStateOf(STATE_STOPPED) }
@@ -215,7 +233,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                         AsyncImage(
                             model = artist.thumbnailUrl,
                             contentDescription = null,
-                            modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
+                            modifier = Modifier.size(ListThumbnailSize).clip(FolioShape(32)),
                         )
                     }
                     Text(
@@ -343,7 +361,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
     IrideFolioContextMenu(
         items =
             buildList {
-                    if (!isGuest && songs.isNotEmpty()) {
+                    if (!isGuest) {
                         addAll(
                             listOf(
                                 Material3MenuItemData(
@@ -481,17 +499,19 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                 }
                 .map { action ->
                     if (
-                        songs.isEmpty() &&
-                            action.actionId in
+                        action.actionId in
                                 setOf(
                                     R.string.play_next,
                                     R.string.add_to_queue,
                                     R.string.add_to_playlist,
                                     R.string.action_download,
-                                    R.string.add_to_library,
                                 )
                     )
-                        action.copy(onClick = null)
+                        action.copy(readiness = when {
+                            songs.isNotEmpty() -> MenuActionReadiness.Ready
+                            songsResolved -> MenuActionReadiness.Unavailable
+                            else -> MenuActionReadiness.Pending
+                        })
                     else action
                 },
         visible =

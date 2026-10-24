@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
@@ -70,7 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.screens.Screens
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -311,7 +313,7 @@ fun FloatingBottomNavigation(
             Canvas(Modifier.fillMaxSize()) {
                 val left = segmentWidthPx * animatedPosition + indicatorInsetPx
                 val top = (size.height - indicatorHeightPx) / 2f
-                drawRoundRect(
+                drawFolioRoundRect(
                     color = onSurface.copy(alpha = 0.10f),
                     topLeft = Offset(left, top),
                     size = Size(indicatorWidthPx, indicatorHeightPx),
@@ -413,7 +415,7 @@ private fun NavigationButton(
                 modifier = Modifier
                     .size(FloatingBottomNavigationPillHeight - IrideFolio.NavigationSelectionInset * 2)
                     .drawBehind {
-                        drawRoundRect(
+                        drawFolioRoundRect(
                             color = contentColor,
                             alpha = searchSelection.value * 0.10f,
                             cornerRadius = CornerRadius(
@@ -478,7 +480,7 @@ private fun NavigationButtonContent(
         )
         Text(
             text = stringResource(screen.titleId),
-            fontFamily = SpaceMonoFontFamily,
+            fontFamily = IBMPlexMonoFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 9.sp,
             lineHeight = 12.sp,

@@ -3,7 +3,7 @@ package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -110,7 +110,7 @@ fun BrowseScreen(
                         fillMaxWidth = true,
                         coroutineScope = coroutineScope,
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.irideFolioCombinedClickable(
                                 onClick = {
                                     when (item) {
                                         is AlbumItem -> {

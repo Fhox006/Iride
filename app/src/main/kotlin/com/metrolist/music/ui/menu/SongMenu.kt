@@ -1,11 +1,6 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
-import com.metrolist.music.ui.component.rememberMenuActionScope
-
-import com.metrolist.music.ui.component.IrideFolioPrimaryButton
-import com.metrolist.music.ui.component.IrideFolioSecondaryButton
-
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -38,10 +33,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,7 +55,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -116,17 +109,21 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.IrideAnchoredSongMenu
 import com.metrolist.music.ui.component.IrideFolio
-import com.metrolist.music.ui.component.IrideFolioScrollbar
 import com.metrolist.music.ui.component.IrideFolioMenuDivider
 import com.metrolist.music.ui.component.IrideFolioMenuItem
-import com.metrolist.music.ui.component.irideFolioGestures
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioScrollbar
+import com.metrolist.music.ui.component.rememberRubberBandPull
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalSongMenuPopupState
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.component.folioTypewriterFontFamily
+import com.metrolist.music.ui.component.irideFolioGestures
+import com.metrolist.music.ui.component.rememberMenuActionScope
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -217,31 +214,40 @@ fun SongMenu(
 
     val currentEntry = navController.currentBackStackEntry
     val currentRoute = currentEntry?.destination?.route.orEmpty()
-    val currentArtistId = if (currentRoute.startsWith("artist/")) {
-        currentEntry?.arguments?.getString("artistId")
-    } else null
-    val currentAlbumId = if (currentRoute.startsWith("album/")) {
-        currentEntry?.arguments?.getString("albumId")
-    } else null
-    val contextAlbum by produceState<Album?>(initialValue = null, currentAlbumId) {
-        currentAlbumId?.let { id -> database.album(id).collect { value = it } }
-    }
+    val currentArtistId =
+        if (currentRoute.startsWith("artist/")) {
+            currentEntry?.arguments?.getString("artistId")
+        } else null
+    val currentAlbumId =
+        if (currentRoute.startsWith("album/")) {
+            currentEntry?.arguments?.getString("albumId")
+        } else null
+    val contextAlbum by
+        produceState<Album?>(initialValue = null, currentAlbumId) {
+            currentAlbumId?.let { id -> database.album(id).collect { value = it } }
+        }
     val albumArtists = contextAlbum?.artists.orEmpty()
     val albumArtistIds = buildSet {
         addAll(albumArtists.map { it.id })
         // Local and online metadata can give the same credited artist different IDs.
-        addAll(menuArtists.filter { artist ->
-            albumArtists.any { it.name.equals(artist.name, ignoreCase = true) }
-        }.map { it.id })
+        addAll(
+            menuArtists
+                .filter { artist ->
+                    albumArtists.any { it.name.equals(artist.name, ignoreCase = true) }
+                }
+                .map { it.id }
+        )
     }
-    val navigation = songMenuNavigation(
-        artistIds = menuArtists.map { it.id },
-        songAlbumId = song.song.albumId,
-        currentArtistId = currentArtistId,
-        currentAlbumId = currentAlbumId,
-        albumArtistIds = albumArtistIds,
-    )
-    val navigationArtists = menuArtists.distinctBy { it.id }.filter { it.id in navigation.artistIds }
+    val navigation =
+        songMenuNavigation(
+            artistIds = menuArtists.map { it.id },
+            songAlbumId = song.song.albumId,
+            currentArtistId = currentArtistId,
+            currentAlbumId = currentAlbumId,
+            albumArtistIds = albumArtistIds,
+        )
+    val navigationArtists =
+        menuArtists.distinctBy { it.id }.filter { it.id in navigation.artistIds }
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -380,9 +386,7 @@ fun SongMenu(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text(
-                            text = stringResource(R.string.delete),
-                        )
+                        Text(text = stringResource(R.string.delete))
                     }
                 }
             },
@@ -395,10 +399,12 @@ fun SongMenu(
     }
 
     if (showSelectArtistDialog) {
-        ListDialog(onDismiss = {
-            showSelectArtistDialog = false
-            if (popupState != null) onDismiss()
-        }) {
+        ListDialog(
+            onDismiss = {
+                showSelectArtistDialog = false
+                if (popupState != null) onDismiss()
+            }
+        ) {
             items(
                 items = navigationArtists,
                 key = { "menu_song_artist_${it.id}" },
@@ -425,7 +431,7 @@ fun SongMenu(
                             fallback = painterResource(R.drawable.artist),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
+                            modifier = Modifier.size(ListThumbnailSize).clip(FolioShape(32)),
                         )
                     }
                     Text(
@@ -443,32 +449,33 @@ fun SongMenu(
 
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
 
-    val primaryActions = listOf(
-        Material3MenuItemData(
-            title = { Text(stringResource(R.string.play_next)) },
-            icon = { Icon(painterResource(R.drawable.playlist_play), null) },
-            onClick = {
-                onDismiss()
-                playerConnection.playNext(song.toMediaItem())
-            },
-        ),
-        Material3MenuItemData(
-            title = { Text(stringResource(R.string.add_to_queue)) },
-            icon = { Icon(painterResource(R.drawable.queue_music), null) },
-            onClick = {
-                onDismiss()
-                playerConnection.addToQueue(song.toMediaItem())
-            },
-        ),
-        Material3MenuItemData(
-            title = { Text(stringResource(R.string.radio)) },
-            icon = { Icon(painterResource(R.drawable.radio), null) },
-            onClick = {
-                onDismiss()
-                playerConnection.startRadioForSong(song.toMediaMetadata())
-            },
-        ),
-    )
+    val primaryActions =
+        listOf(
+            Material3MenuItemData(
+                title = { Text(stringResource(R.string.iride_menu_next)) },
+                icon = { Icon(painterResource(R.drawable.playlist_play), null) },
+                onClick = {
+                    onDismiss()
+                    playerConnection.playNext(song.toMediaItem())
+                },
+            ),
+            Material3MenuItemData(
+                title = { Text(stringResource(R.string.iride_menu_queue)) },
+                icon = { Icon(painterResource(R.drawable.queue_music), null) },
+                onClick = {
+                    onDismiss()
+                    playerConnection.addToQueue(song.toMediaItem())
+                },
+            ),
+            Material3MenuItemData(
+                title = { Text(stringResource(R.string.radio)) },
+                icon = { Icon(painterResource(R.drawable.radio), null) },
+                onClick = {
+                    onDismiss()
+                    playerConnection.startRadioForSong(song.toMediaMetadata())
+                },
+            ),
+        )
 
     val suggestToHostItem =
         Material3MenuItemData(
@@ -581,11 +588,16 @@ fun SongMenu(
     val viewArtistItem =
         Material3MenuItemData(
             title = {
-                Text(stringResource(when (navigation.artistLabel) {
-                    SongMenuArtistLabel.Artist -> R.string.view_artist
-                    SongMenuArtistLabel.Artists -> R.string.song_menu_view_artists
-                    SongMenuArtistLabel.Collaborators -> R.string.song_menu_view_collaborators
-                }))
+                Text(
+                    stringResource(
+                        when (navigation.artistLabel) {
+                            SongMenuArtistLabel.Artist -> R.string.view_artist
+                            SongMenuArtistLabel.Artists -> R.string.song_menu_view_artists
+                            SongMenuArtistLabel.Collaborators ->
+                                R.string.song_menu_view_collaborators
+                        }
+                    )
+                )
             },
             description = { Text(text = navigationArtists.joinToString { it.name }) },
             icon = {
@@ -595,7 +607,7 @@ fun SongMenu(
                         model = artistThumbnail,
                         contentScale = ContentScale.Crop,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp).clip(CircleShape),
+                        modifier = Modifier.size(28.dp).clip(FolioShape(32)),
                     )
                 } else {
                     Icon(
@@ -625,7 +637,8 @@ fun SongMenu(
                             when {
                                 isPodcast -> R.string.view_podcast
                                 song.album?.songCount == 1 -> R.string.view_single
-                                song.album?.songCount?.let { it in 2..6 } == true -> R.string.view_ep
+                                song.album?.songCount?.let { it in 2..6 } == true ->
+                                    R.string.view_ep
                                 else -> R.string.view_album
                             }
                         )
@@ -642,7 +655,7 @@ fun SongMenu(
                         model = song.album?.thumbnailUrl ?: song.thumbnailUrl,
                         contentScale = ContentScale.Crop,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp).clip(RoundedCornerShape(4.dp)),
+                        modifier = Modifier.size(28.dp).clip(FolioShape(4.dp)),
                     )
                 } else {
                     Icon(
@@ -673,9 +686,9 @@ fun SongMenu(
                                 text =
                                     stringResource(
                                         if (isPodcastSubscribed) {
-                                            R.string.subscribed
+                                            R.string.iride_remove_star
                                         } else {
-                                            R.string.subscribe_to_podcast
+                                            R.string.iride_star
                                         }
                                     )
                             )
@@ -915,57 +928,76 @@ fun SongMenu(
     }
 
     val favoriteItem = favoriteMenuItem(song, database, syncUtils, onDismiss)
-    val shareItem = Material3MenuItemData(
-        title = { Text(stringResource(R.string.share)) },
-        icon = { Icon(painterResource(R.drawable.share), null) },
-        onClick = {
-            onDismiss()
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
-            }
-            context.startActivity(Intent.createChooser(intent, null))
-        },
-    )
+    val shareItem =
+        Material3MenuItemData(
+            title = { Text(stringResource(R.string.share)) },
+            icon = { Icon(painterResource(R.drawable.share), null) },
+            onClick = {
+                onDismiss()
+                val intent =
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
+                    }
+                context.startActivity(Intent.createChooser(intent, null))
+            },
+        )
     val sections = buildList {
         add(if (isGuest) listOf(suggestToHostItem) else primaryActions)
-        add(buildList {
-            if (!song.song.isEpisode) add(favoriteItem)
-            add(addToPlaylistItem)
-            if (!song.song.isLocal) add(downloadItem.copy(onClick = {
-                downloadItem.onClick?.invoke()
-                onDismiss()
-            }))
-        })
-        add(buildList {
-            if (!song.song.isEpisode && navigationArtists.isNotEmpty()) add(viewArtistItem)
-            if (navigation.showAlbum) add(viewAlbumItem)
-        })
+        add(
+            buildList {
+                if (!song.song.isEpisode) add(favoriteItem)
+                add(addToPlaylistItem)
+                if (!song.song.isLocal)
+                    add(
+                        downloadItem.copy(
+                            onClick = {
+                                downloadItem.onClick?.invoke()
+                                onDismiss()
+                            }
+                        )
+                    )
+            }
+        )
+        add(
+            buildList {
+                if (!song.song.isEpisode && navigationArtists.isNotEmpty()) add(viewArtistItem)
+                if (navigation.showAlbum) add(viewAlbumItem)
+            }
+        )
         add(listOf(shareItem))
         if (subscribeRefetchItems.isNotEmpty()) add(subscribeRefetchItems)
         if (destructiveItems.isNotEmpty()) add(destructiveItems)
-    }.filter { it.isNotEmpty() }
+    }
+        .filter { it.isNotEmpty() }
 
     val menuScrollState = rememberLazyListState()
+    val menuOverscrollPull = rememberRubberBandPull()
     val density = LocalDensity.current
-    val menuContentHeight = with(density) {
-        sections.sumOf { it.size } * IrideFolio.MenuItemHeight.roundToPx() +
-            (sections.size - 1).coerceAtLeast(0) * (
-                IrideFolio.MenuSectionVerticalPadding.roundToPx() * 2 + IrideFolio.MenuDividerThickness.roundToPx()
-            ) + (IrideFolio.MenuVerticalPadding.roundToPx() + IrideFolio.MenuBorderWidth.roundToPx()) * 2
-    }
+    val menuContentHeight =
+        with(density) {
+            sections.sumOf { it.size } * IrideFolio.MenuItemHeight.roundToPx() +
+                (sections.size - 1).coerceAtLeast(0) *
+                    (IrideFolio.MenuSectionVerticalPadding.roundToPx() * 2 +
+                        IrideFolio.MenuDividerThickness.roundToPx()) +
+                (IrideFolio.MenuVerticalPadding.roundToPx() +
+                    IrideFolio.MenuBorderWidth.roundToPx()) * 2
+        }
     val menuContent: @Composable (Boolean) -> Unit = { constrained ->
         Box {
             LazyColumn(
                 state = menuScrollState,
                 overscrollEffect = null,
-                modifier = Modifier
-                    .padding(end = if (constrained) IrideFolio.ScrollbarTouchTargetWidth else 0.dp)
-                    .irideFolioGestures(menuScrollState),
-                contentPadding = PaddingValues(
-                    vertical = IrideFolio.MenuVerticalPadding,
-                    horizontal = IrideFolio.MenuContentPadding,
-                ),
+                modifier =
+                    Modifier.padding(
+                            end = if (constrained) IrideFolio.ScrollbarTouchTargetWidth else 0.dp
+                        )
+                        .irideFolioGestures(menuScrollState, menuOverscrollPull),
+                contentPadding =
+                    PaddingValues(
+                        vertical = IrideFolio.MenuVerticalPadding,
+                        horizontal = IrideFolio.MenuContentPadding,
+                    ),
             ) {
                 sections.forEachIndexed { index, section ->
                     if (index > 0) item { IrideFolioMenuDivider() }
@@ -973,9 +1005,17 @@ fun SongMenu(
                         IrideFolioMenuItem(
                             text = action.title,
                             selected = action.selected,
-                            leadingIcon = action.icon?.let { icon ->
-                                { Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() } }
-                            },
+                            leadingIcon =
+                                action.icon?.let { icon ->
+                                    {
+                                        Box(
+                                            Modifier.size(24.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            icon()
+                                        }
+                                    }
+                                },
                             onClick = { action.onClick?.invoke() },
                         )
                     }
@@ -983,17 +1023,29 @@ fun SongMenu(
             }
             if (constrained) {
                 Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
-                    IrideFolioScrollbar(menuScrollState, Modifier.fillMaxHeight())
+                    IrideFolioScrollbar(
+                        menuScrollState,
+                        Modifier.fillMaxHeight().padding(
+                            top = IrideFolio.MenuScrollbarTopInset,
+                            bottom = IrideFolio.MenuScrollbarBottomInset,
+                        ),
+                        menuOverscrollPull,
+                    )
                 }
             }
         }
     }
     // Dialogs live outside the popup so closing it does not dispose their state or coroutines.
     if (popupState != null) {
-        if (!showChoosePlaylistDialog && !showErrorPlaylistAddDialog &&
-            !showSelectArtistDialog && !showDeleteUploadedDialog
+        if (
+            !showChoosePlaylistDialog &&
+                !showErrorPlaylistAddDialog &&
+                !showSelectArtistDialog &&
+                !showDeleteUploadedDialog
         ) {
-            IrideAnchoredSongMenu(popupState, menuContentHeight) { constrained -> menuContent(constrained) }
+            IrideAnchoredSongMenu(popupState, menuContentHeight) { constrained ->
+                menuContent(constrained)
+            }
         }
     } else {
         menuContent(false)
@@ -1010,11 +1062,18 @@ private fun favoriteMenuItem(
     var optimisticFavorite by remember(song.id, song.song.liked) { mutableStateOf(song.song.liked) }
     return Material3MenuItemData(
         title = {
-            Text(stringResource(if (optimisticFavorite) R.string.mp3_remove_favorite else R.string.mp3_add_favorite))
+            Text(
+                stringResource(
+                    if (optimisticFavorite) R.string.iride_remove_star
+                    else R.string.iride_star
+                )
+            )
         },
         icon = {
             Icon(
-                painterResource(if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                painterResource(
+                    if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border
+                ),
                 contentDescription = null,
             )
         },
@@ -1060,8 +1119,8 @@ internal fun StackedArtistAvatars(
                 modifier =
                     Modifier.offset(x = step * i)
                         .size(size)
-                        .clip(CircleShape)
-                        .border(1.5.dp, Color.Black.copy(alpha = 0.5f), CircleShape),
+                        .clip(FolioShape(32))
+                        .border(1.5.dp, Color.Black.copy(alpha = 0.5f), FolioShape(32)),
             )
         }
     }
@@ -1090,7 +1149,7 @@ internal fun SwitchTile(
             text = label,
             style =
                 MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = folioTypewriterFontFamily(),
                     fontWeight = FontWeight.Bold,
                 ),
             color = MaterialTheme.colorScheme.textPrimary,
@@ -1176,7 +1235,7 @@ internal fun ProminentActionRow(
             text = label,
             style =
                 MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = folioTypewriterFontFamily(),
                     fontWeight = FontWeight.Bold,
                 ),
             color = MaterialTheme.colorScheme.textPrimary,
@@ -1268,7 +1327,7 @@ internal fun CoverNoteRow(
         val totalWidthPx = with(density) { maxWidth.toPx() }
         val titleMeasureStyle =
             MaterialTheme.typography.bodyLarge.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = folioTypewriterFontFamily(),
                 fontWeight = FontWeight.Bold,
             )
         val coverFraction =
@@ -1444,7 +1503,7 @@ internal fun AddNoteBox(
                         ),
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = folioTypewriterFontFamily(),
                             fontWeight = FontWeight.Bold,
                         ),
                     modifier = Modifier.fillMaxWidth(),
@@ -1464,20 +1523,19 @@ internal fun AddNoteBox(
                     BasicTextField(
                         value = ratingText,
                         onValueChange = { input ->
-                            val filtered =
-                                buildString {
-                                        var dotUsed = false
-                                        for (c in input) {
-                                            when {
-                                                c.isDigit() -> append(c)
-                                                c == '.' && !dotUsed && isNotEmpty() -> {
-                                                    append(c)
-                                                    dotUsed = true
-                                                }
-                                            }
+                            val filtered = buildString {
+                                var dotUsed = false
+                                for (c in input) {
+                                    when {
+                                        c.isDigit() -> append(c)
+                                        c == '.' && !dotUsed && isNotEmpty() -> {
+                                            append(c)
+                                            dotUsed = true
                                         }
                                     }
-                                    .take(4)
+                                }
+                            }
+                                .take(4)
                             ratingText = filtered
                             filtered.toFloatOrNull()?.let {
                                 rating = it.coerceIn(0f, 5f)
@@ -1489,7 +1547,7 @@ internal fun AddNoteBox(
                         textStyle =
                             MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.textPrimary,
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = folioTypewriterFontFamily(),
                             ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
                         modifier = Modifier.width(34.dp),
@@ -1546,7 +1604,7 @@ internal fun AddNoteBox(
                     text = stringResource(R.string.add_note),
                     style =
                         MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = folioTypewriterFontFamily(),
                             fontWeight = FontWeight.Bold,
                         ),
                     color = MaterialTheme.colorScheme.textSecondary,
@@ -1559,7 +1617,7 @@ internal fun AddNoteBox(
                     val density = LocalDensity.current
                     val titleStyle =
                         MaterialTheme.typography.bodyLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = folioTypewriterFontFamily(),
                             fontWeight = FontWeight.Bold,
                         )
                     val descriptionStyle = MaterialTheme.typography.bodyMedium

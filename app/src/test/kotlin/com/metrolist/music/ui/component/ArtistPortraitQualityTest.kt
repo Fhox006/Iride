@@ -13,8 +13,8 @@ class ArtistPortraitQualityTest {
     )?.source
 
     @Test
-    fun spotifyPortraitBeatsHighResolutionWhiteApplePoster() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+    fun validAppleArtworkStaysPreferredWithoutDetectedFace() {
+        assertEquals(ArtistArtworkSource.APPLE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 1f, 0.35f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.80f, 0.65f)),
             Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.7f, 0.55f, 0.5f)),
@@ -22,9 +22,9 @@ class ArtistPortraitQualityTest {
     }
 
     @Test
-    fun youtubeCanSupplyTheBestPortraitWithGoodBorders() {
+    fun youtubeCanSupplyTheBestPortraitWhenAppleBordersAreInvalid() {
         assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, choose(
-            Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 1f, 0.35f)),
+            Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 0.1f, 0.35f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.4f, 0.5f, 0.6f)),
             Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.9f, 0.9f, 0.8f)),
         ))
@@ -39,9 +39,9 @@ class ArtistPortraitQualityTest {
     }
 
     @Test
-    fun resolutionAndBordersStillMatterBetweenPortraits() {
+    fun resolutionAndBordersStillMatterBetweenFallbackPortraits() {
         assertEquals(ArtistArtworkSource.SPOTIFY, choose(
-            Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0.8f, 0.4f, 0.35f)),
+            Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.4f, 0.35f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.8f, 0.9f, 0.9f)),
         ))
     }
@@ -99,20 +99,20 @@ class ArtistPortraitQualityTest {
     }
 
     @Test
-    fun meaningfulTechnicalUpgradeCanReplaceAppleWithoutFaceDetection() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+    fun technicalUpgradeDoesNotReplaceValidAppleArtwork() {
+        assertEquals(ArtistArtworkSource.APPLE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 0.45f, 0.35f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0f, 0.9f, 0.85f)),
         ))
     }
 
     @Test
-    fun appleReplacementIsIndependentOfDownloadCompletionOrder() {
+    fun applePreferenceIsIndependentOfDownloadCompletionOrder() {
         val apple = Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 1f, 0.35f))
         val spotify = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.8f, 0.65f))
         val youtube = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.5f, 0.75f, 0.6f))
         assertEquals(choose(apple, spotify, youtube), choose(youtube, spotify, apple))
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(youtube, apple, spotify))
+        assertEquals(ArtistArtworkSource.APPLE_MUSIC, choose(youtube, apple, spotify))
     }
 
     @Test

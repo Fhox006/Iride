@@ -18,7 +18,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
@@ -80,20 +80,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -214,7 +211,8 @@ import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.screens.Screens
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -288,74 +286,69 @@ fun LibraryScreen(
     initialOffline: Boolean = false,
     initialCache: Boolean = false,
 ) {
-    var category by rememberSaveable { mutableStateOf(if (initialCache) LibraryCategory.CACHE else initialCategory) }
-    var isOffline by rememberSaveable { mutableStateOf(initialOffline || initialCache) }
-    val categoryStateHolder = rememberSaveableStateHolder()
+    val category = if (initialCache) LibraryCategory.CACHE else initialCategory
+    val isOffline = initialOffline || initialCache
     val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val resetLibrary = backStackEntry?.savedStateHandle
         ?.getStateFlow("resetLibrary", false)?.collectAsState()
     LaunchedEffect(resetLibrary?.value) {
         if (resetLibrary?.value == true) {
-            category = LibraryCategory.HOME
             backStackEntry.savedStateHandle.set("scrollLibraryRootToTop", true)
             backStackEntry.savedStateHandle.set("resetLibrary", false)
         }
     }
 
     val onSelectCategory: (LibraryCategory, Boolean) -> Unit = { selected, offline ->
-        category = selected
-        isOffline = offline && selected != LibraryCategory.LOCAL_SONGS
-    }
-
-    BackHandler(enabled = category != LibraryCategory.HOME) {
-        category = LibraryCategory.HOME
-    }
-
-    categoryStateHolder.SaveableStateProvider("${category.name}:$isOffline") {
-        when (category) {
-            LibraryCategory.HOME -> LibraryMixScreen(
-                navController = navController,
-                initialOffline = isOffline,
-                onSelectCategory = onSelectCategory,
-            )
-            LibraryCategory.ALBUMS -> LibraryAlbumsScreen(
-                navController = navController,
-                isOffline = isOffline,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
-            LibraryCategory.PLAYLISTS -> LibraryPlaylistsScreen(
-                navController = navController,
-                isOffline = isOffline,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
-            LibraryCategory.ARTISTS -> LibraryArtistsScreen(
-                navController = navController,
-                isOffline = isOffline,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
-            LibraryCategory.SONGS -> LibrarySongsScreen(
-                navController = navController,
-                isOffline = isOffline,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
-            LibraryCategory.LOCAL_SONGS -> LibrarySongsScreen(
-                navController = navController,
-                isLocal = true,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
-            LibraryCategory.CACHE -> LibrarySongsScreen(
-                navController = navController,
-                isOffline = isOffline,
-                isCache = true,
-                onSelectCategory = onSelectCategory,
-                onReturnToLibrary = { category = LibraryCategory.HOME },
-            )
+        val route = when (selected) {
+            LibraryCategory.HOME -> Screens.Library.route
+            LibraryCategory.ALBUMS -> if (offline) "library_albums_offline" else "library_albums"
+            LibraryCategory.PLAYLISTS -> if (offline) "library_playlists_offline" else "library_playlists"
+            LibraryCategory.ARTISTS -> if (offline) "library_artists_offline" else "library_artists"
+            LibraryCategory.SONGS -> if (offline) "library_songs_offline" else "library_songs"
+            LibraryCategory.LOCAL_SONGS -> "library_songs_local"
+            LibraryCategory.CACHE -> "cache_playlist/cached"
         }
+        // Real destinations share the album's NavHost transition and predictive back gesture.
+        navController.navigate(route) { launchSingleTop = true }
+    }
+
+    when (category) {
+        LibraryCategory.HOME -> LibraryMixScreen(
+            navController = navController,
+            initialOffline = isOffline,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.ALBUMS -> LibraryAlbumsScreen(
+            navController = navController,
+            isOffline = isOffline,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.PLAYLISTS -> LibraryPlaylistsScreen(
+            navController = navController,
+            isOffline = isOffline,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.ARTISTS -> LibraryArtistsScreen(
+            navController = navController,
+            isOffline = isOffline,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.SONGS -> LibrarySongsScreen(
+            navController = navController,
+            isOffline = isOffline,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.LOCAL_SONGS -> LibrarySongsScreen(
+            navController = navController,
+            isLocal = true,
+            onSelectCategory = onSelectCategory,
+        )
+        LibraryCategory.CACHE -> LibrarySongsScreen(
+            navController = navController,
+            isOffline = isOffline,
+            isCache = true,
+            onSelectCategory = onSelectCategory,
+        )
     }
 }
 
@@ -1005,7 +998,6 @@ fun LibraryPlaylistsScreen(
     onReturnToLibrary: (() -> Unit)? = null,
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -1174,7 +1166,6 @@ fun LibraryPlaylistsScreen(
                         },
                     ) {
                         item(key = "library_search_actions", span = { GridItemSpan(maxLineSpan) }) {
-                            if (visibleResults.isNotEmpty() || searchQuery.isNotBlank()) {
                             LibrarySearchAndActions(
                                 query = searchFieldValue,
                                 onQueryChange = { value ->
@@ -1189,42 +1180,45 @@ fun LibraryPlaylistsScreen(
                                     viewModel.updateSearchQuery("")
                                 },
                                 actions = {
-                                    LibraryPlaybackActions(
-                                onShuffle = {
-                                    coroutineScope.launch {
-                                        val chosen = filteredPlaylists.randomOrNull() ?: return@launch
-                                        val queue = loadPlaylistMediaItems(database, chosen).shuffled()
-                                        if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = chosen.playlist.name,
-                                                    items = queue,
-                                                    sourceRoute = "local_playlist/${chosen.id}",
-                                                )
+                                    // Keep the pinned playlist in place while playlist data loads.
+                                    Box(Modifier.height(48.dp)) {
+                                        if (visibleResults.isNotEmpty()) {
+                                            LibraryPlaybackActions(
+                                                onShuffle = {
+                                                    coroutineScope.launch {
+                                                        val chosen = filteredPlaylists.randomOrNull() ?: return@launch
+                                                        val queue = loadPlaylistMediaItems(database, chosen).shuffled()
+                                                        if (queue.isNotEmpty()) {
+                                                            playerConnection.playQueue(
+                                                                ListQueue(
+                                                                    title = chosen.playlist.name,
+                                                                    items = queue,
+                                                                    sourceRoute = "local_playlist/${chosen.id}",
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                onRotation = {
+                                                    coroutineScope.launch {
+                                                        val items = filteredPlaylists.flatMap { loadPlaylistMediaItems(database, it) }
+                                                        val queue = database.buildRotationQueue(items)
+                                                        if (queue.isNotEmpty()) {
+                                                            playerConnection.playQueue(
+                                                                ListQueue(
+                                                                    title = queueTitle,
+                                                                    items = queue,
+                                                                    sourceRoute = "library",
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                },
                                             )
                                         }
                                     }
                                 },
-                                onRotation = {
-                                    coroutineScope.launch {
-                                        val items = filteredPlaylists.flatMap { loadPlaylistMediaItems(database, it) }
-                                        val queue = database.buildRotationQueue(items)
-                                        if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = queueTitle,
-                                                    items = queue,
-                                                    sourceRoute = "library",
-                                                )
-                                            )
-                                        }
-                                    }
-                                },
-                                    )
-                                },
-                                showActions = visibleResults.isNotEmpty(),
                             )
-                            }
                         }
 
                         item(key = "liked_pinned", contentType = { CONTENT_TYPE_PLAYLIST }) {
@@ -1234,10 +1228,9 @@ fun LibraryPlaylistsScreen(
                                 autoPlaylist = true,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .combinedClickable(
+                                    .irideFolioCombinedClickable(
                                         onClick = { navController.navigate("auto_playlist/liked") },
-                                    )
-                                    .animateItem(),
+                                    ),
                             )
                         }
 
@@ -1266,7 +1259,7 @@ fun LibraryPlaylistsScreen(
                                     autoPlaylist = true,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .combinedClickable(
+                                        .irideFolioCombinedClickable(
                                             onClick = {
                                                 item.route?.let(navController::navigate)
                                             },
@@ -1326,7 +1319,6 @@ fun LibrarySongsScreen(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
     val queueAllSongsStr = stringResource(R.string.queue_all_songs)
@@ -1539,7 +1531,7 @@ fun LibrarySongsScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth().combinedClickable(
+            modifier = Modifier.fillMaxWidth().irideFolioCombinedClickable(
                 onClick = {
                     if (isCache && inSelectMode) {
                         onCheckedChange(song.id !in selection)
@@ -1559,7 +1551,6 @@ fun LibrarySongsScreen(
                 onLongClick = if (isCache) {
                     {
                         if (!inSelectMode) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             inSelectMode = true
                             onCheckedChange(true)
                             selectionAnchorSongId = song.id
@@ -1671,7 +1662,6 @@ fun LibraryMixScreen(
     viewModel: LibraryMixViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
@@ -2041,6 +2031,7 @@ fun LibraryMixScreen(
                                         stringResource(if (isLibraryFilter) R.string.recently_added else R.string.recently_downloaded)
                                     },
                                     modifier = Modifier.padding(top = 20.dp),
+                                    useHomeTitleFont = true,
                                 )
                             }
                         }
@@ -2119,10 +2110,9 @@ fun LibraryMixScreen(
                                         song = item,
                                         isActive = item.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
-                                        modifier = Modifier.fillMaxWidth().combinedClickable(
+                                        modifier = Modifier.fillMaxWidth().irideFolioCombinedClickable(
                                             onClick = onClick,
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = item,
@@ -2193,6 +2183,7 @@ fun LibraryMixScreen(
                                     .padding(top = 20.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .revealMask(rememberSectionEnter("recently_added_label", revealedSections)),
+                                useHomeTitleFont = true,
                             )
                         }
                     }
@@ -2223,7 +2214,7 @@ fun LibraryMixScreen(
                                         autoPlaylist = true,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = {
                                                     if (onSelectCategory != null) onSelectCategory(LibraryCategory.SONGS, true)
                                                     else navController.navigate("auto_playlist/downloaded")
@@ -2262,7 +2253,7 @@ fun LibraryMixScreen(
                                         autoPlaylist = true,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = {
                                                     if (onSelectCategory != null) onSelectCategory(LibraryCategory.CACHE, true)
                                                     else navController.navigate("cache_playlist/cached")
@@ -2298,7 +2289,7 @@ fun LibraryMixScreen(
                                         autoPlaylist = true,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
+                                            .irideFolioCombinedClickable(
                                                 onClick = { navController.navigate("top_playlist/$topSize") },
                                             )
                                             .animateItem(placementSpec = IrideMotion.PlacementSpec),
@@ -2374,7 +2365,7 @@ fun LibraryMixScreen(
                                             autoPlaylist = item.id == PlaylistEntity.LIKED_PLAYLIST_ID,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .combinedClickable(
+                                                .irideFolioCombinedClickable(
                                                     onClick = {
                                                         if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
                                                             navController.navigate("auto_playlist/liked")
@@ -2388,7 +2379,6 @@ fun LibraryMixScreen(
                                                     },
                                                     onLongClick = {
                                                         if (item.id != PlaylistEntity.LIKED_PLAYLIST_ID) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             menuState.show(anchored = true) {
                                                                 PlaylistMenu(
                                                                     playlist = item,
@@ -2421,7 +2411,6 @@ fun LibraryMixScreen(
                                         }
                                     }
                                     val onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             SongMenu(
                                                 originalSong = item,
@@ -2442,7 +2431,7 @@ fun LibraryMixScreen(
                                                 softBorder = true,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                                                    .irideFolioCombinedClickable(onClick = onClick, onLongClick = onLongClick)
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         }
@@ -2455,7 +2444,7 @@ fun LibraryMixScreen(
                                             fillMaxWidth = true,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                                                .irideFolioCombinedClickable(onClick = onClick, onLongClick = onLongClick)
                                                 .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     }
@@ -2483,10 +2472,9 @@ fun LibraryMixScreen(
                                             fillMaxWidth = true,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .combinedClickable(
+                                                .irideFolioCombinedClickable(
                                                     onClick = { navController.navigate("album/${item.id}") },
                                                     onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         menuState.show(anchored = true) {
                                                             AlbumMenu(
                                                                 originalAlbum = item,
@@ -2509,10 +2497,9 @@ fun LibraryMixScreen(
                                             fillMaxWidth = true,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .combinedClickable(
+                                                .irideFolioCombinedClickable(
                                                     onClick = { navController.navigate("artist/${item.id}") },
                                                     onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         menuState.show(anchored = true) {
                                                             ArtistMenu(
                                                                 originalArtist = item,
@@ -2633,7 +2620,7 @@ private fun CategoriesContent(
                     text = item.label,
                     style = if (useIrideStyle) {
                         MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = 14.sp,
                             letterSpacing = 0.2.sp,
                         )

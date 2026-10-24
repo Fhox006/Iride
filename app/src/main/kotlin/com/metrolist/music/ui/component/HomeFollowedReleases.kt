@@ -43,6 +43,7 @@ fun HomeFollowedReleases(
     viewModel: FollowedReleasesViewModel = hiltViewModel(),
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
+    val initialLoadComplete by viewModel.initialLoadComplete.collectAsStateWithLifecycle()
     val resolvingId by viewModel.resolvingId.collectAsStateWithLifecycle()
     val resolvedSongIds by viewModel.resolvedSongIds.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -67,42 +68,63 @@ fun HomeFollowedReleases(
 
     val open: (NewRelease, Boolean) -> Unit = { release, showMenu ->
         if (showMenu || !isGuest) {
+            val pressMotion = if (showMenu) menuState.capturePressMotion() else null
             val previousJob = openJob
             previousJob?.cancel()
             openJob = scope.launch {
-                previousJob?.join()
                 try {
+                    previousJob?.join()
                     val song = viewModel.resolve(release)
                     when {
-                        song == null -> snackbarHostState.showSnackbar(unavailable)
-                        showMenu -> menuState.show(anchored = true) {
-                            YouTubeSongMenu(song, navController, menuState::dismiss)
+                        song == null -> {
+                            pressMotion?.release(scope, reducedMotion = false, force = true)
+                            snackbarHostState.showSnackbar(unavailable)
                         }
+                        showMenu ->
+                            menuState.showFromPress(pressMotion) {
+                                YouTubeSongMenu(song, navController, menuState::dismiss)
+                            }
                         player == null -> snackbarHostState.showSnackbar(connectionError)
                         player.mediaMetadata.value?.id == song.id -> player.togglePlayPause()
-                        else -> player.playQueue(YouTubeQueue(
-                            endpoint = WatchEndpoint(videoId = song.id),
-                            preloadItem = song.toMediaMetadata(),
-                        ))
+                        else ->
+                            player.playQueue(
+                                YouTubeQueue(
+                                    endpoint = WatchEndpoint(videoId = song.id),
+                                    preloadItem = song.toMediaMetadata(),
+                                )
+                            )
                     }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
+                    pressMotion?.release(scope, reducedMotion = false, force = true)
                     snackbarHostState.showSnackbar(connectionError)
+                } finally {
+                    if (pressMotion != null && menuState.popupMotion !== pressMotion) {
+                        pressMotion.release(scope, reducedMotion = false, force = true)
+                    }
                 }
             }
         }
     }
 
-    if (tracks.isNotEmpty()) {
-        SharedHomeSectionTitle(stringResource(R.string.home_new_tracks_for_you))
-        IrideFolioReleaseShelf(
-            releases = tracks,
-            resolvingId = resolvingId,
-            onClick = { open(it, false) },
-            onMenuClick = { open(it, true) },
-            resolvedSongIds = resolvedSongIds,
-        )
+    if (tracks.isNotEmpty() || !initialLoadComplete) {
+        IrideFolioSection(
+            sectionKey = "home_followed_releases",
+            ready = tracks.isNotEmpty(),
+            artwork = tracks.take(4).map { it.artworkUrl },
+            placeholder = { IrideFolioSectionSkeleton(currentGridThumbnailHeight(), songs = true) },
+        ) {
+            SharedHomeSectionTitle(stringResource(R.string.home_new_tracks_for_you))
+            IrideFolioReleaseShelf(
+                releases = tracks,
+                resolvingId = resolvingId,
+                onClick = { open(it, false) },
+                onMenuClick = { open(it, true) },
+                resolvedSongIds = resolvedSongIds,
+                minimumRows = 1,
+            )
+        }
     } else {
         // Keep an empty shelf measurable so visibility can trigger its first load.
         Spacer(Modifier.fillMaxWidth().height(1.dp))

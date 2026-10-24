@@ -29,7 +29,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import com.metrolist.music.R
 import com.metrolist.music.data.remote.ChartRankMovement
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textSecondary
 
 /** Folio's shared exception for chart ranks, including rows whose audio is still loading. */
@@ -43,7 +43,7 @@ fun IrideFolioRankedSongRow(
 ) {
     val density = LocalDensity.current
     val style = TextStyle(
-        fontFamily = SpaceMonoFontFamily,
+        fontFamily = IBMPlexMonoFontFamily,
         fontSize = IrideFolio.ChartRankFontSize,
         lineHeight = IrideFolio.ChartRankLineHeight,
         textAlign = TextAlign.End,

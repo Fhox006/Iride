@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
+import com.metrolist.music.ui.theme.drawFolioRoundRect
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector2D
 import androidx.compose.animation.core.TwoWayConverter
@@ -31,7 +33,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -108,7 +110,7 @@ import com.metrolist.music.ui.component.rememberArtistArtworkLoader
 import com.metrolist.music.ui.component.ArtistArtworkRequest
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.music.ui.utils.resize
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -341,7 +343,7 @@ internal fun SearchScene(
     val fieldSecondary = lerpColor(secondary, Color.White.copy(alpha = 0.72f), lift)
     val textMeasurer = rememberTextMeasurer()
     val titleQueryStyle = remember(titleStyle.fontSize) {
-        TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = titleStyle.fontSize, fontWeight = FontWeight.Bold)
+        TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = titleStyle.fontSize, fontWeight = FontWeight.Bold)
     }
     val queryWidth = remember(query.text, titleQueryStyle, textMeasurer) {
         textMeasurer.measure(query.text.ifEmpty { " " }, titleQueryStyle, maxLines = 1, softWrap = false).size.width.toFloat()
@@ -354,7 +356,7 @@ internal fun SearchScene(
     val fontSize = lerp(15f, fittedTitleSize, collapsed)
     val queryStyle = TextStyle(
         color = fieldInk.copy(alpha = fieldInk.alpha * if (event.returnsToRoot) 1f - progress else 1f),
-        fontFamily = SpaceMonoFontFamily,
+        fontFamily = IBMPlexMonoFontFamily,
         fontSize = fontSize.sp,
         fontWeight = FontWeight(lerp(400f, 700f, collapsed).roundToInt()),
         textAlign = TextAlign.Start,
@@ -502,21 +504,21 @@ internal fun SearchScene(
                         shadowElevation = with(density) { 38.dp.toPx() } * lift
                         ambientShadowColor = Color.Black.copy(alpha = 0.7f)
                         spotShadowColor = Color.Black.copy(alpha = 0.8f)
-                        shape = RoundedCornerShape(18.dp)
+                        shape = FolioShape(18.dp)
                         clip = false
-                    }.background(Color.Black.copy(alpha = 0.72f * lift), RoundedCornerShape(18.dp))
-                    .background(fieldColor, RoundedCornerShape(18.dp))
+                    }.background(Color.Black.copy(alpha = 0.72f * lift), FolioShape(18.dp))
+                    .background(fieldColor, FolioShape(18.dp))
                     .drawWithContent {
                         drawContent()
                         if (lift > 0f) {
-                            drawRoundRect(
+                            drawFolioRoundRect(
                                 color = primary.copy(alpha = 0.06f * lift),
                                 cornerRadius = CornerRadius(18.dp.toPx()),
                                 style = Stroke(1.dp.toPx()),
                             )
                         }
                         if (impact > 0f) {
-                            drawRoundRect(
+                            drawFolioRoundRect(
                                 color = Color.Black.copy(alpha = 0.05f * impact),
                                 cornerRadius = CornerRadius(18.dp.toPx()),
                             )
@@ -534,7 +536,7 @@ internal fun SearchScene(
                         else R.string.iride_search_online_hint,
                     ) else "",
                     placeholderStyle = TextStyle(
-                        color = fieldSecondary, fontFamily = SpaceMonoFontFamily, fontSize = 15.sp,
+                        color = fieldSecondary, fontFamily = IBMPlexMonoFontFamily, fontSize = 15.sp,
                     ),
                     onSubmit = onSubmit,
                     modifier = Modifier.fillMaxWidth()

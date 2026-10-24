@@ -3,7 +3,7 @@ package com.metrolist.music.ui.screens.playlist
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -150,7 +150,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
         actions = {
             IrideOutlineIconButton(onClick = viewModel::toggleBookmark,
                 icon = if (bookmarked) R.drawable.favorite else R.drawable.favorite_border,
-                contentDescription = stringResource(if (bookmarked) R.string.remove_from_library else R.string.add_to_library),
+                contentDescription = stringResource(if (bookmarked) R.string.iride_remove_star else R.string.iride_star),
                 enabled = chart != null && !saving, size = 40.dp, iconSize = 20.dp, pressEffect = IridePressEffect.Punch)
         },
     ) {
@@ -246,7 +246,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                                 Icon(painterResource(R.drawable.more_vert), stringResource(R.string.menu))
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().combinedClickable(
+                        modifier = Modifier.fillMaxWidth().irideFolioCombinedClickable(
                             enabled = !hidden,
                             onClick = onPlay,
                             onLongClick = onMenu,

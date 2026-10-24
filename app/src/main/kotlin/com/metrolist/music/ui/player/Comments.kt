@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -218,7 +217,7 @@ private fun CommentRow(
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .background(textColor.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -228,7 +227,7 @@ private fun CommentRow(
                     contentDescription = null,
                     modifier = Modifier
                         .size(28.dp)
-                        .clip(CircleShape),
+                        .clip(FolioShape(32)),
                 )
             } else {
                 Icon(
@@ -327,7 +326,7 @@ private fun CommentComposeBar(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(50))
+                .clip(FolioShape(50))
                 .background(textButtonColor.copy(alpha = 0.10f))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {

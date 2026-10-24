@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -17,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +57,7 @@ import com.metrolist.music.models.ReverieRank
 import com.metrolist.music.models.ReverieRecap
 import com.metrolist.music.models.ReveriePalette
 import com.metrolist.music.models.reverieEdition
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -266,7 +267,7 @@ private fun FilmText(value: String, size: Float, color: Color = FilmInk, title: 
         Color(com.metrolist.music.models.readableReverieColor(color.toArgb(), paper.toArgb(),
             if (title && size >= 24) 3.0 else 4.5))
     }
-    Text(value, modifier, color = readableColor, fontFamily = if (title) FilmTitleFont else SpaceMonoFontFamily,
+    Text(value, modifier, color = readableColor, fontFamily = if (title) FilmTitleFont else IBMPlexMonoFontFamily,
         fontSize = size.sp, lineHeight = (size * if (title) 1.12f else 1.35f).sp,
         maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
@@ -295,7 +296,7 @@ private fun FilmStat(value: String, label: String, modifier: Modifier = Modifier
 private fun FilmArtwork(item: ReverieRank, images: Map<String, Bitmap>, side: Dp, modifier: Modifier,
                         time: () -> Float, reduced: Boolean, portrait: Boolean = false) {
     val bitmap = images[item.id]
-    val shape = if (portrait) CircleShape else androidx.compose.foundation.shape.RoundedCornerShape(1.dp)
+    val shape = if (portrait) FolioShape(32) else com.metrolist.music.ui.theme.FolioShape(1.dp)
     Box(modifier.size(side.coerceAtLeast(1.dp))
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .padding(1.dp).clip(shape).background(FilmBlue).border(1.dp, FilmInk.copy(alpha = .15f), shape)) {

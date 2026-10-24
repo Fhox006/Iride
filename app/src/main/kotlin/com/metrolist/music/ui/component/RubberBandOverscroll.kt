@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 /**
  * Upper bound for how long the nav gate may stay latched after the last overscroll event. The
@@ -75,6 +77,11 @@ fun Modifier.rubberBandOverscroll(
     pull: RubberBandPull = rememberRubberBandPull(),
     translateContent: Boolean = true,
 ): Modifier {
+    val reducedMotion = rememberReducedMotion()
+    LaunchedEffect(pull, reducedMotion) {
+        if (reducedMotion) pull.raw.snapTo(0f)
+    }
+    if (reducedMotion) return this
     val scope = rememberCoroutineScope()
     val connection =
         remember(pull, orientation, state, scope) {

@@ -25,7 +25,6 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
-import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
@@ -43,7 +42,6 @@ import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.folioMenuAction
 import com.metrolist.music.ui.component.rememberMenuActionScope
-import java.time.LocalDateTime
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,16 +74,6 @@ fun YouTubeSelectionSongMenu(
                         val metadata = song.toMediaMetadata()
                         metadata.liked
                     }
-            )
-        }
-
-    val allInLibrary by
-        remember(songSelection) {
-            mutableStateOf(
-                songSelection.all { song ->
-                    val metadata = song.toMediaMetadata()
-                    metadata.inLibrary != null
-                }
             )
         }
 
@@ -260,58 +248,6 @@ fun YouTubeSelectionSongMenu(
                             title = { Text(stringResource(R.string.add_to_playlist)) },
                             onClick = { showChoosePlaylistDialog = true },
                         ),
-                        Material3MenuItemData(
-                            actionId = R.string.remove_from_library,
-                            title = {
-                                Text(
-                                    text =
-                                        stringResource(
-                                            if (allInLibrary) R.string.remove_from_library
-                                            else R.string.add_to_library
-                                        )
-                                )
-                            },
-                            icon = {
-                                Icon(
-                                    painter =
-                                        painterResource(
-                                            if (allInLibrary) R.drawable.library_add_check
-                                            else R.drawable.library_add
-                                        ),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                if (allInLibrary) {
-                                    database.query {
-                                        songSelection.forEach { song -> inLibrary(song.id, null) }
-                                    }
-                                    coroutineScope.launch {
-                                        songSelection.forEach { song ->
-                                            YouTube.toggleSongLibrary(song.id, false)
-                                        }
-                                    }
-                                } else {
-                                    database.transaction {
-                                        songSelection.forEach { song ->
-                                            insert(song.toMediaMetadata())
-                                            inLibrary(song.id, LocalDateTime.now())
-                                        }
-                                    }
-                                    coroutineScope.launch {
-                                        songSelection
-                                            .filter { song ->
-                                                song.toMediaMetadata().inLibrary == null
-                                            }
-                                            .forEach { song ->
-                                                YouTube.toggleSongLibrary(song.id, true)
-                                            }
-                                    }
-                                }
-                                clearAction()
-                                onDismiss()
-                            },
-                        ),
                         when (downloadState) {
                             Download.STATE_COMPLETED -> {
                                 Material3MenuItemData(
@@ -384,8 +320,8 @@ fun YouTubeSelectionSongMenu(
                                 Text(
                                     text =
                                         stringResource(
-                                            if (allLiked) R.string.dislike_all
-                                            else R.string.like_all
+                                            if (allLiked) R.string.iride_unstar_all
+                                            else R.string.iride_star_all
                                         )
                                 )
                             },

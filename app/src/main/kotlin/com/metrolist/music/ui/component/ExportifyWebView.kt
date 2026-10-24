@@ -2,7 +2,6 @@ package com.metrolist.music.ui.component
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
-import android.graphics.Outline
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Message
@@ -10,7 +9,6 @@ import android.util.Base64
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.URLUtil
@@ -37,6 +35,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import com.metrolist.music.R
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -54,7 +61,16 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 const val EXPORTIFY_URL = "https://exportify.app/"
-private const val EXPORTIFY_ORIGIN = "https://exportify.app"
+enum class PlaylistExportService(val url: String, val origin: String) {
+    SPOTIFY(EXPORTIFY_URL, "https://exportify.app"),
+    APPLE_MUSIC("https://www.playlisted.app/dashboard", "https://www.playlisted.app");
+
+    fun owns(url: String?): Boolean {
+        val uri = url?.let(Uri::parse) ?: return false
+        return uri.scheme == "https" && uri.host == Uri.parse(origin).host &&
+            uri.port in listOf(-1, 443) && uri.userInfo == null
+    }
+}
 private const val SPOTIFY_LOGOUT_URL = "https://accounts.spotify.com/logout"
 private const val MAX_EXPORT_BYTES = 128L * 1024 * 1024
 private const val EXPORT_CHUNK_BYTES = 48 * 1024
@@ -73,13 +89,17 @@ sealed interface ExportifyPageError {
 }
 
 /**
- * Hosts the official service; the caller supplies the size and surrounding app chrome. [onExport]
+ * Hosts the selected exporter; the caller supplies the size and surrounding app chrome. [onExport]
  * receives a cache file whose contents and empty parent directory the recipient owns.
  */
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun ExportifyWebView(
     modifier: Modifier = Modifier,
+    service: PlaylistExportService = PlaylistExportService.SPOTIFY,
+    onConnected: () -> Unit = {},
+    connectionKnown: Boolean = false,
+    folioState: IrideFolioWebState? = null,
     handleBackNavigation: Boolean = true,
     onExport: (File) -> Unit,
     onError: (String) -> Unit,
@@ -91,6 +111,7 @@ fun ExportifyWebView(
     onPageError: (ExportifyPageError) -> Unit = { onError("Exportify page could not be loaded") },
     onPageHostChanged: (String?) -> Unit = {},
 ) {
+    val connectedCallback by rememberUpdatedState(onConnected)
     val exportCallback by rememberUpdatedState(onExport)
     val errorCallback by rememberUpdatedState(onError)
     val loadingCallback by rememberUpdatedState(onLoading)
@@ -104,6 +125,8 @@ fun ExportifyWebView(
     var bridge by remember { mutableStateOf<ExportifyDownloadBridge?>(null) }
     val downloadScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     val popups = remember { mutableSetOf<WebView>() }
+    var popupBrowser by remember { mutableStateOf<WebView?>(null) }
+    val popupFolioState = rememberIrideFolioWebState()
     var disposed by remember { mutableStateOf(false) }
     var accountChangeStage by remember { mutableStateOf(ExportifyAccountChangeStage.IDLE) }
     var accountChangeFailed by remember { mutableStateOf(false) }
@@ -135,6 +158,23 @@ fun ExportifyWebView(
                 destroy()
             }
             browser = null
+        }
+    }
+
+    // Only a boolean crosses into native code; account tokens stay in their website storage.
+    LaunchedEffect(browser, lifecycle, connectionKnown) {
+        if (connectionKnown) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                browser?.takeIf { service.owns(it.url) && accountChangeStage == ExportifyAccountChangeStage.IDLE }?.evaluateJavascript(
+                    if (service == PlaylistExportService.SPOTIFY)
+                        "Boolean(localStorage.getItem('access_token'))"
+                    else "(() => { try { return Boolean(window.MusicKit?.getInstance().isAuthorized); } catch (_) { return false; } })()"
+                ) { result ->
+                    if (!disposed && accountChangeStage == ExportifyAccountChangeStage.IDLE && result == "true") connectedCallback()
+                }
+                delay(2_000)
+            }
         }
     }
 
@@ -184,26 +224,13 @@ fun ExportifyWebView(
         factory = { context ->
             IrideFolioWebView(context).apply {
                 browser = this
+                folioState?.attach(this)
                 // WRAP_CONTENT makes Chromium resolve viewport-relative CSS heights to zero.
                 layoutParams =
                     ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                // Clip the Android view itself rather than rendering it through a Compose mask.
-                outlineProvider =
-                    object : ViewOutlineProvider() {
-                        override fun getOutline(view: View, outline: Outline) {
-                            outline.setRoundRect(
-                                0,
-                                0,
-                                view.width,
-                                view.height,
-                                16 * resources.displayMetrics.density,
-                            )
-                        }
-                    }
-                clipToOutline = true
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -212,7 +239,7 @@ fun ExportifyWebView(
                     mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                     safeBrowsingEnabled = true
                     setSupportMultipleWindows(true)
-                    javaScriptCanOpenWindowsAutomatically = false
+                    javaScriptCanOpenWindowsAutomatically = service == PlaylistExportService.APPLE_MUSIC
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     builtInZoomControls = true
@@ -284,15 +311,15 @@ fun ExportifyWebView(
                                         CookieManager.getInstance().flush()
                                         accountChangeStage =
                                             ExportifyAccountChangeStage.EXPORTIFY_LOGOUT
-                                        view.loadUrl(EXPORTIFY_URL)
+                                        view.loadUrl(service.url)
                                     }
                                     return
                                 }
                                 ExportifyAccountChangeStage.EXPORTIFY_LOGOUT -> {
-                                    if (isExportifyUrl(url) && isExportifyUrl(view.url)) {
+                                    if (service.owns(url) && service.owns(view.url)) {
                                         view.evaluateJavascript(
-                                            "(() => { if (location.origin !== 'https://exportify.app') return false; " +
-                                                "localStorage.removeItem('access_token'); localStorage.removeItem('code_verifier'); " +
+                                            "(() => { if (location.origin !== '${service.origin}') return false; " +
+                                                "localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('token_expires_at'); localStorage.removeItem('code_verifier'); " +
                                                 "return true; })()"
                                         ) { cleared ->
                                             if (
@@ -300,13 +327,13 @@ fun ExportifyWebView(
                                                     accountChangeStage ==
                                                         ExportifyAccountChangeStage
                                                             .EXPORTIFY_LOGOUT &&
-                                                    isExportifyUrl(view.url)
+                                                    service.owns(view.url)
                                             ) {
                                                 if (cleared == "true") {
                                                     accountChangeStage =
                                                         ExportifyAccountChangeStage.RESTART
                                                     view.loadUrl(
-                                                        "${EXPORTIFY_URL}?change_user=true"
+                                                        "${service.url}?change_user=true"
                                                     )
                                                 } else {
                                                     accountChangeStage =
@@ -323,7 +350,7 @@ fun ExportifyWebView(
                                     return
                                 }
                                 ExportifyAccountChangeStage.RESTART -> {
-                                    if (!isExportifyUrl(url) || !isExportifyUrl(view.url)) return
+                                    if (!service.owns(url) || !service.owns(view.url)) return
                                     accountChangeStage = ExportifyAccountChangeStage.IDLE
                                     view.clearHistory()
                                     accountChangeCallback(false)
@@ -335,10 +362,11 @@ fun ExportifyWebView(
                             revealFrame(view, url)
                             canGoBack = view.canGoBack()
                             CookieManager.getInstance().flush()
-                            if (isExportifyUrl(url) && isExportifyUrl(view.url) && bridge == null) {
+                            if (service.owns(url) && service.owns(view.url) && bridge == null) {
                                 val newBridge =
                                     ExportifyDownloadBridge(
                                         view,
+                                        service,
                                         onExport = { if (!disposed) exportCallback(it) },
                                         onError = { if (!disposed) errorCallback(it) },
                                         onStarted = { if (!disposed) downloadCallback() },
@@ -424,40 +452,48 @@ fun ExportifyWebView(
                             isUserGesture: Boolean,
                             resultMsg: Message,
                         ): Boolean {
-                            if (!isUserGesture || popups.size >= 2) return false
-                            val popup = WebView(context)
-                            popups.add(popup)
-                            popup.webViewClient =
-                                object : WebViewClient() {
-                                    override fun shouldOverrideUrlLoading(
-                                        popupView: WebView,
-                                        request: WebResourceRequest,
-                                    ): Boolean {
-                                        if (request.url.scheme == "https")
-                                            view.loadUrl(request.url.toString())
-                                        popups.remove(popupView)
-                                        popupView.post { popupView.destroy() }
-                                        return true
+                            if (!service.owns(view.url) || popups.isNotEmpty()) return false
+                            if (!isUserGesture && service != PlaylistExportService.APPLE_MUSIC) return false
+                            val popup = IrideFolioWebView(context).apply {
+                                popupFolioState.attach(this)
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                settings.allowFileAccess = false
+                                settings.allowContentAccess = false
+                                settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                                webViewClient = object : WebViewClient() {
+                                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
+                                        request.url.scheme !in listOf("https", "about")
+                                }
+                                webChromeClient = object : WebChromeClient() {
+                                    override fun onCloseWindow(window: WebView) {
+                                        popupBrowser = null
+                                        popups.remove(window)
+                                        window.post { window.destroy() }
                                     }
                                 }
+                            }
+                            popups.add(popup)
+                            popupBrowser = popup
                             (resultMsg.obj as WebView.WebViewTransport).webView = popup
                             resultMsg.sendToTarget()
                             return true
                         }
                     }
                 setDownloadListener { url, userAgent, disposition, mimeType, _ ->
-                    if (!isExportifyUrl(this.url)) return@setDownloadListener
+                    if (!service.owns(this.url)) return@setDownloadListener
                     val name = URLUtil.guessFileName(url, disposition, mimeType)
                     if (url.startsWith("blob:") || url.startsWith("data:")) {
                         bridge?.capture(url, name)
-                    } else if (isExportifyUrl(url)) {
+                    } else if (service.owns(url)) {
                         val cookie = CookieManager.getInstance().getCookie(url)
                         downloadCallback()
                         downloadScope.launch {
                             var downloaded: File? = null
                             try {
                                 val file =
-                                    downloadExport(context.cacheDir, url, name, userAgent, cookie)
+                                    downloadExport(service, context.cacheDir, url, name, userAgent, cookie)
                                 downloaded = file
                                 withContext(Dispatchers.Main) {
                                     if (!disposed) {
@@ -479,18 +515,31 @@ fun ExportifyWebView(
                         }
                     }
                 }
-                loadUrl(EXPORTIFY_URL)
+                loadUrl(service.url)
             }
         },
     )
-}
-
-private fun isExportifyUrl(url: String?): Boolean {
-    val uri = url?.let(Uri::parse) ?: return false
-    return uri.scheme == "https" &&
-        uri.host == "exportify.app" &&
-        uri.port in listOf(-1, 443) &&
-        uri.userInfo == null
+    popupBrowser?.let { popup ->
+        val dismiss = {
+            popupBrowser = null
+            popups.remove(popup)
+            popup.destroy()
+        }
+        IrideFolioEditorDialog(onDismiss = dismiss) {
+            IridePageHeaderLayout(
+                title = stringResource(if (service == PlaylistExportService.SPOTIFY) R.string.music_import_spotify else R.string.music_import_apple),
+                scrollState = popupFolioState.rememberScrollState(),
+                scrollOffset = { popupFolioState.scrollOffset },
+                navigationIcon = {
+                    IconButton(onClick = dismiss) {
+                        Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+                    }
+                },
+            ) {
+                AndroidView(factory = { popup }, modifier = Modifier.fillMaxSize())
+            }
+        }
+    }
 }
 
 private fun exportFile(cacheDir: File, name: String): File {
@@ -514,6 +563,7 @@ private fun exportFile(cacheDir: File, name: String): File {
 /** A port is delivered only to the trusted top origin, never injected into Spotify login frames. */
 private class ExportifyDownloadBridge(
     private val view: WebView,
+    private val service: PlaylistExportService,
     private val onExport: (File) -> Unit,
     private val onError: (String) -> Unit,
     private val onStarted: () -> Unit,
@@ -531,7 +581,7 @@ private class ExportifyDownloadBridge(
             object : WebMessagePort.WebMessageCallback() {
                 override fun onMessage(port: WebMessagePort, message: WebMessage) {
                     val data = message.data ?: return
-                    if (closed || !isExportifyUrl(view.url)) return
+                    if (closed || !service.owns(view.url)) return
                     if (data == "{\"type\":\"started\"}") {
                         onStarted()
                         return
@@ -620,12 +670,12 @@ private class ExportifyDownloadBridge(
             }
         }
         view.evaluateJavascript(
-            EXPORT_CAPTURE_SCRIPT.replace("__IRIDE_PORT_TOKEN__", connectionToken)
+            EXPORT_CAPTURE_SCRIPT.replace("__IRIDE_ORIGIN__", service.origin).replace("__IRIDE_PORT_TOKEN__", connectionToken)
         ) { result ->
-            if (!closed && isExportifyUrl(view.url) && result == "true") {
+            if (!closed && service.owns(view.url) && result == "true") {
                 view.postWebMessage(
                     WebMessage(connectionToken, arrayOf(ports[1])),
-                    Uri.parse(EXPORTIFY_ORIGIN),
+                    Uri.parse(service.origin),
                 )
             } else if (!closed) {
                 ports[1].close()
@@ -636,7 +686,7 @@ private class ExportifyDownloadBridge(
     }
 
     fun capture(url: String, name: String) {
-        if (closed || !isExportifyUrl(view.url)) return
+        if (closed || !service.owns(view.url)) return
         if (url.length > EXPORT_CHUNK_BYTES * 2) {
             onError("Exportify download could not be received")
             return
@@ -666,6 +716,7 @@ private class ExportifyDownloadBridge(
 }
 
 private suspend fun downloadExport(
+    service: PlaylistExportService,
     cacheDir: File,
     url: String,
     name: String,
@@ -676,7 +727,7 @@ private suspend fun downloadExport(
     try {
         var target = url
         repeat(4) { redirectCount ->
-            require(isExportifyUrl(target))
+            require(service.owns(target))
             val connection = URL(target).openConnection() as HttpURLConnection
             try {
                 connection.instanceFollowRedirects = false
@@ -724,7 +775,7 @@ private suspend fun downloadExport(
 private val EXPORT_CAPTURE_SCRIPT =
     """
     (() => {
-      if (location.origin !== '$EXPORTIFY_ORIGIN' || window !== window.top) return false;
+      if (location.origin !== '__IRIDE_ORIGIN__' || window !== window.top) return false;
       const connectionToken = '__IRIDE_PORT_TOKEN__';
       if (window.__irideExportCapture) {
         window.__irideExportCapture.prepareConnection(connectionToken);

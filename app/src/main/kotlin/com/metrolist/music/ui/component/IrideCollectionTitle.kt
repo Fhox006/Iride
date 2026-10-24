@@ -9,14 +9,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 
 @Composable
 fun IrideCollectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         style = TextStyle(
-            fontFamily = SpaceMonoFontFamily,
+            fontFamily = IBMPlexMonoFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = IrideFolio.CollectionTitleFontSize,
             letterSpacing = IrideFolio.CollectionTitleLetterSpacing,

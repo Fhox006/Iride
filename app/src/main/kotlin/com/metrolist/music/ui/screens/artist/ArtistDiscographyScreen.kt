@@ -3,7 +3,7 @@ package com.metrolist.music.ui.screens.artist
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,8 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,7 +53,7 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumReleaseType
@@ -85,7 +83,6 @@ fun ArtistDiscographyScreen(
     viewModel: ArtistDiscographyViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -183,7 +180,7 @@ fun ArtistDiscographyScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = stringResource(R.string.discography_empty),
-                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -200,10 +197,9 @@ fun ArtistDiscographyScreen(
                         fillMaxWidth = true,
                         coroutineScope = coroutineScope,
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.irideFolioCombinedClickable(
                                     onClick = { navController.navigate("album/${album.id}") },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             YouTubeAlbumMenu(
                                                 albumItem = album,

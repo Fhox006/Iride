@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import com.metrolist.music.R
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.backToMain
 
 @Composable
@@ -52,7 +52,7 @@ fun IrideAdaptiveTopBar(
         titleContent = {
             ProvideTextStyle(
                 MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
                 )

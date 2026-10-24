@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +55,7 @@ import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.ui.component.IrideIconTile
 import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.component.iridePageTitleTextStyle
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -130,7 +130,7 @@ fun OnboardingScreen(navController: NavController) {
                 Box(
                     modifier = Modifier
                         .size(width = 24.dp, height = 3.dp)
-                        .clip(RoundedCornerShape(1.dp))
+                        .clip(FolioShape(1.dp))
                         .background(
                             if (pagerState.currentPage == index) MaterialTheme.colorScheme.textPrimary
                             else MaterialTheme.colorScheme.strokeHairline,
@@ -224,7 +224,7 @@ private fun OnboardingPage(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         lineHeight = 22.sp,
                         letterSpacing = 0.sp,
                     ),

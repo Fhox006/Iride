@@ -30,7 +30,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -56,7 +56,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -736,7 +736,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -764,7 +764,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -793,7 +793,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -950,8 +950,8 @@ fun OriginalLyrics(
                         val itemModifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp)) // Clip for background
-                                .combinedClickable(
+                                .clip(FolioShape(8.dp)) // Clip for background
+                                .irideFolioCombinedClickable(
                                     enabled = true,
                                     onClick = {
                                         if (isSelectionModeActive) {

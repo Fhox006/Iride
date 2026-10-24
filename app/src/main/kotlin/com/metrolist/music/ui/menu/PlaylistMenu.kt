@@ -49,6 +49,7 @@ import com.metrolist.music.ui.component.IrideFolioContextMenu
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.ui.component.MenuActionReadiness
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.folioLibraryAction
 import com.metrolist.music.ui.component.folioMenuAction
@@ -60,6 +61,8 @@ import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import com.metrolist.music.utils.reportException
 
 @Composable
 fun PlaylistMenu(
@@ -77,15 +80,25 @@ fun PlaylistMenu(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val dbPlaylist by database.playlist(playlist.id).collectAsState(initial = playlist)
-    var songs by remember { mutableStateOf(emptyList<Song>()) }
+    var songs by remember(playlist.id, autoPlaylist, songList) { mutableStateOf(emptyList<Song>()) }
+    var songsResolved by remember(playlist.id, autoPlaylist, songList) { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        if (autoPlaylist == false) {
-            database.playlistSongs(playlist.id).collect { songs = it.map(PlaylistSong::song) }
-        } else {
-            if (songList != null) {
-                songs = songList
+    LaunchedEffect(playlist.id, autoPlaylist, songList) {
+        try {
+            if (autoPlaylist == false) {
+                database.playlistSongs(playlist.id).collect {
+                    songs = it.map(PlaylistSong::song)
+                    songsResolved = true
+                }
+            } else {
+                songs = songList.orEmpty()
+                songsResolved = true
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            songsResolved = true
+            reportException(error)
         }
     }
 
@@ -232,7 +245,6 @@ fun PlaylistMenu(
     IrideFolioContextMenu(
         items =
             buildList {
-                if (songs.isNotEmpty())
                     add(
                         folioMenuAction(
                             R.string.add_to_playlist,
@@ -463,7 +475,7 @@ fun PlaylistMenu(
                         },
                     )
                 )
-                if (!isGuest && songs.isNotEmpty())
+                if (!isGuest)
                     add(
                         folioMenuAction(
                             R.string.play_next,
@@ -471,6 +483,17 @@ fun PlaylistMenu(
                             onClick = { playerConnection.playNext(songs.map { it.toMediaItem() }) },
                         )
                     )
+            }.map { action ->
+                if (action.actionId in setOf(
+                        R.string.play, R.string.play_next, R.string.add_to_queue,
+                        R.string.add_to_playlist, R.string.action_download,
+                    )) {
+                    action.copy(readiness = when {
+                        songs.isNotEmpty() -> MenuActionReadiness.Ready
+                        songsResolved -> MenuActionReadiness.Unavailable
+                        else -> MenuActionReadiness.Pending
+                    })
+                } else action
             },
         visible =
             !showChoosePlaylistDialog &&

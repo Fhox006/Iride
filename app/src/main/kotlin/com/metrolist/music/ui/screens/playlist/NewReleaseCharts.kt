@@ -109,7 +109,7 @@ fun NewReleaseChartsShelf(
         }
     }
     if (available.isNotEmpty()) {
-        Column {
+        com.metrolist.music.ui.component.IrideFolioSection(sectionKey = "home_charts") {
             SharedHomeSectionTitle(stringResource(R.string.new_charts_title), showNavigationArrow = true,
                 onClick = { navController.navigate("all_charts") })
             SharedYouTubePlaylistRow(available, key = { it.code }, contentPadding = IrideFolio.HorizontalPadding) { market ->

@@ -26,7 +26,7 @@ import com.metrolist.music.playback.vocals.VocalPreparation
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioControlPanel
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlin.math.roundToInt
 
@@ -51,8 +51,8 @@ internal fun LyricsVocalPanel(
             pulse
         } else if (preparing) 0.65f else 1f
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = Color.White, fontFamily = SpaceMonoFontFamily, fontSize = 13.sp)
-            Text("${(state.voiceLevel * 100).roundToInt()}%", color = Color.White, fontFamily = SpaceMonoFontFamily, fontSize = 13.sp)
+            Text(label, color = Color.White, fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp)
+            Text("${(state.voiceLevel * 100).roundToInt()}%", color = Color.White, fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp)
         }
         Slider(
             value = state.voiceLevel,
@@ -65,8 +65,8 @@ internal fun LyricsVocalPanel(
             ),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.vocal_instrumental), color = Color.White.copy(alpha = 0.65f), fontSize = 10.sp, fontFamily = SpaceMonoFontFamily)
-            Text(stringResource(R.string.vocal_original), color = Color.White.copy(alpha = 0.65f), fontSize = 10.sp, fontFamily = SpaceMonoFontFamily)
+            Text(stringResource(R.string.vocal_instrumental), color = Color.White.copy(alpha = 0.65f), fontSize = 10.sp, fontFamily = IBMPlexMonoFontFamily)
+            Text(stringResource(R.string.vocal_original), color = Color.White.copy(alpha = 0.65f), fontSize = 10.sp, fontFamily = IBMPlexMonoFontFamily)
         }
         if (state.phase == VocalPreparation.Error) {
             Spacer(Modifier.height(IrideFolio.DialogSectionSpacing))
@@ -76,7 +76,7 @@ internal fun LyricsVocalPanel(
         }
         state.error?.let { error ->
             Spacer(Modifier.height(IrideFolio.MenuVerticalPadding))
-            Text(error, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, fontFamily = SpaceMonoFontFamily)
+            Text(error, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, fontFamily = IBMPlexMonoFontFamily)
         }
     }
 }

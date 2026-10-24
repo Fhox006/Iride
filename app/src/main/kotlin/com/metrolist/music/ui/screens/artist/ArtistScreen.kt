@@ -5,8 +5,9 @@ package com.metrolist.music.ui.screens.artist
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +31,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,17 +61,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,6 +121,7 @@ import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.theme.SatoshiFontFamily
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.IrideArtistBackground
 import com.metrolist.music.ui.component.IrideArtistArtwork
@@ -129,16 +130,15 @@ import com.metrolist.music.ui.component.IrideArtistArtworkImage
 import com.metrolist.music.ui.component.artistPhotoBlurProgress
 import com.metrolist.music.ui.component.iridePageStatusBarTopPadding
 import com.metrolist.music.ui.component.rememberIrideArtistArtwork
-import com.metrolist.music.ui.component.artistArtworkUsesDarkInk
 import com.metrolist.music.ui.component.artistArtworkPhotoOpacity
-import androidx.compose.ui.graphics.toArgb
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
@@ -176,7 +176,7 @@ fun ArtistScreen(
     val tint = artistArtwork?.tint ?: Color.Black
     IrideArtworkSurface(
         backgroundColor = tint,
-        contentColor = if (artistArtworkUsesDarkInk(tint.toArgb())) Color.Black else Color.White,
+        contentColor = Color.White,
     ) {
         ArtistScreenContent(navController, viewModel, artistArtwork)
     }
@@ -192,7 +192,6 @@ private fun ArtistScreenContent(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val uriHandler = LocalUriHandler.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -505,9 +504,11 @@ private fun ArtistScreenContent(
                             val irideNameStyle =
                                 iridePageTitleTextStyle()
                                     .copy(
+                                        fontFamily = SatoshiFontFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 30.sp,
-                                        lineHeight = 37.sp,
+                                        fontSize = 34.sp,
+                                        textGeometricTransform = TextGeometricTransform(),
+                                        lineHeight = 42.sp,
                                     )
                             val shuffleEndpointForPlay = artistPage?.artist?.shuffleEndpoint
                             val canShufflePlay =
@@ -583,7 +584,7 @@ private fun ArtistScreenContent(
                                     text = stringResource(R.string.artist_monthly_listeners, cleanListeners),
                                     style =
                                         TextStyle(
-                                            fontFamily = SpaceMonoFontFamily,
+                                            fontFamily = IBMPlexMonoFontFamily,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                         ),
@@ -614,7 +615,6 @@ private fun ArtistScreenContent(
                                         navController.navigate("album/${recentAlbum!!.album.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(anchored = true) {
                                             AlbumMenu(
                                                 originalAlbum = recentAlbum!!.album,
@@ -690,7 +690,7 @@ private fun ArtistScreenContent(
                                 modifier =
                                     Modifier.width(itemWidth)
                                         .padding(horizontal = 8.dp)
-                                        .combinedClickable(
+                                        .irideFolioCombinedClickable(
                                             onClick = {
                                                 if (!isGuest) {
                                                     if (song.id == mediaMetadata?.id) {
@@ -717,9 +717,6 @@ private fun ArtistScreenContent(
                                                 }
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
                                                 menuState.show(anchored = true) {
                                                     SongMenu(
                                                         originalSong = song,
@@ -786,14 +783,11 @@ private fun ArtistScreenContent(
                                         coroutineScope = coroutineScope,
                                         size = 180.dp,
                                         modifier =
-                                            Modifier.combinedClickable(
+                                            Modifier.irideFolioCombinedClickable(
                                                     onClick = {
                                                         navController.navigate("album/${album.id}")
                                                     },
                                                     onLongClick = {
-                                                        haptic.performHapticFeedback(
-                                                            HapticFeedbackType.LongPress
-                                                        )
                                                         menuState.show(anchored = true) {
                                                             AlbumMenu(
                                                                 originalAlbum = album,
@@ -921,7 +915,7 @@ private fun ArtistScreenContent(
                                             modifier =
                                                 Modifier.width(itemWidth)
                                                     .padding(horizontal = 8.dp)
-                                                    .combinedClickable(
+                                                    .irideFolioCombinedClickable(
                                                         onClick = {
                                                             if (!isGuest) {
                                                                 if (song.id == mediaMetadata?.id) {
@@ -948,9 +942,6 @@ private fun ArtistScreenContent(
                                                             }
                                                         },
                                                         onLongClick = {
-                                                            haptic.performHapticFeedback(
-                                                                HapticFeedbackType.LongPress
-                                                            )
                                                             menuState.show(anchored = true) {
                                                                 YouTubeSongMenu(
                                                                     song = song,
@@ -1015,19 +1006,16 @@ private fun ArtistScreenContent(
                                                     coroutineScope = coroutineScope,
                                                     size = 270.dp,
                                                     thumbnailShape =
-                                                        RoundedCornerShape(270.dp * 0.06f),
+                                                        FolioShape(270.dp * 0.06f),
                                                     hairlineBorder = true,
                                                     modifier =
-                                                        Modifier.combinedClickable(
+                                                        Modifier.irideFolioCombinedClickable(
                                                                 onClick = {
                                                                     navController.navigate(
                                                                         "album/${album.id}"
                                                                     )
                                                                 },
                                                                 onLongClick = {
-                                                                    haptic.performHapticFeedback(
-                                                                        HapticFeedbackType.LongPress
-                                                                    )
                                                                     menuState.show(anchored = true) {
                                                                         AlbumMenu(
                                                                             originalAlbum =
@@ -1107,7 +1095,7 @@ private fun ArtistScreenContent(
                                                         else -> 148.dp
                                                     },
                                                 modifier =
-                                                    Modifier.combinedClickable(
+                                                    Modifier.irideFolioCombinedClickable(
                                                             onClick = {
                                                                 when (item) {
                                                                     is SongItem -> {
@@ -1176,9 +1164,6 @@ private fun ArtistScreenContent(
                                                                 }
                                                             },
                                                             onLongClick = {
-                                                                haptic.performHapticFeedback(
-                                                                    HapticFeedbackType.LongPress
-                                                                )
                                                                 menuState.show(
                                                                     anchored = true,
                                                                 ) {
@@ -1305,7 +1290,7 @@ private fun ArtistScreenContent(
                                                     .uppercase(),
                                             style =
                                                 TextStyle(
-                                                    fontFamily = SpaceMonoFontFamily,
+                                                    fontFamily = IBMPlexMonoFontFamily,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp,
                                                     letterSpacing = 1.sp,
@@ -1327,14 +1312,16 @@ private fun ArtistScreenContent(
                     }
                 }
 
-                if (!showLocal && (showArtistDescription || showArtistSubscriberCount)) {
+                if (!showLocal && (showArtistDescription || showArtistSubscriberCount || showMonthlyListeners)) {
                     val description = artistPage?.description
                     val descriptionRuns = artistPage?.descriptionRuns
                     val subscriberCount = artistPage?.subscriberCountText
+                    val monthlyListeners = artistPage?.monthlyListenerCount
 
                     if (
                         (showArtistDescription && !description.isNullOrEmpty()) ||
-                            (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty())
+                            (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) ||
+                            (showMonthlyListeners && !monthlyListeners.isNullOrBlank())
                     ) {
                         item(key = "about_artist") {
                             Column(
@@ -1348,7 +1335,7 @@ private fun ArtistScreenContent(
                                     text = stringResource(R.string.information),
                                     style =
                                         TextStyle(
-                                            fontFamily = SpaceMonoFontFamily,
+                                            fontFamily = IBMPlexMonoFontFamily,
                                             fontSize = 13.sp,
                                             letterSpacing = (-0.1).sp,
                                         ),
@@ -1360,6 +1347,27 @@ private fun ArtistScreenContent(
                                                 rememberSectionEnter("about", revealedSections)
                                             ),
                                 )
+
+                                if (showMonthlyListeners && !monthlyListeners.isNullOrBlank()) {
+                                    val cleanListeners =
+                                        remember(monthlyListeners) {
+                                            monthlyListeners
+                                                .replace("monthly listeners", "", ignoreCase = true)
+                                                .replace("listeners this month", "", ignoreCase = true)
+                                                .replace("ascoltatori mensili", "", ignoreCase = true)
+                                                .replace("ascoltatori questo mese", "", ignoreCase = true)
+                                                .trim()
+                                        }
+                                    Text(
+                                        text = stringResource(R.string.artist_monthly_listeners, cleanListeners),
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = IBMPlexMonoFontFamily,
+                                        ),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier.padding(bottom = 16.dp),
+                                    )
+                                }
 
                                 if (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) {
                                     val formattedSubscribers =
@@ -1382,7 +1390,7 @@ private fun ArtistScreenContent(
                                         text = "Wikipedia",
                                         style =
                                             TextStyle(
-                                                fontFamily = SpaceMonoFontFamily,
+                                                fontFamily = IBMPlexMonoFontFamily,
                                                 fontSize = 12.sp,
                                                 letterSpacing = (-0.1).sp,
                                             ),
@@ -1464,40 +1472,30 @@ fun RecentAlbumPanel(
     isPlaying: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        val eyebrowText =
-            stringResource(R.string.artist_latest_release).uppercase() +
-                (releaseType?.let { " • ${it.name}" } ?: "")
-        Text(
-            text = eyebrowText,
-            style =
-                if (useMonospace) {
-                    TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = 11.sp,
-                        letterSpacing = 1.sp,
-                    )
-                } else {
-                    MaterialTheme.typography.labelMedium
-                },
-            color =
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (useMonospace) 0.75f else 1f
-                ),
-            modifier = Modifier.padding(bottom = 8.dp).revealMask(enterProgress),
-        )
-
+    val panelInk = MaterialTheme.colorScheme.onBackground
+    val panelSecondaryInk = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+    val panelShape = IrideFolio.ControlsShape
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+                .irideEnter(enterProgress, 6.dp)
+                .pressScale(interactionSource)
+                .clip(panelShape)
+                .border(
+                    IrideFolio.CollectionPanelBorderWidth,
+                    MaterialTheme.colorScheme.strokeCard.copy(alpha = IrideFolio.CollectionPanelBorderOpacity),
+                    panelShape,
+                )
+                .irideFolioCombinedClickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+                .padding(14.dp),
+    ) {
         Row(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .irideEnter(enterProgress, 6.dp)
-                    .pressScale(interactionSource)
-                    .combinedClickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = onClick,
-                        onLongClick = onLongClick,
-                    ),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -1519,12 +1517,34 @@ fun RecentAlbumPanel(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.Start,
             ) {
+                val eyebrowText =
+                    stringResource(R.string.artist_latest_release).uppercase() +
+                        (releaseType?.let { " • ${it.name}" } ?: "")
+                Text(
+                    text = eyebrowText,
+                    style =
+                        if (useMonospace) {
+                            TextStyle(
+                                fontFamily = IBMPlexMonoFontFamily,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.labelMedium
+                        },
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (useMonospace) 0.75f else 1f
+                        ),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
                 Text(
                     text = album.album.title,
                     style =
                         if (useMonospace) {
                             TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                             )
@@ -1532,7 +1552,7 @@ fun RecentAlbumPanel(
                             MaterialTheme.typography.titleLarge
                         },
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = panelInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Start,
@@ -1564,8 +1584,8 @@ fun RecentAlbumPanel(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = metaText,
-                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 12.sp),
+                            color = panelSecondaryInk,
                             textAlign = TextAlign.Start,
                         )
                     }
@@ -1574,7 +1594,7 @@ fun RecentAlbumPanel(
                         Text(
                             text = displayDate,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = panelInk,
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Start,
                         )
@@ -1589,7 +1609,7 @@ fun RecentAlbumPanel(
                                     album.album.songCount,
                                 ),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = panelSecondaryInk,
                             textAlign = TextAlign.Start,
                         )
                     }

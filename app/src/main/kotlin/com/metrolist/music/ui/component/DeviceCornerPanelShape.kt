@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -89,8 +89,6 @@ fun rememberDeviceCornerInfo(): DeviceCornerInfo {
  *
  * On API < 31 or when corner info is unavailable, falls back to [topRadius] on all four corners.
  *
- * NOTE: currently uses [RoundedCornerShape] as a placeholder. Replace with a cubic-bezier smooth
- * path once the geometry is validated on device.
  */
 @Composable
 fun rememberDeviceMatchedBottomPanelShape(
@@ -120,8 +118,7 @@ fun rememberDeviceMatchedBottomPanelShape(
         }
 
         with(density) {
-            // TODO: replace with smooth cubic-bezier GenericShape for squircle-style corners
-            RoundedCornerShape(
+            FolioShape(
                 topStart = topRadius,
                 topEnd = topRadius,
                 bottomStart = blEffPx.toDp(),

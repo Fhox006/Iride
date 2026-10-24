@@ -27,8 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -229,7 +228,7 @@ fun LibraryPodcastsScreen(
                             containerColor = MaterialTheme.colorScheme.surface,
                         ),
                     onClick = onDeselect,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = FolioShape(16.dp),
                     border = null,
                     leadingIcon = {
                         Icon(
@@ -594,8 +593,8 @@ private fun AutoPlaylistCard(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(ThumbnailCornerRadius))
-                    .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, FolioShape(ThumbnailCornerRadius))
+                    .clip(FolioShape(ThumbnailCornerRadius))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -607,7 +606,7 @@ private fun AutoPlaylistCard(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(ThumbnailCornerRadius)),
+                            .clip(FolioShape(ThumbnailCornerRadius)),
                 )
             } else {
                 Icon(
@@ -665,8 +664,8 @@ private fun PodcastEpisodePlaylistItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(ThumbnailCornerRadius))
-                    .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, FolioShape(ThumbnailCornerRadius))
+                    .clip(FolioShape(ThumbnailCornerRadius))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -678,7 +677,7 @@ private fun PodcastEpisodePlaylistItem(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(ThumbnailCornerRadius)),
+                            .clip(FolioShape(ThumbnailCornerRadius)),
                 )
             } else {
                 Icon(
@@ -739,7 +738,7 @@ private fun PodcastEpisodePlaylistMenu(
         items =
             listOf(
                 Material3MenuItemData(
-                    title = { Text(text = stringResource(R.string.remove_from_library)) },
+                    title = { Text(text = stringResource(R.string.iride_remove_star)) },
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.delete),
@@ -839,7 +838,7 @@ private fun PodcastArtistChannelItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(CircleShape),
+                    .clip(FolioShape(32)),
         )
 
         Spacer(Modifier.width(12.dp))

@@ -25,8 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -57,7 +56,7 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.ComposeToImage
 import com.metrolist.music.viewmodels.ArtistGameArtistInfo
 import com.metrolist.music.viewmodels.ArtistGameViewModel
@@ -161,7 +160,7 @@ fun ArtistGameScreen(
                     text = formatTime(viewModel.elapsedMs),
                     style =
                         TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 32.sp,
                         ),
@@ -170,7 +169,7 @@ fun ArtistGameScreen(
                         Modifier.align(Alignment.TopEnd)
                             .statusBarsPadding()
                             .padding(16.dp)
-                            .background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.onBackground, FolioShape(50))
                             .padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
@@ -190,7 +189,7 @@ private fun NotEnoughSongsContent() {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Text(
             text = stringResource(R.string.guess_game_not_enough_songs),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 16.sp),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 16.sp),
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
@@ -201,9 +200,9 @@ private fun ArtistAvatar(thumbnailUrl: String?, size: Dp) {
     Box(
         modifier =
             Modifier.size(size)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-                .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), CircleShape)
+                .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), FolioShape(32))
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(
@@ -238,7 +237,7 @@ private fun ReadyContent(
             text = artistInfo?.name.orEmpty(),
             style =
                 TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp,
                 ),
@@ -248,7 +247,7 @@ private fun ReadyContent(
         Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.guess_game_subtitle),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -257,7 +256,7 @@ private fun ReadyContent(
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f), FolioShape(20.dp))
                         .padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -265,7 +264,7 @@ private fun ReadyContent(
                     text = formatTime(state.bestScoreMs),
                     style =
                         TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 40.sp,
                         ),
@@ -276,7 +275,7 @@ private fun ReadyContent(
                     text = stringResource(R.string.guess_game_best_label),
                     style =
                         TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = 12.sp,
                             letterSpacing = 1.sp,
                         ),
@@ -289,7 +288,7 @@ private fun ReadyContent(
                             Modifier.fillMaxWidth(0.7f)
                                 .background(
                                     MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
-                                    RoundedCornerShape(14.dp),
+                                    FolioShape(14.dp),
                                 )
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -303,7 +302,7 @@ private fun ReadyContent(
                                 ),
                             style =
                                 TextStyle(
-                                    fontFamily = SpaceMonoFontFamily,
+                                    fontFamily = IBMPlexMonoFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                 ),
@@ -311,7 +310,7 @@ private fun ReadyContent(
                         )
                         Text(
                             text = stringResource(R.string.guess_game_result_correct_label),
-                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -329,12 +328,12 @@ private fun ReadyContent(
             Row(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f), FolioShape(16.dp))
                         .padding(20.dp)
             ) {
                 Text(
                     text = stringResource(R.string.guess_game_no_score),
-                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp),
+                    style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 15.sp),
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -343,7 +342,7 @@ private fun ReadyContent(
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.guess_game_loading_hint),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
+                style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 12.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
@@ -381,7 +380,7 @@ private fun CountdownContent(value: Int) {
                 text = count.toString(),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 140.sp,
                     ),
@@ -408,7 +407,7 @@ private fun PlayingContent(
                 text = artistName,
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                     ),
@@ -423,7 +422,7 @@ private fun PlayingContent(
             text = pluralStringResource(R.plurals.guess_game_songs_left, songsLeft, songsLeft),
             style =
                 TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     letterSpacing = 0.5.sp,
@@ -447,7 +446,7 @@ private fun PlayingContent(
                 modifier =
                     Modifier.fillMaxWidth()
                         .padding(vertical = 6.dp)
-                        .border(2.dp, borderColor, RoundedCornerShape(14.dp))
+                        .border(2.dp, borderColor, FolioShape(14.dp))
                         .clickable(enabled = result == null) { onSelect(option.id) }
                         .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -455,12 +454,12 @@ private fun PlayingContent(
                 AsyncImage(
                     model = option.thumbnail,
                     contentDescription = null,
-                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.size(52.dp).clip(FolioShape(8.dp)),
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = option.title,
-                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 14.sp),
+                    style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 14.sp),
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
@@ -485,7 +484,7 @@ private fun PlayingContent(
                 } else {
                     stringResource(R.string.guess_game_hint_default)
                 },
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+            style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.weight(1f))
@@ -506,7 +505,7 @@ private fun FinishedContent(
         Column(
             modifier =
                 Modifier.fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f), FolioShape(20.dp))
                     .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -516,7 +515,7 @@ private fun FinishedContent(
                 text = artistInfo?.name.orEmpty(),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 22.sp,
                     ),
@@ -528,13 +527,13 @@ private fun FinishedContent(
                     text = stringResource(R.string.guess_game_new_best),
                     style =
                         TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
                         ),
                     color = MaterialTheme.colorScheme.background,
                     modifier =
-                        Modifier.background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(20.dp))
+                        Modifier.background(MaterialTheme.colorScheme.onBackground, FolioShape(20.dp))
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
@@ -543,7 +542,7 @@ private fun FinishedContent(
                 text = formatTime(state.totalMs),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 52.sp,
                     ),
@@ -554,7 +553,7 @@ private fun FinishedContent(
                 text = stringResource(R.string.guess_game),
                 style =
                     TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontSize = 13.sp,
                         letterSpacing = 1.sp,
                     ),
@@ -564,7 +563,7 @@ private fun FinishedContent(
             Row(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f), RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f), FolioShape(14.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -578,7 +577,7 @@ private fun FinishedContent(
                             ),
                         style =
                             TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                             ),
@@ -586,7 +585,7 @@ private fun FinishedContent(
                     )
                     Text(
                         text = stringResource(R.string.guess_game_result_correct_label),
-                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                        style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -595,7 +594,7 @@ private fun FinishedContent(
                         text = formatTime(state.bestScoreMs),
                         style =
                             TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
+                                fontFamily = IBMPlexMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                             ),
@@ -603,7 +602,7 @@ private fun FinishedContent(
                     )
                     Text(
                         text = stringResource(R.string.guess_game_best_label),
-                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                        style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

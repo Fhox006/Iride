@@ -33,7 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,7 +51,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.pressScale
@@ -259,7 +259,7 @@ fun UnderlinePill(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = SpaceMonoFontFamily,
+                fontFamily = IBMPlexMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
             color = textColor,
@@ -303,7 +303,7 @@ private fun GenrePillsPlaceholder(modifier: Modifier = Modifier) {
                     Modifier
                         .height(32.dp)
                         .width(width)
-                        .clip(RoundedCornerShape(percent = 50))
+                        .clip(FolioShape(percent = 50))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha * 0.7f)),
             )
         }

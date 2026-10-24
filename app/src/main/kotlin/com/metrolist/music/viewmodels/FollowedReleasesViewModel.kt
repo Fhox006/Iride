@@ -28,12 +28,17 @@ class FollowedReleasesViewModel @Inject constructor(
     private val mutableResolvedSongIds = MutableStateFlow<Map<String, String>>(emptyMap())
     val resolvedSongIds = mutableResolvedSongIds.asStateFlow()
     private var refreshJob: Job? = null
+    val initialLoadComplete = MutableStateFlow(false)
 
     fun refresh(): Unit {
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
-            repository.onPageOpened(followedOnly = true)
-            repository.refresh(followedOnly = true)
+            try {
+                repository.onPageOpened(followedOnly = true)
+                repository.refresh(followedOnly = true)
+            } finally {
+                initialLoadComplete.value = true
+            }
         }
     }
 

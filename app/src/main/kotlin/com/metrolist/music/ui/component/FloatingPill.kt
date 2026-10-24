@@ -38,9 +38,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
 import sv.lib.squircleshape.SquircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -269,7 +268,7 @@ fun FloatingPill(
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
             .height(animatedPillHeight)
-            .clip(RoundedCornerShape(18.dp)),
+            .clip(FolioShape(18.dp)),
     ) {
         val hasPendingQueueRestore by playerConnection?.service?.hasPendingQueueRestoreFlow?.collectAsState()
             ?: remember { mutableStateOf(false) }
@@ -303,7 +302,7 @@ internal fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
             .fillMaxWidth()
             .height(pillHeight)
             .shimmer()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(FolioShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)),
     )
 }
@@ -339,7 +338,7 @@ internal fun IrideMiniPlayerPreview(
         } else {
             Spacer(
                 Modifier.weight(1f).height(18.dp).shimmer()
-                    .background(contentColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)),
+                    .background(contentColor.copy(alpha = 0.1f), FolioShape(4.dp)),
             )
         }
         Spacer(Modifier.width(2.dp))
@@ -485,9 +484,9 @@ private fun PillContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(animatedHeight)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(FolioShape(18.dp))
             .background(backgroundColor)
-            .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
+            .border(1.dp, outlineColor.copy(alpha = 0.3f), FolioShape(18.dp)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient overlay
@@ -759,7 +758,7 @@ private fun PillNavItem(
             AsyncImage(
                 model = accountImageUrl,
                 contentDescription = stringResource(screen.titleId),
-                modifier = Modifier.size(24.dp).clip(CircleShape),
+                modifier = Modifier.size(24.dp).clip(FolioShape(32)),
             )
         } else {
             Icon(

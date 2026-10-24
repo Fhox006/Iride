@@ -42,8 +42,24 @@ class SearchDiscoveryTest {
     fun findsAudioCounterpartOfTopVideo() {
         val track = song("audio", "My Song")
         val video = track.copy(id = "video", musicVideoType = "MUSIC_VIDEO_TYPE_OMV")
-        assertEquals(track, SearchDiscovery.recognizeSong("My Song official", listOf(track), video))
+        assertEquals(track, SearchDiscovery.recognizeSong("My Song", listOf(track), video))
         assertNull(SearchDiscovery.recognizeSong("My Song", listOf(video), video))
+    }
+
+    @Test
+    fun topResultAloneDoesNotEstablishSongIntent() {
+        val track = song("audio", "My Song")
+        val video = track.copy(id = "video", musicVideoType = "MUSIC_VIDEO_TYPE_OMV")
+        assertNull(SearchDiscovery.recognizeSong("My Song official", listOf(track), video))
+        assertNull(SearchDiscovery.recognizeSong("song", listOf(track), track))
+    }
+
+    @Test
+    fun exactArtistQueryDoesNotSeedSongWithSameTitle() {
+        val track = song("audio", "Anna")
+        val topArtist = artist("UCanna").copy(title = "Anna")
+        assertNull(SearchDiscovery.recognizeSong("ANNA", listOf(track), topArtist))
+        assertEquals(track, SearchDiscovery.recognizeSong("Anna Artist", listOf(track), topArtist))
     }
 
     @Test

@@ -57,7 +57,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -86,7 +86,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -1226,7 +1226,7 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
-                                    .combinedClickable(
+                                    .irideFolioCombinedClickable(
                                         enabled = true,
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
@@ -1302,7 +1302,7 @@ fun BottomSheetPlayer(
                                                         }
                                                     }
                                                 }
-                                            }.combinedClickable(
+                                            }.irideFolioCombinedClickable(
                                                 enabled = true,
                                                 indication = null,
                                                 interactionSource = remember { MutableInteractionSource() },
@@ -1347,7 +1347,7 @@ fun BottomSheetPlayer(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 val shareShape =
-                    RoundedCornerShape(
+                    FolioShape(
                         topStart = 50.dp,
                         bottomStart = 50.dp,
                         topEnd = 3.dp,
@@ -1355,14 +1355,14 @@ fun BottomSheetPlayer(
                     )
 
                 val favShape =
-                    RoundedCornerShape(
+                    FolioShape(
                         topStart = 3.dp,
                         bottomStart = 3.dp,
                         topEnd = 50.dp,
                         bottomEnd = 50.dp,
                     )
 
-                val middleShape = RoundedCornerShape(3.dp)
+                val middleShape = FolioShape(3.dp)
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1431,8 +1431,8 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier
                             .size(42.dp)
-                            .border(1.dp, textButtonColor.copy(alpha = fullscreenBtnBorderAlpha), RoundedCornerShape(50))
-                            .clip(RoundedCornerShape(
+                            .border(1.dp, textButtonColor.copy(alpha = fullscreenBtnBorderAlpha), FolioShape(50))
+                            .clip(FolioShape(
                                 topStart = btnCornerTopStart,
                                 topEnd = 21.dp,
                                 bottomStart = btnCornerBottomStart,
@@ -2062,9 +2062,9 @@ internal fun PlayerPill(
     Box(
         modifier = modifier
             .height(42.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(FolioShape(50))
             .background(bgColor)
-            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), RoundedCornerShape(50))
+            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), FolioShape(50))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

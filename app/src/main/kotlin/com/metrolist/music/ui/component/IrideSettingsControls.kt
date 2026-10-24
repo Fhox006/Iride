@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -59,13 +58,13 @@ fun IrideSwitch(
         modifier = modifier
             .size(width = trackWidth, height = trackHeight)
             .alpha(if (enabled) 1f else 0.35f)
-            .clip(RoundedCornerShape(50))
+            .clip(FolioShape(50))
             .background(if (checked) MaterialTheme.colorScheme.textPrimary else Color.Transparent)
             .border(
                 width = 1.dp,
                 color = if (checked) Color.Transparent
                 else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(50),
+                shape = FolioShape(50),
             )
             .clickable(
                 enabled = enabled && onCheckedChange != null,
@@ -78,7 +77,7 @@ fun IrideSwitch(
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(thumbSize)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .background(
                     if (checked) MaterialTheme.colorScheme.background
                     else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.85f)
@@ -114,7 +113,7 @@ fun IrideSlider(
             Box(
                 modifier = Modifier
                     .size(14.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(FolioShape(3.dp))
                     .background(MaterialTheme.colorScheme.textPrimary),
             )
         },
@@ -126,7 +125,7 @@ fun IrideSlider(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
+                    .clip(FolioShape(1.dp))
                     .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.2f)),
             ) {
                 Box(

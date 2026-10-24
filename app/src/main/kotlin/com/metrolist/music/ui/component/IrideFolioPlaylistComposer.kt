@@ -45,7 +45,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.makeTimeString
@@ -144,7 +144,7 @@ fun IrideFolioPlaylistComposer(
                 ) {
                     val nameLabel = stringResource(R.string.playlist_draft_name)
                     val nameStyle = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = IrideFolio.PlaylistDraftNameFontSize,
                         lineHeight = IrideFolio.PlaylistDraftNameLineHeight,
@@ -178,7 +178,7 @@ fun IrideFolioPlaylistComposer(
                     )
                     Text(
                         text = if (duration > 0) "$totalLabel · ${makeTimeString(duration * 1000)}" else totalLabel,
-                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily),
+                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = IBMPlexMonoFontFamily),
                         color = MaterialTheme.colorScheme.textSecondary,
                     )
                 }
@@ -346,7 +346,7 @@ private fun IrideFolioDraftMessage(text: String, onRetry: (() -> Unit)? = null) 
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
             color = MaterialTheme.colorScheme.textSecondary,
         )
         if (onRetry != null) {

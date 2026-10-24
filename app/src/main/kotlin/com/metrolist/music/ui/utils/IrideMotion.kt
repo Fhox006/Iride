@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -75,6 +76,13 @@ object IrideMotion {
 
     /** Gap between siblings in a cascade. Short enough to read as one gesture, not a queue. */
     const val StaggerStep = 40
+
+    /** Physical entrance shared by complete Folio sections, including their heading. */
+    const val SectionArtworkBudgetMillis = 400L
+    const val SectionEntranceStiffness = 650f
+    const val SectionEntranceTilt = -18f
+    const val SectionEntranceDepthScale = 0.08f
+    const val SectionCameraDistanceFactor = 2.5f
 
     /** Press feedback for cards and rows. */
     val PressSpring = spring<Float>(
@@ -233,6 +241,19 @@ fun Modifier.irideEnter(
     translationY = (1f - progress) * offsetY.toPx()
 }
 
+/** A raised sheet recedes into its resting plane; Y stays fixed throughout the entrance. */
+fun Modifier.irideDepthEnter(progress: () -> Float, intensity: Float = 1f): Modifier = graphicsLayer {
+    val p = progress().coerceIn(0f, 1f)
+    val lift = (1f - p) * intensity
+    alpha = p
+    transformOrigin = TransformOrigin(0.5f, 1f)
+    cameraDistance = maxOf(size.width, size.height, 1f) * IrideMotion.SectionCameraDistanceFactor
+    rotationX = IrideMotion.SectionEntranceTilt * lift
+    val perspectiveScale = 1f + IrideMotion.SectionEntranceDepthScale * lift
+    scaleX = perspectiveScale
+    scaleY = perspectiveScale
+}
+
 /**
  * Entrance for small round controls: grows in from [from] while fading. Icons read better scaling up
  * than sliding, which on a 40dp target just looks like a glitch.
@@ -347,10 +368,18 @@ fun headerEnter(
  * came back into view.
  */
 @Composable
-fun rememberSectionEnter(key: String, seen: MutableSet<String>): Float {
+fun rememberSectionEnter(
+    key: String,
+    seen: MutableSet<String>,
+    delayMillis: Int = 0,
+): Float {
     val firstTime = remember(key) { seen.add(key) }
     return if (firstTime) {
-        rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
+        rememberEnterProgress(
+            play = true,
+            delayMillis = delayMillis,
+            durationMillis = IrideMotion.Short,
+        )
     } else {
         1f
     }

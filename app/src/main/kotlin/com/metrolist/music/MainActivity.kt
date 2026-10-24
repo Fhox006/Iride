@@ -1259,11 +1259,13 @@ class MainActivity : ComponentActivity() {
                     } else emptyList()
                 }
                 val folioDragOverlay = remember { com.metrolist.music.ui.component.IrideFolioDragOverlayState() }
+                val folioPressIndication = com.metrolist.music.ui.component.rememberIrideFolioPressIndication()
 
                 var topGradientScrimColor by remember(topGradientMediaMetadata?.thumbnailUrl, playerBackgroundStyle) {
                     mutableStateOf(Color.Black)
                 }
                 CompositionLocalProvider(
+                    com.metrolist.music.ui.component.LocalIrideFolioPressIndication provides folioPressIndication,
                     androidx.compose.foundation.LocalOverscrollFactory provides null,
                     com.metrolist.music.ui.component.LocalFolioDragOverlay provides folioDragOverlay,
                     LocalDatabase provides database,

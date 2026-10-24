@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.FolioShape
+
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,7 +17,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -75,11 +76,11 @@ fun SelectionIndicator(
         Box(
             modifier = Modifier
                 .size(size)
-                .clip(CircleShape)
+                .clip(FolioShape(32))
                 .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = fillProgress))
                 .border(
                     BorderStroke(1.5.dp, MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.6f - 0.6f * fillProgress)),
-                    CircleShape,
+                    FolioShape(32),
                 ),
         )
         Icon(

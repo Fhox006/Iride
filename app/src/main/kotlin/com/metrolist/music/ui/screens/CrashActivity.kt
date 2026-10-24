@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -175,7 +175,7 @@ fun CrashScreen(
             Box(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(FolioShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .padding(16.dp)
             ) {

@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -189,7 +189,7 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                     contentDescription = stringResource(R.string.album_art_for, topAlbum?.title ?: ""),
                     modifier = Modifier
                         .size(200.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .clip(FolioShape(3.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -284,7 +284,7 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                                 contentDescription = stringResource(R.string.album_art_for, album.title),
                                 modifier = Modifier
                                     .size(64.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
+                                    .clip(FolioShape(3.dp)),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(16.dp))

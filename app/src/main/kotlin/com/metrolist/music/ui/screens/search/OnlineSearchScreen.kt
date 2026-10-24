@@ -5,7 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +30,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -57,10 +56,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -102,7 +99,7 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.strokeHairline
@@ -158,7 +155,6 @@ fun OnlineSearchScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    val haptic = LocalHapticFeedback.current
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
@@ -413,7 +409,7 @@ fun OnlineSearchScreen(
                             }
                         },
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.irideFolioCombinedClickable(
                                     onClick = {
                                         if (!pauseSearchHistory)
                                             database.recordSearchHistoryOpen(query, item)
@@ -462,7 +458,6 @@ fun OnlineSearchScreen(
                                         }
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuState.show(
                                             anchored = true,
                                         ) {
@@ -728,7 +723,7 @@ fun OnlineSearchScreen(
                         }
                     },
                     modifier =
-                        Modifier.combinedClickable(
+                        Modifier.irideFolioCombinedClickable(
                                 onClick = {
                                     if (!pauseSearchHistory)
                                         database.recordSearchHistoryOpen(query, item)
@@ -777,7 +772,6 @@ fun OnlineSearchScreen(
                                     }
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     menuState.show(
                                         anchored = true,
                                     ) {
@@ -911,7 +905,7 @@ private fun SearchGenreCard(
         modifier =
             modifier
                 .height(72.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(FolioShape(18.dp))
                 .background(MaterialTheme.colorScheme.fillSubtle)
                 .clickable(onClick = onClick)
                 .padding(12.dp),
@@ -920,7 +914,7 @@ private fun SearchGenreCard(
             text = genre.name,
             style =
                 MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
+                    fontFamily = IBMPlexMonoFontFamily,
                     fontSize = 13.sp,
                     letterSpacing = (-0.1).sp,
                 ),
@@ -961,7 +955,7 @@ private fun DiscoveryWeeklyCard(
         modifier =
             modifier
                 .height(height)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(FolioShape(18.dp))
                 .background(
                     if (useIrideStyle) MaterialTheme.colorScheme.fillSubtle
                     else MaterialTheme.colorScheme.secondaryContainer
@@ -972,7 +966,7 @@ private fun DiscoveryWeeklyCard(
                         Modifier.border(
                             1.dp,
                             MaterialTheme.colorScheme.strokeCard,
-                            RoundedCornerShape(18.dp),
+                            FolioShape(18.dp),
                         )
                 )
                 .clickable(onClick = onClick)
@@ -1061,7 +1055,7 @@ private fun DiscoveryWeeklyCard(
             style =
                 if (useIrideStyle) {
                     MaterialTheme.typography.labelLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontSize = 13.sp,
                         letterSpacing = (-0.1).sp,
                     )
@@ -1121,7 +1115,7 @@ fun SuggestionItem(
                 modifier =
                     Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
                         .size(ListThumbnailSize)
-                        .clip(if (isArtistThumbnail) CircleShape else RoundedCornerShape(4.dp)),
+                        .clip(if (isArtistThumbnail) FolioShape(32) else FolioShape(4.dp)),
             )
         } else if (useIrideStyle) {
             Spacer(modifier = Modifier.width(20.dp))
@@ -1141,7 +1135,7 @@ fun SuggestionItem(
             style =
                 if (useIrideStyle) {
                     MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = SpaceMonoFontFamily,
+                        fontFamily = IBMPlexMonoFontFamily,
                         fontSize = 13.sp,
                     )
                 } else {

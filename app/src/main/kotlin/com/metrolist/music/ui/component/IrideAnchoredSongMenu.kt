@@ -3,6 +3,8 @@ package com.metrolist.music.ui.component
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -15,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -25,6 +28,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -37,6 +43,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlin.math.roundToInt
 
 internal val LocalSongMenuFooterHeight = staticCompositionLocalOf { 0.dp }
@@ -124,20 +131,38 @@ internal fun IrideAnchoredSongMenu(
     val menuAnchor = anchor ?: IntRect(viewport.right, viewport.bottom, viewport.right, viewport.bottom)
     val menuWidth = with(density) { IrideFolio.MenuWidth.roundToPx() }.coerceAtMost(viewport.width)
     val placement = songMenuPlacement(menuAnchor, viewport, IntSize(menuWidth, contentHeight), gap, direction)
-    val positionProvider = remember(menuAnchor, viewport, gap) {
+    val motion = state.popupMotion
+    val reducedMotion = rememberReducedMotion()
+    val blurRadius = with(density) { IrideFolioContextMotionSpec.PanelBlurRadius.toPx() }
+    val blurEffects = remember(blurRadius) { ArtistPhotoBlurEffects(blurRadius, TileMode.Decal) }
+    // Transparent space belongs to the filtered layer, so the silhouette can soften outward.
+    val blurBleed = IrideFolioContextMotionSpec.PanelBlurRadius * 3f
+    val blurBleedPx = with(density) { blurBleed.roundToPx() }
+    val origin = motion?.touchPoint ?: Offset(menuAnchor.center.x.toFloat(), menuAnchor.center.y.toFloat())
+    val maximumTravel = with(density) { IrideFolioContextMotionSpec.PanelMaximumTravel.toPx() }
+    val popupBounds = remember(menuAnchor, viewport, gap) { mutableStateOf<IntRect?>(null) }
+    val positionProvider = remember(menuAnchor, viewport, gap, popupBounds, blurBleedPx) {
         object : PopupPositionProvider {
             override fun calculatePosition(
                 anchorBounds: IntRect,
                 windowSize: IntSize,
                 layoutDirection: LayoutDirection,
                 popupContentSize: IntSize,
-            ): IntOffset = songMenuPosition(
-                anchor = menuAnchor,
-                viewport = viewport,
-                menuSize = popupContentSize,
-                gap = gap,
-                layoutDirection = layoutDirection,
-            )
+            ): IntOffset {
+                val surfaceSize = IntSize(
+                    (popupContentSize.width - blurBleedPx * 2).coerceAtLeast(1),
+                    (popupContentSize.height - blurBleedPx * 2).coerceAtLeast(1),
+                )
+                val position = songMenuPosition(
+                    anchor = menuAnchor,
+                    viewport = viewport,
+                    menuSize = surfaceSize,
+                    gap = gap,
+                    layoutDirection = layoutDirection,
+                )
+                popupBounds.value = IntRect(position, surfaceSize)
+                return position - IntOffset(blurBleedPx, blurBleedPx)
+            }
         }
     }
     Popup(
@@ -146,12 +171,53 @@ internal fun IrideAnchoredSongMenu(
         properties = PopupProperties(focusable = focusable),
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.textPrimary) {
-            Column(
+            Box(
                 Modifier
-                    .width(with(density) { viewport.width.toDp() }.coerceAtMost(IrideFolio.MenuWidth))
-                    .heightIn(max = with(density) { placement.height.toDp() })
-                    .irideFolioMenuSurface(),
-            ) { content(placement.constrained) }
+                    .graphicsLayer {
+                        val bounds = popupBounds.value
+                            ?: IntRect(placement.position, IntSize(menuWidth, placement.height))
+                        val left = bounds.left - blurBleedPx
+                        val top = bounds.top - blurBleedPx
+                        val width = bounds.width + blurBleedPx * 2
+                        val height = bounds.height + blurBleedPx * 2
+                        val pivotX = ((origin.x - left) / width.coerceAtLeast(1)).coerceIn(0f, 1f)
+                        val pivotY = ((origin.y - top) / height.coerceAtLeast(1)).coerceIn(0f, 1f)
+                        val travelX = (origin.x - left - width * pivotX).coerceIn(-maximumTravel, maximumTravel)
+                        val travelY = (origin.y - top - height * pivotY).coerceIn(-maximumTravel, maximumTravel)
+                        val reveal = motion?.frame?.value?.reveal ?: 1f
+                        val startScale = IrideFolioContextMotionSpec.PanelInitialScale
+                        val scale = if (reducedMotion) 1f else startScale + (1f - startScale) * reveal
+                        scaleX = scale
+                        scaleY = scale
+                        transformOrigin = TransformOrigin(pivotX, pivotY)
+                        translationX = if (reducedMotion) 0f else travelX * (1f - reveal)
+                        translationY = if (reducedMotion) 0f else travelY * (1f - reveal)
+                        // Filter the already composited surface, including its border and silhouette.
+                        renderEffect = if (reducedMotion) null else blurEffects.at(
+                            IrideFolioContextMotionSpec.panelBlurProgress(reveal),
+                        )
+                        clip = false
+                        alpha = IrideFolioContextMotionSpec.panelOpacity(reveal)
+                    }
+                    .pointerInput(state.isVisible, motion) {
+                        if (motion != null && !state.isVisible) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                }
+                            }
+                        }
+                    }
+                    .padding(blurBleed),
+            ) {
+                Column(
+                    Modifier
+                        .width(with(density) { viewport.width.toDp() }.coerceAtMost(IrideFolio.MenuWidth))
+                        .heightIn(max = with(density) { placement.height.toDp() })
+                        .onGloballyPositioned { if (it.size.width > 0 && it.size.height > 0) motion?.markPanelReady() }
+                        .irideFolioMenuSurface(),
+                ) { content(placement.constrained) }
+            }
         }
     }
 }

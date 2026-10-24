@@ -16,7 +16,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +36,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,11 +71,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -156,7 +154,7 @@ import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.ForceDarkTheme
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
@@ -194,7 +192,6 @@ fun LocalPlaylistScreen(
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -262,6 +259,12 @@ fun LocalPlaylistScreen(
 
     val syncUtils = LocalSyncUtils.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(playlist?.playlist?.browseId, syncUtils) {
+        if (playlist?.playlist?.browseId != null) {
+            syncUtils.tryAutoSync()
+        }
+    }
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
 
@@ -742,7 +745,6 @@ fun LocalPlaylistScreen(
                                         context = context,
                                         downloadState = downloadState,
                                         onEdit = { showEditDialog = true },
-                                        onSync = { syncUtils.syncSavedPlaylists() },
                                         onDelete = { showDeletePlaylistDialog = true },
                                         onReorder =
                                             if (editable) {
@@ -848,8 +850,8 @@ fun LocalPlaylistScreen(
                                 contentDescription =
                                     stringResource(
                                         if (current.playlist.bookmarkedAt != null)
-                                            R.string.remove_from_library
-                                        else R.string.add_to_library
+                                            R.string.iride_remove_star
+                                        else R.string.iride_star
                                     ),
                                 size = 40.dp,
                                 iconSize = 20.dp,
@@ -1123,7 +1125,7 @@ fun LocalPlaylistScreen(
                                 },
                                 modifier =
                                     Modifier.fillMaxWidth()
-                                        .combinedClickable(
+                                        .irideFolioCombinedClickable(
                                             onClick = {
                                                 if (inSelectMode) {
                                                     onCheckedChange(
@@ -1147,17 +1149,7 @@ fun LocalPlaylistScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                if (!inSelectMode) {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
-                                                    inSelectMode = true
-                                                    onCheckedChange(true)
-                                                    selectionAnchorMapId = song.map.id
-                                                } else if (selection.contains(song.map.id)) {
-                                                    haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
+                                                if (inSelectMode && selection.contains(song.map.id)) {
                                                     if (selection.size == displayedSongs.size) {
                                                         selection.clear()
                                                     } else {
@@ -1166,7 +1158,7 @@ fun LocalPlaylistScreen(
                                                             displayedSongs.map { it.map.id }
                                                         )
                                                     }
-                                                } else {
+                                                } else if (inSelectMode) {
                                                     val anchorIndex =
                                                         selectionAnchorMapId?.let { anchorMapId ->
                                                             displayedSongs.indexOfFirst {
@@ -1189,6 +1181,16 @@ fun LocalPlaylistScreen(
                                                                 selection.add(rangeMapId)
                                                             }
                                                         }
+                                                    }
+                                                } else {
+                                                    menuState.show(anchored = true) {
+                                                        SongMenu(
+                                                            originalSong = song.song,
+                                                            playlistSong = song,
+                                                            playlistBrowseId = playlist?.playlist?.browseId,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
                                                     }
                                                 }
                                             },
@@ -1776,7 +1778,7 @@ fun LocalPlaylistHeader(
                 )
             Text(
                 text = metadataLine,
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                style = TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = 13.sp),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().revealMask(metadataProgress),
@@ -1793,7 +1795,7 @@ private fun MetadataChip(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = FolioShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
     ) {
         Row(
