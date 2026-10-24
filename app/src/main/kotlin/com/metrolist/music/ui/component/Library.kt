@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import com.metrolist.music.ui.component.SongMenuIconButton
 
@@ -236,7 +237,7 @@ private fun SuggestedFollowActions(
             modifier = Modifier
                 .clickable(onClick = onFollow)
                 .size(18.dp)
-                .background(MaterialTheme.colorScheme.onSurface, FolioShape(32)),
+                .background(MaterialTheme.colorScheme.onSurface, CircleShape),
         ) {
             Icon(
                 painter = painterResource(R.drawable.add),

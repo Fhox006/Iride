@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -203,7 +205,7 @@ private fun CategoryRow(
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(dotColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)),
         )
         Spacer(Modifier.width(12.dp))
@@ -293,10 +295,10 @@ private fun CreateCategoryDialog(
                             .border(
                                 width = if (selected) 2.dp else 0.dp,
                                 color = if (selected) MaterialTheme.colorScheme.textPrimary else Color.Transparent,
-                                shape = FolioShape(32),
+                                shape = CircleShape,
                             )
                             .padding(4.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                             .background(color),
                     ) {}
                 }

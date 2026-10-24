@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.menu
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import android.content.Intent
 import android.content.res.Configuration
@@ -164,7 +165,7 @@ fun QueueMenu(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(ListThumbnailSize)
-                                .clip(FolioShape(32)),
+                                .clip(CircleShape),
                         )
                     }
                     Text(

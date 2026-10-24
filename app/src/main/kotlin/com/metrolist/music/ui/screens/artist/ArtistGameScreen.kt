@@ -1,6 +1,8 @@
 /** Iride Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.artist
 
+import androidx.compose.foundation.shape.CircleShape
+
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
@@ -169,7 +171,7 @@ fun ArtistGameScreen(
                         Modifier.align(Alignment.TopEnd)
                             .statusBarsPadding()
                             .padding(16.dp)
-                            .background(MaterialTheme.colorScheme.onBackground, FolioShape(50))
+                            .background(MaterialTheme.colorScheme.onBackground, CircleShape)
                             .padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
@@ -200,9 +202,9 @@ private fun ArtistAvatar(thumbnailUrl: String?, size: Dp) {
     Box(
         modifier =
             Modifier.size(size)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-                .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), FolioShape(32))
+                .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), CircleShape)
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(

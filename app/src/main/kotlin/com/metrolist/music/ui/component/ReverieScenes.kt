@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
@@ -296,7 +297,7 @@ private fun FilmStat(value: String, label: String, modifier: Modifier = Modifier
 private fun FilmArtwork(item: ReverieRank, images: Map<String, Bitmap>, side: Dp, modifier: Modifier,
                         time: () -> Float, reduced: Boolean, portrait: Boolean = false) {
     val bitmap = images[item.id]
-    val shape = if (portrait) FolioShape(32) else com.metrolist.music.ui.theme.FolioShape(1.dp)
+    val shape = if (portrait) CircleShape else com.metrolist.music.ui.theme.FolioShape(1.dp)
     Box(modifier.size(side.coerceAtLeast(1.dp))
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .padding(1.dp).clip(shape).background(FilmBlue).border(1.dp, FilmInk.copy(alpha = .15f), shape)) {

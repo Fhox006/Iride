@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -9,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import com.metrolist.music.ui.theme.FolioShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +53,7 @@ fun SpeedDialGridItem(
                 thumbnailUrl = item.thumbnail,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = if (item is ArtistItem) FolioShape(32) else SquircleShape(
+                shape = if (item is ArtistItem) CircleShape else SquircleShape(
                     radius = squircleRadius,
                     cornerSmoothing = 0.48f
                 ),

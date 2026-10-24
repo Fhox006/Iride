@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -434,7 +436,7 @@ object IrideFolio {
     const val ScrollbarTrackOpacity = 0.12f
     const val ScrollbarThumbOpacity = 0.65f
     // Button and popup presentation belongs to Folio; callers supply only content and behavior.
-    val ButtonShape = FolioShape(percent = 50)
+    val ButtonShape = CircleShape
     val ButtonMinHeight = 40.dp
     val ButtonHorizontalPadding = 20.dp
     val ButtonVerticalPadding = 10.dp
@@ -458,7 +460,7 @@ object IrideFolio {
     val PlaylistDraftNameLineHeight = 29.sp
     val PlaylistPickerMaxHeight = 560.dp
     // Collection transport controls share one renderer across artists, albums and playlists.
-    val CollectionPanelShape = FolioShape(percent = 50)
+    val CollectionPanelShape = CircleShape
     val CollectionPanelBorderWidth = 1.dp
     val CollectionPanelHorizontalPadding = 12.dp
     val CollectionPanelVerticalPadding = 8.dp

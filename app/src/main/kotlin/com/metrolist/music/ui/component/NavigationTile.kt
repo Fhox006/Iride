@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
@@ -43,7 +44,7 @@ fun NavigationTile(
             modifier =
             Modifier
                 .size(56.dp)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .clickable(onClick = onClick),
         ) {

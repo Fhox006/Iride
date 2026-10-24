@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -270,7 +272,7 @@ fun NewIconButton(
             CardDefaults.cardColors(
                 containerColor = animatedBackground,
             ),
-        shape = FolioShape(32),
+        shape = CircleShape,
         elevation =
             CardDefaults.cardElevation(
                 defaultElevation = 2.dp,

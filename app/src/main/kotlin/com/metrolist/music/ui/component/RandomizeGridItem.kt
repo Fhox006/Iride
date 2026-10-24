@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -40,7 +41,7 @@ fun RandomizeGridItem(
         modifier =
             modifier
                 .aspectRatio(1f)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,

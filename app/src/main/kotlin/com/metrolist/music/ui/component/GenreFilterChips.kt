@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
@@ -33,7 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -303,7 +304,7 @@ private fun GenrePillsPlaceholder(modifier: Modifier = Modifier) {
                     Modifier
                         .height(32.dp)
                         .width(width)
-                        .clip(FolioShape(percent = 50))
+                        .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha * 0.7f)),
             )
         }

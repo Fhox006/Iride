@@ -1,7 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -233,7 +234,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                         AsyncImage(
                             model = artist.thumbnailUrl,
                             contentDescription = null,
-                            modifier = Modifier.size(ListThumbnailSize).clip(FolioShape(32)),
+                            modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
                         )
                     }
                     Text(

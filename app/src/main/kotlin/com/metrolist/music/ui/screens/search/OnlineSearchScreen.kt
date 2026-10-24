@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1115,7 +1117,7 @@ fun SuggestionItem(
                 modifier =
                     Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
                         .size(ListThumbnailSize)
-                        .clip(if (isArtistThumbnail) FolioShape(32) else FolioShape(4.dp)),
+                        .clip(if (isArtistThumbnail) CircleShape else FolioShape(4.dp)),
             )
         } else if (useIrideStyle) {
             Spacer(modifier = Modifier.width(20.dp))

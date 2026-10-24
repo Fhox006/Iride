@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -431,7 +433,7 @@ fun SongMenu(
                             fallback = painterResource(R.drawable.artist),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(ListThumbnailSize).clip(FolioShape(32)),
+                            modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
                         )
                     }
                     Text(
@@ -607,7 +609,7 @@ fun SongMenu(
                         model = artistThumbnail,
                         contentScale = ContentScale.Crop,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp).clip(FolioShape(32)),
+                        modifier = Modifier.size(28.dp).clip(CircleShape),
                     )
                 } else {
                     Icon(
@@ -1119,8 +1121,8 @@ internal fun StackedArtistAvatars(
                 modifier =
                     Modifier.offset(x = step * i)
                         .size(size)
-                        .clip(FolioShape(32))
-                        .border(1.5.dp, Color.Black.copy(alpha = 0.5f), FolioShape(32)),
+                        .clip(CircleShape)
+                        .border(1.5.dp, Color.Black.copy(alpha = 0.5f), CircleShape),
             )
         }
     }

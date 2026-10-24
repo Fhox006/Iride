@@ -1,7 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
@@ -1025,7 +1026,7 @@ fun AlbumScreen(
                                     model = primaryArtist.thumbnailUrl,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(18.dp).clip(FolioShape(32)),
+                                    modifier = Modifier.size(18.dp).clip(CircleShape),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                             }

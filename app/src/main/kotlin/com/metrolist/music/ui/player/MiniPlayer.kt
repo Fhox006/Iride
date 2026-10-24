@@ -7,6 +7,8 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -608,7 +610,7 @@ private fun PlayPauseIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
-        modifier = Modifier.clip(FolioShape(32)),
+        modifier = Modifier.clip(CircleShape),
         onClick = {
             if (isListenTogetherGuest) return@IconButton
             if (isCasting) {
@@ -646,7 +648,7 @@ private fun SkipNextIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
-        modifier = Modifier.clip(FolioShape(32)),
+        modifier = Modifier.clip(CircleShape),
         enabled = canSkipNext && !isListenTogetherGuest,
         onClick = { playerConnection.seekToNext() },
     ) {

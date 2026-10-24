@@ -803,7 +803,7 @@ private fun IrideMp3InfoActions(
         Box(
             Modifier.size(IrideFolio.ControlsTouchTargetSize)
                 .pressScale(favoriteInteraction, pressedScale = 0.92f)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .clickable(
                     interactionSource = favoriteInteraction,
                     indication = null,
@@ -860,7 +860,7 @@ private fun IrideMp3InfoActions(
             Box(
                 Modifier.size(IrideFolio.ControlsTouchTargetSize)
                     .pressScale(interaction, pressedScale = .92f)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
@@ -947,7 +947,7 @@ private fun IrideMp3Transport(
         Box(
             Modifier.size(geometry.centerSize)
                 .pressScale(interaction, pressedScale = .96f)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -1598,7 +1598,7 @@ private fun BoxScope.WheelZone(
             modifier =
                 Modifier.size(size)
                     .pressScale(interactionSource, pressedScale = 0.92f)
-                    .clip(FolioShape(32)),
+                    .clip(CircleShape),
             contentAlignment = Alignment.Center,
             content = { content() },
         )

@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,13 +60,13 @@ fun IrideSwitch(
         modifier = modifier
             .size(width = trackWidth, height = trackHeight)
             .alpha(if (enabled) 1f else 0.35f)
-            .clip(FolioShape(50))
+            .clip(CircleShape)
             .background(if (checked) MaterialTheme.colorScheme.textPrimary else Color.Transparent)
             .border(
                 width = 1.dp,
                 color = if (checked) Color.Transparent
                 else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.4f),
-                shape = FolioShape(50),
+                shape = CircleShape,
             )
             .clickable(
                 enabled = enabled && onCheckedChange != null,
@@ -77,7 +79,7 @@ fun IrideSwitch(
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(thumbSize)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(
                     if (checked) MaterialTheme.colorScheme.background
                     else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.85f)

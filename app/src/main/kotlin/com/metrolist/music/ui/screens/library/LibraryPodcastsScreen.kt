@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.component.IridePageLayout
 import android.content.Intent
@@ -838,7 +840,7 @@ private fun PodcastArtistChannelItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(FolioShape(32)),
+                    .clip(CircleShape),
         )
 
         Spacer(Modifier.width(12.dp))

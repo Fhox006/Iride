@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -79,7 +80,7 @@ fun IconButton(
         modifier = modifier
             .minimumInteractiveComponentSize()
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .clip(FolioShape(32))
+            .clip(CircleShape)
             .background(color = colors.containerColor)
             .irideFolioCombinedClickable(
                 onClick = onClick,

@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.player
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -217,7 +218,7 @@ private fun CommentRow(
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(textColor.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -227,7 +228,7 @@ private fun CommentRow(
                     contentDescription = null,
                     modifier = Modifier
                         .size(28.dp)
-                        .clip(FolioShape(32)),
+                        .clip(CircleShape),
                 )
             } else {
                 Icon(
@@ -326,7 +327,7 @@ private fun CommentComposeBar(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clip(FolioShape(50))
+                .clip(CircleShape)
                 .background(textButtonColor.copy(alpha = 0.10f))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {

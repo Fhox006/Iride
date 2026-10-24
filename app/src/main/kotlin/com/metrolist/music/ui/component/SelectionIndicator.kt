@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -76,11 +77,11 @@ fun SelectionIndicator(
         Box(
             modifier = Modifier
                 .size(size)
-                .clip(FolioShape(32))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = fillProgress))
                 .border(
                     BorderStroke(1.5.dp, MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.6f - 0.6f * fillProgress)),
-                    FolioShape(32),
+                    CircleShape,
                 ),
         )
         Icon(

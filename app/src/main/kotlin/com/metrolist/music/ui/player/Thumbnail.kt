@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -448,7 +450,7 @@ private fun ThumbnailHeader(
             modifier = Modifier
                 .width(36.dp)
                 .height(5.dp)
-                .clip(FolioShape(50))
+                .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.35f))
         )
     }

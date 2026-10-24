@@ -19,10 +19,6 @@ private const val FolioCornerSmoothing = 0.6f
 fun FolioShape(size: Dp): SquircleShape =
     SquircleShape(radius = size, cornerSmoothing = FolioCornerSmoothing)
 
-fun FolioShape(percent: Int): SquircleShape =
-    // Leave space for smoothing: a half-height radius would turn back into a circle.
-    SquircleShape(percent = percent.coerceAtMost(32), cornerSmoothing = FolioCornerSmoothing)
-
 fun FolioShape(
     topStart: Dp = 0.dp,
     topEnd: Dp = 0.dp,
@@ -46,7 +42,19 @@ internal fun DrawScope.drawFolioRoundRect(
     style: DrawStyle = Fill,
 ) {
     if (size.width <= 0f || size.height <= 0f) return
-    val radius = minOf(cornerRadius.x, cornerRadius.y, size.minDimension * 0.32f)
+    val radius = minOf(cornerRadius.x, cornerRadius.y)
+    // Circular dots and capsule ends keep their original circular geometry.
+    if (radius >= size.minDimension / 2f) {
+        drawRoundRect(
+            color = color,
+            topLeft = topLeft,
+            size = size,
+            cornerRadius = cornerRadius,
+            alpha = alpha,
+            style = style,
+        )
+        return
+    }
     val outline = FolioShape(radius.toDp()).createOutline(size, layoutDirection, this)
     translate(topLeft.x, topLeft.y) {
         drawOutline(outline, color, alpha, style)

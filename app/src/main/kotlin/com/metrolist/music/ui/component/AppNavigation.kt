@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -155,7 +156,7 @@ fun AppNavigationRail(
                                 contentDescription = stringResource(screen.titleId),
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .clip(FolioShape(32))
+                                    .clip(CircleShape)
                             )
                         } else {
                             Crossfade(
@@ -251,7 +252,7 @@ fun AppNavigationBar(
                                 contentDescription = stringResource(screen.titleId),
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .clip(FolioShape(32))
+                                    .clip(CircleShape)
                             )
                         } else {
                             Crossfade(
@@ -388,7 +389,7 @@ fun TopNavigationBar(
                         contentDescription = stringResource(Screens.Account.titleId),
                         modifier = Modifier
                             .size(28.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                     )
                 } else {
                     Icon(

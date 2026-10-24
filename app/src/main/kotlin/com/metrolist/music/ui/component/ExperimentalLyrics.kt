@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ClipData
@@ -57,7 +59,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -195,9 +196,9 @@ private fun LyricsPill(
     Box(
         modifier = modifier
             .height(42.dp)
-            .clip(FolioShape(50))
+            .clip(CircleShape)
             .background(bgColor)
-            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), FolioShape(50))
+            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -1052,9 +1053,9 @@ fun ExperimentalLyrics(
                             Box(
                                 modifier = Modifier
                                     .height(42.dp)
-                                    .clip(FolioShape(50))
+                                    .clip(CircleShape)
                                     .background(Color.Transparent)
-                                    .border(1.dp, expressiveAccent.copy(alpha = 0.35f), FolioShape(50))
+                                    .border(1.dp, expressiveAccent.copy(alpha = 0.35f), CircleShape)
                                     .clickable {
                                         flingJob?.cancel()
                                         var target = scrollTargetIndex

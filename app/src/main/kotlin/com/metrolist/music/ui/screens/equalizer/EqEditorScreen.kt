@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.equalizer
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.theme.drawFolioRoundRect
 
 import com.metrolist.music.ui.component.IrideFolioChoiceMenu
@@ -110,7 +112,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private val CardShape = FolioShape(22.dp)
-private val PillShape = FolioShape(50)
+private val PillShape = CircleShape
 private val SavedGreen = Color(0xFF2ECC71)
 private val FlashRed = Color(0xFFE74C3C)
 
@@ -515,7 +517,7 @@ private fun DeviceIdentity(iconRes: Int, onIconClick: () -> Unit, modifier: Modi
         Box(
             modifier =
                 Modifier.size(56.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -807,7 +809,7 @@ private fun StatusDot(isConnected: Boolean, flashing: Boolean, modifier: Modifie
         )
     Box(
         modifier =
-            modifier.size(8.dp).clip(FolioShape(32)).background(fill).border(1.5.dp, ring, FolioShape(32))
+            modifier.size(8.dp).clip(CircleShape).background(fill).border(1.5.dp, ring, CircleShape)
     )
 }
 

@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.Context
 import android.widget.Toast
 import androidx.annotation.DrawableRes
@@ -1156,7 +1158,7 @@ fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDism
                                                 ConnectionState.DISCONNECTED ->
                                                     MaterialTheme.colorScheme.outline
                                             },
-                                        shape = FolioShape(50),
+                                        shape = CircleShape,
                                     )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -1387,7 +1389,7 @@ fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDism
                                     Box(contentAlignment = Alignment.Center) {
                                         Surface(
                                             modifier = Modifier.size(52.dp),
-                                            shape = FolioShape(50),
+                                            shape = CircleShape,
                                             color =
                                                 if (user.isHost) {
                                                     MaterialTheme.colorScheme.primary
@@ -1424,7 +1426,7 @@ fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDism
                                                     Modifier.align(Alignment.BottomEnd)
                                                         .offset(x = 4.dp, y = 4.dp)
                                                         .size(18.dp),
-                                                shape = FolioShape(50),
+                                                shape = CircleShape,
                                                 color =
                                                     if (user.isHost)
                                                         MaterialTheme.colorScheme.primary
@@ -1526,7 +1528,7 @@ fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDism
                                 ) {
                                     Surface(
                                         modifier = Modifier.size(36.dp),
-                                        shape = FolioShape(50),
+                                        shape = CircleShape,
                                         color = MaterialTheme.colorScheme.secondary,
                                     ) {
                                         Box(

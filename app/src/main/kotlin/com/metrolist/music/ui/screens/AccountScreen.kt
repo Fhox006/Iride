@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -565,7 +567,7 @@ private fun PodcastChannelAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(FolioShape(32)),
+                    .clip(CircleShape),
         )
         Spacer(Modifier.width(12.dp))
         Text(

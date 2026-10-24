@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
 import android.app.Activity
@@ -343,7 +345,7 @@ private fun AccountProfileHeader(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val avatarShape = FolioShape(32)
+        val avatarShape = CircleShape
         val avatarModifier = Modifier
             .size(88.dp)
             .clip(avatarShape)

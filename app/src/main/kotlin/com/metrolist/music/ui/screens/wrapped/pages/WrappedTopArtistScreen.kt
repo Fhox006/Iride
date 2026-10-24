@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.screens.wrapped.pages
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -82,7 +83,7 @@ fun WrappedTopArtistScreen(topArtist: Artist?, isVisible: Boolean) {
                 contentDescription = stringResource(id = R.string.wrapped_top_artist_image_content_description),
                 modifier = Modifier
                     .size(200.dp)
-                    .clip(FolioShape(32)),
+                    .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
         }

@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.wrapped.pages
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -26,7 +28,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -211,7 +212,7 @@ fun WrappedIntro(onNext: () -> Unit) {
         ) {
             Button(
                 onClick = onNext,
-                shape = FolioShape(50),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White)
             ) {
                 Text(

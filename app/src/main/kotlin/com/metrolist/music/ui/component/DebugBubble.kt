@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -86,12 +88,12 @@ fun DebugBubble(
             Column(horizontalAlignment = Alignment.End) {
                 Surface(
                     onClick = { expanded = !expanded },
-                    shape = FolioShape(32),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                     shadowElevation = 8.dp,
                     modifier = Modifier
                         .size(52.dp)
-                        .shadow(8.dp, FolioShape(32))
+                        .shadow(8.dp, CircleShape)
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()

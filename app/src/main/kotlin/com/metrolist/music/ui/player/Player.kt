@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
@@ -1431,7 +1433,7 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier
                             .size(42.dp)
-                            .border(1.dp, textButtonColor.copy(alpha = fullscreenBtnBorderAlpha), FolioShape(50))
+                            .border(1.dp, textButtonColor.copy(alpha = fullscreenBtnBorderAlpha), CircleShape)
                             .clip(FolioShape(
                                 topStart = btnCornerTopStart,
                                 topEnd = 21.dp,
@@ -2062,9 +2064,9 @@ internal fun PlayerPill(
     Box(
         modifier = modifier
             .height(42.dp)
-            .clip(FolioShape(50))
+            .clip(CircleShape)
             .background(bgColor)
-            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), FolioShape(50))
+            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

@@ -7,6 +7,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.widget.Toast
@@ -359,8 +361,8 @@ fun VinylPeekDisc(
             modifier =
                 Modifier.size(size)
                     .graphicsLayer { rotationZ = rotationDegrees }
-                    .shadow(elevation = 4.dp, shape = FolioShape(32), clip = false)
-                    .clip(FolioShape(32))
+                    .shadow(elevation = 4.dp, shape = CircleShape, clip = false)
+                    .clip(CircleShape)
                     .drawBehind {
                         drawRect(VinylPeekDiscBaseBottom)
                         val outerRadius = this.size.minDimension / 2f * 0.97f
@@ -384,18 +386,18 @@ fun VinylPeekDisc(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.strokeCard,
-                        shape = FolioShape(32),
+                        shape = CircleShape,
                     )
         ) {
             val labelModifier =
                 Modifier.align(Alignment.Center)
                     .fillMaxSize(VinylPeekDiscLabelFraction)
-                    .shadow(elevation = 2.dp, shape = FolioShape(32), clip = false)
-                    .clip(FolioShape(32))
+                    .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
+                    .clip(CircleShape)
                     .border(
                         width = 0.5.dp,
                         color = MaterialTheme.colorScheme.strokeCard,
-                        shape = FolioShape(32),
+                        shape = CircleShape,
                     )
             if (artwork != null) {
                 Image(
@@ -416,12 +418,12 @@ fun VinylPeekDisc(
                 modifier =
                     Modifier.align(Alignment.Center)
                         .fillMaxSize(VinylPeekDiscSpindleFraction)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .background(VinylPeekDiscBaseBottom)
                         .border(
                             width = 0.5.dp,
                             color = Color.Black.copy(alpha = 0.6f),
-                            shape = FolioShape(32),
+                            shape = CircleShape,
                         )
             )
         }
@@ -1043,9 +1045,9 @@ fun ArtistListItem(
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
-                            FolioShape(32),
+                            CircleShape,
                         )
-                        .clip(FolioShape(32)),
+                        .clip(CircleShape),
             )
         },
         trailingContent = trailingContent,
@@ -1107,9 +1109,9 @@ fun ArtistGridItem(
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
-                            FolioShape(32),
+                            CircleShape,
                         )
-                        .clip(FolioShape(32)),
+                        .clip(CircleShape),
             )
         },
         fillMaxWidth = fillMaxWidth,
@@ -1721,7 +1723,7 @@ fun YouTubeListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape =
-                        if (item is ArtistItem) FolioShape(32)
+                        if (item is ArtistItem) CircleShape
                         else FolioShape(ThumbnailCornerRadius),
                     modifier = Modifier.size(ListThumbnailSize),
                     hairlineBorder = hairlineBorder,
@@ -1906,7 +1908,7 @@ fun YouTubeGridItem(
                 shape =
                     thumbnailShape
                         ?: when {
-                            item is ArtistItem -> FolioShape(32)
+                            item is ArtistItem -> CircleShape
                             effectiveThumbnailRatio != 1f ->
                                 FolioShape(
                                     if (item is SongItem && item.isVideoSong)
@@ -2029,7 +2031,7 @@ fun LocalArtistsGrid(
                 thumbnailUrl = thumbnailUrl,
                 isActive = false,
                 isPlaying = false,
-                shape = FolioShape(32),
+                shape = CircleShape,
                 modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
                 showCenterPlay = false,
                 playButtonVisible = false,
@@ -2242,7 +2244,7 @@ fun ItemThumbnail(
                 contentDescription = null,
                 contentScale =
                     contentScaleOverride
-                        ?: if (shape == FolioShape(32) || cropAlbumArt) ContentScale.Crop
+                        ?: if (shape == CircleShape || cropAlbumArt) ContentScale.Crop
                         else ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().then(sizeResolver).clip(shape),
             )
@@ -2339,7 +2341,7 @@ fun LocalThumbnail(
                     .build(),
             contentDescription = null,
             contentScale =
-                if (shape == FolioShape(32) || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                if (shape == CircleShape || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
             modifier = Modifier.fillMaxSize().clip(shape),
         )
 
@@ -2358,7 +2360,7 @@ fun LocalThumbnail(
                     contentAlignment = Alignment.Center,
                     modifier =
                         Modifier.size(36.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.6f)),
                 ) {
                     Icon(
@@ -2381,7 +2383,7 @@ fun LocalThumbnail(
                     contentAlignment = Alignment.Center,
                     modifier =
                         Modifier.size(36.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                             .background(Color.Black.copy(alpha = ActiveBoxAlpha)),
                 ) {
                     Icon(
@@ -2493,7 +2495,7 @@ fun BoxScope.OverlayPlayButton(visible: Boolean) {
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier.size(36.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(Color.Black.copy(alpha = ActiveBoxAlpha)),
         ) {
             Icon(
@@ -2524,7 +2526,7 @@ fun BoxScope.OverlayEditButton(
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier.size(36.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(Color.Black.copy(alpha = ActiveBoxAlpha))
                     .padding(0.dp)
                     .clickable(onClick = onClick),

@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -81,7 +83,7 @@ fun ReverieHomeCard(month: YearMonth, onClick: () -> Unit, modifier: Modifier = 
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.reverie_home_action), fontFamily = IBMPlexMonoFontFamily, fontSize = 11.sp)
-                    Box(Modifier.size(36.dp).background(Color(palette.accent), FolioShape(32)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(36.dp).background(Color(palette.accent), CircleShape), contentAlignment = Alignment.Center) {
                         Icon(painterResource(R.drawable.play), null, tint = Color(0xFFF2F0EB), modifier = Modifier.size(20.dp))
                     }
                 }

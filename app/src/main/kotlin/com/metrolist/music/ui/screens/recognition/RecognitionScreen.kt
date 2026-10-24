@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.recognition
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
 import com.metrolist.music.ui.component.IrideFolioDarkSurface
@@ -284,11 +286,11 @@ private fun ReadyState(onStartRecognition: () -> Unit, useIrideStyle: Boolean = 
         Box(
             modifier =
                 Modifier.size(200.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .then(
                         if (useIrideStyle) {
                             Modifier.background(Color.Transparent)
-                                .border(1.dp, Color.White.copy(alpha = 0.15f), FolioShape(32))
+                                .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
                         } else {
                             Modifier.background(
                                 Brush.radialGradient(
@@ -308,14 +310,14 @@ private fun ReadyState(onStartRecognition: () -> Unit, useIrideStyle: Boolean = 
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                             else MaterialTheme.colorScheme.primary
                         )
                         .then(
                             if (useIrideStyle) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), FolioShape(32))
+                                Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
                             } else {
                                 Modifier
                             }
@@ -378,7 +380,7 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                 modifier =
                     Modifier.size(200.dp)
                         .scale(scale)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.10f)
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -389,7 +391,7 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                 modifier =
                     Modifier.size(180.dp)
                         .scale(scale * 0.9f)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.14f)
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -399,14 +401,14 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .background(
                             if (useIrideStyle) Color.White.copy(alpha = 0.1f)
                             else MaterialTheme.colorScheme.primary
                         )
                         .then(
                             if (useIrideStyle) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.4f), FolioShape(32))
+                                Modifier.border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
                             } else {
                                 Modifier
                             }
@@ -479,7 +481,7 @@ private fun ProcessingState(useIrideStyle: Boolean = false) {
             Box(
                 modifier =
                     Modifier.size(160.dp)
-                        .clip(FolioShape(32))
+                        .clip(CircleShape)
                         .border(
                             width = 4.dp,
                             brush =
@@ -510,7 +512,7 @@ private fun ProcessingState(useIrideStyle: Boolean = false) {
                                             )
                                     )
                                 },
-                            shape = FolioShape(32),
+                            shape = CircleShape,
                         )
             )
 
@@ -735,14 +737,14 @@ private fun NoMatchState(
         Box(
             modifier =
                 Modifier.size(120.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(
                         if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                         else MaterialTheme.colorScheme.errorContainer
                     )
                     .then(
                         if (useIrideStyle) {
-                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), FolioShape(32))
+                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                         } else {
                             Modifier
                         }
@@ -822,14 +824,14 @@ private fun ErrorState(
         Box(
             modifier =
                 Modifier.size(120.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(
                         if (useIrideStyle) Color.White.copy(alpha = 0.08f)
                         else MaterialTheme.colorScheme.errorContainer
                     )
                     .then(
                         if (useIrideStyle) {
-                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), FolioShape(32))
+                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                         } else {
                             Modifier
                         }

@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -72,9 +73,9 @@ private fun IrideFlatFAB(
         modifier = modifier
             .size(56.dp)
             .pressScale(interactionSource, pressedScale = 0.92f)
-            .clip(FolioShape(32))
+            .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.85f))
-            .border(1.dp, MaterialTheme.colorScheme.strokeCard, FolioShape(32))
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
             .semantics { description?.let { contentDescription = it } }
             .clickable(
                 interactionSource = interactionSource,

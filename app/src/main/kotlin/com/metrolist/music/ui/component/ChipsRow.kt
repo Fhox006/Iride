@@ -5,7 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
@@ -166,7 +167,7 @@ fun <E> ChipsRow(
                     selectedTrailingIconColor = onSelectedContainerColor,
                 ),
                 onClick = { onValueUpdate(value) },
-                shape = FolioShape(32),
+                shape = CircleShape,
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = currentValue == value,
@@ -423,7 +424,7 @@ fun <Int> ChoiceChipsRow(
                         modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
                     )
                 },
-                shape = FolioShape(32),
+                shape = CircleShape,
                 border = null,
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = containerColor,
@@ -469,7 +470,7 @@ fun <Int> ChoiceChipsRow(
                             containerColor = containerColor,
                         ),
                         onClick = { onValueUpdate(value) },
-                        shape = FolioShape(32),
+                        shape = CircleShape,
                         border = null
                     )
                 }

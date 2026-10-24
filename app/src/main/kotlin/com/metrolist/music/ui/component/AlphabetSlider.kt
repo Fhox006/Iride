@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -125,7 +127,7 @@ fun AlphabetSlider(
                     Box(
                         modifier = Modifier
                             .size(18.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                             ),

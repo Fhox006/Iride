@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -311,7 +313,7 @@ private fun HomeSimilarityTitle(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val shape = if (isArtist) FolioShape(32) else FolioShape(5.dp)
+    val shape = if (isArtist) CircleShape else FolioShape(5.dp)
     val resolvedThumbnail =
         if (isArtist && artistId != null) {
             rememberArtistThumbnail(artistId, name, thumbnailUrl)
@@ -914,7 +916,7 @@ private fun HomeScreenContent(
                     }
                     val forYouMiniTile: @Composable (LocalItem) -> Unit = { cell ->
                         val tileShape =
-                            if (cell is Artist) FolioShape(32) else FolioShape(6.dp)
+                            if (cell is Artist) CircleShape else FolioShape(6.dp)
                         val thumbnail =
                             if (cell is Artist) {
                                 rememberArtistThumbnail(cell.id, cell.title, cell.thumbnailUrl)
@@ -2664,7 +2666,7 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
             Spacer(modifier = Modifier.height(10.dp))
             LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(2.dp).clip(FolioShape(32)),
+                modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape),
                 color = MaterialTheme.colorScheme.textSecondary,
                 trackColor = MaterialTheme.colorScheme.fillSelected,
             )
@@ -2715,7 +2717,7 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
             Spacer(modifier = Modifier.height(10.dp))
             LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(4.dp).clip(FolioShape(32)),
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
             )

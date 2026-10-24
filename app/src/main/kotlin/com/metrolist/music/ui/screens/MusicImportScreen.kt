@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.screens
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -93,7 +94,7 @@ fun MusicImportScreen(navController: NavController) {
 private fun MusicServiceButton(name: String, description: String, connected: Boolean, onClick: () -> Unit) {
     val status = stringResource(if (connected) R.string.music_services_connected else R.string.music_services_not_connected)
     val content: @Composable RowScope.() -> Unit = {
-        if (connected) Box(Modifier.padding(end = 8.dp).size(6.dp).clip(FolioShape(32)).background(LocalContentColor.current))
+        if (connected) Box(Modifier.padding(end = 8.dp).size(6.dp).clip(CircleShape).background(LocalContentColor.current))
         Text(name)
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

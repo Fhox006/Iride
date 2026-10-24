@@ -1,7 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
 
-import com.metrolist.music.ui.theme.FolioShape
+import androidx.compose.foundation.shape.CircleShape
+
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
@@ -490,14 +491,14 @@ fun BackupAndRestore(
                                 AsyncImage(
                                     model = preview.accountImageUrl,
                                     contentDescription = null,
-                                    modifier = Modifier.size(40.dp).clip(FolioShape(32)),
+                                    modifier = Modifier.size(40.dp).clip(CircleShape),
                                     contentScale = ContentScale.Crop,
                                 )
                             } else {
                                 Box(
                                     modifier =
                                         Modifier.size(40.dp)
-                                            .clip(FolioShape(32))
+                                            .clip(CircleShape)
                                             .background(
                                                 MaterialTheme.colorScheme.secondaryContainer
                                             ),

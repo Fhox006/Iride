@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -153,7 +155,7 @@ internal fun folioMenuArtwork(thumbnailUrl: String?, portrait: Boolean, fallback
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier =
-                Modifier.size(24.dp).clip(if (portrait) FolioShape(32) else FolioShape(4.dp)),
+                Modifier.size(24.dp).clip(if (portrait) CircleShape else FolioShape(4.dp)),
         )
     }
 }

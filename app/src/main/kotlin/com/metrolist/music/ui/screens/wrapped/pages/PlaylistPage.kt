@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.wrapped.pages
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -115,7 +117,7 @@ fun PlaylistPage() {
                         manager.createPlaylist(playlistImageName)
                     }
                 },
-                shape = FolioShape(32),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 modifier = Modifier.height(50.dp)
             ) {

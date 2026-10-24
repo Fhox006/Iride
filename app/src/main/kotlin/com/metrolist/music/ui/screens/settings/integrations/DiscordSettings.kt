@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings.integrations
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.content.Intent
@@ -467,7 +469,7 @@ fun DiscordSettings(
                                 AsyncImage(
                                     model = discordAvatar,
                                     contentDescription = null,
-                                    modifier = Modifier.size(56.dp).clip(FolioShape(32)),
+                                    modifier = Modifier.size(56.dp).clip(CircleShape),
                                 )
                             } else {
                                 Icon(
@@ -486,14 +488,14 @@ fun DiscordSettings(
                                     }
                                 Surface(
                                     color = statusColor,
-                                    shape = FolioShape(32),
+                                    shape = CircleShape,
                                     modifier =
                                         Modifier.size(16.dp)
                                             .align(Alignment.BottomEnd)
                                             .border(
                                                 2.dp,
                                                 MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                FolioShape(32),
+                                                CircleShape,
                                             ),
                                     content = {},
                                 )
@@ -932,7 +934,7 @@ fun RichPresence(
                                 Modifier.border(
                                         2.dp,
                                         MaterialTheme.colorScheme.surfaceContainer,
-                                        FolioShape(32),
+                                        CircleShape,
                                     )
                                     .padding(2.dp)
                                     .align(Alignment.BottomEnd)
@@ -940,7 +942,7 @@ fun RichPresence(
                             AsyncImage(
                                 model = it,
                                 contentDescription = null,
-                                modifier = Modifier.size(32.dp).clip(FolioShape(32)),
+                                modifier = Modifier.size(32.dp).clip(CircleShape),
                             )
                         }
                     }

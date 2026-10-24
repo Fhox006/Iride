@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -165,9 +167,9 @@ private fun TranslationCard(
 ) {
     Row(
         modifier = Modifier
-            .clip(FolioShape(50))
+            .clip(CircleShape)
             .background(Color.White.copy(alpha = 0.10f))
-            .border(1.dp, Color.White.copy(alpha = 0.14f), FolioShape(50))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

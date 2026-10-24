@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -758,7 +760,7 @@ private fun PillNavItem(
             AsyncImage(
                 model = accountImageUrl,
                 contentDescription = stringResource(screen.titleId),
-                modifier = Modifier.size(24.dp).clip(FolioShape(32)),
+                modifier = Modifier.size(24.dp).clip(CircleShape),
             )
         } else {
             Icon(

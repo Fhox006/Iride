@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
+
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
@@ -485,7 +487,7 @@ private fun HeaderSection(isInRoom: Boolean = false) {
         Box(
             modifier =
                 Modifier.size(80.dp)
-                    .clip(FolioShape(32))
+                    .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -556,7 +558,7 @@ private fun ConnectionStatusCard(
                 Box(
                     modifier =
                         Modifier.size(10.dp)
-                            .clip(FolioShape(32))
+                            .clip(CircleShape)
                             .background(
                                 color =
                                     when (connectionState) {
@@ -821,7 +823,7 @@ private fun UserAvatar(
         Box(contentAlignment = Alignment.Center) {
             Surface(
                 modifier = Modifier.size(56.dp),
-                shape = FolioShape(32),
+                shape = CircleShape,
                 color =
                     when {
                         user.isHost -> MaterialTheme.colorScheme.primary
@@ -851,7 +853,7 @@ private fun UserAvatar(
                 Surface(
                     modifier =
                         Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).size(20.dp),
-                    shape = FolioShape(32),
+                    shape = CircleShape,
                     color =
                         if (user.isHost) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.secondary,
@@ -934,7 +936,7 @@ private fun PendingJoinRequestsSection(
                 ) {
                     Surface(
                         modifier = Modifier.size(40.dp),
-                        shape = FolioShape(32),
+                        shape = CircleShape,
                         color = MaterialTheme.colorScheme.secondary,
                     ) {
                         Box(
