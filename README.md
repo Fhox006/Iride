@@ -7,126 +7,72 @@
   <img src="assets/iride-wordmark-black.svg" width="360" alt="Iride logo">
 </picture>
 
-A visually-focused YouTube Music client for Android
+### Music, with a point of view.
 
-<br/>
+A personal YouTube Music client for Android, shaped around artwork, typography and the way you listen.
 
-<img width="300" alt="Iride home — retro monospace UI" src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" />
+[Download the APK](https://github.com/Fhox006/Iride/releases) · [Report an issue](https://github.com/Fhox006/Iride/issues) · [License](LICENSE)
 
-<br/><br/>
-
-Alpha build. Rough edges, missing pieces, breaking changes ahead.  
-Worth trying if you're curious.
-
-<br/>
-
-<a href="https://github.com/Fhox006/Iride/releases/latest">
-  <img src="https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases&style=for-the-badge&labelColor=0d1117&color=4361ee&label=%E2%86%93%20Download%20latest%20APK" alt="Download latest APK"/>
-</a>
-
-<br/><br/>
-
-[![License](https://img.shields.io/github/license/Fhox006/Iride?style=flat-square&labelColor=0d1117&color=555)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
-
-> 🚧 Personal fork, actively under development.  
-> Built by a student at [Politecnico di Torino – Design Dept.](https://www.polito.it/en)
+**Iride is not finished yet.** This is a pre-release project: some features are still being refined, and bugs or changes are to be expected.
 
 </div>
 
 ---
 
-## What is Iride?
+## This is Iride
 
-Iride is a fork of [Metrolist](https://github.com/mostafaalagamy/metrolist), a YouTube Music Android client. This fork is driven by a design-first vision: the goal is to deliver a music experience that feels as good as it sounds — prioritising the **visual and aesthetic dimension** of the app.
+Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand. A compact navigation dock, a persistent mini player and an album-first library connect the experience across screens.
 
-The project follows a deliberate two-phase approach:
+Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.
 
-1. **UX first** — fix, refine, and align all functional and structural aspects inherited from Metrolist before touching the visual layer.
-2. **UI second** — once the UX foundation is solid, redesign the visual identity: typography, colour, motion, and layout.
-
-**Phase 1 (UX) is done.** The app now works the way it should. Development has moved into **Phase 2**: the visual identity is being rebuilt around a **retro monospace look** — Space Mono typography, flat monochrome surfaces, a click-wheel player, and consistent motion across every screen.
-
----
-
-## Screenshots
+## Take a look
 
 <table>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" width="210"/><br/><sub><b>Home</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" width="210"/><br/><sub><b>Library</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" width="210"/><br/><sub><b>Search</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="210"/><br/><sub><b>Search+</b></sub></td>
+    <td align="center"><img src="assets/screenshots/home.webp" width="220" alt="Iride Home with artist recommendations, songs and mood mixes"><br><sub><b>Home</b> — a place to start listening</sub></td>
+    <td align="center"><img src="assets/screenshots/artist.webp" width="220" alt="Artist page with a full-width Rkomi portrait and latest release"><br><sub><b>Artists</b> — imagery takes the lead</sub></td>
+    <td align="center"><img src="assets/screenshots/album.webp" width="220" alt="Album page with artwork, a vinyl record and track list"><br><sub><b>Albums</b> — artwork and records</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" width="210"/><br/><sub><b>Player</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" width="210"/><br/><sub><b>Lyrics</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" width="210"/><br/><sub><b>Artist</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" width="210"/><br/><sub><b>Album</b></sub></td>
+    <td align="center"><img src="assets/screenshots/playlist.webp" width="220" alt="Playlist page with cover artwork, playback controls and song search"><br><sub><b>Playlists</b> — your next listening session</sub></td>
+    <td align="center"><img src="assets/screenshots/player.webp" width="220" alt="Iride music player with large artwork and circular control wheel"><br><sub><b>Player</b> — a circular control wheel</sub></td>
+    <td align="center"><img src="assets/screenshots/lyrics.webp" width="220" alt="Synced lyrics with the current words highlighted against a blurred background"><br><sub><b>Lyrics</b> — words in focus</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/screenshots/video.webp" width="220" alt="Music video playback with a timeline and compact controls"><br><sub><b>Video</b> — another way to listen</sub></td>
+    <td align="center"><img src="assets/screenshots/library.webp" width="220" alt="Album library with cover grid, search and listening filters"><br><sub><b>Library</b> — a collection of covers</sub></td>
+    <td align="center"><img src="assets/screenshots/account.webp" width="220" alt="Account screen with playback, content, AI and navigation settings"><br><sub><b>Account</b> — make Iride yours</sub></td>
   </tr>
 </table>
 
----
+## The smaller things
 
-## Current Focus — Phase 2: UI
+### Stay with the words
 
-With the UX foundation solid, work has shifted fully to graphics and style. The app is being refined into a cohesive **retro monospace** identity:
+Synced lyrics keep the current passage in focus. Translation, sharing and a karaoke balance control are available from the lyrics experience, so you can move between reading, singing and listening.
 
-- Space Mono typography across the whole app
-- Flat, monochrome surfaces — no gradients, no noise
-- Click-wheel player and vinyl-peek mini player
-- Consistent enter/exit motion on every screen (Home, Library, Search, Artist, Album, Player)
+<img src="assets/screenshots/karaoke.webp" width="600" alt="Karaoke balance control between instrumental and original audio, over the lyrics">
 
-This phase is actively in progress — screens are being redesigned and polished one by one.
+### A closer look at your listening
 
----
+The **Only on Iride** area brings listening statistics within reach from your account.
 
-## Roadmap
+<img src="assets/screenshots/statistics.webp" width="600" alt="Only on Iride section with the Statistics card: Your listening, in detail">
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| Phase 1 | UX — Fix & refine all Metrolist-inherited issues | ✅ Done |
-| Phase 2 | UI — Retro monospace visual redesign (typography, colour, motion, layout) | 🔄 In progress |
+### Actions where you need them
 
----
+Queue a track, add it to a playlist, star it or download it through a compact menu over the current screen.
 
-## Features (inherited from Metrolist)
+<img src="assets/screenshots/context-menu.webp" width="340" alt="Translucent context menu with Next, Queue, Add to playlist, Remove star and Download actions">
 
-- Stream songs and videos from YouTube Music
-- Background playback, offline download & caching
-- Live synced lyrics and AI-powered translation
-- Audio normalization, equalizer, tempo & pitch control
-- Full library management and YouTube Music account sync
-- Listen together with friends in real-time
-- Light / Dark / Black / Dynamic themes, Material 3
+## Behind Iride
+
+I'm [Fhox006](https://github.com/Fhox006), a Design student at [Politecnico di Torino](https://www.polito.it/en). Iride is my personal project, bringing together my interest in music and in how digital products look, feel and respond.
+
+The aim is a music app with a recognizable identity, where the visual design and everyday interactions belong together. It is getting close to that vision, but it is still a work in progress.
 
 ---
 
-## Building
+Iride is open source and builds on the work of [Metrolist](https://github.com/MetrolistGroup/Metrolist), [InnerTune](https://github.com/z-huang/InnerTune) and [OuterTune](https://github.com/DD3Boh/OuterTune). See the [license](LICENSE).
 
-```bash
-git clone https://github.com/Fhox006/Iride.git
-cd Iride
-./gradlew assembleRelease
-```
-
-Requires Android Studio (latest stable) and JDK 17+.
-
----
-
-## Credits
-
-| Project | Authors |
-|---------|---------|
-| [Metrolist](https://github.com/mostafaalagamy/metrolist) | [Mo Agamy](https://github.com/mostafaalagamy) |
-| [InnerTune](https://github.com/z-huang/InnerTune) | Zion Huang · Malopieds |
-| [OuterTune](https://github.com/DD3Boh/OuterTune) | Davide Garberi · Michael Zh |
-
----
-
-<div align="center">
-
-**Disclaimer:** This project is not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of their affiliates and subsidiaries. All trademarks belong to their respective owners.
-
-*Personal fork maintained by a Design student at Politecnico di Torino.*
-
-</div>
+Iride is an independent project and is not affiliated with YouTube or Google. All trademarks belong to their respective owners.
