@@ -2,6 +2,11 @@
 
 # Iride
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/iride-wordmark-white.svg">
+  <img src="assets/iride-wordmark-black.svg" width="360" alt="Iride logo">
+</picture>
+
 A visually-focused YouTube Music client for Android
 
 <br/>
