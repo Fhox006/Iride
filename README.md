@@ -19,51 +19,50 @@ A personal YouTube Music client for Android, shaped around artwork, typography a
 
 ---
 
+## Artist pages
+
+Artist imagery takes the lead, with the latest release and songs close at hand.
+
+<img src="assets/screenshots/artist.webp" width="320" alt="Artist page with a full-width Rkomi portrait and latest release">
+
 ## This is Iride
 
 Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand. A compact navigation dock, a persistent mini player and an album-first library connect the experience across screens.
 
 Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.
 
-## Take a look
+## Your music
 
 <table>
   <tr>
-    <td align="center"><img src="assets/screenshots/home.webp" width="220" alt="Iride Home with artist recommendations, songs and mood mixes"><br><sub><b>Home</b> — a place to start listening</sub></td>
-    <td align="center"><img src="assets/screenshots/artist.webp" width="220" alt="Artist page with a full-width Rkomi portrait and latest release"><br><sub><b>Artists</b> — imagery takes the lead</sub></td>
-    <td align="center"><img src="assets/screenshots/album.webp" width="220" alt="Album page with artwork, a vinyl record and track list"><br><sub><b>Albums</b> — artwork and records</sub></td>
+    <td align="center"><img src="assets/screenshots/home.webp" width="180" alt="Iride Home with artist recommendations, songs and mood mixes"><br><sub><b>Home</b></sub></td>
+    <td align="center"><img src="assets/screenshots/library.webp" width="180" alt="Album library with cover grid, search and listening filters"><br><sub><b>Library</b></sub></td>
+    <td align="center"><img src="assets/screenshots/account.webp" width="180" alt="Account screen with playback, content, AI and navigation settings"><br><sub><b>Account</b></sub></td>
+    <td align="center"><img src="assets/screenshots/album.webp" width="180" alt="Album page with artwork, a vinyl record and track list"><br><sub><b>Albums</b></sub></td>
   </tr>
+</table>
+
+## MP3, lyrics & video
+
+Three views of the listening experience, each with its own space.
+
+<table>
   <tr>
-    <td align="center"><img src="assets/screenshots/playlist.webp" width="220" alt="Playlist page with cover artwork, playback controls and song search"><br><sub><b>Playlists</b> — your next listening session</sub></td>
-    <td align="center"><img src="assets/screenshots/player.webp" width="220" alt="Iride music player with large artwork and circular control wheel"><br><sub><b>Player</b> — a circular control wheel</sub></td>
-    <td align="center"><img src="assets/screenshots/lyrics.webp" width="220" alt="Synced lyrics with the current words highlighted against a blurred background"><br><sub><b>Lyrics</b> — words in focus</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="assets/screenshots/video.webp" width="220" alt="Music video playback with a timeline and compact controls"><br><sub><b>Video</b> — another way to listen</sub></td>
-    <td align="center"><img src="assets/screenshots/library.webp" width="220" alt="Album library with cover grid, search and listening filters"><br><sub><b>Library</b> — a collection of covers</sub></td>
-    <td align="center"><img src="assets/screenshots/account.webp" width="220" alt="Account screen with playback, content, AI and navigation settings"><br><sub><b>Account</b> — make Iride yours</sub></td>
+    <td align="center"><img src="assets/screenshots/player.webp" width="220" alt="Iride MP3 player with large artwork and circular control wheel"><br><sub><b>MP3 player</b></sub></td>
+    <td align="center"><img src="assets/screenshots/lyrics.webp" width="220" alt="Synced lyrics with the current words highlighted against a blurred background"><br><sub><b>Lyrics</b></sub></td>
+    <td align="center"><img src="assets/screenshots/video.webp" width="220" alt="Music video playback with a timeline and compact controls"><br><sub><b>Video</b></sub></td>
   </tr>
 </table>
 
 ## The smaller things
 
-### Stay with the words
-
-Synced lyrics keep the current passage in focus. Translation, sharing and a karaoke balance control are available from the lyrics experience, so you can move between reading, singing and listening.
-
-<img src="assets/screenshots/karaoke.webp" width="600" alt="Karaoke balance control between instrumental and original audio, over the lyrics">
-
-### A closer look at your listening
-
-The **Only on Iride** area brings listening statistics within reach from your account.
-
-<img src="assets/screenshots/statistics.webp" width="600" alt="Only on Iride section with the Statistics card: Your listening, in detail">
-
-### Actions where you need them
-
-Queue a track, add it to a playlist, star it or download it through a compact menu over the current screen.
-
-<img src="assets/screenshots/context-menu.webp" width="340" alt="Translucent context menu with Next, Queue, Add to playlist, Remove star and Download actions">
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/karaoke-detail.webp" width="220" height="220" alt="Karaoke balance control between instrumental and original audio, over the lyrics"><br><b>Karaoke</b><br><sub>Balance instrumental and original audio from the lyrics view.</sub></td>
+    <td align="center"><img src="assets/screenshots/statistics-detail.webp" width="220" height="220" alt="Only on Iride section with the Statistics card: Your listening, in detail"><br><b>Listening statistics</b><br><sub>A closer look at your listening, in Only on Iride.</sub></td>
+    <td align="center"><img src="assets/screenshots/context-menu-detail.webp" width="220" height="220" alt="Translucent context menu with Next, Queue, Add to playlist, Remove star and Download actions"><br><b>Context menus</b><br><sub>Queue, star, download or add music to a playlist.</sub></td>
+  </tr>
+</table>
 
 ## Behind Iride
 
