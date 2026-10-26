@@ -1,71 +1,67 @@
 <div align="center">
-
-# Iride
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/iride-wordmark-white.svg">
-  <img src="assets/iride-wordmark-black.svg" width="360" alt="Iride logo">
-</picture>
-
-### Music, with a point of view.
-
-A personal YouTube Music client for Android, shaped around artwork, typography and the way you listen.
-
-[Download the APK](https://github.com/Fhox006/Iride/releases) · [Report an issue](https://github.com/Fhox006/Iride/issues) · [License](LICENSE)
-
-**Iride is not finished yet.** This is a pre-release project: some features are still being refined, and bugs or changes are to be expected.
-
+  <h1>Iride</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/iride-wordmark-white.svg">
+    <img src="assets/iride-wordmark-black.svg" width="360" alt="Iride logo">
+  </picture>
+  <h3>Music, with a point of view.</h3>
+  <p>A personal YouTube Music client for Android, shaped around artwork, typography and the way you listen.</p>
+  <p><a href="https://github.com/Fhox006/Iride/releases">Download the APK</a> · <a href="https://github.com/Fhox006/Iride/issues">Report an issue</a> · <a href="LICENSE">License</a></p>
+  <p><strong>Iride is not finished yet.</strong> This is a pre-release project: some features are still being refined, and bugs or changes are to be expected.</p>
 </div>
 
 ---
 
-<table>
-  <tr>
-    <td width="280" align="center" valign="top">
-      <img src="assets/screenshots/artist.webp" width="260" alt="Artist page with a full-width Rkomi portrait and latest release">
-    </td>
-    <td valign="middle">
-      <h2>This is Iride</h2>
-      <p>Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand.</p>
-      <p>A compact navigation dock, a persistent mini player and an album-first library connect the experience across screens.</p>
-      <p>Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.</p>
-      <p><strong>Artist pages</strong><br>Artist imagery takes the lead, with the latest release and songs close at hand.</p>
-    </td>
-  </tr>
-</table>
+## This is Iride
+
+<img align="left" src="assets/screenshots/artist.webp" width="30%" alt="Artist page with a full-width Rkomi portrait and latest release">
+
+Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand.
+
+A compact navigation dock, a persistent mini player and a library built around albums connect the experience across screens.
+
+Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.
+
+**Artist pages** put imagery first, with the latest release and songs close at hand.
+
+<br clear="all">
 
 ## Your music
 
-<table>
-  <tr>
-    <td align="center"><img src="assets/screenshots/home.webp" width="180" alt="Iride Home with artist recommendations, songs and mood mixes"><br><sub><b>Home</b></sub></td>
-    <td align="center"><img src="assets/screenshots/library.webp" width="180" alt="Album library with cover grid, search and listening filters"><br><sub><b>Library</b></sub></td>
-    <td align="center"><img src="assets/screenshots/account.webp" width="180" alt="Account screen with playback, content, AI and navigation settings"><br><sub><b>Account</b></sub></td>
-    <td align="center"><img src="assets/screenshots/album.webp" width="180" alt="Album page with artwork, a vinyl record and track list"><br><sub><b>Albums</b></sub></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/screenshots/home.webp" width="160" alt="Iride Home with artist recommendations, songs and mood mixes">
+  <img src="assets/screenshots/library.webp" width="160" alt="Album library with cover grid, search and listening filters">
+  <img src="assets/screenshots/account.webp" width="160" alt="Account screen with playback, content, AI and navigation settings">
+  <img src="assets/screenshots/album.webp" width="160" alt="Album page with artwork, a vinyl record and track list">
+</p>
+
+<p align="center"><sub>Home · Library · Account · Albums</sub></p>
 
 ## MP3, lyrics & video
 
 Three views of the listening experience, each with its own space.
 
-<table>
-  <tr>
-    <td align="center"><img src="assets/screenshots/player.webp" width="220" alt="Iride MP3 player with large artwork and circular control wheel"><br><sub><b>MP3 player</b></sub></td>
-    <td align="center"><img src="assets/screenshots/lyrics.webp" width="220" alt="Synced lyrics with the current words highlighted against a blurred background"><br><sub><b>Lyrics</b></sub></td>
-    <td align="center"><img src="assets/screenshots/video.webp" width="220" alt="Music video playback with a timeline and compact controls"><br><sub><b>Video</b></sub></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/screenshots/player.webp" width="200" alt="Iride MP3 player with large artwork and circular control wheel">
+  <img src="assets/screenshots/lyrics.webp" width="200" alt="Synced lyrics with the current words highlighted against a blurred background">
+  <img src="assets/screenshots/video.webp" width="200" alt="Music video playback with a timeline and compact controls">
+</p>
+
+<p align="center"><sub>MP3 player · Lyrics · Video</sub></p>
 
 ## The smaller things
 
-<table>
-  <tr>
-    <td align="center"><img src="assets/screenshots/karaoke-detail.webp" width="220" height="220" alt="Karaoke balance control between instrumental and original audio, over the lyrics"><br><b>Karaoke</b><br><sub>Balance instrumental and original audio from the lyrics view.</sub></td>
-    <td align="center"><img src="assets/screenshots/statistics-detail.webp" width="220" height="220" alt="Only on Iride section with the Statistics card: Your listening, in detail"><br><b>Listening statistics</b><br><sub>A closer look at your listening, in Only on Iride.</sub></td>
-    <td align="center"><img src="assets/screenshots/context-menu-detail.webp" width="220" height="220" alt="Translucent context menu with Next, Queue, Add to playlist, Remove star and Download actions"><br><b>Context menus</b><br><sub>Queue, star, download or add music to a playlist.</sub></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/screenshots/karaoke-detail.webp" width="200" alt="Karaoke balance control between instrumental and original audio, over the lyrics">
+  <img src="assets/screenshots/statistics-detail.webp" width="200" alt="Only on Iride section with the Statistics card: Your listening, in detail">
+  <img src="assets/screenshots/context-menu-detail.webp" width="200" alt="Translucent context menu with Next, Queue, Add to playlist, Remove star and Download actions">
+</p>
+
+<p align="center"><sub>Karaoke · Listening statistics · Context menus</sub></p>
+
+- **Karaoke:** balance instrumental and original audio from the lyrics view.
+- **Listening statistics:** a closer look at your listening, in Only on Iride.
+- **Context menus:** queue, star, download or add music to a playlist.
 
 ## Behind Iride
 
