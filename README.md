@@ -19,17 +19,20 @@ A personal YouTube Music client for Android, shaped around artwork, typography a
 
 ---
 
-## Artist pages
-
-Artist imagery takes the lead, with the latest release and songs close at hand.
-
-<img src="assets/screenshots/artist.webp" width="320" alt="Artist page with a full-width Rkomi portrait and latest release">
-
-## This is Iride
-
-Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand. A compact navigation dock, a persistent mini player and an album-first library connect the experience across screens.
-
-Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.
+<table>
+  <tr>
+    <td width="280" align="center" valign="top">
+      <img src="assets/screenshots/artist.webp" width="260" alt="Artist page with a full-width Rkomi portrait and latest release">
+    </td>
+    <td valign="middle">
+      <h2>This is Iride</h2>
+      <p>Iride is a personal take on the music app. Album artwork, artist imagery and lyrics have room to lead, while playback stays close at hand.</p>
+      <p>A compact navigation dock, a persistent mini player and an album-first library connect the experience across screens.</p>
+      <p>Its identity lives in the details: record-inspired album pages, a player with a circular control wheel, large expressive lyrics and menus that sit naturally over the music.</p>
+      <p><strong>Artist pages</strong><br>Artist imagery takes the lead, with the latest release and songs close at hand.</p>
+    </td>
+  </tr>
+</table>
 
 ## Your music
 
