@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.artist
 
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IridePageBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
@@ -59,10 +60,8 @@ import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
-import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ArtistAlbumsViewModel
@@ -111,11 +110,8 @@ fun ArtistAlbumsScreen(
         IridePageLayout(
             titleRes = R.string.albums,
             reducedMotion = rememberReducedMotion(),
-            navigationIcon = {
-                IconButton(onClick = navController::navigateUp, onLongClick = navController::backToMain) {
-                    Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
-                }
-            },
+            showTopBar = true,
+            navigationIcon = { IridePageBackButton(navController) },
             state = lazyGridState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
             bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),

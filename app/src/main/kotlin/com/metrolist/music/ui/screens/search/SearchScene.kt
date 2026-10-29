@@ -142,6 +142,7 @@ internal fun SearchScene(
     onDismiss: () -> Unit,
     onSubmit: (String) -> Unit,
     onComplete: (String, Boolean) -> Unit,
+    onOpenArtist: (String) -> Unit,
     artistArtwork: IrideArtistArtwork? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (header: @Composable () -> Unit) -> Unit,
@@ -611,6 +612,7 @@ internal fun SearchScene(
                         predictionItems = suggestions.items,
                         availableHeight = availableRecallHeight,
                         onComplete = onComplete,
+                        onOpenArtist = onOpenArtist,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }

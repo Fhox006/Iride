@@ -2010,9 +2010,10 @@ interface DatabaseDao {
         if (insert(
                 AlbumEntity(
                     id = albumPage.album.browseId,
-                    playlistId = albumPage.album.playlistId,
+                    playlistId = albumPage.album.playlistId.takeIf(String::isNotBlank),
                     title = albumPage.album.title,
                     year = albumPage.album.year,
+                    releaseDate = albumPage.releaseDate,
                     albumType = albumPage.album.albumType,
                     thumbnailUrl = albumPage.album.thumbnail,
                     songCount = albumPage.songs.size,
@@ -2026,8 +2027,7 @@ interface DatabaseDao {
             }
             return
         }
-        albumPage.songs
-            .map(SongItem::toMediaMetadata)
+        albumPage.toSongMediaMetadata()
             .onEach(::insert)
             .onEach {
                 val existingSong = getSongByIdBlocking(it.id)
@@ -2174,9 +2174,10 @@ interface DatabaseDao {
         update(
             album.copy(
                 id = albumPage.album.browseId,
-                playlistId = albumPage.album.playlistId,
+                playlistId = albumPage.album.playlistId.takeIf(String::isNotBlank),
                 title = albumPage.album.title,
                 year = albumPage.album.year,
+                releaseDate = albumPage.releaseDate ?: album.releaseDate,
                 albumType = albumPage.album.albumType ?: album.albumType,
                 thumbnailUrl = albumPage.album.thumbnail,
                 songCount = albumPage.songs.size,
@@ -2187,8 +2188,7 @@ interface DatabaseDao {
         if (artists?.size != albumPage.album.artists?.size) {
             artists?.forEach(::delete)
         }
-        albumPage.songs
-            .map(SongItem::toMediaMetadata)
+        albumPage.toSongMediaMetadata()
             .onEach(::insert)
             .onEach {
                 val existingSong = getSongByIdBlocking(it.id)
@@ -2338,4 +2338,14 @@ interface DatabaseDao {
     @Delete
     fun delete(podcast: PodcastEntity)
 
+}
+
+private fun AlbumPage.toSongMediaMetadata(): List<MediaMetadata> = songs.map { song ->
+    val metadata = song.toMediaMetadata()
+    if (album.browseId.startsWith("itunes:")) {
+        metadata.copy(
+            thumbnailUrl = album.thumbnail,
+            album = MediaMetadata.Album(id = album.browseId, title = album.title),
+        )
+    } else metadata
 }

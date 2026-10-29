@@ -25,6 +25,7 @@ import coil3.size.Precision
 import coil3.toBitmap
 import com.metrolist.music.data.remote.ArtistArtworkRepository
 import com.metrolist.music.data.remote.ArtistArtworkSource
+import com.metrolist.music.data.remote.ArtistVideoFrameLoader
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.ArtistNameMatcher
 import dagger.hilt.EntryPoint
@@ -40,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -60,10 +62,12 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.concurrent.atomic.AtomicReference
 import timber.log.Timber
 
-private const val ArtistArtworkSelectionPolicyVersion = 8
+private const val ArtistArtworkSelectionPolicyVersion = 9
 private const val ArtistArtworkPreviewResolution = 448
+private const val ArtistArtworkFallbackDelayMillis = 5_000L
 
 internal data class ArtistArtworkRequest(
     val id: String,
@@ -86,6 +90,7 @@ internal data class PreparedArtistArtwork(
 internal class ArtistArtworkLoader @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: ArtistArtworkRepository,
+    private val videoFrames: ArtistVideoFrameLoader,
 ) {
     private data class Selection(
         val source: ArtistArtworkSource,
@@ -137,6 +142,10 @@ internal class ArtistArtworkLoader @Inject constructor(
                         val selection = Selection(ArtistArtworkSource.valueOf(requireNotNull(text("source"))),
                             requireNotNull(text("url")), (json["expiresAt"] as JsonPrimitive).longOrNull ?: 0L,
                             (json["policyVersion"] as? JsonPrimitive)?.intOrNull ?: 0)
+                        if (selection.source == ArtistArtworkSource.SPOTIFY) {
+                            preferences.edit().remove(key).apply()
+                            return@runCatching null
+                        }
                         val metrics = listOf("portrait", "borders", "definition", "blend", "photographic").map {
                             (json[it] as? JsonPrimitive)?.floatOrNull
                         }
@@ -194,6 +203,8 @@ internal class ArtistArtworkLoader @Inject constructor(
     fun cachedForDisplay(request: ArtistArtworkRequest): PreparedArtistArtwork? {
         val preview = presentations.current(request.id)
         val selection = selectionFor(request)
+        if (request.externalEnabled && selection?.source != ArtistArtworkSource.APPLE_MUSIC &&
+            selection?.source != ArtistArtworkSource.YOUTUBE_MUSIC && preview == null) return null
         val url = selection?.takeIf { it.policyVersion == ArtistArtworkSelectionPolicyVersion }?.url
             ?: preview ?: selection?.url ?: synchronized(fallbackUrls) { fallbackUrls[request.id] }
             ?: request.youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution)
@@ -205,6 +216,47 @@ internal class ArtistArtworkLoader @Inject constructor(
         detailed.get(artwork.url)?.let { return it }
         return detailRequests.withPermit {
             detailed.get(artwork.url) ?: load(artwork.source, artwork.url, resolution = detailResolution, evaluateQuality = false)
+        }
+    }
+
+    private fun editorialKey(videoUrl: String) = "iride_artist_first_frame_v1:$videoUrl"
+
+    fun cachedEditorial(videoUrl: String): IrideArtistArtwork? = detailed.get(editorialKey(videoUrl))?.artwork
+
+    suspend fun loadEditorial(videoUrl: String, previewUrl: String?): IrideArtistArtwork? = withContext(Dispatchers.IO) {
+        cachedEditorial(videoUrl)?.let { return@withContext it }
+        try {
+            val resolution = minOf(detailResolution, ArtistArtworkResolution)
+            val videoFrame = videoFrames.load(videoUrl, resolution)
+            val frame = videoFrame ?: previewUrl?.let {
+                context.imageLoader.execute(
+                    ImageRequest.Builder(context).data(it).size(resolution, resolution)
+                        .bitmapConfig(Bitmap.Config.ARGB_8888).allowHardware(false).build(),
+                ).image?.toBitmap()
+            } ?: return@withContext null
+            withContext(Dispatchers.Default) {
+                // The same software bitmap, pigment extraction and photo renderer handle both sources.
+                val cropped = frame.cropBlackEditorialBars()
+                val bitmap = try {
+                    squareArtistBitmap(cropped, resolution)
+                } finally {
+                    // Preview bitmaps belong to Coil; only the decoded video frame is ours to recycle.
+                    if (videoFrame != null && cropped !== frame) frame.recycle()
+                }
+                if (cropped !== frame && cropped !== bitmap) cropped.recycle()
+                if (videoFrame != null && cropped === frame && bitmap !== frame) frame.recycle()
+                val tint = Color(readableArtistArtworkPigment(bitmap.irideArtistArtworkTint(1f).toArgb()))
+                val artwork = IrideArtistArtwork(bitmap, tint)
+                detailed.put(editorialKey(videoUrl), PreparedArtistArtwork(
+                    ArtistArtworkSource.APPLE_MUSIC, videoUrl, artwork, ArtistArtworkQuality(0f, 0f, 0f),
+                ))
+                artwork
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.d(error, "Unable to prepare artist editorial portrait")
+            null
         }
     }
 
@@ -249,7 +301,7 @@ internal class ArtistArtworkLoader @Inject constructor(
     }
 
     private suspend fun prepareSelection(request: ArtistArtworkRequest) = supervisorScope {
-        val saved = selectionFor(request)
+        val saved = selectionFor(request)?.takeIf { it.source != ArtistArtworkSource.SPOTIFY }
         // A final choice survives cache eviction, provider outages and subsequent app launches.
         if (saved?.policyVersion == ArtistArtworkSelectionPolicyVersion) {
             loadForDisplay(request)
@@ -257,14 +309,36 @@ internal class ArtistArtworkLoader @Inject constructor(
         }
         if (request.name.isNullOrBlank() || !request.externalEnabled) return@supervisorScope
         val previous = async { saved?.let { load(it.source, it.url) } }
-        val fallback = async { loadFallback(request) }
+        val appleArtwork = AtomicReference<PreparedArtistArtwork?>(null)
+        val fallback = async {
+            delay(ArtistArtworkFallbackDelayMillis)
+            if (appleArtwork.get() != null) return@async null
+            loadFallback(request)?.also { artwork ->
+                synchronized(appleArtwork) {
+                    if (appleArtwork.get() == null) save(request, artwork)
+                }
+            }
+        }
         val alternatives = mutableListOf<PreparedArtistArtwork>()
         repository.findArtworks(requireNotNull(request.name), request.channelId ?: request.id) { candidate ->
+            if (candidate.source != ArtistArtworkSource.APPLE_MUSIC) return@findArtworks
             load(candidate.source, candidate.imageUrl)?.let { artwork ->
                 synchronized(alternatives) { alternatives.add(artwork) }
+                if (artwork.source == ArtistArtworkSource.APPLE_MUSIC && artwork.quality.borderScore >= 0.25f) {
+                    synchronized(appleArtwork) {
+                        appleArtwork.set(artwork)
+                        save(request, artwork)
+                    }
+                }
             }
         }
         val previousArtwork = previous.await()
+        val apple = appleArtwork.get()
+        if (apple != null) {
+            fallback.cancel()
+            save(request, apple)
+            return@supervisorScope
+        }
         val candidates = synchronized(alternatives) { alternatives.toList() } +
             listOfNotNull(fallback.await(), previousArtwork)
         preferredArtistArtwork(candidates, { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality },
@@ -278,6 +352,9 @@ internal class ArtistArtworkLoader @Inject constructor(
         restored.await()
         val saved = selectionFor(request)
         val pinned = presentations.current(request.id)
+        if (request.externalEnabled && saved?.policyVersion != ArtistArtworkSelectionPolicyVersion && pinned == null) {
+            return null
+        }
         val url = saved?.takeIf { it.policyVersion == ArtistArtworkSelectionPolicyVersion }?.url
             ?: pinned ?: saved?.url ?: request.youtubeUrl?.resize(ArtistArtworkResolution, ArtistArtworkResolution)
             ?: synchronized(fallbackUrls) { fallbackUrls[request.id] } ?: return null
@@ -298,7 +375,6 @@ internal class ArtistArtworkLoader @Inject constructor(
 
     private fun sourceForUrl(url: String): ArtistArtworkSource = when {
         url.contains(".mzstatic.com/") -> ArtistArtworkSource.APPLE_MUSIC
-        url.startsWith("https://i.scdn.co/") -> ArtistArtworkSource.SPOTIFY
         else -> ArtistArtworkSource.YOUTUBE_MUSIC
     }
 

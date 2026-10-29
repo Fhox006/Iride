@@ -164,7 +164,7 @@ private val IrideMp3InfoActionColor = Color.White.copy(alpha = 0.9f)
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
 internal val IrideMp3ArtworkShape = FolioShape(5.dp)
 private val IrideMp3MenuRowShape = FolioShape(8.dp)
-private val IrideMp3MenuOrder = listOf(0, 1, 3, 2, 4)
+private val IrideMp3MenuOrder = listOf(0, 1, 3, 2, 5, 6, 4)
 
 // Shared artist-line grey — single source of truth for both the static info block and the
 // bridge overlay, so the expanded state renders identically no matter which path draws it.
@@ -243,7 +243,7 @@ class IrideBridgeState {
 internal fun Modifier.irideReportRect(target: (Rect) -> Unit): Modifier =
     this.onGloballyPositioned { target(Rect(it.positionInWindow(), it.size.toSize())) }
 
-private enum class IrideMp3Page { NowPlaying, Menu, Queue, Video, Lyrics, FindSimilar }
+private enum class IrideMp3Page { NowPlaying, Menu, Queue, Video, Lyrics, FindSimilar, Comments, ListenTogether }
 
 @Composable
 fun IrideMp3PlayerContent(
@@ -271,6 +271,7 @@ fun IrideMp3PlayerContent(
     bridgeState: IrideBridgeState? = null,
 ) {
     val bottomSheetPageState = LocalBottomSheetPageState.current
+    var page by rememberSaveable { mutableStateOf(IrideMp3Page.NowPlaying) }
     val showMoreMenu: (com.metrolist.music.ui.component.MenuState) -> Unit = { targetMenu ->
         targetMenu.show(anchored = true) {
             PlayerMenu(
@@ -282,10 +283,11 @@ fun IrideMp3PlayerContent(
                     bottomSheetPageState.show { ShowMediaInfo(mediaMetadata.id) }
                 },
                 onDismiss = targetMenu::dismiss,
+                onShowComments = { page = IrideMp3Page.Comments },
+                onShowListenTogether = { page = IrideMp3Page.ListenTogether },
             )
         }
     }
-    var page by rememberSaveable { mutableStateOf(IrideMp3Page.NowPlaying) }
     var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val reducedMotion = rememberReducedMotion()
@@ -346,6 +348,8 @@ fun IrideMp3PlayerContent(
             IrideMp3Page.Video,
             IrideMp3Page.Lyrics,
             IrideMp3Page.FindSimilar,
+            IrideMp3Page.Comments,
+            IrideMp3Page.ListenTogether,
         )
     val availableCategoryIndices =
         IrideMp3MenuOrder.filter { index ->
@@ -573,6 +577,25 @@ fun IrideMp3PlayerContent(
                                         textScale = textScale,
                                         showLyrics = showLyricsEntry,
                                         onSelect = ::selectCategory,
+                                    )
+                                IrideMp3Page.Comments ->
+                                    CommentsPanel(
+                                        mediaId = mediaMetadata.id,
+                                        textScale = displayTextScale,
+                                        onClose = openMenu,
+                                        textButtonColor = Color.White,
+                                        iconButtonColor = Color.White,
+                                    )
+                                IrideMp3Page.ListenTogether ->
+                                    ListenTogetherPanel(
+                                        onClose = openMenu,
+                                        onSettings = {
+                                            page = IrideMp3Page.NowPlaying
+                                            playerBottomSheetState.collapseSoft()
+                                            navController.navigate("settings/integrations/listen_together") {
+                                                launchSingleTop = true
+                                            }
+                                        },
                                     )
                                 IrideMp3Page.Queue ->
                                     IrideMp3Queue(
@@ -1093,7 +1116,7 @@ private fun IrideMp3Menu(
     val queueWindows by playerConnection?.queueWindows?.collectAsState() ?: remember { mutableStateOf(emptyList<Timeline.Window>()) }
     val queueIndex by playerConnection?.currentWindowIndex?.collectAsState() ?: remember { mutableIntStateOf(0) }
     val songsLeft = (queueWindows.size - queueIndex - 1).coerceAtLeast(0)
-    val labels = listOf(R.string.mp3_now_playing, R.string.mp3_manage_queue, R.string.mp3_watch_track_video, R.string.mp3_read_lyrics, R.string.mp3_song_info)
+    val labels = listOf(R.string.mp3_now_playing, R.string.mp3_manage_queue, R.string.mp3_watch_track_video, R.string.mp3_read_lyrics, R.string.mp3_song_info, R.string.comments, R.string.listen_together)
     val menuEntries = IrideMp3MenuOrder.drop(1).filter { showLyrics || it != 3 }
     val upcoming = remember(queueWindows, queueIndex) {
         queueWindows.drop((queueIndex + 1).coerceAtLeast(0)).take(3)
@@ -1135,7 +1158,7 @@ private fun IrideMp3Menu(
                     IrideMp3MenuRowShape,
                 )
                 .selectable(selected = selected, role = Role.Button, onClick = { onSelect(index) })
-                .padding(horizontal = 8.dp * textScale, vertical = (if (index == 1) 8.dp else 6.dp) * textScale),
+                .padding(horizontal = 8.dp * textScale, vertical = (if (index == 1) 5.dp else 3.dp) * textScale),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val artworkSize = 52.dp * textScale
@@ -1143,7 +1166,7 @@ private fun IrideMp3Menu(
                 if (index == 1) {
                     IrideMp3QueueArtwork(upcoming, textScale)
                 } else {
-                    Icon(painterResource(when (index) { 2 -> R.drawable.ic_iride_play; 3 -> R.drawable.ic_iride_quote; else -> R.drawable.search }), null,
+                    Icon(painterResource(when (index) { 2 -> R.drawable.ic_iride_play; 3 -> R.drawable.ic_iride_quote; 5 -> R.drawable.comment; 6 -> R.drawable.group; else -> R.drawable.search }), null,
                         tint = Color.White, modifier = Modifier.align(Alignment.Center).size(26.dp * textScale))
                 }
             }

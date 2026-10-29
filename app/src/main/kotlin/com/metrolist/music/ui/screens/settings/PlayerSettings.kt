@@ -41,6 +41,8 @@ import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
+import com.metrolist.music.constants.VideoQuality
+import com.metrolist.music.constants.VideoQualityKey
 import com.metrolist.music.constants.AutoDownloadOnLikeKey
 import com.metrolist.music.constants.AutoLoadMoreKey
 import com.metrolist.music.constants.AutoSkipNextOnErrorKey
@@ -51,7 +53,6 @@ import com.metrolist.music.constants.HistoryDuration
 import com.metrolist.music.constants.KeepScreenOn
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseOnMute
-import com.metrolist.music.constants.PersistentQueueKey
 import com.metrolist.music.constants.PersistentShuffleAcrossQueuesKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
@@ -64,8 +65,6 @@ import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.ShufflePlaylistFirstKey
 import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.SkipFadeKey
-import com.metrolist.music.constants.SkipSilenceInstantKey
-import com.metrolist.music.constants.SkipSilenceKey
 import com.metrolist.music.constants.SleepTimerCustomDaysKey
 import com.metrolist.music.constants.SleepTimerDayTimesKey
 import com.metrolist.music.constants.SleepTimerEnabledKey
@@ -101,8 +100,10 @@ fun PlayerSettings(navController: NavController) {
     val (audioQuality, onAudioQualityChange) =
         rememberEnumPreference(
             AudioQualityKey,
-            defaultValue = AudioQuality.HIGH,
+            defaultValue = AudioQuality.AUTO,
         )
+    val (videoQuality, onVideoQualityChange) =
+        rememberEnumPreference(VideoQualityKey, defaultValue = VideoQuality.P720)
     val (crossfadeEnabled, onCrossfadeEnabledChange) =
         rememberPreference(
             CrossfadeEnabledKey,
@@ -122,21 +123,6 @@ fun PlayerSettings(navController: NavController) {
         rememberPreference(
             SkipFadeDurationKey,
             defaultValue = 3.5f,
-        )
-    val (persistentQueue, onPersistentQueueChange) =
-        rememberPreference(
-            PersistentQueueKey,
-            defaultValue = true,
-        )
-    val (skipSilence, onSkipSilenceChange) =
-        rememberPreference(
-            SkipSilenceKey,
-            defaultValue = false,
-        )
-    val (skipSilenceInstant, onSkipSilenceInstantChange) =
-        rememberPreference(
-            SkipSilenceInstantKey,
-            defaultValue = false,
         )
     val (audioNormalization, onAudioNormalizationChange) =
         rememberPreference(
@@ -231,6 +217,7 @@ fun PlayerSettings(navController: NavController) {
         )
 
     var showAudioQualityDialog by remember { mutableStateOf(false) }
+    var showVideoQualityDialog by remember { mutableStateOf(false) }
     var showScratchBufferDialog by remember { mutableStateOf(false) }
 
     if (showScratchBufferDialog) {
@@ -262,9 +249,27 @@ fun PlayerSettings(navController: NavController) {
                 when (it) {
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                     AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
+                    AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_highest)
                     AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
                 }
             },
+            valueDescription = {
+                if (it == AudioQuality.HIGHEST) stringResource(R.string.audio_quality_highest_description) else ""
+            },
+        )
+    }
+
+    if (showVideoQualityDialog) {
+        EnumDialog(
+            onDismiss = { showVideoQualityDialog = false },
+            onSelect = {
+                onVideoQualityChange(it)
+                showVideoQualityDialog = false
+            },
+            title = stringResource(R.string.video_quality),
+            current = videoQuality,
+            values = VideoQuality.entries.toList(),
+            valueText = { "${it.maxHeight}p" + if (it == VideoQuality.P2160) " · 4K" else "" },
         )
     }
 
@@ -386,12 +391,25 @@ fun PlayerSettings(navController: NavController) {
                                                     stringResource(R.string.audio_quality_auto)
                                                 AudioQuality.HIGH ->
                                                     stringResource(R.string.audio_quality_high)
+                                                AudioQuality.HIGHEST ->
+                                                    stringResource(R.string.audio_quality_highest)
                                                 AudioQuality.LOW ->
                                                     stringResource(R.string.audio_quality_low)
                                             }
                                         )
                                     },
                                     onClick = { showAudioQualityDialog = true },
+                                )
+                            )
+
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.slow_motion_video),
+                                    title = { Text(stringResource(R.string.video_quality)) },
+                                    description = {
+                                        Text(stringResource(R.string.video_quality_description, videoQuality.maxHeight))
+                                    },
+                                    onClick = { showVideoQualityDialog = true },
                                 )
                             )
 
@@ -422,7 +440,7 @@ fun PlayerSettings(navController: NavController) {
                                         Column {
                                             Text(stringResource(R.string.crossfade_desc))
                                             androidx.compose.animation.AnimatedVisibility(
-                                                visible = crossfadeEnabled,
+                                                visible = crossfadeEnabled || skipFade,
                                                 enter =
                                                     androidx.compose.animation.expandVertically() +
                                                         androidx.compose.animation.fadeIn(),
@@ -431,6 +449,7 @@ fun PlayerSettings(navController: NavController) {
                                                         androidx.compose.animation.fadeOut(),
                                             ) {
                                                 Column {
+                                                    Text(stringResource(R.string.crossfade_duration))
                                                     Text(
                                                         pluralStringResource(
                                                             R.plurals.seconds,
@@ -444,48 +463,7 @@ fun PlayerSettings(navController: NavController) {
                                                         valueRange = 1f..15f,
                                                         steps = 14,
                                                     )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    trailingContent = {
-                                        IrideSwitch(
-                                            checked = crossfadeEnabled,
-                                            onCheckedChange = onCrossfadeEnabledChange,
-                                            thumbContent = {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            if (crossfadeEnabled) R.drawable.check
-                                                            else R.drawable.close
-                                                        ),
-                                                    contentDescription = null,
-                                                    modifier =
-                                                        Modifier.size(SwitchDefaults.IconSize),
-                                                )
-                                            },
-                                        )
-                                    },
-                                    onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) },
-                                )
-                            )
-                            add(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.skip_next),
-                                    title = { Text(stringResource(R.string.skip_fade)) },
-                                    description = {
-                                        Column {
-                                            Text(stringResource(R.string.skip_fade_desc))
-                                            androidx.compose.animation.AnimatedVisibility(
-                                                visible = skipFade,
-                                                enter =
-                                                    androidx.compose.animation.expandVertically() +
-                                                        androidx.compose.animation.fadeIn(),
-                                                exit =
-                                                    androidx.compose.animation.shrinkVertically() +
-                                                        androidx.compose.animation.fadeOut(),
-                                            ) {
-                                                Column {
+                                                    Text(stringResource(R.string.skip_fade_duration))
                                                     Text(
                                                         pluralStringResource(
                                                             R.plurals.seconds,
@@ -505,13 +483,17 @@ fun PlayerSettings(navController: NavController) {
                                     },
                                     trailingContent = {
                                         IrideSwitch(
-                                            checked = skipFade,
-                                            onCheckedChange = onSkipFadeChange,
+                                            checked = crossfadeEnabled || skipFade,
+                                            onCheckedChange = { enabled ->
+                                                onCrossfadeEnabledChange(enabled)
+                                                onSkipFadeChange(enabled)
+                                            },
                                             thumbContent = {
                                                 Icon(
                                                     painter =
                                                         painterResource(
-                                                            if (skipFade) R.drawable.check
+                                                            if (crossfadeEnabled || skipFade)
+                                                                R.drawable.check
                                                             else R.drawable.close
                                                         ),
                                                     contentDescription = null,
@@ -521,7 +503,11 @@ fun PlayerSettings(navController: NavController) {
                                             },
                                         )
                                     },
-                                    onClick = { onSkipFadeChange(!skipFade) },
+                                    onClick = {
+                                        val enabled = !(crossfadeEnabled || skipFade)
+                                        onCrossfadeEnabledChange(enabled)
+                                        onSkipFadeChange(enabled)
+                                    },
                                 )
                             )
 
@@ -542,93 +528,6 @@ fun PlayerSettings(navController: NavController) {
                                         },
                                     )
                                 )
-                            add(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.fast_forward),
-                                    title = { Text(stringResource(R.string.skip_silence)) },
-                                    description = {
-                                        Column {
-                                            Text(stringResource(R.string.skip_silence_desc))
-                                            androidx.compose.animation.AnimatedVisibility(
-                                                visible = skipSilence,
-                                                enter =
-                                                    androidx.compose.animation.expandVertically() +
-                                                        androidx.compose.animation.fadeIn(),
-                                                exit =
-                                                    androidx.compose.animation.shrinkVertically() +
-                                                        androidx.compose.animation.fadeOut(),
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                ) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            stringResource(
-                                                                R.string.skip_silence_instant
-                                                            ),
-                                                            style =
-                                                                androidx.compose.material3
-                                                                    .MaterialTheme
-                                                                    .typography
-                                                                    .titleSmall,
-                                                        )
-                                                        Text(
-                                                            stringResource(
-                                                                R.string.skip_silence_instant_desc
-                                                            ),
-                                                            style =
-                                                                androidx.compose.material3
-                                                                    .MaterialTheme
-                                                                    .typography
-                                                                    .bodySmall,
-                                                        )
-                                                    }
-                                                    IrideSwitch(
-                                                        checked = skipSilenceInstant,
-                                                        onCheckedChange =
-                                                            onSkipSilenceInstantChange,
-                                                        thumbContent = {
-                                                            Icon(
-                                                                painter =
-                                                                    painterResource(
-                                                                        if (skipSilenceInstant)
-                                                                            R.drawable.check
-                                                                        else R.drawable.close
-                                                                    ),
-                                                                contentDescription = null,
-                                                                modifier =
-                                                                    Modifier.size(
-                                                                        SwitchDefaults.IconSize
-                                                                    ),
-                                                            )
-                                                        },
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    trailingContent = {
-                                        IrideSwitch(
-                                            checked = skipSilence,
-                                            onCheckedChange = onSkipSilenceChange,
-                                            thumbContent = {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            if (skipSilence) R.drawable.check
-                                                            else R.drawable.close
-                                                        ),
-                                                    contentDescription = null,
-                                                    modifier =
-                                                        Modifier.size(SwitchDefaults.IconSize),
-                                                )
-                                            },
-                                        )
-                                    },
-                                    onClick = { onSkipSilenceChange(!skipSilence) },
-                                )
-                            )
                             add(
                                 Material3SettingsItem(
                                     icon = painterResource(R.drawable.volume_up),
@@ -941,34 +840,6 @@ fun PlayerSettings(navController: NavController) {
                     title = stringResource(R.string.settings_section_behavior),
                     items =
                         buildList {
-                            add(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.queue_music),
-                                    title = { Text(stringResource(R.string.persistent_queue)) },
-                                    description = {
-                                        Text(stringResource(R.string.persistent_queue_desc))
-                                    },
-                                    trailingContent = {
-                                        IrideSwitch(
-                                            checked = persistentQueue,
-                                            onCheckedChange = onPersistentQueueChange,
-                                            thumbContent = {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            if (persistentQueue) R.drawable.check
-                                                            else R.drawable.close
-                                                        ),
-                                                    contentDescription = null,
-                                                    modifier =
-                                                        Modifier.size(SwitchDefaults.IconSize),
-                                                )
-                                            },
-                                        )
-                                    },
-                                    onClick = { onPersistentQueueChange(!persistentQueue) },
-                                )
-                            )
                             if (advancedMode)
                                 add(
                                     Material3SettingsItem(

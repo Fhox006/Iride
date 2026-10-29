@@ -1082,7 +1082,7 @@ private fun favoriteMenuItem(
         onClick = {
             optimisticFavorite = !optimisticFavorite
             val updatedSong = song.song.toggleLike(syncToYouTube = false)
-            database.query { update(updatedSong) }
+            database.query { upsert(updatedSong) }
             if (!song.song.isLocal) syncUtils.likeSong(updatedSong)
             onDismiss()
         },

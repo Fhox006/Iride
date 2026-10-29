@@ -90,7 +90,7 @@ import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.ui.component.IrideFolioMenuAction
-import com.metrolist.music.ui.component.Material3SettingsGroup
+import com.metrolist.music.ui.component.IrideFolioSettingsNavigationGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.IrideIconTile
 import com.metrolist.music.ui.component.IridePageLayout
@@ -194,7 +194,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.person),
@@ -218,7 +218,7 @@ fun SettingsScreen(
 
         val arrowIcon = painterResource(R.drawable.navigate_next)
 
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.play),
@@ -237,6 +237,14 @@ fun SettingsScreen(
                     onClick = { navController.navigate("settings/content") }
                 ),
                 Material3SettingsItem(
+                    icon = painterResource(R.drawable.translate),
+                    iconContainerColor = Color(0xFF75628C),
+                    title = { Text(stringResource(R.string.ai_integration_settings)) },
+                    description = { Text(stringResource(R.string.ai_integration_settings_description), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/ai") }
+                ),
+                Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
                     iconContainerColor = Color(0xFF47766D),
                     title = { Text(stringResource(R.string.interface_settings)) },
@@ -249,7 +257,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.storage),
@@ -280,7 +288,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOf(
                 Material3SettingsItem(
                     leadingContent = {

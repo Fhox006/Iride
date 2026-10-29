@@ -3,6 +3,8 @@ package com.metrolist.music.ui.component
 import com.metrolist.music.ui.theme.drawFolioRoundRect
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.draggable
@@ -12,9 +14,11 @@ import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -25,6 +29,8 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 private class FolioScrollbarBounds {
     var height = 0
@@ -36,12 +42,26 @@ internal fun IrideFolioScrollbar(
     scrollState: ScrollableState,
     modifier: Modifier = Modifier,
     overscrollPull: RubberBandPull? = null,
+    autoHide: Boolean = false,
+    showTrack: Boolean = true,
 ) {
     val indicator = scrollState.scrollIndicatorState ?: return
     val bounds = remember { FolioScrollbarBounds() }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val ink = LocalContentColor.current
+    val reducedMotion = rememberReducedMotion()
+    val indicatorAlpha = remember(autoHide) { Animatable(if (autoHide) 0f else 1f) }
+    LaunchedEffect(autoHide, scrollState.isScrollInProgress, reducedMotion) {
+        if (!autoHide) {
+            indicatorAlpha.snapTo(1f)
+        } else if (scrollState.isScrollInProgress) {
+            indicatorAlpha.animateTo(1f, tween(if (reducedMotion) 0 else 100))
+        } else {
+            delay(650)
+            indicatorAlpha.animateTo(0f, tween(if (reducedMotion) 0 else 280))
+        }
+    }
     val padding = with(density) { IrideFolio.ScrollbarVerticalPadding.toPx() }
     val minimumThumbHeight = with(density) { IrideFolio.ScrollbarMinimumThumbHeight.toPx() }
     val overscrollOffset = overscrollPull?.offset ?: 0f
@@ -61,10 +81,12 @@ internal fun IrideFolioScrollbar(
     }
     Canvas(
         modifier.width(IrideFolio.ScrollbarTouchTargetWidth)
+            .graphicsLayer { alpha = indicatorAlpha.value }
             .onSizeChanged { bounds.height = it.height }
             .draggable(
                 state = dragState,
                 orientation = Orientation.Vertical,
+                enabled = !autoHide || indicatorAlpha.value > 0f,
                 onDragStarted = { scrollState.stopScroll() },
             )
             .semantics {
@@ -97,12 +119,14 @@ internal fun IrideFolioScrollbar(
             overscrollOffset < 0f -> thumbTravel
             else -> metrics.offset
         }
-        drawFolioRoundRect(
-            color = ink.copy(alpha = IrideFolio.ScrollbarTrackOpacity),
-            topLeft = Offset(x, padding),
-            size = Size(width, size.height - padding * 2),
-            cornerRadius = radius,
-        )
+        if (showTrack) {
+            drawFolioRoundRect(
+                color = ink.copy(alpha = IrideFolio.ScrollbarTrackOpacity),
+                topLeft = Offset(x, padding),
+                size = Size(width, size.height - padding * 2),
+                cornerRadius = radius,
+            )
+        }
         drawFolioRoundRect(
             color = ink.copy(alpha = IrideFolio.ScrollbarThumbOpacity),
             topLeft = Offset(x, padding + thumbOffset),

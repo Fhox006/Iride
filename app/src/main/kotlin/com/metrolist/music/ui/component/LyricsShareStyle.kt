@@ -10,13 +10,12 @@ internal object LyricsShareStyle {
     const val CoverRadius = 36f
     const val CoverGap = 40f
     const val HeaderGap = 64f
-    const val TitleSize = 64f
-    const val ArtistSize = 48f
+    const val TitleSize = 68f
+    const val ArtistSize = 52f
     const val LineSpacing = 1.08f
     const val FooterGap = 56f
-    const val LogoSize = 64f
-    const val LogoGap = 24f
-    const val AppNameSize = 48f
+    const val LogoHeight = 74f
+    const val LogoWidth = 320f
 
     fun textSize(text: String): Float = when {
         text.length < 80 -> 128f
@@ -25,7 +24,7 @@ internal object LyricsShareStyle {
     }
 
     fun lyricsHeightLimit(headerHeight: Float): Float =
-        Width - Padding * 2 - headerHeight - HeaderGap - FooterGap - LogoSize
+        Width - Padding * 2 - headerHeight - HeaderGap - FooterGap - LogoHeight
 
     /** Keep short excerpts content-sized and fit longer excerpts within a square. */
     fun fittedTextSize(text: String, heightLimit: Float, measureHeight: (Float) -> Float): Float {

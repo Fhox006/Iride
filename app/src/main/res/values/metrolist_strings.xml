@@ -1,6 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="folio_dissolve">Dissolvenza</string>
+    <string name="mp3_comments_view_replies">Mostra risposte</string>
+    <string name="mp3_comments_more_replies">Altre risposte</string>
+    <string name="credits_simpmusic_adaptations">SimpMusic contributors · artist motion artwork, comments and listening room adaptations</string>
+    <string name="credits_archivetune_adaptations">© Rukamori and ArchiveTune contributors · AI integration and audio quality selection</string>
+    <string name="mp3_listen_together_buffering">In attesa di %1$s…</string>
+    <string name="audio_quality_highest">Highest · YT Music Premium</string>
+    <string name="audio_quality_highest_description">Uses the highest quality offered by your signed-in account. Premium audio requires an active YouTube Music subscription; otherwise the best available stream is used.</string>
+    <string name="video_quality">Video quality</string>
+    <string name="video_quality_description">Up to %1$dp · depends on the video, network and device</string>
+    <string name="artist_show_animated_artwork">Show animated artwork</string>
+    <string name="artist_show_static_artwork">Show artist photo</string>
+    <string name="ai_integration_settings">AI integration</string>
+    <string name="ai_integration_settings_description">API provider, models and lyric translation</string>
+    <string name="ai_provider_disabled">Disabled</string>
+    <string name="ai_fetch_models">Fetch models</string>
+    <string name="ai_fetching_models">Fetching models…</string>
+    <string name="ai_models_empty">No models returned by this provider</string>
+    <string name="ai_model_search">Search models</string>
+    <string name="ai_request_parameters">Request parameters</string>
+    <string name="ai_request_parameters_description">Optional JSON parameters for compatible APIs, such as temperature or token limits</string>
+    <string name="ai_request_parameters_invalid">Enter a valid JSON object; model, messages, stream and n cannot be overridden</string>
+    <string name="ai_test_api">Test API</string>
+    <string name="ai_api_testing">Testing connection…</string>
+    <string name="ai_api_connected">Connected</string>
+    <string name="ai_api_not_tested">Connection not tested</string>
+    <string name="ai_api_test_failed">API test failed</string>
+    <string name="ai_model_fetch_failed">Could not fetch models</string>
+    <string name="ai_custom_endpoint_invalid">Enter an HTTP or HTTPS URL without embedded credentials or a fragment</string>
+    <string name="folio_dissolve">Crossfade</string>
     <string name="daily_chart_world_title">Classifiche nel mondo</string>
     <string name="daily_chart_world_subtitle">Tutti i paesi e territori</string>
     <string name="daily_chart_sized_title">Top %1$d · %2$s</string>
@@ -459,4 +487,6 @@
     <string name="music_services_not_connected">Non collegato</string>
     <string name="music_services_apple_instructions">Accedi a Playlisted, collega Apple Music e seleziona le playlist. Premi Export to CSV: Iride riceverà il file e cercherà i brani. Dal menu puoi aprire il browser o importare un CSV scaricato.</string>
     <string name="music_services_invalid_file">Il file non contiene playlist valide. Scegli un CSV o ZIP esportato dal servizio.</string>
+    <string name="external_album_unavailable">Nessuna corrispondenza YouTube affidabile trovata per questi brani:</string>
+    <string name="external_artist_singles">Singoli ed EP</string>
 </resources>

@@ -41,6 +41,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 fun IrideFolioSection(
     sectionKey: String,
     ready: Boolean = true,
+    entranceReady: Boolean = true,
+    presentedSections: MutableSet<String>? = null,
     artwork: List<String?> = emptyList(),
     modifier: Modifier = Modifier,
     placeholder: @Composable () -> Unit = {},
@@ -48,11 +50,11 @@ fun IrideFolioSection(
 ) {
     val entranceOrder = LocalFolioSectionEntranceOrder.current
     val reducedMotion = rememberReducedMotion()
-    val homeExperiment = LocalFolioDisplayHeadings.current != null
     val blurRadius =
         with(LocalDensity.current) { IrideFolioContextMotionSpec.PanelBlurRadius.toPx() }
     val blurEffects = remember(blurRadius) { ArtistPhotoBlurEffects(blurRadius, TileMode.Decal) }
-    val seen = remember { IrideTabEntrance.sectionsFor("home_blocks") }
+    val defaultSeen = remember { IrideTabEntrance.sectionsFor("home_blocks") }
+    val seen = presentedSections ?: defaultSeen
     val wasPresented = remember(sectionKey) { sectionKey in seen }
     val context = LocalContext.current
     val view = LocalView.current
@@ -60,7 +62,7 @@ fun IrideFolioSection(
     var inViewport by remember(sectionKey) { mutableStateOf(false) }
     var imagesReady by
         remember(sectionKey) {
-            mutableStateOf(wasPresented || (ready && artwork.all { it.isNullOrBlank() }))
+            mutableStateOf(wasPresented || reducedMotion || (ready && artwork.all { it.isNullOrBlank() }))
         }
     val progress =
         remember(sectionKey) { Animatable(if (wasPresented || reducedMotion) 1f else 0f) }
@@ -69,7 +71,7 @@ fun IrideFolioSection(
     }
     SideEffect {
         if (wasPresented || reducedMotion) entranceOrder?.presented(sectionKey)
-        entranceOrder?.readiness(sectionKey, ready && imagesReady)
+        entranceOrder?.readiness(sectionKey, ready && imagesReady && entranceReady)
     }
     LaunchedEffect(sectionKey, ready, inViewport) {
         if (!ready || wasPresented || !inViewport || imagesReady) return@LaunchedEffect
@@ -83,8 +85,8 @@ fun IrideFolioSection(
         withTimeoutOrNull(IrideMotion.SectionArtworkBudgetMillis) { requests.awaitAll() }
         imagesReady = true
     }
-    LaunchedEffect(sectionKey, ready, imagesReady, reducedMotion, inViewport) {
-        if (!ready || !imagesReady || !inViewport) return@LaunchedEffect
+    LaunchedEffect(sectionKey, ready, imagesReady, reducedMotion, inViewport, entranceReady) {
+        if (!ready || !imagesReady || !inViewport || !entranceReady) return@LaunchedEffect
         if (reducedMotion || wasPresented) progress.snapTo(1f)
         else {
             entranceOrder?.awaitTurn(sectionKey)
@@ -100,7 +102,7 @@ fun IrideFolioSection(
         modifier.fillMaxWidth().onGloballyPositioned { coordinates ->
             val bounds = coordinates.boundsInWindow()
             inViewport = bounds.height > 0f && bounds.bottom > 0f && bounds.top < view.height
-            entranceOrder?.position(sectionKey, bounds.top, inViewport, ready && imagesReady)
+            entranceOrder?.position(sectionKey, bounds.top, inViewport, ready && imagesReady && entranceReady)
         }
     // After first presentation, refresh only the body; keep mood controls and headings usable.
     if (!ready && sectionKey !in seen) {
@@ -112,7 +114,7 @@ fun IrideFolioSection(
                     .irideDepthEnter({ if (imagesReady) progress.value else 0f })
                     .graphicsLayer {
                         renderEffect =
-                            if (reducedMotion || !homeExperiment) null
+                            if (reducedMotion) null
                             else
                                 blurEffects.at(
                                     IrideFolioContextMotionSpec.panelBlurProgress(progress.value)

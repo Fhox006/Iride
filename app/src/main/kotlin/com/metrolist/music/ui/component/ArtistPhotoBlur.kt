@@ -44,7 +44,11 @@ internal class ArtistPhotoBlurEffects(
 
 /** Older Android versions replace one opaque photo with a computed kernel, never overlay the sharp image. */
 @Composable
-internal fun ArtistCompatBlurredPhoto(bitmap: Bitmap, progress: () -> Float) {
+internal fun ArtistCompatBlurredPhoto(
+    bitmap: Bitmap,
+    progress: () -> Float,
+    contentScale: ContentScale = ContentScale.Fit,
+) {
     val original = remember(bitmap) { bitmap.asImageBitmap() }
     var image by remember(bitmap) { mutableStateOf(original) }
     LaunchedEffect(bitmap) {
@@ -57,7 +61,7 @@ internal fun ArtistCompatBlurredPhoto(bitmap: Bitmap, progress: () -> Float) {
                 }
             }
     }
-    Image(image, null, contentScale = ContentScale.Fit, filterQuality = FilterQuality.High, modifier = Modifier.fillMaxSize())
+    Image(image, null, contentScale = contentScale, filterQuality = FilterQuality.High, modifier = Modifier.fillMaxSize())
 }
 
 private class ArtistPhotoBlurKernels(bitmap: Bitmap) {

@@ -35,7 +35,7 @@ fun reverieChapterTitle(chapter: ReverieChapter): Int = when (chapter) {
 /** The exported image is rendered separately from the responsive, animated film. */
 internal class ReverieFilmPainter(private val context: Context, private val recap: ReverieRecap) {
     private val titleFont = ResourcesCompat.getFont(context, R.font.anton) ?: Typeface.DEFAULT_BOLD
-    private val monoFont = ResourcesCompat.getFont(context, R.font.ibm_plex_mono_regular) ?: Typeface.MONOSPACE
+    private val monoFont = ResourcesCompat.getFont(context, R.font.dm_sans_variable) ?: Typeface.MONOSPACE
     private val boldMonoFont = Typeface.create(monoFont, Typeface.BOLD)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)

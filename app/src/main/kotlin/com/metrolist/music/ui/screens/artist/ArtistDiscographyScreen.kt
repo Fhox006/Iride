@@ -192,6 +192,7 @@ fun ArtistDiscographyScreen(
                 ) { album ->
                     YouTubeGridItem(
                         item = album,
+                        showAlbumArtistSubtitle = false,
                         isActive = mediaMetadata?.album?.id == album.id,
                         isPlaying = isPlaying,
                         fillMaxWidth = true,

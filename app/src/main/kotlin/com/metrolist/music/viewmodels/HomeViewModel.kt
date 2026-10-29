@@ -357,7 +357,18 @@ class HomeViewModel @Inject constructor(
                 if (radios.isEmpty()) return@launch
                 heroCarouselItems.value = radios
                 if (smartBootEnabled) persistHeroCarouselSnapshot(seed, radios)
-                val withCovers = heroCarouselGenerator.resolveMissingCovers(radios)
+                val withCovers = heroCarouselGenerator.resolveMissingCovers(radios) { resolved ->
+                    if (seed == lastHeroCarouselSeed) {
+                        heroCarouselItems.update { current ->
+                            current.map { item ->
+                                if (item is HeroCarouselItem.ArtistRadio &&
+                                    item.artistId == resolved.artistId && item.coverUrl.isNullOrBlank()) {
+                                    resolved
+                                } else item
+                            }
+                        }
+                    }
+                }
                 coroutineContext.ensureActive()
                 if (withCovers != radios) {
                     val coversById = withCovers.associateBy { it.artistId }
@@ -1810,17 +1821,6 @@ class HomeViewModel @Inject constructor(
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
 
         isForYouLoading.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                getForYouShelves()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                reportException(e)
-            } finally {
-                isForYouLoading.value = false
-            }
-        }
 
         try {
             coroutineScope {
@@ -1853,6 +1853,19 @@ class HomeViewModel @Inject constructor(
             ).intersect(visibleSections.value)
             visibleSections.value = visibleSections.value - sectionsToRestart
             sectionsToRestart.forEach(::onSectionBecameVisible)
+        }
+
+        // Keep the initial Home shelves responsive before starting this secondary recommendation pass.
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                getForYouShelves()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reportException(e)
+            } finally {
+                isForYouLoading.value = false
+            }
         }
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -2243,7 +2256,22 @@ class HomeViewModel @Inject constructor(
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { homePersonalMixes.value = it }
                 }
-                isForYouLoading.value = false
+                if (forYouShelves.value.isEmpty()) {
+                    isForYouLoading.value = true
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            getForYouShelves()
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            reportException(error)
+                        } finally {
+                            isForYouLoading.value = false
+                        }
+                    }
+                } else {
+                    isForYouLoading.value = false
+                }
                 isHomeFeedLoading.value = false
                 if (YouTube.cookie != null) {
                     viewModelScope.launch(Dispatchers.IO) { loadAccountPlaylists() }

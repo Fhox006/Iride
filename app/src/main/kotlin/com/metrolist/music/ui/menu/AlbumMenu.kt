@@ -443,7 +443,10 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                                             type = "text/plain"
                                             putExtra(
                                                 Intent.EXTRA_TEXT,
-                                                "https://music.youtube.com/browse/${album.id}",
+                                                if (album.id.startsWith("itunes:")) {
+                                                    val parts = album.id.split(':')
+                                                    "https://music.apple.com/${parts[1]}/album/${parts[2]}"
+                                                } else "https://music.youtube.com/browse/${album.id}",
                                             )
                                         },
                                         null,

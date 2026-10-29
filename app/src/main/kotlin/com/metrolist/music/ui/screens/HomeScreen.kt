@@ -54,6 +54,18 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
+import com.metrolist.music.ui.component.artistPortraitSharedModifier
+import com.metrolist.music.ui.component.rememberIrideArtistArtwork
+import androidx.compose.ui.graphics.asImageBitmap
+import com.metrolist.music.ui.component.LocalArtistPortraitTransitionActive
+import com.metrolist.music.ui.component.ArtistPortraitMotion
+import com.metrolist.music.ui.component.artistPortraitFinish
+import java.util.UUID
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateFloat
+import com.metrolist.music.ui.component.LocalAnimatedVisibilityScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -915,12 +927,51 @@ private fun HomeScreenContent(
                         }
                     }
                     val forYouMiniTile: @Composable (LocalItem) -> Unit = { cell ->
-                        val tileShape =
-                            if (cell is Artist) CircleShape else FolioShape(6.dp)
+                        val tileShape = if (cell is Artist) CircleShape else FolioShape(6.dp)
                         val thumbnail =
                             if (cell is Artist) {
                                 rememberArtistThumbnail(cell.id, cell.title, cell.thumbnailUrl)
                             } else cell.thumbnailUrl
+                        val portraitNavigation = LocalArtistPortraitNavigation.current
+                        val portraitKey = rememberSaveable { UUID.randomUUID().toString() }
+                        val portrait =
+                            if (cell is Artist) {
+                                rememberIrideArtistArtwork(
+                                        artistId = cell.id,
+                                        url = cell.thumbnailUrl,
+                                        artistName = cell.title,
+                                        channelId = cell.artist.channelId,
+                                        externalEnabled =
+                                            !cell.artist.isLocal &&
+                                                !cell.artist.isPodcastChannel &&
+                                                !cell.artist.isPrivatelyOwnedArtist,
+                                        highResolution = false,
+                                    )
+                                    .value
+                            } else null
+                        val portraitScope = LocalAnimatedVisibilityScope.current
+                        var portraitGradient = 0f
+                        val sharedShape =
+                            if (
+                                cell is Artist &&
+                                    LocalArtistPortraitTransitionActive.current &&
+                                    portraitScope != null &&
+                                    !homeReducedMotion &&
+                                    portraitNavigation?.seed?.sourceKey == portraitKey
+                            ) {
+                                val roundness by
+                                    portraitScope.transition.animateFloat(
+                                        transitionSpec = {
+                                            tween(ArtistPortraitMotion.Duration,
+                                                easing = ArtistPortraitMotion.Easing)
+                                        },
+                                        label = "homePortraitCorners",
+                                    ) { state ->
+                                        if (state == EnterExitState.Visible) 50f else 0f
+                                    }
+                                portraitGradient = 1f - roundness / 50f
+                                RoundedCornerShape(percent = roundness.toInt())
+                            } else tileShape
                         // These tiles render at roughly half the real grid size, so the outline
                         // uses thinner weights than standard items to keep the same visual weight.
                         Box(
@@ -928,30 +979,49 @@ private fun HomeScreenContent(
                                 Modifier.size(forYouCellSize)
                                     .clip(tileShape)
                                     .irideFolioCombinedClickable(
-                                        onClick = { forYouOnClick(cell) },
+                                        onClick = {
+                                            if (cell is Artist && portrait != null) {
+                                                portraitNavigation?.select(
+                                                    portraitKey,
+                                                    cell.id,
+                                                    cell.title,
+                                                    portrait,
+                                                    thumbnail,
+                                                )
+                                                navController.navigate(
+                                                    "artist/${cell.id}?portraitSource=$portraitKey"
+                                                )
+                                            } else {
+                                                forYouOnClick(cell)
+                                            }
+                                        },
                                         onLongClick = {
                                             menuState.show(anchored = true) {
                                                 when (cell) {
-                                                    is Song -> SongMenu(
-                                                        originalSong = cell,
-                                                        navController = navController,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                    is Album -> AlbumMenu(
-                                                        originalAlbum = cell,
-                                                        navController = navController,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                    is Artist -> ArtistMenu(
-                                                        originalArtist = cell,
-                                                        coroutineScope = scope,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                    is Playlist -> PlaylistMenu(
-                                                        playlist = cell,
-                                                        coroutineScope = scope,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
+                                                    is Song ->
+                                                        SongMenu(
+                                                            originalSong = cell,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    is Album ->
+                                                        AlbumMenu(
+                                                            originalAlbum = cell,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    is Artist ->
+                                                        ArtistMenu(
+                                                            originalArtist = cell,
+                                                            coroutineScope = scope,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    is Playlist ->
+                                                        PlaylistMenu(
+                                                            playlist = cell,
+                                                            coroutineScope = scope,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
                                                 }
                                             }
                                         },
@@ -959,26 +1029,37 @@ private fun HomeScreenContent(
                                     .border(
                                         width = 0.5.dp,
                                         color =
-                                            if (cell is Song)
-                                                MaterialTheme.colorScheme.strokeItemSoft
+                                            if (cell is Song) MaterialTheme.colorScheme.strokeItemSoft
                                             else MaterialTheme.colorScheme.strokeCard,
                                         shape = tileShape,
-                                    ),
+                                    )
                         ) {
-                            AsyncImage(
-                                model =
-                                    ImageRequest.Builder(LocalContext.current)
-                                        .data(thumbnail?.resize(300, 300))
-                                        .memoryCachePolicy(CachePolicy.ENABLED)
-                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                        .networkCachePolicy(CachePolicy.ENABLED)
-                                        .build(),
-                                contentDescription = cell.title,
-                                contentScale = ContentScale.Crop,
-                                modifier =
-                                    Modifier.fillMaxSize()
-                                        .clip(tileShape),
-                            )
+                            if (cell is Artist && portrait != null) {
+                                val displayedPortrait = portraitNavigation?.seed?.takeIf { it.sourceKey == portraitKey }?.artwork ?: portrait
+                                Image(
+                                    bitmap = remember(displayedPortrait.bitmap) { displayedPortrait.bitmap.asImageBitmap() },
+                                    contentDescription = cell.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier =
+                                        Modifier.fillMaxSize()
+                                            .then(artistPortraitSharedModifier(cell.id, portraitKey))
+                                            .clip(sharedShape)
+                                            .artistPortraitFinish(sharedShape, displayedPortrait.tint, MaterialTheme.colorScheme.strokeCard, portraitGradient),
+                                )
+                            } else {
+                                AsyncImage(
+                                    model =
+                                        ImageRequest.Builder(LocalContext.current)
+                                            .data(thumbnail?.resize(300, 300))
+                                            .memoryCachePolicy(CachePolicy.ENABLED)
+                                            .diskCachePolicy(CachePolicy.ENABLED)
+                                            .networkCachePolicy(CachePolicy.ENABLED)
+                                            .build(),
+                                    contentDescription = cell.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(tileShape),
+                                )
+                            }
                         }
                     }
                     val forYouRecommendedTile: @Composable (ForYouShelfTile) -> Unit = { tile ->
@@ -1142,7 +1223,7 @@ private fun HomeScreenContent(
                     }
 
                     IridePageLayout(
-                        titleRes = R.string.home,
+                        title = homePageTitle(),
                         state = lazyListState,
                         reducedMotion = homeReducedMotion,
                         bottomPadding =

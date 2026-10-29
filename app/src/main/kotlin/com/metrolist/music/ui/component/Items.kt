@@ -797,8 +797,7 @@ fun SongListItem(
                     },
             subtitleColor =
                 subtitleColor
-                    ?: LocalLibraryTextColor.current
-                    ?: MaterialTheme.colorScheme.secondary,
+                    ?: Color.White,
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
@@ -1789,6 +1788,7 @@ fun YouTubeGridItem(
     fallbackArtistName: String? = null,
     hairlineBorder: Boolean = item !is SongItem,
     thumbnailUrlOverride: String? = null,
+    showAlbumArtistSubtitle: Boolean = true,
     thumbnailImageLoader: ImageLoader? = null,
     useThumbnailOverride: Boolean = false,
     thumbnailPlaceholder: (@Composable () -> Unit)? = null,
@@ -1857,7 +1857,8 @@ fun YouTubeGridItem(
                         val artistName =
                             item.artists?.joinToString { it.name }?.takeIf { it.isNotBlank() }
                                 ?: fallbackArtistName
-                        joinByBullet(artistName, item.year?.toString())
+                        if (showAlbumArtistSubtitle) joinByBullet(artistName, item.year?.toString())
+                        else item.year?.toString()
                     }
                     is ArtistItem -> null
                     is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)

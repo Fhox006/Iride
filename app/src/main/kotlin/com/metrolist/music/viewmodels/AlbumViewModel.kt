@@ -53,6 +53,7 @@ constructor(
 ) : ViewModel() {
     val albumId = savedStateHandle.get<String>("albumId")!!
     val playlistId = MutableStateFlow("")
+    val unavailableSongs = MutableStateFlow<List<String>>(emptyList())
 
     val albumWithSongs =
         database
@@ -167,6 +168,7 @@ constructor(
 
                     ytResult
                         .onSuccess { albumPage ->
+                            unavailableSongs.value = albumPage.unavailableSongs
                             playlistId.value = albumPage.album.playlistId
                             otherVersions.value = albumPage.otherVersions
                             database.transaction {
@@ -198,15 +200,19 @@ constructor(
 
                     val albumPage = ytResult.getOrNull() ?: return@withTimeout
 
-                    val currentReleaseDate = album?.album?.releaseDate
-                    val regex = Regex("""\d{4}-\d{2}(-\d{2})?""")
+                    val currentReleaseDate = albumPage.releaseDate ?: album?.album?.releaseDate
+                    val fullDate = Regex("""\d{4}-\d{2}-\d{2}""")
 
-                    if (currentReleaseDate == null || !regex.matches(currentReleaseDate)) {
+                    if (currentReleaseDate == null || !fullDate.matches(currentReleaseDate)) {
                         viewModelScope.launch(Dispatchers.IO) {
-                            val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
+                            val releaseDate = YouTube.appleMusicAlbumReleaseDate(
+                                title = albumPage.album.title,
+                                artist = albumPage.album.artists?.firstOrNull()?.name,
+                                year = albumPage.album.year,
+                            ) ?: musicBrainzRepository.getAlbumReleaseDate(
                                 albumTitle = albumPage.album.title,
                                 artistName = albumPage.album.artists?.firstOrNull()?.name,
-                                year = albumPage.album.year
+                                year = albumPage.album.year,
                             )
                             if (releaseDate != null) {
                                 database.album(albumId).first()?.let { currentAlbum ->

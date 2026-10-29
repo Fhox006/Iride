@@ -13,6 +13,12 @@ import com.metrolist.music.api.DeepLService
 import com.metrolist.music.api.MistralService
 import com.metrolist.music.api.OpenRouterService
 import com.metrolist.music.api.OpenRouterStreamingService
+import com.metrolist.music.ai.AiProvider
+import com.metrolist.music.ai.AiRequestParametersKey
+import com.metrolist.music.ai.AiServiceConfig
+import com.metrolist.music.ai.AiTextService
+import com.metrolist.music.ai.archiveAiProvider
+import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -183,6 +189,10 @@ object LyricsTranslationHelper {
         systemPrompt: String = "",
     ) {
         translationJob?.cancel()
+        if (archiveAiProvider(provider) == AiProvider.NONE) {
+            _status.value = TranslationStatus.Idle
+            return
+        }
         _status.value = TranslationStatus.Translating
 
         lyrics.forEach { it.translatedTextFlow.value = null }
@@ -265,8 +275,37 @@ object LyricsTranslationHelper {
                             }
                             ?: targetLanguage
 
+                    val archiveProvider = archiveAiProvider(provider)
                     val result =
-                        if (provider == "DeepL") {
+                        if (archiveProvider != null) {
+                            // ArchiveTune's shared API path also powers model tests in settings.
+                            val requestParameters = context.dataStore.data.first()[AiRequestParametersKey].orEmpty()
+                            val config = AiServiceConfig(archiveProvider, apiKey, baseUrl, model, requestParameters)
+                            val extraPrompt = buildString {
+                                if (systemPrompt.isNotBlank()) {
+                                    append(systemPrompt.replace("{lineCount}", nonEmptyEntries.size.toString()))
+                                }
+                                when (mode) {
+                                    "Transcribed" -> append("\nTranscribe the sound of each input into $fullLanguageName script instead of translating its meaning. Preserve pronunciation and line count.")
+                                    "Romanized" -> append("\nRomanize each input into simple ASCII Latin script instead of translating its meaning. Preserve pronunciation and line count.")
+                                }
+                            }
+                            try {
+                                Result.success(
+                                    AiTextService.translateLines(
+                                        config = config,
+                                        targetLanguage = fullLanguageName,
+                                        lines = nonEmptyEntries.map { it.second.text },
+                                        formatName = "line-by-line",
+                                        customPrompt = extraPrompt,
+                                    ),
+                                )
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                Result.failure(failure)
+                            }
+                        } else if (provider == "DeepL") {
                             Timber.d("Using DeepL for translation")
                             DeepLService.translate(
                                 text = fullText,

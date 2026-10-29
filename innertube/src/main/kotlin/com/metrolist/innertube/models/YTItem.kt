@@ -63,9 +63,13 @@ data class AlbumItem(
     override val thumbnail: String,
     override val explicit: Boolean = false,
     val albumType: String? = null,
+    val releaseDate: String? = null,
 ) : YTItem() {
     override val shareLink: String
-        get() = "https://music.youtube.com/playlist?list=$playlistId"
+        get() = if (browseId.startsWith("itunes:")) {
+            val parts = browseId.split(':')
+            "https://music.apple.com/${parts[1]}/album/${parts[2]}"
+        } else "https://music.youtube.com/playlist?list=$playlistId"
 }
 
 @Serializable

@@ -60,6 +60,7 @@ import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
+import com.metrolist.music.ui.component.IrideFolioSettingsPanel
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.PreferenceEntry
 import com.metrolist.music.ui.component.TopScreenGradientBackground
@@ -223,82 +224,85 @@ fun AndroidAutoSettings(
                         ),
                 )
 
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.fillMaxWidth().height((sections.size * 80).dp),
-                    userScrollEnabled = false,
-                ) {
-                    items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
-                        ReorderableItem(reorderableState, key = section.id) {
-                            PreferenceEntry(
-                                modifier = Modifier.fillMaxWidth(),
-                                icon = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                when (section) {
-                                                    AndroidAutoSection.LIKED -> R.drawable.favorite
-                                                    AndroidAutoSection.SONGS ->
-                                                        R.drawable.music_note
-                                                    AndroidAutoSection.ARTISTS -> R.drawable.artist
-                                                    AndroidAutoSection.ALBUMS -> R.drawable.album
-                                                    AndroidAutoSection.PLAYLISTS ->
-                                                        R.drawable.queue_music
-                                                }
-                                            ),
-                                        contentDescription = null,
-                                    )
-                                },
-                                title = { Text(section.label()) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                IrideFolioSettingsPanel {
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxWidth().height((sections.size * 80).dp),
+                        userScrollEnabled = false,
+                    ) {
+                        items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
+                            ReorderableItem(reorderableState, key = section.id) {
+                                PreferenceEntry(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    icon = {
                                         Icon(
-                                            painter = painterResource(R.drawable.drag_handle),
+                                            painter =
+                                                painterResource(
+                                                    when (section) {
+                                                        AndroidAutoSection.LIKED -> R.drawable.favorite
+                                                        AndroidAutoSection.SONGS ->
+                                                            R.drawable.music_note
+                                                        AndroidAutoSection.ARTISTS -> R.drawable.artist
+                                                        AndroidAutoSection.ALBUMS -> R.drawable.album
+                                                        AndroidAutoSection.PLAYLISTS ->
+                                                            R.drawable.queue_music
+                                                    }
+                                                ),
                                             contentDescription = null,
-                                            modifier =
-                                                Modifier.size(24.dp)
-                                                    .longPressDraggableHandle(
-                                                        onDragStarted = {
-                                                            haptic.performHapticFeedback(
-                                                                HapticFeedbackType.LongPress
-                                                            )
-                                                        }
-                                                    ),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
-                                        Spacer(Modifier.width(12.dp))
-                                        IrideSwitch(
-                                            checked = enabled,
-                                            onCheckedChange = { newValue ->
-                                                sections = sections.map { (s, e) ->
-                                                    if (s == section) s to newValue else s to e
-                                                }
-                                                onSectionsChange(serializeSections(sections))
-                                            },
-                                            thumbContent = {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            if (enabled) R.drawable.check
-                                                            else R.drawable.close
+                                    },
+                                    title = { Text(section.label()) },
+                                    trailingContent = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.drag_handle),
+                                                contentDescription = null,
+                                                modifier =
+                                                    Modifier.size(24.dp)
+                                                        .longPressDraggableHandle(
+                                                            onDragStarted = {
+                                                                haptic.performHapticFeedback(
+                                                                    HapticFeedbackType.LongPress
+                                                                )
+                                                            }
                                                         ),
-                                                    contentDescription = null,
-                                                    modifier =
-                                                        Modifier.size(SwitchDefaults.IconSize),
-                                                )
-                                            },
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    sections = sections.map { (s, e) ->
-                                        if (s == section) s to !e else s to e
-                                    }
-                                    onSectionsChange(serializeSections(sections))
-                                },
-                            )
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Spacer(Modifier.width(12.dp))
+                                            IrideSwitch(
+                                                checked = enabled,
+                                                onCheckedChange = { newValue ->
+                                                    sections = sections.map { (s, e) ->
+                                                        if (s == section) s to newValue else s to e
+                                                    }
+                                                    onSectionsChange(serializeSections(sections))
+                                                },
+                                                thumbContent = {
+                                                    Icon(
+                                                        painter =
+                                                            painterResource(
+                                                                if (enabled) R.drawable.check
+                                                                else R.drawable.close
+                                                            ),
+                                                        contentDescription = null,
+                                                        modifier =
+                                                            Modifier.size(SwitchDefaults.IconSize),
+                                                    )
+                                                },
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        sections = sections.map { (s, e) ->
+                                            if (s == section) s to !e else s to e
+                                        }
+                                        onSectionsChange(serializeSections(sections))
+                                    },
+                                )
+                            }
                         }
                     }
+
                 }
 
                 Spacer(Modifier.height(27.dp))

@@ -9,6 +9,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.runtime.CompositionLocalProvider
+import com.metrolist.music.ui.component.LocalAnimatedVisibilityScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -89,7 +91,9 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable(Screens.Home.route) {
-        HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+            HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        }
     }
 
     composable(
@@ -208,13 +212,16 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable(
-        route = "artist/{artistId}?isPodcastChannel={isPodcastChannel}",
+        route = "artist/{artistId}?isPodcastChannel={isPodcastChannel}&portraitSource={portraitSource}",
         arguments = listOf(
             navArgument("artistId") { type = NavType.StringType },
-            navArgument("isPodcastChannel") { type = NavType.BoolType; defaultValue = false }
+            navArgument("isPodcastChannel") { type = NavType.BoolType; defaultValue = false },
+            navArgument("portraitSource") { type = NavType.StringType; nullable = true; defaultValue = null },
         )
     ) {
-        ArtistScreen(navController)
+        CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+            ArtistScreen(navController, portraitSourceKey = it.arguments?.getString("portraitSource"))
+        }
     }
 
     composable(

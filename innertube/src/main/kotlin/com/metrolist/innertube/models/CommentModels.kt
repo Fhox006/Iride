@@ -12,6 +12,8 @@ data class CommentsContinuationItem(
     val commentsHeaderRenderer: CommentsHeaderRenderer? = null,
     val commentThreadRenderer: CommentThreadRenderer? = null,
     val continuationItemRenderer: ContinuationItemRenderer? = null,
+    val commentViewModel: CommentThreadRenderer.CommentViewModelWrapper.CommentViewModel? = null,
+    val commentRenderer: CommentThreadRenderer.CommentRenderer? = null,
 )
 
 @Serializable
@@ -116,6 +118,7 @@ data class CommentThreadRenderer(
         @Serializable
         data class CommentRepliesRenderer(
             val contents: List<ContinuationItemWrapper>? = null,
+            val subThreads: List<ContinuationItemWrapper>? = null,
         ) {
             @Serializable
             data class ContinuationItemWrapper(

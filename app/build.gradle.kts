@@ -136,6 +136,14 @@ android {
                     signingConfigs.getByName("debug")
                 }
         }
+        create("performance") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            matchingFallbacks += listOf("debug")
+            if (appNameOverride == null) {
+                resValue("string", "app_name", "Iride Test")
+            }
+        }
     }
 
     compileOptions {
@@ -260,6 +268,8 @@ dependencies {
     implementation("io.github.stoyan-vuchev:squircle-shape-android:3.0.1")
 
     implementation(libs.media3)
+    implementation(libs.media3.hls)
+    implementation(libs.media3.ui)
     implementation(libs.media3.session)
     implementation(libs.media3.okhttp)
 

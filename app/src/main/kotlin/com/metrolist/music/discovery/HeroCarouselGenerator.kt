@@ -66,12 +66,17 @@ class HeroCarouselGenerator(
 
     suspend fun resolveMissingCovers(
         radios: List<HeroCarouselItem.ArtistRadio>,
+        onCoverResolved: suspend (HeroCarouselItem.ArtistRadio) -> Unit = {},
     ): List<HeroCarouselItem.ArtistRadio> = coroutineScope {
         val semaphore = Semaphore(3)
         radios.map { radio ->
             async {
                 if (!radio.coverUrl.isNullOrBlank()) radio
-                else semaphore.withPermit { radio.copy(coverUrl = resolveCover(radio.artistId)) }
+                else semaphore.withPermit {
+                    radio.copy(coverUrl = resolveCover(radio.artistId)).also { resolved ->
+                        if (!resolved.coverUrl.isNullOrBlank()) onCoverResolved(resolved)
+                    }
+                }
             }
         }.awaitAll()
     }

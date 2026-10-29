@@ -10,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
@@ -257,6 +259,13 @@ import com.metrolist.music.ui.utils.rememberReducedMotion
  * viewport. Usare IrideFolioWebView per inoltrare al frame i gesti rimasti ai bordi del documento.
  */
 object IrideFolio {
+    val SettingsCornerRadius = 20.dp
+    val SettingsBorderWidth = 1.dp
+    val SettingsRowHorizontalPadding = 16.dp
+    val SettingsRowVerticalPadding = 16.dp
+    val SettingsTitleBottomSpacing = 8.dp
+    const val SettingsSurfaceTintOpacity = 0.04f
+
     val ShelfPagerFooterHeight = 18.dp
     val ShelfMosaicGap = 4.05.dp
     const val FadeDurationMillis = 440
@@ -435,6 +444,7 @@ object IrideFolio {
     val ScrollbarMinimumThumbHeight = 20.dp
     const val ScrollbarTrackOpacity = 0.12f
     const val ScrollbarThumbOpacity = 0.65f
+    const val FlingVelocityScale = 0.6f
     // Button and popup presentation belongs to Folio; callers supply only content and behavior.
     val ButtonShape = CircleShape
     val ButtonMinHeight = 40.dp
@@ -475,7 +485,7 @@ object IrideFolio {
     val CollectionPauseIcon = R.drawable.ic_iride_pause_rounded
     val CollectionSearchCornerRadius = 5.dp
     const val CollectionPanelBorderOpacity = 0.14f
-    const val RubberBandResistance = 0.2f
+    const val RubberBandResistance = 0.55f
     const val RubberBandDamping = 1f
     const val RubberBandStiffness = Spring.StiffnessLow
 }
@@ -733,6 +743,21 @@ internal fun Modifier.irideFolioGestures(
     state: ScrollableState,
     pull: RubberBandPull = rememberRubberBandPull(),
 ): Modifier = rubberBandOverscroll(Orientation.Vertical, state, pull)
+
+/** Folio pages coast less aggressively, closer to slower page traversal on iOS. */
+@Composable
+internal fun rememberIrideFolioFlingBehavior(): FlingBehavior {
+    val defaultFling = ScrollableDefaults.flingBehavior()
+    return remember(defaultFling) {
+        object : FlingBehavior {
+            override suspend fun androidx.compose.foundation.gestures.ScrollScope.performFling(
+                initialVelocity: Float,
+            ): Float = with(defaultFling) {
+                performFling(initialVelocity * IrideFolio.FlingVelocityScale)
+            }
+        }
+    }
+}
 
 /** Use on siblings of the scrolling content, never on its parent. */
 internal fun Modifier.irideFolioScrollReceiver(state: ScrollableState): Modifier =

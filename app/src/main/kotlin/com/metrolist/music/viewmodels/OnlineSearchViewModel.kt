@@ -97,7 +97,9 @@ constructor(
         val results = viewStateMap[filter.value]?.items.orEmpty()
         return when (filter) {
             YouTube.SearchFilter.FILTER_SONG -> songs
-            YouTube.SearchFilter.FILTER_ALBUM -> (songDiscovery?.albums.orEmpty() + results).distinctBy { it.id }
+            YouTube.SearchFilter.FILTER_ALBUM -> YouTube.mergeAlbums(
+                (songDiscovery?.albums.orEmpty() + results).filterIsInstance<AlbumItem>(),
+            )
             YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST -> (songDiscovery?.playlists.orEmpty() + results).distinctBy { it.id }
             else -> results
         }
@@ -225,7 +227,7 @@ constructor(
         if (viewStateMap[filter.value] != null) return
         val requestedQuery = query
         YouTube
-            .search(requestedQuery, filter)
+            .search(requestedQuery, filter, includeExternalAlbums = true)
             .onSuccess { result ->
                 currentCoroutineContext().ensureActive()
                 if (requestedQuery != query) return@onSuccess

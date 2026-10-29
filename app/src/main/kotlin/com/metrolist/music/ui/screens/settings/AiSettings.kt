@@ -72,6 +72,7 @@ import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.MutableStateFlow
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +103,7 @@ fun AiSettings(navController: NavController) {
             "Mistral" to "https://api.mistral.ai/v1/chat/completions",
             "DeepL" to "https://api.deepl.com/v2/translate",
             "Custom" to "",
+            "None" to "",
         )
 
     val providerHelpText =
@@ -313,7 +315,7 @@ fun AiSettings(navController: NavController) {
             title = stringResource(R.string.ai_provider),
             current = aiProvider,
             values = aiProviders.keys.toList(),
-            valueText = { it },
+            valueText = { if (it == "None") stringResource(R.string.ai_provider_disabled) else it },
         )
     }
 
@@ -352,12 +354,10 @@ fun AiSettings(navController: NavController) {
     }
 
     if (showApiKeyDialog) {
-        TextFieldDialog(
-            title = { Text(stringResource(R.string.ai_api_key)) },
-            icon = { Icon(painterResource(R.drawable.key), null) },
-            initialTextFieldValue = TextFieldValue(text = openRouterApiKey),
-            onDone = {
-                openRouterApiKey = it
+        AiSecretKeyDialog(
+            initialValue = openRouterApiKey,
+            onSave = {
+                openRouterApiKey = it.trim()
                 showApiKeyDialog = false
             },
             onDismiss = { showApiKeyDialog = false },
@@ -416,11 +416,17 @@ fun AiSettings(navController: NavController) {
             title = { Text(stringResource(R.string.ai_base_url)) },
             icon = { Icon(painterResource(R.drawable.link), null) },
             initialTextFieldValue = TextFieldValue(text = openRouterBaseUrl),
+            isInputValid = { value ->
+                value.trim().toHttpUrlOrNull()?.let {
+                    it.username.isEmpty() && it.password.isEmpty() && it.fragment == null
+                } == true
+            },
             onDone = {
-                openRouterBaseUrl = it
+                openRouterBaseUrl = it.trim()
                 showBaseUrlDialog = false
             },
             onDismiss = { showBaseUrlDialog = false },
+            extraContent = { Text(stringResource(R.string.ai_custom_endpoint_invalid)) },
         )
     }
 
@@ -507,7 +513,7 @@ fun AiSettings(navController: NavController) {
             .collectAsStateWithLifecycle()
 
     IridePageFrame(
-        title = stringResource(R.string.ai_lyrics_translation),
+        title = stringResource(R.string.ai_integration_settings),
         scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
@@ -546,7 +552,7 @@ fun AiSettings(navController: NavController) {
                                 Material3SettingsItem(
                                     icon = painterResource(R.drawable.explore_outlined),
                                     title = { Text(stringResource(R.string.ai_provider)) },
-                                    description = { Text(aiProvider) },
+                                    description = { Text(if (aiProvider == "None") stringResource(R.string.ai_provider_disabled) else aiProvider) },
                                     onClick = { showProviderDialog = true },
                                     trailingContent = {
                                         IconButton(onClick = { showProviderHelpDialog = true }) {
@@ -632,7 +638,7 @@ fun AiSettings(navController: NavController) {
                                         onClick = { showDeeplFormalityDialog = true },
                                     )
                                 )
-                            } else {
+                            } else if (aiProvider != "None") {
                                 add(
                                     Material3SettingsItem(
                                         icon = painterResource(R.drawable.key),
@@ -668,6 +674,14 @@ fun AiSettings(navController: NavController) {
                 )
 
                 Spacer(modifier = Modifier.height(27.dp))
+
+                AiIntegrationControls(
+                    provider = aiProvider,
+                    apiKey = openRouterApiKey,
+                    endpoint = openRouterBaseUrl,
+                    model = openRouterModel,
+                    onSelectModel = { openRouterModel = it },
+                )
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.ai_translation_mode),

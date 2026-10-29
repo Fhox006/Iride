@@ -18,7 +18,7 @@ internal fun folioDissolveAction(): Material3MenuItemData {
     val scope = rememberMenuActionScope()
     val crossfade by rememberPreference(CrossfadeEnabledKey, false)
     val skipFade by rememberPreference(SkipFadeKey, false)
-    val enabled = crossfade && skipFade
+    val enabled = crossfade || skipFade
     return folioMenuAction(
         R.string.folio_dissolve,
         R.drawable.linear_scale,

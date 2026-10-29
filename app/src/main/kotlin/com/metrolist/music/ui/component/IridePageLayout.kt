@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -95,6 +96,7 @@ fun IridePageLayout(
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
     listModifier: Modifier = Modifier,
+    topBarModifier: Modifier = Modifier,
     reducedMotion: Boolean = rememberReducedMotion(),
     titleTopSpacing: Dp = IridePageLayoutDefaults.ContentTopSpacing,
     bottomPadding: Dp = 0.dp,
@@ -139,6 +141,7 @@ fun IridePageLayout(
                     ?: Float.POSITIVE_INFINITY,
             )
         }
+    val flingBehavior = rememberIrideFolioFlingBehavior()
     PageFrame(
         title = title,
         header = header,
@@ -154,6 +157,7 @@ fun IridePageLayout(
         showTopBar = showTopBar || menuSections.any { it.isNotEmpty() },
         pageControls = pageControls,
         topBarStrokeColor = topBarStrokeColor,
+        topBarModifier = topBarModifier,
         showTopScrim = showTopScrim,
         topScrimEncounter = topScrimEncounter,
         topScrimColor = topScrimColor,
@@ -163,6 +167,7 @@ fun IridePageLayout(
     ) {
         LazyColumn(
             state = state,
+            flingBehavior = flingBehavior,
             verticalArrangement = verticalArrangement,
             overscrollEffect = null,
             contentPadding =
@@ -292,6 +297,7 @@ fun IridePageLayout(
                     ?: Float.POSITIVE_INFINITY,
             )
         }
+    val flingBehavior = rememberIrideFolioFlingBehavior()
     PageFrame(
         title,
         header,
@@ -310,6 +316,7 @@ fun IridePageLayout(
         LazyVerticalGrid(
             columns = columns,
             state = state,
+            flingBehavior = flingBehavior,
             overscrollEffect = null,
             contentPadding =
                 PaddingValues(
@@ -397,6 +404,7 @@ private fun PageFrame(
     showTopBar: Boolean = false,
     pageControls: (@Composable BoxScope.() -> Unit)? = null,
     topBarStrokeColor: Color = Color.White.copy(alpha = 0.08f),
+    topBarModifier: Modifier = Modifier,
     titleScrollOffset: (() -> Int)? = null,
     showTopScrim: Boolean = true,
     topScrimEncounter: (() -> Float)? = null,
@@ -521,7 +529,7 @@ private fun PageFrame(
                 IridePageTopBar(
                     title = title,
                     progress = controlsProgress,
-                    modifier = Modifier.irideFolioScrollReceiver(scrollState),
+                    modifier = topBarModifier.irideFolioScrollReceiver(scrollState),
                     navigationIcon = navigationIcon,
                     actions = actions,
                     menuSections = menuSections,
@@ -554,6 +562,7 @@ fun IridePageFrame(
     overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val flingBehavior = rememberIrideFolioFlingBehavior()
     val titleTopSpacing =
         if (showTopBar || menuSections.any { it.isNotEmpty() }) IrideFolio.TitleAfterControls
         else IridePageLayoutDefaults.ContentTopSpacing
@@ -589,7 +598,13 @@ fun IridePageFrame(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val minimumContentHeight = (maxHeight - contentTop).coerceAtLeast(0.dp)
             var contentOverflows by remember(scrollState) { mutableStateOf(false) }
-            Column(Modifier.fillMaxSize().verticalScroll(scrollState, overscrollEffect = null)) {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(
+                    scrollState,
+                    flingBehavior = flingBehavior,
+                    overscrollEffect = null,
+                )
+            ) {
                 // Measuring the same typography avoids fixed-height assumptions with font scaling.
                 IridePageTitle(
                     title = title,

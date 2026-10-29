@@ -8,8 +8,8 @@ class ArtistArtworkFadeTest {
     @Test
     fun portraitRemainsOpaqueAboveTheDissolveAndTitleHasOnlyPagePigment() {
         assertEquals(1f, artistArtworkPhotoOpacity(0f), 0f)
-        assertEquals(1f, artistArtworkPhotoOpacity(0.48f), 0f)
-        assertEquals(0f, artistArtworkPhotoOpacity(0.86f), 0.000001f)
+        assertEquals(1f, artistArtworkPhotoOpacity(0.60f), 0f)
+        assertEquals(0f, artistArtworkPhotoOpacity(0.96f), 0.000001f)
         assertEquals(0f, artistArtworkPhotoOpacity(1f), 0f)
     }
 

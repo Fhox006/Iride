@@ -336,6 +336,7 @@ class MusicService :
                     com.metrolist.music.ui.component.irideFolioPlayerArtworkRequest(this, metadata.thumbnailUrl),
                 )
             },
+            preferredVideoHeight = { videoQuality.maxHeight },
             transitionEdition = ::switchVideoEdition,
         ) {
             !(listenTogetherManager.isInRoom && !listenTogetherManager.isHost) &&
@@ -356,6 +357,7 @@ class MusicService :
     private val isNetworkConnected = MutableStateFlow(false)
 
     private lateinit var audioQuality: com.metrolist.music.constants.AudioQuality
+    private var videoQuality = com.metrolist.music.constants.VideoQuality.P720
 
     private val mutableQueueSourceRoute = MutableStateFlow<String?>(null)
     val queueSourceRoute: kotlinx.coroutines.flow.StateFlow<String?> = mutableQueueSourceRoute
@@ -796,6 +798,12 @@ class MusicService :
 
     override fun onCreate() {
         super.onCreate()
+        scope.launch {
+            dataStore.edit { settings ->
+                settings[SkipSilenceKey] = false
+                settings[SkipSilenceInstantKey] = false
+            }
+        }
         // Load before creating the player: its callbacks and restore must use the saved preference.
         persistentQueueEnabled = dataStore.get(PersistentQueueKey, true)
         pendingQueueRestore.value = persistentQueueEnabled && filesDir.resolve(PERSISTENT_QUEUE_FILE).exists()
@@ -916,6 +924,8 @@ class MusicService :
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
 
         audioQuality = dataStore.get(AudioQualityKey).toEnum(com.metrolist.music.constants.AudioQuality.AUTO)
+        videoQuality = dataStore.get(com.metrolist.music.constants.VideoQualityKey)
+            .toEnum(com.metrolist.music.constants.VideoQuality.P720)
         playerVolume = MutableStateFlow(dataStore.get(PlayerVolumeKey, 1f).coerceIn(0f, 1f))
 
         initializeCast()
@@ -953,6 +963,17 @@ class MusicService :
 
         var isFirstQualityEmit = true
         scope.launch {
+            dataStore.data.map { preferences ->
+                preferences[com.metrolist.music.constants.VideoQualityKey]
+                    .toEnum(com.metrolist.music.constants.VideoQuality.P720)
+            }.distinctUntilChanged().collect { quality ->
+                if (videoQuality != quality) {
+                    videoQuality = quality
+                    videoPlayback.refreshQualityPreference()
+                }
+            }
+        }
+        scope.launch {
             dataStore.data
                 .map {
                     it[AudioQualityKey]?.let { value ->
@@ -969,6 +990,8 @@ class MusicService :
                         Timber.tag("MusicService").i("QUALITY INIT: $newQuality")
                         return@collect
                     }
+
+                    if (videoPlayback.state.value.isVideo) return@collect
 
                     Timber.tag("MusicService").i("QUALITY CHANGED: $oldQuality -> $newQuality")
 
@@ -1059,27 +1082,14 @@ class MusicService :
             }
         }
 
-        dataStore.data
-            .map { (it[SkipSilenceKey] ?: false) to (it[SkipSilenceInstantKey] ?: false) }
-            .distinctUntilChanged()
-            .collectLatest(scope) { (skipSilence, instantSkip) ->
-                player.skipSilenceEnabled = skipSilence && !videoPlayback.state.value.isVideo
-                secondaryPlayer?.skipSilenceEnabled = skipSilence
-
-                val enableInstant = skipSilence && instantSkip
-                instantSilenceSkipEnabled.value = enableInstant
-
-                playerSilenceProcessors.values.forEach { processor ->
-                    processor.instantModeEnabled = enableInstant
-                    if (!enableInstant) {
-                        processor.resetTracking()
-                    }
-                }
-
-                if (!enableInstant) {
-                    silenceSkipJob?.cancel()
-                }
-            }
+        player.skipSilenceEnabled = false
+        secondaryPlayer?.skipSilenceEnabled = false
+        instantSilenceSkipEnabled.value = false
+        playerSilenceProcessors.values.forEach { processor ->
+            processor.instantModeEnabled = false
+            processor.resetTracking()
+        }
+        silenceSkipJob?.cancel()
 
         dataStore.data
             .map { it[ScratchBufferKey].toEnum(ScratchBufferSize.MEDIUM) }
@@ -1342,11 +1352,7 @@ class MusicService :
         scratchProcessor = ScratchAudioProcessor()
         val visualizerTap = com.metrolist.music.playback.audio.VisualizerTapAudioProcessor(audioBandLevelsFlow)
 
-        runBlocking {
-            val skipSilence = dataStore.get(SkipSilenceKey, false)
-            val instantSkip = dataStore.get(SkipSilenceInstantKey, false)
-            silenceProcessor.instantModeEnabled = skipSilence && instantSkip
-        }
+        silenceProcessor.instantModeEnabled = false
 
         val player =
             ExoPlayer
@@ -1377,7 +1383,7 @@ class MusicService :
                 val offload = dataStore.get(AudioOffload, false)
                 val crossfade = dataStore.get(CrossfadeEnabledKey, false) || dataStore.get(SkipFadeKey, false)
                 setOffloadEnabled(if (crossfade) false else offload)
-                skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
+                skipSilenceEnabled = false
             }
             addAnalyticsListener(PlaybackStatsListener(false, this@MusicService))
 
@@ -2524,7 +2530,7 @@ class MusicService :
                 voiceLevel = if (switchingVideoEdition) vocalState.value.voiceLevel else 1f,
                 downloadRequired = karaokeDownloadRequired())
         }
-        player.skipSilenceEnabled = !playingVideo && dataStore.get(SkipSilenceKey, false)
+        player.skipSilenceEnabled = false
         player.setOffloadEnabled(!playingVideo && !karaokeRequested &&
             !crossfadeEnabled && !skipFadeEnabled && !isCrossfading && dataStore.get(AudioOffload, false))
         if (playingVideo) {

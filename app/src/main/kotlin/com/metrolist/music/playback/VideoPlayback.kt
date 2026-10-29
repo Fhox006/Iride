@@ -52,6 +52,7 @@ class VideoPlayback(
     private val playQueue: (ListQueue) -> Unit,
     private val startTrackRadio: (MediaMetadata) -> Unit,
     private val preloadArtwork: (MediaMetadata) -> Unit,
+    private val preferredVideoHeight: () -> Int,
     private val transitionEdition: suspend (MediaItem, Long, () -> Unit) -> Unit,
     private val canChangePlayback: () -> Boolean,
 ) {
@@ -77,7 +78,7 @@ class VideoPlayback(
             }.build(),
         )
     }
-    private var maxVideoHeight = VideoPlaybackPolicy.DEFAULT_HEIGHT
+    private var maxVideoHeight = preferredVideoHeight()
     private var videoModeRequested = false
     private var requestedMediaId: String? = null
     private var activationJob: Job? = null
@@ -87,6 +88,14 @@ class VideoPlayback(
     private var radioVideoId: String? = null
 
     fun isVideoItem(item: MediaItem?): Boolean = item?.localConfiguration?.uri?.scheme == "iride-video"
+
+    fun refreshQualityPreference() {
+        maxVideoHeight = preferredVideoHeight()
+        val current = player().currentMediaItem ?: return
+        if (isVideoItem(current) && canChangePlayback()) {
+            current.metadata?.let { switchEdition(it, audioSources.get(it.id) ?: it) }
+        }
+    }
 
     fun isOpenPlayerReady(mediaId: String): Boolean = videoModeRequested && requestedMediaId == mediaId &&
         state.value.isVideo && state.value.mediaId == mediaId
@@ -107,7 +116,8 @@ class VideoPlayback(
         qualityRecoveryJob?.cancel()
         networkRecoveryJob?.cancel()
         retryCount = 0
-        maxVideoHeight = VideoPlaybackPolicy.DEFAULT_HEIGHT
+        maxVideoHeight = item?.localConfiguration?.uri?.getQueryParameter("height")?.toIntOrNull()
+            ?: preferredVideoHeight()
         audioMatch?.cancel()
         audioMatch = null
         mutableState.value = VideoPlaybackState(item?.mediaId, isVideoItem(item),
@@ -340,7 +350,9 @@ class VideoPlayback(
         videoModeRequested = true
         requestedMediaId = metadata.id
         radioVideoId = metadata.id
-        val entry = metadata.copy(thumbnailUrl = youtubeVideoThumbnail(metadata.id, metadata.thumbnailUrl),
+        val thumbnailUrl = if (metadata.isExternalAlbumTrack) metadata.thumbnailUrl
+            else youtubeVideoThumbnail(metadata.id, metadata.thumbnailUrl)
+        val entry = metadata.copy(thumbnailUrl = thumbnailUrl,
             musicVideoType = "MUSIC_VIDEO_TYPE_OMV")
         preloadArtwork(entry)
         playQueue(ListQueue(items = listOf(videoItem(entry)), sourceRoute = sourceRoute))
@@ -351,14 +363,24 @@ class VideoPlayback(
         if (!canChangePlayback()) return
         val current = player().currentMediaItem?.metadata ?: return
         val original = audioSources.get(current.id) ?: current
-        val metadata = candidate.toMediaMetadata().copy(thumbnailUrl = youtubeVideoThumbnail(candidate.id, candidate.thumbnail),
+        val candidateMetadata = candidate.toMediaMetadata()
+        val metadata = candidateMetadata.copy(
+            album = if (original.isExternalAlbumTrack) original.album else candidateMetadata.album,
+            thumbnailUrl = if (original.isExternalAlbumTrack) original.thumbnailUrl
+                else youtubeVideoThumbnail(candidate.id, candidate.thumbnail),
             musicVideoType = "MUSIC_VIDEO_TYPE_OMV")
         switchEdition(metadata, original = original)
     }
 
     fun showCurrentVideo() {
         val current = player().currentMediaItem?.metadata ?: return
-        switchEdition(current.copy(thumbnailUrl = youtubeVideoThumbnail(current.id)), original = current)
+        switchEdition(
+            current.copy(
+                thumbnailUrl = if (current.isExternalAlbumTrack) current.thumbnailUrl
+                    else youtubeVideoThumbnail(current.id),
+            ),
+            original = current,
+        )
     }
 
     fun switchToAudio() {
@@ -400,7 +422,8 @@ class VideoPlayback(
                 videoSources.put(original.id, metadata)
                 preloadArtwork(original)
                 val resolvedMetadata = metadata.copy(
-                    thumbnailUrl = data.thumbnailUrl ?: metadata.thumbnailUrl,
+                    thumbnailUrl = if (original.isExternalAlbumTrack) original.thumbnailUrl
+                        else data.thumbnailUrl ?: metadata.thumbnailUrl,
                     duration = data.durationSeconds.takeIf { it in 1L..Int.MAX_VALUE.toLong() }?.toInt() ?: metadata.duration,
                 )
                 replaceCurrent(videoItem(resolvedMetadata), data.durationSeconds * 1000L)

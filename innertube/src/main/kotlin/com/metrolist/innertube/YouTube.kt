@@ -71,9 +71,15 @@ import com.metrolist.innertube.pages.SearchResult
 import com.metrolist.innertube.pages.SearchSuggestionPage
 import com.metrolist.innertube.pages.SearchSummary
 import com.metrolist.innertube.pages.SearchSummaryPage
+import com.metrolist.innertube.models.commentContinuationToken
 import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import java.util.Locale
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -239,7 +245,42 @@ object YouTube {
         SearchSummaryPage(summaries = mergedSummaries)
     }
 
-    suspend fun search(query: String, filter: SearchFilter): Result<SearchResult> = runCatching {
+    fun mergeAlbums(items: List<AlbumItem>): List<AlbumItem> = ExternalAlbumCatalog.merge(
+        items.filterNot { it.id.startsWith("itunes:") }.distinctBy { it.id },
+        items.filter { it.id.startsWith("itunes:") },
+    )
+
+    fun mergeArtistAlbums(
+        native: List<AlbumItem>,
+        nativeShortReleases: List<AlbumItem>,
+        external: List<AlbumItem>,
+    ): List<AlbumItem> = ExternalAlbumCatalog.mergeArtistAlbums(native, nativeShortReleases, external)
+
+    suspend fun artistCatalogAlbums(name: String): List<AlbumItem> =
+        ExternalAlbumCatalog.artistAlbums(name, locale.gl.lowercase(Locale.ROOT))
+
+    suspend fun appleMusicAlbumReleaseDate(title: String, artist: String?, year: Int?): String? =
+        ExternalAlbumCatalog.releaseDate(title, artist, year, locale.gl.lowercase(Locale.ROOT))
+
+    suspend fun search(query: String, filter: SearchFilter, includeExternalAlbums: Boolean = false): Result<SearchResult> {
+        if (filter != SearchFilter.FILTER_ALBUM || !includeExternalAlbums) return searchNative(query, filter)
+        return runCatching {
+            coroutineScope {
+                val external = async { ExternalAlbumCatalog.search(query, locale.gl.lowercase(Locale.ROOT)) }
+                val native = searchNative(query, filter)
+                currentCoroutineContext().ensureActive()
+                val additions = external.await()
+                if (native.isFailure && additions.isEmpty()) throw requireNotNull(native.exceptionOrNull())
+                val page = native.getOrNull()
+                SearchResult(
+                    items = ExternalAlbumCatalog.merge(page?.items.orEmpty().filterIsInstance<AlbumItem>(), additions),
+                    continuation = page?.continuation,
+                )
+            }
+        }
+    }
+
+    private suspend fun searchNative(query: String, filter: SearchFilter): Result<SearchResult> = runCatching {
         val response = innerTube.search(WEB_REMIX, query, filter.value).body<SearchResponse>()
         val shelves = response.contents?.tabbedSearchResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.contents
@@ -267,6 +308,7 @@ object YouTube {
     }
 
     suspend fun album(browseId: String, withSongs: Boolean = true): Result<AlbumPage> = runCatching {
+        if (browseId.startsWith("itunes:")) return@runCatching ExternalAlbumCatalog.album(browseId, withSongs)
         val response = innerTube.browse(WEB_REMIX, browseId).body<BrowseResponse>()
         if (browseId.contains("FEmusic_library_privately_owned_release_detail")) {
             val playlistId =
@@ -295,8 +337,8 @@ object YouTube {
                 similarAlbums = shelves.second,
             )
         } else {
-            val playlistId =
-                response.microformat?.microformatDataRenderer?.urlCanonical?.substringAfterLast('=')!!
+            val playlistId = AlbumPage.getPlaylistId(response)
+                ?: throw IllegalStateException("Album response is missing playlist id")
             val albumItem = AlbumItem(
                 browseId = browseId,
                 playlistId = playlistId,
@@ -328,16 +370,46 @@ object YouTube {
 
     suspend fun albumSongs(playlistId: String, album: AlbumItem? = null): Result<List<SongItem>> = runCatching {
         var response = innerTube.browse(WEB_REMIX, "VL$playlistId").body<BrowseResponse>()
-        val songs = response.contents?.twoColumnBrowseResultsRenderer
-            ?.secondaryContents?.sectionListRenderer
-            ?.contents?.firstOrNull()
-            ?.musicPlaylistShelfRenderer?.contents?.getItems()
-            ?.mapNotNull {
-                AlbumPage.getSong(it, album)
-            }!!
-            .toMutableList()
-        var continuation = response.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer
-            .contents.firstOrNull()?.musicPlaylistShelfRenderer?.contents?.getContinuation()
+        val albumItem = album ?: run {
+            val albumBrowseId = response.contents?.twoColumnBrowseResultsRenderer?.tabs?.firstOrNull()
+                ?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()
+                ?.musicResponsiveHeaderRenderer?.let { header ->
+                    val title = header.title?.runs?.firstOrNull()?.text
+                    val thumbnail = header.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+                    title?.let {
+                        AlbumItem(
+                            browseId = "",
+                            playlistId = playlistId,
+                            title = it,
+                            artists = header.straplineTextOne?.runs?.oddElements()?.map { run ->
+                                Artist(run.text, run.navigationEndpoint?.browseEndpoint?.browseId)
+                            }.orEmpty(),
+                            thumbnail = thumbnail.orEmpty(),
+                        )
+                    }
+                }
+            albumBrowseId ?: AlbumItem(
+                browseId = "",
+                playlistId = playlistId,
+                title = "",
+                artists = emptyList(),
+                thumbnail = "",
+            )
+        }
+        val songs = AlbumPage.getPlaylistSongs(response, albumItem).toMutableList()
+        fun playlistContinuation(page: BrowseResponse): String? {
+            val sections = (page.contents?.singleColumnBrowseResultsRenderer?.tabs
+                ?: page.contents?.twoColumnBrowseResultsRenderer?.tabs)
+                ?.flatMap { it?.tabRenderer?.content?.sectionListRenderer?.contents.orEmpty() }
+                .orEmpty() + page.contents?.twoColumnBrowseResultsRenderer
+                ?.secondaryContents?.sectionListRenderer?.contents.orEmpty() +
+                page.contents?.sectionListRenderer?.contents.orEmpty()
+            return sections.firstNotNullOfOrNull { section ->
+                section.musicPlaylistShelfRenderer?.continuations?.getContinuation()
+                    ?: section.musicShelfRenderer?.continuations?.getContinuation()
+            }
+        }
+        var continuation = playlistContinuation(response)
         val seenContinuations = mutableSetOf<String>()
         var requestCount = 0
         val maxRequests = 50
@@ -1634,35 +1706,32 @@ object YouTube {
         )
     }
 
-    private val WEB_LOGIN_AWARE = WEB.copy(loginSupported = true)
-
-    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
-    private fun commentsContinuationToken(videoId: String): String {
-        val videoIdBytes = videoId.toByteArray(Charsets.US_ASCII)
-        val sectionBytes = "comments-section".toByteArray(Charsets.US_ASCII)
-        val bytes = mutableListOf<Byte>()
-        fun put(vararg b: Int) = b.forEach { bytes.add(it.toByte()) }
-        fun put(b: ByteArray) = bytes.addAll(b.toList())
-        put(0x12, 0x0D)
-        put(0x12, 0x0B); put(videoIdBytes)
-        put(0x18, 0x06)
-        put(0x32, 0x27)
-        put(0x22, 0x11)
-        put(0x12, 0x0B); put(videoIdBytes)
-        put(0x30, 0x01)
-        put(0x78, 0x02)
-        put(0x38, 0x01)
-        put(0x42, 0x10); put(sectionBytes)
-        return kotlin.io.encoding.Base64.Default.encode(bytes.toByteArray())
-    }
-
+    /*
+     * Comments-tab lookup and replies parsing adapted from SimpMusic, GPL-3.0.
+     * maxrave-dev/SimpMusic @ 068d74435f0cf0e8552af3da07879eafd328fea7:
+     * core/service/kotlinYtmusicScraper/.../YouTube.kt and pages/CommentsPage.kt.
+     */
     suspend fun comments(videoId: String): Result<CommentsPage> = runCatching {
-        commentsContinuation(commentsContinuationToken(videoId)).getOrThrow()
+        val response = innerTube.next(
+            client = WEB_REMIX,
+            videoId = videoId,
+            playlistId = null,
+            playlistSetVideoId = null,
+            index = null,
+            params = null,
+        ).body<NextResponse>()
+        val token = response.contents?.singleColumnMusicWatchNextResultsRenderer
+            ?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs
+            ?.firstNotNullOfOrNull { tab ->
+                tab.tabRenderer.content?.sectionListRenderer?.continuations
+                    ?.firstNotNullOfOrNull { it.reloadContinuationData?.continuation }
+            } ?: return@runCatching CommentsPage(emptyList(), null)
+        commentsContinuation(token).getOrThrow()
     }
 
     suspend fun commentsContinuation(continuation: String): Result<CommentsPage> = runCatching {
         val response = innerTube.next(
-            client = WEB_LOGIN_AWARE,
+            client = WEB_REMIX,
             videoId = null,
             playlistId = null,
             playlistSetVideoId = null,
@@ -1671,12 +1740,10 @@ object YouTube {
             continuation = continuation,
         ).body<NextResponse>()
 
-        val items = response.onResponseReceivedEndpoints
-            ?.firstNotNullOfOrNull {
-                it.reloadContinuationItemsCommand?.continuationItems
-                    ?: it.appendContinuationItemsAction?.continuationItems
-            }
-            ?: emptyList()
+        val items = response.onResponseReceivedEndpoints.orEmpty().flatMap {
+            (it.reloadContinuationItemsCommand?.continuationItems
+                ?: it.appendContinuationItemsAction?.continuationItems).orEmpty()
+        }
 
         val entityMap = response.frameworkUpdates?.entityBatchUpdate?.mutations
             ?.mapNotNull { mutation -> mutation.entityKey?.let { it to mutation.payload?.commentEntityPayload } }
@@ -1696,10 +1763,13 @@ object YouTube {
             ?.submitButton?.buttonRenderer?.serviceEndpoint?.createCommentEndpoint?.createCommentParams
 
         val comments = items.mapNotNull { item ->
-            val thread = item.commentThreadRenderer ?: return@mapNotNull null
-            val entityKey = thread.commentViewModel?.commentViewModel?.commentKey
+            val thread = item.commentThreadRenderer
+            val entityKey = (thread?.commentViewModel?.commentViewModel ?: item.commentViewModel)?.commentKey
             val payload = entityKey?.let { entityMap[it] }
-            val legacy = thread.comment?.commentRenderer
+            val legacy = thread?.comment?.commentRenderer ?: item.commentRenderer
+            val replies = thread?.replies?.commentRepliesRenderer
+            val repliesToken = (replies?.subThreads.orEmpty() + replies?.contents.orEmpty())
+                .firstNotNullOfOrNull { it.continuationItemRenderer?.commentContinuationToken() }
 
             when {
                 payload != null -> CommentItem(
@@ -1710,8 +1780,9 @@ object YouTube {
                     isAuthorCreator = payload.author?.isCreator == true,
                     text = payload.properties?.content?.content ?: "",
                     publishedTimeText = payload.properties?.publishedTime,
-                    likeCountText = payload.toolbar?.likeCountLiked ?: payload.toolbar?.likeCountNotliked,
+                    likeCountText = payload.toolbar?.likeCountNotliked ?: payload.toolbar?.likeCountLiked,
                     replyCount = payload.toolbar?.replyCount?.toIntOrNull() ?: 0,
+                    repliesToken = repliesToken,
                 )
 
                 legacy != null -> CommentItem(
@@ -1724,6 +1795,7 @@ object YouTube {
                     publishedTimeText = legacy.publishedTimeText?.runs?.firstOrNull()?.text,
                     likeCountText = legacy.voteCount?.runs?.firstOrNull()?.text,
                     replyCount = legacy.replyCount ?: 0,
+                    repliesToken = repliesToken,
                 )
 
                 else -> null
@@ -1731,7 +1803,7 @@ object YouTube {
         }
 
         val nextToken = items.lastOrNull { it.continuationItemRenderer != null }
-            ?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token
+            ?.continuationItemRenderer?.commentContinuationToken()
 
         CommentsPage(
             comments = comments,
@@ -1743,7 +1815,7 @@ object YouTube {
     }
 
     suspend fun postComment(commentText: String, createCommentParams: String): Result<Unit> = runCatching {
-        innerTube.createComment(WEB_LOGIN_AWARE, commentText, createCommentParams)
+        innerTube.createComment(WEB_REMIX, commentText, createCommentParams)
         Unit
     }
 

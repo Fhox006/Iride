@@ -42,6 +42,7 @@ internal fun SearchRecallPanel(
     predictionItems: List<YTItem>,
     availableHeight: Float,
     onComplete: (String, Boolean) -> Unit,
+    onOpenArtist: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val database = LocalDatabase.current
@@ -89,7 +90,14 @@ internal fun SearchRecallPanel(
                         showDelete = false,
                         thumbnailUrl = entry.thumbnailUrl,
                         isArtistThumbnail = entry.itemType == "artist",
-                        onClick = { onComplete(entry.query, true) },
+                        onClick = {
+                            val artistId = entry.itemId
+                            if (entry.itemType == "artist" && !artistId.isNullOrBlank()) {
+                                onOpenArtist(artistId)
+                            } else {
+                                onComplete(entry.query, true)
+                            }
+                        },
                         onFillTextField = {
                             onComplete(entry.query, false)
                         },
@@ -115,7 +123,14 @@ internal fun SearchRecallPanel(
                         online = true,
                         thumbnailUrl = entry.thumbnailUrl,
                         isArtistThumbnail = entry.itemType == "artist",
-                        onClick = { onComplete(entry.query, true) },
+                        onClick = {
+                            val artistId = entry.itemId
+                            if (entry.itemType == "artist" && !artistId.isNullOrBlank()) {
+                                onOpenArtist(artistId)
+                            } else {
+                                onComplete(entry.query, true)
+                            }
+                        },
                         onFillTextField = { onComplete(entry.query, false) },
                         pureBlack = false,
                         useIrideStyle = true,
@@ -129,7 +144,13 @@ internal fun SearchRecallPanel(
                         online = true,
                         thumbnailUrl = item.thumbnail,
                         isArtistThumbnail = item is ArtistItem,
-                        onClick = { onComplete(completedQuery, true) },
+                        onClick = {
+                            if (item is ArtistItem) {
+                                onOpenArtist(item.id)
+                            } else {
+                                onComplete(completedQuery, true)
+                            }
+                        },
                         onFillTextField = { onComplete(completedQuery, false) },
                         pureBlack = false,
                         useIrideStyle = true,

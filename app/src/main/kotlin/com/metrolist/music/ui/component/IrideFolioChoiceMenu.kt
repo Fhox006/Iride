@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -31,6 +32,9 @@ internal fun IrideFolioChoiceMenu(
     val anchor = remember { FolioChoiceAnchor() }
     val popup = remember { MenuState() }
     val expandedAnchor = remember(expanded) { mutableStateOf(anchor.bounds) }
+    LaunchedEffect(expanded, popup) {
+        if (expanded) popup.show(anchored = true) {} else popup.dismiss()
+    }
     Box(
         modifier.onGloballyPositioned {
             val bounds = it.parentLayoutCoordinates?.boundsInWindow() ?: it.boundsInWindow()
@@ -51,7 +55,7 @@ internal fun IrideFolioChoiceMenu(
                     )
                 }
             },
-        visible = expanded,
+        visible = expanded || popup.popupMotion?.retainMenu == true,
         onDismiss = onDismissRequest,
         popupOverride = popup,
         anchorOverride = expandedAnchor.value,

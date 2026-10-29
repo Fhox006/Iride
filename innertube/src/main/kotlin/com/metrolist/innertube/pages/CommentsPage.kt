@@ -15,6 +15,7 @@ data class CommentItem(
     val publishedTimeText: String?,
     val likeCountText: String?,
     val replyCount: Int,
+    val repliesToken: String? = null,
 )
 
 data class CommentsPage(

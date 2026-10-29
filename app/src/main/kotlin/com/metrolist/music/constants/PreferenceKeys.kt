@@ -134,10 +134,34 @@ val LastSessionEndedAtKey = longPreferencesKey("lastSessionEndedAt")
 
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 
+/*
+ * ArchiveTune (2026)
+ * © Rukamori — github.com/rukamori
+ * GPL-3.0 License | Contributors: see git history
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ * AudioQuality adapted for Iride, 2026-10-25.
+ */
 enum class AudioQuality {
     AUTO,
     HIGH,
+    HIGHEST,
     LOW,
+}
+
+// Adapted for Iride (2026-10-25), SimpMusic GPL-3.0:
+// https://github.com/maxrave-dev/SimpMusic/blob/068d74435f0cf0e8552af3da07879eafd328fea7/core/common/src/commonMain/kotlin/com/maxrave/common/Config.kt
+// VIDEO_QUALITY: extended from 1080p/720p/360p to include 4K.
+val VideoQualityKey = stringPreferencesKey("video_quality")
+
+enum class VideoQuality(val maxHeight: Int) {
+    P144(144),
+    P240(240),
+    P360(360),
+    P480(480),
+    P720(720),
+    P1080(1080),
+    P1440(1440),
+    P2160(2160),
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")

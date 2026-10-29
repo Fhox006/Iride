@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.tappableElement
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import sv.lib.squircleshape.SquircleShape
@@ -62,6 +63,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -82,6 +84,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
@@ -136,10 +140,50 @@ internal val PlaceholderMediaMetadata = MediaMetadata(
 private val NavRowHeight = 56.dp
 val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 0.dp
-// New Iride UI miniplayer: compact height achieved by cutting the box margins
-// (vertical padding + cover size), not the text content. Used only when
-// PillPlayerRow runs in isIrideStyle (curtain peek); the classic pill keeps MiniPlayerHeight.
-internal val IrideMiniPlayerHeight = 48.dp
+// Shared geometry for the floating player, its restore preview and the panel's collapsed bound.
+internal val IrideMiniPlayerCoverSize = 44.dp
+internal val IrideBottomDockTouchTargetSize = 48.dp
+internal val IrideMiniPlayerCoverTargetSize = IrideBottomDockTouchTargetSize
+internal val IrideMiniPlayerContentInset = 3.dp
+private val IrideMiniPlayerInfoSpacing = 6.dp
+internal val IrideMiniPlayerHeight = IrideMiniPlayerCoverTargetSize + IrideMiniPlayerContentInset * 2
+// Matching top/side insets keep the cover's top-left curve concentric with the dock.
+internal val IrideMiniPlayerCoverRadius = IrideFolio.ControlsCornerRadius -
+    (IrideMiniPlayerHeight - IrideMiniPlayerCoverSize) / 2
+internal val IrideMiniPlayerNavigationSpacing = 0.dp
+
+@Composable
+internal fun irideBottomDockEdgeInset(): Dp {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val bars = WindowInsets.systemBars
+    val buttons = WindowInsets.tappableElement
+    return with(density) {
+        // Gesture navigation can share its empty inset with a floating surface. Button navigation
+        // and side bars still need clearance; all three edges use the same physical distance.
+        maxOf(
+            IrideFolio.HorizontalPadding.roundToPx(),
+            bars.getLeft(density, direction),
+            bars.getRight(density, direction),
+            buttons.getBottom(density),
+        ).toDp()
+    }
+}
+
+internal fun Modifier.irideBottomDockBounds(): Modifier = composed {
+    fillMaxWidth()
+        .padding(horizontal = irideBottomDockEdgeInset())
+}
+
+private fun Modifier.irideMiniPlayerBounds() =
+    irideBottomDockBounds()
+        .irideBottomDockMotion()
+        .clip(
+            FolioShape(
+                topStart = IrideFolio.ControlsCornerRadius,
+                topEnd = IrideFolio.ControlsCornerRadius,
+            ),
+        )
 
 // Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
 // outline — kept as one constant so the progress ring always matches the cover's actual shape
@@ -159,7 +203,7 @@ class PillProgressState(
         }
 }
 
-private class PillProgressDrawCache {
+private class PillProgressDrawCache(isIrideStyle: Boolean) {
     private var cachedSize = Size.Zero
     private var cachedInset = 0f
     private val trackPath = Path()
@@ -167,7 +211,9 @@ private class PillProgressDrawCache {
     private val pm = PathMeasure()
     private var total = 0f
     private var startOffset = 0f
-    private val shape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
+    private val shape = if (isIrideStyle) FolioShape(IrideMiniPlayerCoverRadius) else {
+        SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
+    }
 
     fun draw(scope: DrawScope, progress: Float, primaryColor: Color, trackColor: Color, strokeWidth: Float) {
         val inset = with(scope) { 2.dp.toPx() }
@@ -316,19 +362,20 @@ internal fun IrideMiniPlayerPreview(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .irideMiniPlayerBounds()
             .height(IrideMiniPlayerHeight)
-            .padding(horizontal = 42.dp),
+            .padding(horizontal = IrideMiniPlayerContentInset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(IrideMiniPlayerCoverTargetSize), contentAlignment = Alignment.Center) {
             PillCoverArtwork(
                 mediaMetadata = metadata,
                 outlineColor = contentColor,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(IrideMiniPlayerCoverSize),
+                isIrideStyle = true,
             )
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(IrideMiniPlayerInfoSpacing))
         if (metadata != null) {
             PillSongInfo(
                 mediaMetadata = metadata,
@@ -343,14 +390,13 @@ internal fun IrideMiniPlayerPreview(
                     .background(contentColor.copy(alpha = 0.1f), FolioShape(4.dp)),
             )
         }
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(IrideMiniPlayerInfoSpacing))
         listOf(
             (if (metadata?.liked == true) R.drawable.favorite else R.drawable.favorite_border) to 24.dp,
             R.drawable.ic_iride_play to 28.dp,
             R.drawable.ic_iride_fast_forward_filled to 28.dp,
-        ).forEachIndexed { index, (icon, iconSize) ->
-            if (index == 1) Spacer(Modifier.width(2.dp))
-            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        ).forEach { (icon, iconSize) ->
+            Box(Modifier.size(IrideBottomDockTouchTargetSize), contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(icon),
                     contentDescription = null,
@@ -566,9 +612,8 @@ private fun PillContent(
 /**
  * The pill's top row (thumbnail/progress ring, title/artist, cast icon, favorite, play/pause,
  * skip-next) extracted so it can be reused both by the floating [FloatingPill] (old UI) and by the
- * New Iride UI's player-curtain peek slot, which pins this row to the bottom of the screen instead
- * of floating it — the drag-to-expand gesture in that case is attached by the caller, not here;
- * this composable only handles tap-to-expand via [onExpandClick].
+ * New Iride UI's floating player above bottom navigation. The caller handles drag-to-expand;
+ * this composable handles tap-to-expand via [onExpandClick].
  */
 @Composable
 fun PillPlayerRow(
@@ -606,6 +651,7 @@ fun PillPlayerRow(
     // without touching the classic FloatingPill's own icons.
     Box(
         modifier = modifier
+            .then(if (isIrideStyle) Modifier.irideMiniPlayerBounds() else Modifier)
             .fillMaxWidth()
             .height(if (isIrideStyle) IrideMiniPlayerHeight else MiniPlayerHeight)
             .then(
@@ -626,10 +672,7 @@ fun PillPlayerRow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    // Wider side breathing room on the flat row content; the curtain's
-                    // rounded smusso / corner-reveal gap below is untouched (see Player.kt
-                    // collapsedContent, which keeps its own insets).
-                    horizontal = if (isIrideStyle) 42.dp else 6.dp,
+                    horizontal = if (isIrideStyle) IrideMiniPlayerContentInset else 6.dp,
                     vertical = if (isIrideStyle) 0.dp else 8.dp,
                 ),
         ) {
@@ -642,7 +685,7 @@ fun PillPlayerRow(
                 onArtPositioned = onArtPositioned,
                 onProgressChanged = onProgressChanged,
             )
-            Spacer(Modifier.width(if (isIrideStyle) 8.dp else 12.dp))
+            Spacer(Modifier.width(if (isIrideStyle) IrideMiniPlayerInfoSpacing else 12.dp))
 
             PillSongInfo(
                 mediaMetadata = displayMetadata,
@@ -653,7 +696,7 @@ fun PillPlayerRow(
                 modifier = Modifier.weight(1f),
             )
 
-            Spacer(Modifier.width(if (isIrideStyle) 2.dp else 8.dp))
+            Spacer(Modifier.width(if (isIrideStyle) IrideMiniPlayerInfoSpacing else 8.dp))
 
             if (isCasting) {
                 Icon(
@@ -673,7 +716,7 @@ fun PillPlayerRow(
                 )
             }
 
-            Spacer(Modifier.width(2.dp))
+            if (!isIrideStyle) Spacer(Modifier.width(2.dp))
 
             PillPlayPauseButton(
                 playbackState = playbackState,
@@ -794,10 +837,10 @@ internal fun PillPlayButton(
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
     val strokeWidth = 2.5.dp
-    val pillDrawCache = remember { PillProgressDrawCache() }
+    val pillDrawCache = remember(isIrideStyle) { PillProgressDrawCache(isIrideStyle) }
     SideEffect { onProgressChanged?.invoke(progressState.progress) }
-    val outerSize = if (isIrideStyle) 44.dp else 42.dp
-    val innerSize = if (isIrideStyle) 40.dp else 38.dp
+    val outerSize = if (isIrideStyle) IrideMiniPlayerCoverTargetSize else 42.dp
+    val innerSize = if (isIrideStyle) IrideMiniPlayerCoverSize else 38.dp
 
     Box(
         contentAlignment = Alignment.Center,
@@ -821,6 +864,7 @@ internal fun PillPlayButton(
         PillCoverArtwork(
             mediaMetadata = mediaMetadata,
             outlineColor = outlineColor,
+            isIrideStyle = isIrideStyle,
             modifier = Modifier
                 .size(innerSize)
                 .then(
@@ -839,8 +883,11 @@ private fun PillCoverArtwork(
     mediaMetadata: MediaMetadata?,
     outlineColor: Color,
     modifier: Modifier = Modifier,
+    isIrideStyle: Boolean = false,
 ) {
-    val imageShape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
+    val imageShape = if (isIrideStyle) FolioShape(IrideMiniPlayerCoverRadius) else {
+        SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -876,7 +923,7 @@ internal fun PillSongInfo(
 
     Column(
         modifier = modifier
-            .then(if (isIrideStyle) Modifier.height(48.dp) else Modifier)
+            .then(if (isIrideStyle) Modifier.height(IrideBottomDockTouchTargetSize) else Modifier)
             .then(
                 if (onInfoPositioned != null) {
                     Modifier.irideReportRect(onInfoPositioned).alpha(0f)
@@ -933,7 +980,7 @@ private fun PillFavoriteButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(48.dp)
+            .size(IrideBottomDockTouchTargetSize)
             .clickable { playerConnection.service.toggleLike() },
     ) {
         Icon(
@@ -961,6 +1008,7 @@ private fun PillPlayPauseButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
+        modifier = Modifier.size(IrideBottomDockTouchTargetSize),
         onClick = {
             if (isListenTogetherGuest) return@IconButton
             if (isCasting) {
@@ -998,6 +1046,7 @@ private fun PillSkipNextButton(
 ) {
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     IconButton(
+        modifier = Modifier.size(IrideBottomDockTouchTargetSize),
         enabled = canSkipNext && !isListenTogetherGuest,
         onClick = { playerConnection.seekToNext() },
     ) {

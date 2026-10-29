@@ -41,7 +41,7 @@ data class Album(
 fun AlbumItem.toAlbumEntity() = Album(
     album = AlbumEntity(
         id = browseId,
-        playlistId = playlistId,
+        playlistId = playlistId.takeIf(String::isNotBlank),
         title = title,
         year = year,
         albumType = albumType,

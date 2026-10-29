@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -131,7 +132,14 @@ internal fun IrideFolioContextMenu(
     }
     if (visible && actions.isNotEmpty()) {
         val popup = popupOverride ?: LocalSongMenuPopupState.current
-        if (popup != null)
+        if (popup != null) {
+            val motion = popup.popupMotion
+            val reducedMotion = com.metrolist.music.ui.utils.rememberReducedMotion()
+            LaunchedEffect(popupOverride, motion, popup.isVisible, reducedMotion) {
+                if (popupOverride != null && motion != null) {
+                    motion.present(popup.isVisible, reducedMotion)
+                }
+            }
             IrideAnchoredSongMenu(
                 popup,
                 height,
@@ -141,7 +149,7 @@ internal fun IrideFolioContextMenu(
             ) {
                 content(it)
             }
-        else content(false)
+        } else content(false)
     }
 }
 

@@ -18,11 +18,14 @@ import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
 import com.metrolist.innertube.pages.ArtistPage
+import com.metrolist.innertube.pages.withCatalogAlbums
+import com.metrolist.music.R
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.data.remote.ArtistArtworkCandidate
 import com.metrolist.music.data.remote.ArtistArtworkRepository
+import com.metrolist.music.data.remote.AppleMusicArtistEditorial
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
@@ -37,6 +40,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,11 +52,21 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import com.metrolist.music.extensions.filterVideoSongs as filterVideoSongsLocal
+
+private object ArtistPageCache {
+    private val pages = object : LinkedHashMap<String, ArtistPage>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArtistPage>?) = size > 20
+    }
+
+    @Synchronized fun get(id: String): ArtistPage? = pages[id]
+    @Synchronized fun put(id: String, page: ArtistPage) { pages[id] = page }
+}
 
 enum class AlbumReleaseType { ALBUM, EP, SINGLE }
 
@@ -73,6 +89,37 @@ class ArtistViewModel @Inject constructor(
 
     private val isPodcastChannel = savedStateHandle.get<Boolean>("isPodcastChannel") ?: false
     var artistPage by mutableStateOf<ArtistPage?>(null)
+    private val _appleMusicEditorial = MutableStateFlow<AppleMusicArtistEditorial?>(null)
+    val appleMusicEditorial = _appleMusicEditorial.asStateFlow()
+    private var editorialArtistName: String? = null
+    private var editorialJob: kotlinx.coroutines.Job? = null
+
+    fun loadAppleMusicEditorial(name: String?) {
+        if (name.isNullOrBlank() || isPodcastChannel || !artistId.startsWith("UC") || artistPage?.artist?.isProfile == true) {
+            editorialJob?.cancel()
+            editorialArtistName = null
+            _appleMusicEditorial.value = null
+            return
+        }
+        if (editorialArtistName == name) return
+        editorialArtistName = name
+        editorialJob?.cancel()
+        _appleMusicEditorial.value = null
+        editorialJob = viewModelScope.launch {
+            val editorial = try {
+                artistArtworkRepository.findAppleMusicEditorial(name)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Unable to load artist editorial artwork")
+                null
+            }
+            if (editorialArtistName != name) return@launch
+            _appleMusicEditorial.value = editorial
+            // A failed request must be retryable when the artist page becomes visible again.
+            if (editorial == null) editorialArtistName = null
+        }
+    }
 
     private val _expandedTopSongs = MutableStateFlow<List<com.metrolist.innertube.models.SongItem>?>(null)
     val expandedTopSongs = _expandedTopSongs.asStateFlow()
@@ -224,29 +271,76 @@ class ArtistViewModel @Inject constructor(
         }
     }
 
+    private var artistFetchJob: Job? = null
+
     fun fetchArtistsFromYTM() {
-        viewModelScope.launch {
+        artistFetchJob?.cancel()
+        artistFetchJob = viewModelScope.launch {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-            YouTube.artist(artistId)
+            fun showPage(page: ArtistPage) {
+                val sections = page.sections.map { section ->
+                    section.copy(items = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                }.filter { it.items.isNotEmpty() }
+                artistPage = page.copy(sections = sections)
+            }
+            ArtistPageCache.get(artistId)?.let(::showPage)
+            withContext(Dispatchers.IO) { YouTube.artist(artistId) }
                 .onSuccess { page ->
-                    val filteredSections = page.sections
-                        .map { section ->
-                            section.copy(items = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
-                        }
-                        .filter { section -> section.items.isNotEmpty() }
+                    currentCoroutineContext().ensureActive()
+                    val filteredSections = withContext(Dispatchers.Default) {
+                        page.sections
+                            .map { section ->
+                                section.copy(items = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                            }
+                            .filter { section -> section.items.isNotEmpty() }
+                    }
 
+                    ArtistPageCache.put(artistId, page)
                     artistPage = page.copy(sections = filteredSections)
                     _apiSubscribed.value = page.isSubscribed
+
+                    if (!isPodcastChannel && !page.artist.isProfile && artistId.startsWith("UC")) {
+                        launch {
+                            val releases = withContext(Dispatchers.IO) {
+                                YouTube.artistCatalogAlbums(page.artist.title).filterExplicit(hideExplicit)
+                            }
+                            currentCoroutineContext().ensureActive()
+                            val knownShortReleases = mutableListOf<com.metrolist.innertube.models.AlbumItem>()
+                            val shortSections = page.sections.filter { section ->
+                                    section.title.contains("singl", ignoreCase = true) ||
+                                        section.title.contains("singol", ignoreCase = true) ||
+                                        section.title.contains("EP", ignoreCase = true)
+                                }
+                            for (section in shortSections) {
+                                knownShortReleases += section.items
+                                    .filterIsInstance<com.metrolist.innertube.models.AlbumItem>()
+                                val endpoint = section.moreEndpoint
+                                if (endpoint != null) {
+                                    knownShortReleases += withContext(Dispatchers.IO) { YouTube.artistItems(endpoint) }.getOrNull()?.items
+                                        ?.filterIsInstance<com.metrolist.innertube.models.AlbumItem>()
+                                        .orEmpty()
+                                }
+                                currentCoroutineContext().ensureActive()
+                            }
+                            val deduplicatedShortReleases = knownShortReleases.distinctBy { it.id }
+                            artistPage = artistPage?.withCatalogAlbums(
+                                releases,
+                                context.getString(R.string.albums),
+                                context.getString(R.string.external_artist_singles),
+                                deduplicatedShortReleases,
+                            )
+                        }
+                    }
 
                     _expandedTopSongs.value = null
                     val topSongsMoreEndpoint = filteredSections.firstOrNull { section ->
                         (section.items.firstOrNull() as? com.metrolist.innertube.models.SongItem)?.album != null
                     }?.moreEndpoint
                     if (topSongsMoreEndpoint != null) {
-                        viewModelScope.launch {
-                            YouTube.artistItems(topSongsMoreEndpoint)
+                        launch {
+                            withContext(Dispatchers.IO) { YouTube.artistItems(topSongsMoreEndpoint) }
                                 .onSuccess { itemsPage ->
                                     _expandedTopSongs.value = itemsPage.items
                                         .filterIsInstance<com.metrolist.innertube.models.SongItem>()
@@ -257,6 +351,7 @@ class ArtistViewModel @Inject constructor(
                         }
                     }
                 }.onFailure {
+                    currentCoroutineContext().ensureActive()
                     reportException(it)
                 }
         }

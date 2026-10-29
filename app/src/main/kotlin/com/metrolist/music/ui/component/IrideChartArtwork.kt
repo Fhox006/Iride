@@ -61,7 +61,7 @@ fun renderChartPoster(context: Context, code: String, count: Int, size: Int = 76
         ) {
             drawChartPoster(code, chartCountryName(code), context.getString(R.string.new_charts_top_count, count),
                 Typeface.create(ResourcesCompat.getFont(context, R.font.satoshi_variable), Typeface.BOLD),
-                checkNotNull(ResourcesCompat.getFont(context, R.font.ibm_plex_mono_bold)),
+                checkNotNull(ResourcesCompat.getFont(context, R.font.dm_sans_variable)),
                 irideGrainBrush(density = 1f, soft = false))
         }
         return bitmap
@@ -80,7 +80,7 @@ fun IrideChartPoster(code: String, name: String, topLabel: String, modifier: Mod
         Typeface.create(ResourcesCompat.getFont(context, R.font.satoshi_variable), Typeface.BOLD)
     }
     val monoTypeface = remember(context) {
-        checkNotNull(ResourcesCompat.getFont(context, R.font.ibm_plex_mono_bold))
+        checkNotNull(ResourcesCompat.getFont(context, R.font.dm_sans_variable))
     }
 
     Canvas(modifier) { drawChartPoster(code, name, topLabel, titleTypeface, monoTypeface, grain) }

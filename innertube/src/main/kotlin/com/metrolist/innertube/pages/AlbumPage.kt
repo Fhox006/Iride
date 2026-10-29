@@ -18,6 +18,8 @@ data class AlbumPage(
     val songs: List<SongItem>,
     val otherVersions: List<AlbumItem>,
     val similarAlbums: List<AlbumItem> = emptyList(),
+    val unavailableSongs: List<String> = emptyList(),
+    val releaseDate: String? = null,
 ) {
     companion object {
         /** Shelf count and order vary: a lone carousel can contain alternate editions. */
@@ -114,6 +116,24 @@ data class AlbumPage(
                 getSong(it, album)
             }
             return songs ?: emptyList()
+        }
+
+        /** Album track shelves can be returned in different columns depending on release type. */
+        fun getPlaylistSongs(response: BrowseResponse, album: AlbumItem): List<SongItem> {
+            val tabSections = (response.contents?.singleColumnBrowseResultsRenderer?.tabs
+                ?: response.contents?.twoColumnBrowseResultsRenderer?.tabs)
+                ?.flatMap { it?.tabRenderer?.content?.sectionListRenderer?.contents.orEmpty() }
+                .orEmpty()
+            val secondarySections = response.contents?.twoColumnBrowseResultsRenderer
+                ?.secondaryContents?.sectionListRenderer?.contents.orEmpty()
+            val sections = tabSections + secondarySections + response.contents?.sectionListRenderer?.contents.orEmpty()
+            val songs = sections.flatMap { section ->
+                section.musicPlaylistShelfRenderer?.contents?.getItems().orEmpty() +
+                    section.musicShelfRenderer?.contents?.getItems().orEmpty()
+            }.mapNotNull { renderer ->
+                getSong(renderer, album)
+            }
+            return songs.distinctBy { it.id }
         }
 
         fun getSong(renderer: MusicResponsiveListItemRenderer, album: AlbumItem? = null): SongItem? {

@@ -198,7 +198,7 @@ private class RubberBandConnection(
     override suspend fun onPreFling(available: Velocity): Velocity {
         if (pull.value == 0f) return Velocity.Zero
         try {
-            pull.animateTo(0f, settle)
+            pull.animateTo(0f, settle, initialVelocity = available.axis)
         } finally {
             setPulling(pull.value != 0f)
         }

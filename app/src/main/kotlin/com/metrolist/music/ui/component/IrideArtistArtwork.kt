@@ -12,6 +12,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,16 +59,25 @@ internal fun rememberIrideArtistArtwork(
             }
         }
     }
+    var resumeGeneration by remember(artistId) { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (highResolution) resumeGeneration++
+    }
     val selectedUrl = selected.value?.url
     DisposableEffect(artistId, selectedUrl) {
         if (selectedUrl != null) loader.retainPresentation(request, selectedUrl)
         onDispose { if (selectedUrl != null) loader.releasePresentation(request, selectedUrl) }
     }
-    LaunchedEffect(request, highResolution) {
+    LaunchedEffect(request, highResolution, resumeGeneration) {
         coroutineScope {
             launch {
                 loader.selectionUpdates.collect { key ->
-                    if (key == request.id) selected.value = loader.cachedForDisplay(request) ?: selected.value
+                    if (key == request.id) {
+                        val cached = loader.cachedForDisplay(request)
+                        val current = selected.value
+                        if (cached != null && (current?.url != cached.url ||
+                            cached.artwork.bitmap.width >= current.artwork.bitmap.width)) selected.value = cached
+                    }
                 }
             }
             if (highResolution) launch {
@@ -105,11 +117,36 @@ internal fun IrideArtistArtworkImage(
     pullOffset: () -> Float,
     modifier: Modifier = Modifier,
     pagePullOffset: () -> Float = { 0f },
+    contentScale: ContentScale = ContentScale.Fit,
 ) {
     val image = remember(artwork.bitmap) { artwork.bitmap.asImageBitmap() }
+    val motion = artistArtworkMotionModifier(scrollOffset, blurProgress, pullOffset, pagePullOffset)
+    Box(modifier) {
+        Box(motion) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Image(
+                    image, null, contentScale = contentScale,
+                    filterQuality = FilterQuality.High,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                ArtistCompatBlurredPhoto(artwork.bitmap, blurProgress, contentScale)
+            }
+        }
+    }
+}
+
+/** Keep the artist portrait on the Folio scroll, pull and blur plane. */
+@Composable
+internal fun artistArtworkMotionModifier(
+    scrollOffset: () -> Float,
+    blurProgress: () -> Float,
+    pullOffset: () -> Float,
+    pagePullOffset: () -> Float,
+): Modifier {
     val maximumBlur = with(LocalDensity.current) { IrideFolio.ArtistPhotoBlurRadius.toPx() }
     val effects = remember(maximumBlur) { ArtistPhotoBlurEffects(maximumBlur) }
-    val motion = Modifier.fillMaxSize().graphicsLayer {
+    return Modifier.fillMaxSize().graphicsLayer {
         // Keep the photo anchored while the page follows the same pull that drives its zoom.
         translationY = scrollOffset() * 0.6f - pagePullOffset().coerceAtLeast(0f)
         val stretch = (pullOffset() / size.height.coerceAtLeast(1f)).coerceIn(0f, 0.6f)
@@ -118,18 +155,5 @@ internal fun IrideArtistArtworkImage(
         transformOrigin = TransformOrigin(0.5f, 0f)
         renderEffect = effects.at(blurProgress())
         clip = true
-    }
-    Box(modifier) {
-        Box(motion) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Image(
-                    image, null, contentScale = ContentScale.Fit,
-                    filterQuality = FilterQuality.High,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                ArtistCompatBlurredPhoto(artwork.bitmap, blurProgress)
-            }
-        }
     }
 }

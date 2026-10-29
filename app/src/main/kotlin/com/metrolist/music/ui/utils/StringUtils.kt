@@ -35,7 +35,9 @@ fun formatFileSize(sizeBytes: Long): String {
     return "$prefix$result $suffix"
 }
 
-fun numberFormatter(n: Int) =
+fun numberFormatter(n: Int) = numberFormatter(n.toLong())
+
+fun numberFormatter(n: Long) =
     DecimalFormat("#,###")
         .format(n)
         .replace(",", ".")

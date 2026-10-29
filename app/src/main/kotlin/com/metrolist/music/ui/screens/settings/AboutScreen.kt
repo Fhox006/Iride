@@ -193,7 +193,19 @@ fun AboutScreen(navController: NavController) {
                                 onClick = {
                                     uriHandler.openUri("https://github.com/mostafaalagamy")
                                 },
-                            )
+                            ),
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.github),
+                                title = { Text("SimpMusic · GPL-3.0") },
+                                description = { Text(stringResource(R.string.credits_simpmusic_adaptations)) },
+                                onClick = { uriHandler.openUri("https://github.com/maxrave-dev/SimpMusic") },
+                            ),
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.github),
+                                title = { Text("ArchiveTune · GPL-3.0") },
+                                description = { Text(stringResource(R.string.credits_archivetune_adaptations)) },
+                                onClick = { uriHandler.openUri("https://github.com/rukamori/ArchiveTune") },
+                            ),
                         ),
                 )
 

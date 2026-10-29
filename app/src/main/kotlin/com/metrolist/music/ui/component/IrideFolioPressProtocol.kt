@@ -4,6 +4,7 @@ import androidx.compose.foundation.Indication
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.InteractionSource
@@ -34,7 +35,11 @@ internal val LocalIrideFolioPressIndication = staticCompositionLocalOf<Indicatio
     IrideFolioPressIndication(reducedMotion = false)
 }
 
-/** Couples long-press anticipation to the menu that the callback actually opens. */
+/**
+ * Couples long-press anticipation to the menu that the callback actually opens.
+ * Compression wraps the whole modifier chain: artwork, text, backgrounds, clipping and strokes
+ * must shrink together, including decorations applied before this modifier.
+ */
 @Composable
 fun Modifier.irideFolioCombinedClickable(
     enabled: Boolean = true,
@@ -74,6 +79,7 @@ fun Modifier.irideFolioCombinedClickable(
     val boundIndication = remember(protocol, motion, timeout) {
         FolioContextIndication(motion, timeout, protocol.reducedMotion)
     }
+    val pressInteractions = interactionSource ?: remember { MutableInteractionSource() }
     val feedback =
         onGloballyPositioned { motion.sourceBounds = it.boundsInWindow() }
             .pointerInput(motion) {
@@ -82,9 +88,9 @@ fun Modifier.irideFolioCombinedClickable(
                     motion.recordDown(down.uptimeMillis, down.position)
                 }
             }
-    return feedback.combinedClickable(
-        interactionSource = interactionSource,
-        indication = boundIndication,
+    return Modifier.indication(pressInteractions, boundIndication).then(feedback).combinedClickable(
+        interactionSource = pressInteractions,
+        indication = null,
         enabled = enabled,
         onClickLabel = onClickLabel,
         role = role,

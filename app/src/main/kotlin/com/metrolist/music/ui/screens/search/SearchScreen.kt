@@ -397,7 +397,7 @@ fun SearchScreen(
                 ), contentAlignment = Alignment.Center,
             ) {
                 Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.textPrimary)
+                    tint = Color.White)
             }
         })
         SearchScene(
@@ -428,6 +428,10 @@ fun SearchScreen(
             onDismiss = ::dismissEditor,
             onSubmit = { cancelCompletion(); handleSearch(it) },
             onComplete = ::acceptCompletion,
+            onOpenArtist = { artistId ->
+                dismissEditor()
+                navController.navigate("artist/$artistId")
+            },
             artistArtwork = artistArtwork,
             navigationIcon = searchBack,
         ) { irideHeader ->

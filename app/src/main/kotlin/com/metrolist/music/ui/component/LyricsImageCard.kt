@@ -57,7 +57,7 @@ import coil3.request.crossfade
 import com.metrolist.music.R
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.theme.SatoshiFontFamily
-import com.metrolist.music.ui.theme.InterFontFamily
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 
 @Composable
 fun rememberAdjustedFontSize(
@@ -216,13 +216,13 @@ fun LyricsImageCard(
                     Spacer(Modifier.width((LyricsShareStyle.CoverGap * scale).dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            mediaMetadata.title, color = ink, fontFamily = InterFontFamily,
+                            mediaMetadata.title, color = ink, fontFamily = SatoshiFontFamily,
                             fontSize = (LyricsShareStyle.TitleSize * scale / fontScale).sp,
                             fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             mediaMetadata.artists.joinToString { it.name }, color = secondary,
-                            fontFamily = InterFontFamily,
+                            fontFamily = IBMPlexMonoFontFamily,
                             fontSize = (LyricsShareStyle.ArtistSize * scale / fontScale).sp,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -238,15 +238,13 @@ fun LyricsImageCard(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painterResource(R.drawable.ic_logo), null,
-                    modifier = Modifier.size((LyricsShareStyle.LogoSize * scale).dp),
-                    colorFilter = ColorFilter.tint(secondary),
-                )
-                Spacer(Modifier.width((LyricsShareStyle.LogoGap * scale).dp))
-                Text(
-                    "Iride", color = secondary, fontFamily = InterFontFamily,
-                    fontSize = (LyricsShareStyle.AppNameSize * scale / fontScale).sp,
-                    fontWeight = FontWeight.Bold,
+                    painterResource(R.drawable.lyrics_share_wordmark), null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(
+                        width = (LyricsShareStyle.LogoWidth * scale).dp,
+                        height = (LyricsShareStyle.LogoHeight * scale).dp,
+                    ),
+                    colorFilter = ColorFilter.tint(Color.White),
                 )
             }
         }

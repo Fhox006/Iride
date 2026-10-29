@@ -1,32 +1,21 @@
 package com.metrolist.music.ui.component
 
-import com.metrolist.music.ui.theme.drawFolioRoundRect
-
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateValueAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
@@ -34,8 +23,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,20 +38,25 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -70,9 +64,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.FolioShape
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -80,298 +78,260 @@ import kotlin.math.sqrt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-val FloatingBottomNavigationHeight = IrideFolio.NavigationHeight
-internal val FloatingBottomNavigationPillHeight = IrideFolio.NavigationSurfaceHeight
-internal val FloatingBottomNavigationOffset = 6.dp
+val FloatingBottomNavigationHeight = IrideBottomDockTouchTargetSize + IrideMiniPlayerContentInset * 2
+private val BottomDockSelectionInset = 2.dp
 
 @Composable
 fun FloatingBottomNavigation(
     navigationItems: List<Screens>,
     currentRoute: String?,
     onItemClick: (Screens, Boolean) -> Unit,
-    backdrop: FrostBackdrop?,
     visible: Boolean = true,
     modifier: Modifier = Modifier,
     contentColor: Color = Color.White,
-    backgroundColor: Color? = null,
-    surfaceAlpha: Float? = null,
 ) {
-    val onSurface = contentColor
-    val surface = IrideFolio.frostedSurfaceColor(onSurface, backgroundColor)
-    val navigationSurfaceAlpha = surfaceAlpha ?: IrideFolio.floatingPillSurfaceAlpha(backdrop, backgroundColor)
-    val groupShape = IrideFolio.ControlsShape
-    val borderColor = onSurface.copy(alpha = 0.22f)
-    val groupedScreens = remember(navigationItems) { navigationItems.filter { it != Screens.Search } }
-    val activeScreen = Screens.MainScreens.firstOrNull {
+    if (navigationItems.isEmpty()) return
+    val activeScreen = navigationItems.firstOrNull {
         isRouteSelected(currentRoute, it.route, navigationItems)
     }
     var rememberedScreenRoute by rememberSaveable { mutableStateOf(Screens.Home.route) }
-    var rememberedGroupIndex by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(activeScreen) {
-        if (activeScreen != null) {
-            rememberedScreenRoute = activeScreen.route
-            groupedScreens.indexOf(activeScreen).takeIf { it >= 0 }?.let { rememberedGroupIndex = it }
-        }
+        if (activeScreen != null) rememberedScreenRoute = activeScreen.route
     }
     val selectedRoute = activeScreen?.route ?: rememberedScreenRoute
-    val selectedGroupIndex = groupedScreens.indexOfFirst { it.route == selectedRoute }
-        .takeIf { it >= 0 } ?: rememberedGroupIndex
-    var visualGroupIndex by remember { mutableIntStateOf(selectedGroupIndex) }
-    var dragPosition by remember { mutableFloatStateOf(selectedGroupIndex.toFloat()) }
+    val selectedIndex = navigationItems.indexOfFirst { it.route == selectedRoute }.coerceAtLeast(0)
+    var visualIndex by remember { mutableIntStateOf(selectedIndex) }
+    var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     var isDragging by remember { mutableStateOf(false) }
-    var floatingDragOffset by remember { mutableStateOf(Offset.Zero) }
-    var isFloatingDragged by remember { mutableStateOf(false) }
-    var snapFromSearch by remember { mutableStateOf(false) }
-    var skippedGroupIndices by remember { mutableStateOf(IntRange.EMPTY) }
+    var skippedIndices by remember { mutableStateOf(IntRange.EMPTY) }
     val reducedMotion = rememberReducedMotion()
+    val dockMotion = LocalIrideBottomDockMotion.current
+    val layoutDirection = LocalLayoutDirection.current
+    val isRtl = layoutDirection == LayoutDirection.Rtl
     val coroutineScope = rememberCoroutineScope()
     val currentOnItemClick by rememberUpdatedState(onItemClick)
     var navigationJob by remember { mutableStateOf<Job?>(null) }
     val selectScreen: (Screens, Boolean, Boolean) -> Unit = { screen, selected, fromDrag ->
         navigationJob?.cancel()
-        val targetIndex = groupedScreens.indexOf(screen)
-        skippedGroupIndices = if (!fromDrag && !selected && targetIndex >= 0 &&
-            selectedRoute != Screens.Search.route
-        ) {
-            (minOf(selectedGroupIndex, targetIndex) + 1) until maxOf(selectedGroupIndex, targetIndex)
+        val targetIndex = navigationItems.indexOf(screen)
+        skippedIndices = if (!fromDrag && !selected) {
+            (minOf(selectedIndex, targetIndex) + 1) until maxOf(selectedIndex, targetIndex)
         } else {
             IntRange.EMPTY
         }
-        if (targetIndex >= 0) visualGroupIndex = targetIndex
-        snapFromSearch = selectedRoute == Screens.Search.route
+        visualIndex = targetIndex
         navigationJob = coroutineScope.launch {
-            if (!selected && !reducedMotion && screen != Screens.Search && selectedRoute != Screens.Search.route) {
-                // Let the indicator draw its first movement before composing the destination.
+            if (!selected && !reducedMotion) {
+                // Start the indicator before composing the destination.
                 repeat(3) { withFrameNanos { } }
             }
             currentOnItemClick(screen, selected)
         }
     }
-    LaunchedEffect(selectedGroupIndex) {
-        if (!isDragging) visualGroupIndex = selectedGroupIndex
+    LaunchedEffect(selectedIndex) {
+        if (!isDragging) visualIndex = selectedIndex
     }
     LaunchedEffect(visible) {
         if (!visible) {
             navigationJob?.cancel()
             isDragging = false
-            skippedGroupIndices = IntRange.EMPTY
-            visualGroupIndex = selectedGroupIndex
-        }
-    }
-    LaunchedEffect(selectedRoute, snapFromSearch) {
-        if (snapFromSearch && selectedRoute != Screens.Search.route) {
-            withFrameNanos { }
-            snapFromSearch = false
+            skippedIndices = IntRange.EMPTY
+            visualIndex = selectedIndex
+            dockMotion?.reset()
         }
     }
     val animatedPosition by animateFloatAsState(
-        targetValue = if (isDragging) dragPosition else visualGroupIndex.toFloat(),
-        animationSpec = if (reducedMotion || selectedRoute == Screens.Search.route ||
-            rememberedScreenRoute == Screens.Search.route || snapFromSearch
-        ) snap() else spring(
+        targetValue = if (isDragging) dragPosition else visualIndex.toFloat(),
+        animationSpec = if (reducedMotion) snap() else spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "bottomNavigationIndicatorPosition",
-        finishedListener = { skippedGroupIndices = IntRange.EMPTY },
+        finishedListener = { skippedIndices = IntRange.EMPTY },
     )
-    val indicatorAlpha by animateFloatAsState(
-        targetValue = if (selectedRoute == Screens.Search.route) 0f else 1f,
-        animationSpec = if (reducedMotion) snap() else tween(
-            IrideFolio.NavigationReturnDurationMillis,
-            easing = IrideFolio.NavigationMotionEasing,
-        ),
-        label = "bottomNavigationIndicatorAlpha",
-    )
-    val floatingOffset = animateValueAsState(
-        targetValue = if (reducedMotion) Offset.Zero else floatingDragOffset,
-        typeConverter = Offset.VectorConverter,
-        animationSpec = if (reducedMotion) snap() else spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = if (isFloatingDragged) 180f else 55f,
-            visibilityThreshold = Offset(0.002f, 0.002f),
-        ),
-        label = "bottomNavigationFloatingOffset",
-    )
-    // Keep selection state while hidden, without leaving invisible pointer targets above the player.
+    // Keep selection while hidden without leaving pointer targets above the expanded player.
     if (!visible) return
-    Row(
-        modifier = modifier.widthIn(max = IrideFolio.NavigationMaxWidth).fillMaxWidth()
-            .padding(horizontal = IrideFolio.HorizontalPadding)
-            .selectableGroup()
-            .graphicsLayer {
-                val offset = floatingOffset.value
-                translationX = offset.x * 6.dp.toPx()
-                translationY = offset.y * 6.dp.toPx()
+    var panelBounds by remember { mutableStateOf<Rect?>(null) }
+    val cornerInfo = rememberDeviceCornerInfo()
+    val panelShape = rememberDeviceMatchedBottomPanelShape(
+        horizontalPadding = IrideFolio.HorizontalPadding,
+        additionalBottomSpacing = 0.dp,
+        topRadius = 0.dp,
+        panelBoundsOnScreen = panelBounds,
+        fallbackBottomRadius = IrideFolio.ControlsCornerRadius,
+        cornerInfo = cornerInfo,
+    )
+    BoxWithConstraints(
+        modifier = modifier
+            .irideBottomDockBounds()
+            .height(FloatingBottomNavigationHeight)
+            .onGloballyPositioned {
+                panelBounds = Rect(it.positionOnScreen(), it.size.toSize())
             }
-            .pointerInput(visible, selectedRoute, reducedMotion, groupedScreens) {
-                if (!visible) return@pointerInput
-                val groupWidthPx = size.width - (IrideFolio.NavigationTouchTargetSize + IrideFolio.NavigationGap).toPx()
-                val segmentWidthPx = groupWidthPx / groupedScreens.size
+            .clip(panelShape)
+            .padding(IrideMiniPlayerContentInset)
+            .selectableGroup()
+            .pointerInput(selectedRoute, navigationItems, reducedMotion, dockMotion, layoutDirection) {
+                val segmentWidthPx = size.width.toFloat() / navigationItems.size
                 if (segmentWidthPx <= 0f) return@pointerInput
-                val activationThresholdPx = 24.dp.toPx()
+                val activationThresholdPx = 12.dp.toPx()
                 val resistancePx = 120.dp.toPx()
-                var startedOnGroup = false
                 var horizontalNavigation: Boolean? = null
-                var rawDragPosition = 0f
+                var rawDragPosition = selectedIndex.toFloat()
                 var travel = Offset.Zero
                 try {
                     detectDragGestures(
-                        onDragStart = { start ->
+                        onDragStart = {
                             navigationJob?.cancel()
-                            skippedGroupIndices = IntRange.EMPTY
-                            startedOnGroup = start.x < groupWidthPx
+                            skippedIndices = IntRange.EMPTY
+                            dragPosition = selectedIndex.toFloat()
+                            rawDragPosition = dragPosition
                             horizontalNavigation = null
-                            rawDragPosition = selectedGroupIndex.toFloat()
                             travel = Offset.Zero
-                            floatingDragOffset = Offset.Zero
-                            isFloatingDragged = false
+                            dockMotion?.reset()
                         },
                         onDragEnd = {
                             if (isDragging) {
                                 val targetIndex = dragPosition.roundToInt()
-                                visualGroupIndex = targetIndex
+                                visualIndex = targetIndex
                                 isDragging = false
-                                val targetScreen = groupedScreens[targetIndex]
-                                if (selectedRoute != targetScreen.route) {
-                                    selectScreen(targetScreen, false, true)
-                                }
+                                val targetScreen = navigationItems[targetIndex]
+                                if (selectedRoute != targetScreen.route) selectScreen(targetScreen, false, true)
                             }
-                            isFloatingDragged = false
-                            floatingDragOffset = Offset.Zero
+                            dockMotion?.reset()
                         },
                         onDragCancel = {
                             isDragging = false
-                            visualGroupIndex = selectedGroupIndex
-                            isFloatingDragged = false
-                            floatingDragOffset = Offset.Zero
+                            visualIndex = selectedIndex
+                            dockMotion?.reset()
                         },
                         onDrag = { change, amount ->
                             travel += amount
                             if (horizontalNavigation == null) {
-                                horizontalNavigation = startedOnGroup && abs(travel.x) > abs(travel.y)
+                                horizontalNavigation = abs(travel.x) > abs(travel.y)
                                 isDragging = horizontalNavigation == true
-                                if (isDragging) dragPosition = rawDragPosition
                             }
                             if (isDragging) {
-                                rawDragPosition += amount.x / segmentWidthPx
-                                dragPosition = rawDragPosition
-                                    .coerceIn(0f, groupedScreens.lastIndex.toFloat())
+                                rawDragPosition += (if (isRtl) -amount.x else amount.x) / segmentWidthPx
+                                dragPosition = rawDragPosition.coerceIn(0f, navigationItems.lastIndex.toFloat())
                             }
                             if (!reducedMotion) {
-                                // Horizontal navigation only pulls the pill beyond the first/last tab.
+                                // Tab selection follows horizontal travel; only excess travel pulls the box.
                                 val resistedTravel = if (isDragging) {
-                                    Offset((rawDragPosition - dragPosition) * segmentWidthPx, 0f)
-                                } else {
-                                    travel
-                                }
+                                    Offset((rawDragPosition - dragPosition) * segmentWidthPx, travel.y)
+                                } else travel
                                 val distance = resistedTravel.getDistance()
-                                isFloatingDragged = distance > activationThresholdPx
-                                floatingDragOffset = if (isFloatingDragged) {
-                                    val pull = resistedTravel *
-                                        ((distance - activationThresholdPx) / (distance * resistancePx))
-                                    pull / sqrt(1f + pull.getDistanceSquared())
-                                } else {
-                                    Offset.Zero
-                                }
+                                val pull = if (distance > activationThresholdPx) {
+                                    resistedTravel * ((distance - activationThresholdPx) / (distance * resistancePx))
+                                } else Offset.Zero
+                                dockMotion?.updateDrag(pull / sqrt(1f + pull.getDistanceSquared()), true)
                             }
                             change.consume()
                         },
                     )
                 } finally {
                     isDragging = false
-                    isFloatingDragged = false
-                    floatingDragOffset = Offset.Zero
+                    dockMotion?.reset()
                 }
             },
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .height(IrideFolio.NavigationTouchTargetSize),
-        ) {
-            Box(
-                Modifier.align(Alignment.Center)
-                    .fillMaxWidth()
-                    .height(FloatingBottomNavigationPillHeight)
-                    .frostedNavigationSurface(
-                        backdrop, surface, groupShape,
-                        surfaceAlpha = navigationSurfaceAlpha,
-                        observeBackdrop = true,
-                    )
-                    .border(1.dp, borderColor, groupShape),
+        val contentWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
+        // Layout and drawing share integer edges so weighted rounding cannot shift the highlight.
+        val tabEdges = remember(contentWidthPx, navigationItems.size) {
+            IntArray(navigationItems.size + 1) { index ->
+                (contentWidthPx.toLong() * index / navigationItems.size).toInt()
+            }
+        }
+        val density = LocalDensity.current
+        val indicatorInsetPx = with(density) { BottomDockSelectionInset.roundToPx().toFloat() }
+        val contentInsetPx = with(density) { IrideMiniPlayerContentInset.roundToPx().toFloat() }
+        val selectionRadius = IrideFolio.ControlsCornerRadius - IrideMiniPlayerContentInset - BottomDockSelectionInset
+        val contentHeightPx = with(density) { maxHeight.roundToPx().toFloat() }
+        val selectionClip = remember(panelShape, contentWidthPx, contentHeightPx, contentInsetPx, indicatorInsetPx, layoutDirection, density) {
+            val outline = panelShape.createOutline(
+                Size(contentWidthPx + contentInsetPx * 2, contentHeightPx + contentInsetPx * 2),
+                layoutDirection,
+                density,
             )
-            val segmentWidth = maxWidth / groupedScreens.size
-            val segmentWidthPx = with(LocalDensity.current) { segmentWidth.toPx() }
-            val indicatorInsetPx = with(LocalDensity.current) { IrideFolio.NavigationSelectionInset.toPx() }
-            val indicatorHeightPx = with(LocalDensity.current) {
-                (FloatingBottomNavigationPillHeight - IrideFolio.NavigationSelectionInset * 2).toPx()
+            val outlinePath = Path().apply {
+                when (outline) {
+                    is Outline.Generic -> addPath(outline.path)
+                    is Outline.Rounded -> addRoundRect(outline.roundRect)
+                    is Outline.Rectangle -> addRect(outline.rect)
+                }
             }
-            val indicatorWidthPx = segmentWidthPx - 2f * indicatorInsetPx
-            Canvas(Modifier.fillMaxSize()) {
-                val left = segmentWidthPx * animatedPosition + indicatorInsetPx
-                val top = (size.height - indicatorHeightPx) / 2f
-                drawFolioRoundRect(
-                    color = onSurface.copy(alpha = 0.10f),
-                    topLeft = Offset(left, top),
-                    size = Size(indicatorWidthPx, indicatorHeightPx),
-                    cornerRadius = CornerRadius(
-                        IrideFolio.NavigationSelectionCornerRadius.toPx(),
-                    ),
-                    alpha = indicatorAlpha,
-                )
+            // Removing an inward half-stroke produces a parallel contour, including for the
+            // display's noncircular corners. Reducing both ellipse radii would vary the gap.
+            outlinePath.parallelInset(contentInsetPx + indicatorInsetPx).apply {
+                translate(Offset(-contentInsetPx, -contentInsetPx))
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                groupedScreens.forEachIndexed { index, screen ->
-                    val indicatorStart = segmentWidthPx * animatedPosition + indicatorInsetPx
-                    val buttonLeft = segmentWidthPx * index
-                    val maskStart = (indicatorStart - buttonLeft).coerceIn(0f, segmentWidthPx)
-                    val maskEnd = (indicatorStart + indicatorWidthPx - buttonLeft).coerceIn(0f, segmentWidthPx)
-                    // A tap across tabs must not activate the icons it only passes over.
-                    val showActiveContent = selectedRoute != Screens.Search.route && index !in skippedGroupIndices
-                    NavigationButton(
-                        screen = screen,
-                        selected = selectedRoute == screen.route,
-                        maskStart = if (showActiveContent) maskStart else 0f,
-                        maskEnd = if (showActiveContent) maskEnd else 0f,
-                        onItemClick = { screen, selected -> selectScreen(screen, selected, false) },
-                        reducedMotion = reducedMotion,
-                        contentColor = onSurface,
-                        modifier = Modifier.weight(1f),
+        }
+        val position = animatedPosition.coerceIn(0f, navigationItems.lastIndex.toFloat())
+        val fromIndex = position.toInt()
+        val toIndex = (fromIndex + 1).coerceAtMost(navigationItems.lastIndex)
+        val fraction = position - fromIndex
+        val indicatorStart = tabEdges[fromIndex] +
+            (tabEdges[toIndex] - tabEdges[fromIndex]) * fraction + indicatorInsetPx
+        val indicatorEnd = tabEdges[fromIndex + 1] +
+            (tabEdges[toIndex + 1] - tabEdges[fromIndex + 1]) * fraction - indicatorInsetPx
+        val startCornerMatch = (1f - position).coerceIn(0f, 1f)
+        val endCornerMatch = (position - (navigationItems.lastIndex - 1)).coerceIn(0f, 1f)
+        val indicatorShape = FolioShape(
+            topStart = selectionRadius,
+            topEnd = selectionRadius,
+            bottomStart = selectionRadius * (1f - startCornerMatch),
+            bottomEnd = selectionRadius * (1f - endCornerMatch),
+        )
+        Canvas(Modifier.fillMaxSize()) {
+            // The shared inset contour keeps a constant gap at either outer corner, including
+            // during a tab slide. Inner corners retain the regular selection rounding.
+            clipPath(selectionClip) {
+                translate(if (isRtl) size.width - indicatorEnd else indicatorStart, indicatorInsetPx) {
+                    drawOutline(
+                        outline = indicatorShape.createOutline(
+                            Size(indicatorEnd - indicatorStart, size.height - indicatorInsetPx * 2),
+                            layoutDirection,
+                            this,
+                        ),
+                        color = contentColor.copy(alpha = 0.10f),
                     )
                 }
             }
         }
-        Spacer(Modifier.width(IrideFolio.NavigationGap))
-        val search = Screens.Search
-        Box(
-            modifier = Modifier.size(IrideFolio.NavigationTouchTargetSize),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier.size(FloatingBottomNavigationPillHeight)
-                    .frostedNavigationSurface(
-                        backdrop, surface, groupShape,
-                        surfaceAlpha = navigationSurfaceAlpha,
-                        observeBackdrop = true,
+        Layout(
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                navigationItems.forEachIndexed { index, screen ->
+                    val buttonLeft = tabEdges[index].toFloat()
+                    val buttonWidth = (tabEdges[index + 1] - tabEdges[index]).toFloat()
+                    val showActiveContent = index !in skippedIndices
+                    val maskStart = (indicatorStart - buttonLeft).coerceIn(0f, buttonWidth)
+                    val maskEnd = (indicatorEnd - buttonLeft).coerceIn(0f, buttonWidth)
+                    NavigationButton(
+                        screen = screen,
+                        selected = selectedRoute == screen.route,
+                        maskStart = if (showActiveContent) {
+                            if (isRtl) buttonWidth - maskEnd else maskStart
+                        } else 0f,
+                        maskEnd = if (showActiveContent) {
+                            if (isRtl) buttonWidth - maskStart else maskEnd
+                        } else 0f,
+                        onItemClick = { screen, selected -> selectScreen(screen, selected, false) },
+                        contentColor = contentColor,
                     )
-                    .border(1.dp, borderColor, groupShape),
-            )
-            NavigationButton(
-                screen = search,
-                selected = selectedRoute == search.route,
-                onItemClick = { screen, selected -> selectScreen(screen, selected, false) },
-                reducedMotion = reducedMotion,
-                contentColor = onSurface,
-                modifier = Modifier.fillMaxSize(),
-            )
+                }
+            },
+        ) { measurables, constraints ->
+            val placeables = measurables.mapIndexed { index, measurable ->
+                measurable.measure(
+                    Constraints.fixed(tabEdges[index + 1] - tabEdges[index], constraints.maxHeight),
+                )
+            }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                placeables.forEachIndexed { index, placeable ->
+                    placeable.placeRelative(tabEdges[index], 0)
+                }
+            }
         }
     }
 }
@@ -381,22 +341,13 @@ private fun NavigationButton(
     screen: Screens,
     selected: Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
-    reducedMotion: Boolean,
     contentColor: Color,
-    maskStart: Float = 0f,
-    maskEnd: Float = 0f,
+    maskStart: Float,
+    maskEnd: Float,
     modifier: Modifier = Modifier,
 ) {
     val currentSelected by rememberUpdatedState(selected)
     val description = stringResource(screen.titleId)
-    val searchSelection = animateFloatAsState(
-        targetValue = if (screen == Screens.Search && selected) 1f else 0f,
-        animationSpec = if (reducedMotion) snap() else tween(
-            IrideFolio.NavigationSelectionDurationMillis,
-            easing = IrideFolio.NavigationMotionEasing,
-        ),
-        label = "bottomNavigationSearchSelection",
-    )
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -410,53 +361,29 @@ private fun NavigationButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (screen == Screens.Search) {
-            Box(
-                modifier = Modifier
-                    .size(FloatingBottomNavigationPillHeight - IrideFolio.NavigationSelectionInset * 2)
-                    .drawBehind {
-                        drawFolioRoundRect(
-                            color = contentColor,
-                            alpha = searchSelection.value * 0.10f,
-                            cornerRadius = CornerRadius(
-                                IrideFolio.NavigationSelectionCornerRadius.toPx(),
-                            ),
-                        )
-                    },
-            )
-        }
-        if (screen == Screens.Search) {
-            Icon(
-                painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
-                contentDescription = null,
-                tint = contentColor.copy(alpha = contentColor.alpha * (0.72f + 0.28f * searchSelection.value)),
-                modifier = Modifier.size(23.dp),
-            )
-        } else {
-            NavigationButtonContent(
-                screen = screen,
-                active = false,
-                color = contentColor.copy(alpha = contentColor.alpha * 0.72f),
-                modifier = Modifier.drawWithContent {
-                    if (maskEnd > maskStart) {
-                        if (maskStart > 0f) clipRect(right = maskStart) { this@drawWithContent.drawContent() }
-                        if (maskEnd < size.width) clipRect(left = maskEnd) { this@drawWithContent.drawContent() }
-                    } else {
-                        drawContent()
-                    }
-                },
-            )
-            NavigationButtonContent(
-                screen = screen,
-                active = true,
-                color = contentColor,
-                modifier = Modifier.drawWithContent {
-                    if (maskEnd > maskStart) {
-                        clipRect(left = maskStart, right = maskEnd) { this@drawWithContent.drawContent() }
-                    }
-                },
-            )
-        }
+        NavigationButtonContent(
+            screen = screen,
+            active = false,
+            color = contentColor.copy(alpha = contentColor.alpha * 0.72f),
+            modifier = Modifier.drawWithContent {
+                if (maskEnd > maskStart) {
+                    if (maskStart > 0f) clipRect(right = maskStart) { this@drawWithContent.drawContent() }
+                    if (maskEnd < size.width) clipRect(left = maskEnd) { this@drawWithContent.drawContent() }
+                } else {
+                    drawContent()
+                }
+            },
+        )
+        NavigationButtonContent(
+            screen = screen,
+            active = true,
+            color = contentColor,
+            modifier = Modifier.drawWithContent {
+                if (maskEnd > maskStart) {
+                    clipRect(left = maskStart, right = maskEnd) { this@drawWithContent.drawContent() }
+                }
+            },
+        )
     }
 }
 

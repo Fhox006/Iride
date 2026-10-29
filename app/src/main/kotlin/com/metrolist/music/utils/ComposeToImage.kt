@@ -74,24 +74,28 @@ object ComposeToImage {
             val mainTextColor = textColor ?: defaultTextColor
             val secondaryTxtColor = secondaryTextColor ?: defaultSecondaryTextColor
 
-            val interRegular = try {
-                ResourcesCompat.getFont(context, R.font.inter_variable)
+            val satoshiTypeface = try {
+                ResourcesCompat.getFont(context, R.font.satoshi_variable)
             } catch (_: Exception) {
                 null
             } ?: Typeface.DEFAULT
-            val interBold = Typeface.create(interRegular, Typeface.BOLD)
+            val artistTypeface = try {
+                ResourcesCompat.getFont(context, R.font.dm_sans_variable)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.MONOSPACE
 
             val titlePaint = TextPaint().apply {
                 color = mainTextColor
                 textSize = LyricsShareStyle.TitleSize
-                typeface = interBold
+                typeface = Typeface.create(satoshiTypeface, Typeface.BOLD)
                 isAntiAlias = true
             }
 
             val artistPaint = TextPaint().apply {
                 color = secondaryTxtColor
                 textSize = LyricsShareStyle.ArtistSize
-                typeface = interRegular
+                typeface = artistTypeface
                 isAntiAlias = true
             }
 
@@ -101,13 +105,6 @@ object ComposeToImage {
                 fontVariationSettings = "'wght' 900"
                 isAntiAlias = true
                 textSize = LyricsShareStyle.textSize(lyrics)
-            }
-
-            val appNamePaint = TextPaint().apply {
-                color = secondaryTxtColor
-                textSize = LyricsShareStyle.AppNameSize
-                typeface = interBold
-                isAntiAlias = true
             }
 
             val coverArtSize = LyricsShareStyle.CoverSize
@@ -142,7 +139,7 @@ object ComposeToImage {
             ) { createLyricsLayout(it).height.toFloat() }
             val lyricsLayout = createLyricsLayout(fittedTextSize)
             val lyricsHeight = lyricsLayout.height.toFloat()
-            val footerHeight = LyricsShareStyle.LogoSize
+            val footerHeight = LyricsShareStyle.LogoHeight
             val imageHeight = padding * 2 + headerHeight + LyricsShareStyle.HeaderGap + lyricsHeight +
                 LyricsShareStyle.FooterGap + footerHeight
 
@@ -225,19 +222,22 @@ object ComposeToImage {
             canvas.restore()
 
             val footerY = imageHeight - padding - footerHeight
-            val logoSize = LyricsShareStyle.LogoSize
-            val logoRect = RectF(padding, footerY, padding + logoSize, footerY + logoSize)
-            ContextCompat.getDrawable(context, R.drawable.ic_logo)?.toBitmap()?.let {
+            val logoRect = RectF(
+                padding,
+                footerY,
+                padding + LyricsShareStyle.LogoWidth,
+                footerY + LyricsShareStyle.LogoHeight,
+            )
+            ContextCompat.getDrawable(context, R.drawable.lyrics_share_wordmark)?.toBitmap(
+                width = LyricsShareStyle.LogoWidth.toInt(),
+                height = LyricsShareStyle.LogoHeight.toInt(),
+            )?.let {
                 val logoPaint = Paint().apply {
-                    colorFilter = PorterDuffColorFilter(secondaryTxtColor, PorterDuff.Mode.SRC_IN)
+                    colorFilter = PorterDuffColorFilter(0xFFFFFFFF.toInt(), PorterDuff.Mode.SRC_IN)
                     isAntiAlias = true
                 }
                 canvas.drawBitmap(it, null, logoRect, logoPaint)
             }
-
-            val appNameX = padding + logoSize + LyricsShareStyle.LogoGap
-            val appNameY = footerY + logoSize / 2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
-            canvas.drawText("Iride", appNameX, appNameY, appNamePaint)
 
             return@withContext bitmap
         }
@@ -257,7 +257,7 @@ object ComposeToImage {
             val padding = 80f
 
             val monoFont = try {
-                ResourcesCompat.getFont(context, R.font.ibm_plex_mono_regular)
+                ResourcesCompat.getFont(context, R.font.dm_sans_variable)
             } catch (_: Exception) {
                 null
             } ?: Typeface.MONOSPACE

@@ -139,7 +139,10 @@ internal fun albumScreenMenuSections(
                         label = stringResource(R.string.share),
                         icon = R.drawable.share,
                         onClick = {
-                            val link = album.album.playlistId?.let {
+                            val link = if (album.album.id.startsWith("itunes:")) {
+                                val parts = album.album.id.split(':')
+                                "https://music.apple.com/${parts[1]}/album/${parts[2]}"
+                            } else album.album.playlistId?.let {
                                 "https://music.youtube.com/playlist?list=$it"
                             } ?: "https://music.youtube.com/browse/${album.album.id}"
                             val intent = Intent(Intent.ACTION_SEND).apply {

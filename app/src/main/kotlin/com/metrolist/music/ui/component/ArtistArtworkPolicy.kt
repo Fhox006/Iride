@@ -118,8 +118,11 @@ internal fun <T> preferredArtistArtwork(
     incumbent: T? = null,
 ): T? {
     // An established alternative has already used its one replacement opportunity.
-    if (incumbent != null && source(incumbent) != ArtistArtworkSource.APPLE_MUSIC) return incumbent
-    val available = (candidates + listOfNotNull(incumbent)).distinct().filter(uniformCorners)
+    if (incumbent != null && source(incumbent) !in
+        setOf(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkSource.SPOTIFY)) return incumbent
+    val available = (candidates + listOfNotNull(incumbent))
+        .distinct()
+        .filter { source(it) != ArtistArtworkSource.SPOTIFY && uniformCorners(it) }
     // A well-defined portrait with a clean transition is a concrete reason to reject flat graphics.
     val acceptable = if (available.any { quality(it).isGoodPortrait }) {
         available.filter { quality(it).photographic >= 0.45f }

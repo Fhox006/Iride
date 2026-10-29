@@ -27,7 +27,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.SharedTransitionLayout
+import com.metrolist.music.ui.component.IrideArtistNavigationTransitions
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.snap
@@ -58,7 +58,6 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -210,13 +209,17 @@ import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingBottomNavigation
 import com.metrolist.music.ui.component.FloatingBottomNavigationHeight
-import com.metrolist.music.ui.component.FloatingBottomNavigationOffset
-import com.metrolist.music.ui.component.FrostedMiniPlayerBackdrop
+import com.metrolist.music.ui.component.FrostedPlayerNavigationBackdrop
+import com.metrolist.music.ui.component.LocalIrideBottomDockMotion
+import com.metrolist.music.ui.component.rememberIrideBottomDockMotion
+import com.metrolist.music.ui.component.irideBottomDockMotion
+import com.metrolist.music.ui.component.irideBottomDockEdgeInset
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.invalidateFrostOnChanges
 import com.metrolist.music.ui.component.LocalScreenFrostBackground
 import com.metrolist.music.ui.component.IrideMiniPlayerHeight
+import com.metrolist.music.ui.component.IrideMiniPlayerNavigationSpacing
 import com.metrolist.music.ui.component.UpdateInterstitialScreen
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
@@ -1017,15 +1020,17 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val playerTopPeek = if (curtainMode) maxHeight * 0.14f else 0.dp
+                val dockEdgeInset = irideBottomDockEdgeInset()
 
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         initialAnchor = persistableAnchor(App.playerAnchorCache),
-                        collapsedBound = if (!showRail) {
-                            bottomInset + (if (curtainMode) IrideMiniPlayerHeight + IrideFolio.MiniPlayerTopSpacing else MiniPlayerHeight + FloatingPillBottomSpacing)
-                        } else {
-                            bottomInset + MiniPlayerHeight
+                        collapsedBound = (if (curtainMode) dockEdgeInset else bottomInset) + when {
+                            curtainMode -> FloatingBottomNavigationHeight +
+                                IrideMiniPlayerNavigationSpacing + IrideMiniPlayerHeight
+                            !showRail -> MiniPlayerHeight + FloatingPillBottomSpacing
+                            else -> MiniPlayerHeight
                         },
                         expandedBound = maxHeight - playerTopPeek,
                         preventDismissDrag = curtainMode,
@@ -1065,10 +1070,10 @@ class MainActivity : ComponentActivity() {
                 val irideBridgeState = remember { IrideBridgeState() }
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, dockEdgeInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (curtainActive) {
-                            bottom = playerBottomSheetState.collapsedBound + FloatingBottomNavigationHeight + 8.dp
+                            bottom = playerBottomSheetState.collapsedBound + 6.dp
                         } else if (!showRail) {
                             bottom += MiniPlayerHeight + FloatingPillBottomSpacing
                         } else {
@@ -1226,7 +1231,7 @@ class MainActivity : ComponentActivity() {
                 }
                 val navigationBackdrop = rememberFrostBackdrop(
                     blurredSampleHeight = playerBottomSheetState.collapsedBound +
-                        FloatingBottomNavigationHeight + IrideFolio.NavigationFrostBlurRadius * 3f + 2.dp,
+                        IrideFolio.NavigationFrostBlurRadius * 3f + 2.dp,
                     blurredScale = 0.5f,
                     rasterizeContent = true,
                     stableBlur = true,
@@ -1281,6 +1286,7 @@ class MainActivity : ComponentActivity() {
                     LocalScreenFrostBackground provides pageBackgroundBackdrop,
                     LocalPageNavigationAppearance provides pageNavigationAppearance,
                     LocalFloatingPanelAppearance provides floatingPanelAppearance,
+                    LocalIrideBottomDockMotion provides rememberIrideBottomDockMotion(),
                 ) {
                     val playerScreenHeight = maxHeight
                     val floatingNavigationAlpha by remember(playerBottomSheetState) {
@@ -1385,92 +1391,102 @@ class MainActivity : ComponentActivity() {
                                         val navEnterDuration = if (navAnimationsEnabled) IrideMotion.Short else 0
                                         val navExitDuration = if (navAnimationsEnabled) IrideMotion.Quick else 0
 
-                                        NavHost(
-                                            navController = navController,
-                                            startDestination =
-                                                if (!onboardingCompleted) {
-                                                    "onboarding"
-                                                } else {
-                                                    when (tabOpenedFromShortcut ?: defaultOpenTab) {
-                                                        NavigationTab.HOME -> Screens.Home
-                                                        NavigationTab.LIBRARY -> Screens.Library
-                                                        else -> Screens.Home
-                                                    }.route
-                                                },
-                                            enterTransition = {
-                                                val currentRouteIndex = topLevelIndex(targetState.destination.route)
-                                                val previousRouteIndex = topLevelIndex(initialState.destination.route)
-
-                                                if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                                    fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
-                                                    slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                } else {
-                                                    slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                }
-                                            },
-                                            exitTransition = {
-                                                val currentRouteIndex = topLevelIndex(initialState.destination.route)
-                                                val targetRouteIndex = topLevelIndex(targetState.destination.route)
-
-                                                if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                                    fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
-                                                    slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                } else {
-                                                    slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                }
-                                            },
-                                            popEnterTransition = {
-                                                val currentRouteIndex = topLevelIndex(targetState.destination.route)
-                                                val previousRouteIndex = topLevelIndex(initialState.destination.route)
-
-                                                if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                                    fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
-                                                    slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                } else {
-                                                    slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                }
-                                            },
-                                            popExitTransition = {
-                                                val currentRouteIndex = topLevelIndex(initialState.destination.route)
-                                                val targetRouteIndex = topLevelIndex(targetState.destination.route)
-
-                                                if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                                    fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
-                                                    slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                } else {
-                                                    slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                }
-                                            },
-                                            modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
-                                        ) {
-                                            NavigationBuilder(
+                                        IrideArtistNavigationTransitions(navController) {
+                                            NavHost(
                                                 navController = navController,
-                                                scrollBehavior = topAppBarScrollBehavior,
-                                                latestVersionName = latestVersionName,
-                                                activity = this@MainActivity,
-                                                snackbarHostState = snackbarHostState,
-                                            )
+                                                startDestination =
+                                                    if (!onboardingCompleted) {
+                                                        "onboarding"
+                                                    } else {
+                                                        when (tabOpenedFromShortcut ?: defaultOpenTab) {
+                                                            NavigationTab.HOME -> Screens.Home
+                                                            NavigationTab.LIBRARY -> Screens.Library
+                                                            else -> Screens.Home
+                                                        }.route
+                                                    },
+                                                enterTransition = {
+                                                    val currentRouteIndex = topLevelIndex(targetState.destination.route)
+                                                    val previousRouteIndex = topLevelIndex(initialState.destination.route)
+
+                                                    if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
+                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
+                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
+                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else {
+                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
+                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    }
+                                                },
+                                                exitTransition = {
+                                                    val currentRouteIndex = topLevelIndex(initialState.destination.route)
+                                                    val targetRouteIndex = topLevelIndex(targetState.destination.route)
+
+                                                    if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
+                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
+                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
+                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else {
+                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
+                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    }
+                                                },
+                                                popEnterTransition = {
+                                                    val currentRouteIndex = topLevelIndex(targetState.destination.route)
+                                                    val previousRouteIndex = topLevelIndex(initialState.destination.route)
+
+                                                    if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
+                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
+                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
+                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    } else {
+                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
+                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    }
+                                                },
+                                                popExitTransition = {
+                                                    val currentRouteIndex = topLevelIndex(initialState.destination.route)
+                                                    val targetRouteIndex = topLevelIndex(targetState.destination.route)
+
+                                                    if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
+                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
+                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
+                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    } else {
+                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
+                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    }
+                                                },
+                                                modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                                            ) {
+                                                NavigationBuilder(
+                                                    navController = navController,
+                                                    scrollBehavior = topAppBarScrollBehavior,
+                                                    latestVersionName = latestVersionName,
+                                                    activity = this@MainActivity,
+                                                    snackbarHostState = snackbarHostState,
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Both surfaces sample the page before either panel is drawn and fade together.
+                        // One surface contains the player row, divider and all navigation tabs.
                         if (curtainActive && floatingNavigationAlpha > 0f && !isFullscreenStory && currentRoute != "onboarding") {
-                            FrostedMiniPlayerBackdrop(
+                            FrostedPlayerNavigationBackdrop(
                                 collapsedHeight = playerBottomSheetState.collapsedBound,
                                 backdrop = navigationBackdrop,
                                 contentColor = floatingPanelAppearance.contentColor,
@@ -1478,6 +1494,7 @@ class MainActivity : ComponentActivity() {
                                 surfaceAlpha = floatingPanelAppearance.surfaceAlpha,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
+                                    .irideBottomDockMotion()
                                     .graphicsLayer {
                                         alpha = floatingNavigationAlpha
                                     },
@@ -1519,6 +1536,9 @@ class MainActivity : ComponentActivity() {
                                 screenHeight = playerScreenHeight,
                                 isExpandable = topGradientMediaMetadata != null,
                                 contentColor = floatingPanelAppearance.contentColor,
+                                modifier = Modifier.graphicsLayer {
+                                    alpha = (playerBottomSheetState.progress / 0.25f).coerceIn(0f, 1f)
+                                },
                             )
                         }
 
@@ -1528,15 +1548,12 @@ class MainActivity : ComponentActivity() {
                                 navigationItems = navigationItems,
                                 currentRoute = activeNavigationRoute ?: currentRoute,
                                 onItemClick = onNavItemClick,
-                                backdrop = navigationBackdrop,
                                 contentColor = floatingPanelAppearance.contentColor,
-                                backgroundColor = floatingPanelAppearance.backgroundColor,
-                                surfaceAlpha = floatingPanelAppearance.surfaceAlpha,
                                 visible = floatingNavigationVisible,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = if (playerBottomSheetState.isDismissed) bottomInset else playerBottomSheetState.collapsedBound)
-                                    .offset(y = FloatingBottomNavigationOffset)
+                                    .irideBottomDockMotion()
+                                    .padding(bottom = dockEdgeInset)
                                     .height(FloatingBottomNavigationHeight)
                                     .graphicsLayer {
                                         alpha = floatingNavigationAlpha
@@ -1551,7 +1568,7 @@ class MainActivity : ComponentActivity() {
                     val songMenuFooterHeight = if (floatingNavigationVisible) {
                         maxOf(
                             playerFooterHeight,
-                            playerFooterHeight + FloatingBottomNavigationHeight - FloatingBottomNavigationOffset,
+                            dockEdgeInset + FloatingBottomNavigationHeight,
                         )
                     } else playerFooterHeight
                     CompositionLocalProvider(

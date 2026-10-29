@@ -110,6 +110,8 @@ fun PlayerMenu(
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
     showDissolve: Boolean = false,
+    onShowComments: (() -> Unit)? = null,
+    onShowListenTogether: (() -> Unit)? = null,
 ) {
     mediaMetadata ?: return
     val context = LocalContext.current
@@ -571,12 +573,29 @@ fun PlayerMenu(
                             .copy(selected = repeatMode == Player.REPEAT_MODE_ONE)
                     )
                 }
-                if (listenTogetherManager?.isInRoom == true)
+                if (onShowComments != null)
+                    add(
+                        folioMenuAction(
+                            R.string.comments,
+                            R.drawable.comment,
+                            { onShowComments(); onDismiss() },
+                        )
+                    )
+                if (listenTogetherManager != null)
                     add(
                         folioMenuAction(
                             R.string.listen_together,
                             R.drawable.group,
-                            { showListenTogetherDialog = true },
+                            {
+                                if (onShowListenTogether != null) {
+                                    onShowListenTogether()
+                                    onDismiss()
+                                } else {
+                                    navController.navigate("listen_together") { launchSingleTop = true }
+                                    playerBottomSheetState.collapseSoft()
+                                    onDismiss()
+                                }
+                            },
                         )
                     )
                 addAll(

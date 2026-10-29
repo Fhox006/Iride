@@ -4,9 +4,13 @@ internal object VideoPlaybackPolicy {
     const val DEFAULT_HEIGHT = 720
 
     fun lowerHeight(height: Int): Int? = when {
+        height > 1440 -> 1440
+        height > 1080 -> 1080
         height > 720 -> 720
         height > 480 -> 480
         height > 360 -> 360
+        height > 240 -> 240
+        height > 144 -> 144
         else -> null
     }
 

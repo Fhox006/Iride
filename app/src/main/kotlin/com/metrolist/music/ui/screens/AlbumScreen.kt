@@ -120,6 +120,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.LocalAlbumRadio
+import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideLoadingIndicator
@@ -232,6 +233,7 @@ fun AlbumScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val playlistId by viewModel.playlistId.collectAsStateWithLifecycle()
+    val unavailableSongs by viewModel.unavailableSongs.collectAsStateWithLifecycle()
     val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
     val discovery by viewModel.discovery.collectAsStateWithLifecycle()
@@ -378,7 +380,12 @@ fun AlbumScreen(
                     TurntableSfx.play()
                     coroutineScope.launch {
                         delay(NeedleDropLeadInMs)
-                        playerConnection.playQueue(LocalAlbumRadio(current))
+                        val queue = if (current.songs.isNotEmpty()) {
+                            LocalAlbumRadio(current)
+                        } else {
+                            playlistId.takeIf(String::isNotBlank)?.let(::YouTubeAlbumRadio)
+                        }
+                        queue?.let(playerConnection::playQueue)
                     }
                 }
             }
@@ -663,7 +670,7 @@ fun AlbumScreen(
                 else null,
         ) {
             val albumWithSongs = albumWithSongs
-            if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
+            if (albumWithSongs != null) {
                 item(key = "album_header") {
                     val albumCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
 
@@ -720,7 +727,12 @@ fun AlbumScreen(
                             TurntableSfx.play()
                             coroutineScope.launch {
                                 delay(NeedleDropLeadInMs)
-                                playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
+                                val queue = if (albumWithSongs.songs.isNotEmpty()) {
+                                    LocalAlbumRadio(albumWithSongs)
+                                } else {
+                                    playlistId.takeIf(String::isNotBlank)?.let(::YouTubeAlbumRadio)
+                                }
+                                queue?.let(playerConnection::playQueue)
                             }
                         }
                     }
@@ -1020,10 +1032,9 @@ fun AlbumScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier.fillMaxWidth().revealMask(artistRowProgress),
                         ) {
-                            val primaryArtist = albumWithSongs.artists.firstOrNull()
-                            if (primaryArtist?.thumbnailUrl != null) {
+                            if (!albumWithSongs.album.thumbnailUrl.isNullOrBlank()) {
                                 AsyncImage(
-                                    model = primaryArtist.thumbnailUrl,
+                                    model = albumWithSongs.album.thumbnailUrl,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(18.dp).clip(CircleShape),
@@ -1051,7 +1062,11 @@ fun AlbumScreen(
                                                             ),
                                                     ),
                                             ) {
-                                                navController.navigate("artist/${artist.id}")
+                                                if (viewModel.albumId.startsWith("itunes:") && !artist.id.startsWith("UC")) {
+                                                    navController.navigate("search/${android.net.Uri.encode(artist.name)}")
+                                                } else {
+                                                    navController.navigate("artist/${artist.id}")
+                                                }
                                             }
                                         withLink(link) {
                                             append(artist.name)
@@ -1086,7 +1101,22 @@ fun AlbumScreen(
                     }
                 }
 
-                item(key = "control_panel") {
+                if (unavailableSongs.isNotEmpty()) {
+                    item(key = "unavailable_catalog_tracks") {
+                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            Text(
+                                text = stringResource(R.string.external_album_unavailable),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            unavailableSongs.forEach { title ->
+                                Text(text = title, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+
+                if (albumWithSongs.songs.isNotEmpty()) item(key = "control_panel") {
                     val controlPanelProgress =
                         headerEnter(
                             revealed = headerRevealed,
@@ -1185,6 +1215,9 @@ fun AlbumScreen(
                     item(key = "songs_container") {
                         val hideDurationForStandard by
                             rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
+                        val albumArtistNames = albumWithSongs.artists
+                            .map { it.name.trim().lowercase() }
+                            .toSet()
                         Column(
                             modifier =
                                 Modifier.fillMaxWidth()
@@ -1201,7 +1234,11 @@ fun AlbumScreen(
                                     }
                                 }
 
-                                val featuredNames = song.orderedArtists.drop(1).map { it.name }
+                                val featuredNames = song.orderedArtists
+                                    .drop(1)
+                                    .distinctBy { it.id }
+                                    .filterNot { it.name.trim().lowercase() in albumArtistNames }
+                                    .map { it.name }
                                 val hideDuration =
                                     hideDurationForStandard && song.song.duration in 60..300
                                 val subtitleText = buildString {

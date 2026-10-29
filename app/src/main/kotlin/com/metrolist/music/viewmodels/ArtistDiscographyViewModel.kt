@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.pages.sortedByReleaseDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -62,6 +64,9 @@ class ArtistDiscographyViewModel @Inject constructor(
             YouTube.artist(artistId)
                 .onSuccess { page ->
                     _artistName.value = page.artist.title
+                    val catalog = async {
+                        if (page.artist.isProfile) emptyList() else YouTube.artistCatalogAlbums(page.artist.title)
+                    }
 
                     val albumSections = page.sections.filter { section -> section.items.any { it is AlbumItem } }
                     val perSection = coroutineScope {
@@ -97,12 +102,30 @@ class ArtistDiscographyViewModel @Inject constructor(
                         }
                     }
 
+                    val creditedOwn = own.map { release ->
+                        if (release.artists.isNullOrEmpty()) {
+                            release.copy(artists = listOf(Artist(page.artist.title, page.artist.id)))
+                        } else release
+                    }
+                    val nativeShortReleases = perSection
+                        .filter { (title, _) ->
+                            title.contains("EP", ignoreCase = true) || title.contains("singl", ignoreCase = true) ||
+                                title.contains("singol", ignoreCase = true)
+                        }
+                        .flatMap { (_, releases) -> releases }
+                        .map { release ->
+                            if (release.artists.isNullOrEmpty()) {
+                                release.copy(artists = listOf(Artist(page.artist.title, page.artist.id)))
+                            } else release
+                        }
+                    val mergedOwn = YouTube.mergeArtistAlbums(creditedOwn, nativeShortReleases, catalog.await())
+                    mergedOwn.forEach { release -> types.putIfAbsent(release.id, release.releaseType("")) }
                     _releaseTypes.value = types
                     _buckets.value = listOfNotNull(
-                        own.takeIf { it.isNotEmpty() }
-                            ?.let { DiscographyBucket(DiscographyCategory.FROM_ARTIST, it.sortedByDescending(AlbumItem::year)) },
+                        mergedOwn.takeIf { it.isNotEmpty() }
+                            ?.let { DiscographyBucket(DiscographyCategory.FROM_ARTIST, it.sortedByReleaseDate()) },
                         appearsOn.takeIf { it.isNotEmpty() }
-                            ?.let { DiscographyBucket(DiscographyCategory.APPEARS_ON, it.sortedByDescending(AlbumItem::year)) },
+                            ?.let { DiscographyBucket(DiscographyCategory.APPEARS_ON, it.sortedByReleaseDate()) },
                     )
                     _loading.value = false
                 }

@@ -384,15 +384,15 @@
     <string name="keep_screen_on_when_player_is_expanded">Keep screen on when player is expanded</string>
 
     <string name="crossfade">Crossfade</string>
-    <string name="crossfade_desc">Fades out the current song as the next one fades in</string>
-    <string name="crossfade_duration">Crossfade duration</string>
+    <string name="crossfade_desc">Fades between songs and briefly when skipping</string>
+    <string name="crossfade_duration">Between songs</string>
     <string name="crossfade_gapless">Disable for gapless albums</string>
     <string name="crossfade_gapless_desc">Skip crossfade for albums designed to play without gaps</string>
     <string name="crossfade_beta_title">Beta feature!</string>
     <string name="crossfade_beta_message">Crossfade is a new feature and may have bugs. If you experience any issues, please report them.\n\nNOTE: This feature disables audio offload due to technical limitations</string>
     <string name="skip_fade">Fade on skip</string>
     <string name="skip_fade_desc">Next song starts immediately; previous song fades out briefly in background</string>
-    <string name="skip_fade_duration">Skip fade duration</string>
+    <string name="skip_fade_duration">On skip</string>
 
     <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">Cyrillic</string>
@@ -437,7 +437,7 @@
     <string name="settings_section_content">Content</string>
     <string name="settings_section_ai">Artificial Intelligence</string>
     <string name="settings_section_integrations">Integrations</string>
-    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_audio">Audio &amp; playback</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_section_interface">Interface</string>
     <string name="settings_section_navigation">Navigation</string>
@@ -1093,7 +1093,7 @@
     <string name="settings_appearance_interface_desc">Tabs, home screen and library defaults</string>
     <string name="settings_appearance_player_desc">Player, mini-player and slider</string>
     <string name="settings_appearance_lyrics_desc">Display, animations and scrolling</string>
-    <string name="settings_playback_desc">Audio quality, crossfade and behavior</string>
+    <string name="settings_playback_desc">Audio quality, crossfade &amp; playback</string>
     <string name="settings_content_desc">Language, filters and discovery</string>
     <string name="settings_ai_desc">Lyrics translation and AI providers</string>
     <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>

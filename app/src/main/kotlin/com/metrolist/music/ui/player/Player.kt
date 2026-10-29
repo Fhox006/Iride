@@ -7,7 +7,6 @@ package com.metrolist.music.ui.player
 
 import androidx.compose.foundation.shape.CircleShape
 
-import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
@@ -268,8 +267,9 @@ fun BottomSheetPlayer(
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
                 Column(
                     modifier = Modifier.fillMaxWidth().height(state.collapsedBound)
-                        .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - IrideFolio.MiniPlayerTopSpacing).coerceAtLeast(0.dp)),
+                        .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight).coerceAtLeast(0.dp)),
                     verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     IrideMiniPlayerPreview(cachedMetadata, miniPlayerContentColor)
                 }
@@ -1053,16 +1053,14 @@ fun BottomSheetPlayer(
                     modifier = Modifier
                         .fillMaxSize(),
                 ) {
-                    // Info row pinned to the bottom, with the reserved CurtainCornerRevealHeight
-                    // gap left empty above the handle — that's the strip the app layer's rounded
-                    // corner cuts into, so it must stay plain curtain-colored background, not UI.
-                    // Use the same bottom inset as the panel bounds, including during startup.
+                    // Keep the floating row above navigation, including while restoring the queue.
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .align(Alignment.BottomStart)
-                            .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - IrideFolio.MiniPlayerTopSpacing).coerceAtLeast(0.dp)),
+                            .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight).coerceAtLeast(0.dp)),
                         verticalArrangement = Arrangement.Bottom,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         if (hasPendingQueueRestore || (currentMetadata == null && cachedMetadata != null)) {
                             IrideMiniPlayerPreview(cachedMetadata, miniPlayerContentColor)
@@ -1399,6 +1397,11 @@ fun BottomSheetPlayer(
                                                 }
                                             },
                                             onDismiss = menuState::dismiss,
+                                            onShowComments = {
+                                                showQueue = false
+                                                showInlineLyrics = false
+                                                showComments = true
+                                            },
                                         )
                                     }
                                 },
