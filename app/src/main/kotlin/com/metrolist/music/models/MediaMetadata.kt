@@ -84,7 +84,7 @@ fun Song.toMediaMetadata() =
         duration = song.duration,
         thumbnailUrl = if (song.albumId?.startsWith("itunes:") == true) {
             album?.thumbnailUrl ?: song.thumbnailUrl
-        } else song.thumbnailUrl,
+        } else song.thumbnailUrl?.takeIf { it.isNotBlank() } ?: album?.thumbnailUrl,
         album = if (song.albumId?.startsWith("itunes:") == true) {
             MediaMetadata.Album(song.albumId, song.albumName.orEmpty())
         } else album?.let {

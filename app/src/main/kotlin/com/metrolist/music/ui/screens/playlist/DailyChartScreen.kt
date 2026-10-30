@@ -63,7 +63,7 @@ import com.metrolist.music.ui.component.IrideFolioRankedSongRow
 import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.ItemThumbnail
@@ -143,7 +143,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
             while (true) { viewModel.refresh(); delay(60_000) }
         }
     }
-    IridePageLayout(
+    IrideCollectionPageLayout(
         title = title, showPageTitle = false, showTopBar = true,
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         navigationIcon = { IridePageBackButton(navController) },

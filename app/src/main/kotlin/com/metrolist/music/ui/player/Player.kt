@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 
 import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
+import com.metrolist.music.ui.component.irideBottomDockEdgeInset
+import com.metrolist.music.ui.component.iridePlayerExpansionPhase
+import com.metrolist.music.ui.component.rememberDeviceMatchedBottomPanelShape
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
@@ -608,7 +611,6 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiary,
                         )
                     }
-                    else -> Pair(Color.White, Color.Black)
                 }
             }
 
@@ -635,7 +637,6 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiary,
                         )
                     }
-                    else -> if (useDarkTheme) Pair(Color.White, Color.Black) else Pair(Color.Black, Color.White)
                 }
             }
         }
@@ -668,7 +669,6 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
-                    else -> Pair(Color.White.copy(alpha = 0.2f), Color.White)
                 }
             }
 
@@ -694,7 +694,6 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
-                    else -> Pair(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -921,14 +920,16 @@ fun BottomSheetPlayer(
         isExpandable = if (curtainMode) mediaMetadata != null else true,
         // The expanded panel leaves a glimpse of the app above its rounded top edge.
         expandedTopInset = expandedTopInset,
+        contentRevealStart = if (curtainMode) 0f else 0.15f,
+        contentRevealEnd = if (curtainMode) 0.16f else 0.4f,
+        collapsedFadeStart = if (curtainMode) 0.42f else 0f,
+        collapsedFadeEnd = if (curtainMode) 0.6f else 0.15f,
+        collapsedAlpha = if (curtainMode && bridgeState != null) {
+            { if (state.isCollapsed) 1f else bridgeState.miniPlayerAlpha }
+        } else null,
         background = background@{
             // The expanded MP3 content owns its artwork gradient.
             if (curtainMode) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(IrideMp3BackgroundColor),
-                )
                 return@background
             }
             Box(
@@ -1977,6 +1978,14 @@ fun BottomSheetPlayer(
                         bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding(),
                         bridgeState = bridgeState,
                         modifier = Modifier
+                            .padding(horizontal = irideBottomDockEdgeInset() * (1f - iridePlayerExpansionPhase(state.progress)))
+                            .clip(rememberDeviceMatchedBottomPanelShape(
+                                horizontalPadding = irideBottomDockEdgeInset() * (1f - iridePlayerExpansionPhase(state.progress)),
+                                additionalBottomSpacing = 0.dp,
+                                topRadius = 32.dp,
+                                bottomSpacing = 0.dp,
+                                simpleOutline = true,
+                            ))
                             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                     )
                 }

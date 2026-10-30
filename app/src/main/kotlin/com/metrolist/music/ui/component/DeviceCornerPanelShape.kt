@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
@@ -212,6 +213,7 @@ fun rememberDeviceMatchedBottomPanelShape(
     bottomSpacing: Dp? = null,
     panelBoundsOnScreen: Rect? = null,
     fallbackBottomRadius: Dp = topRadius,
+    simpleOutline: Boolean = false,
     cornerInfo: DeviceCornerInfo = rememberDeviceCornerInfo(),
 ): Shape {
     val density = LocalDensity.current
@@ -222,7 +224,7 @@ fun rememberDeviceMatchedBottomPanelShape(
 
     return remember(
         density, cornerInfo, horizontalPadding, additionalBottomSpacing, topRadius,
-        bottomSpacing, leftInset, rightInset, layoutDirection, panelBoundsOnScreen, fallbackBottomRadius,
+        bottomSpacing, leftInset, rightInset, layoutDirection, panelBoundsOnScreen, fallbackBottomRadius, simpleOutline,
     ) {
         val hPx = with(density) { horizontalPadding.toPx() }
         val bPx = with(density) {
@@ -231,7 +233,7 @@ fun rememberDeviceMatchedBottomPanelShape(
         val fallbackPx = with(density) { fallbackBottomRadius.toPx() }
         val leftCenter = cornerInfo.bottomLeftCenterOnScreen
         val rightCenter = cornerInfo.bottomRightCenterOnScreen
-        if (panelBoundsOnScreen != null && leftCenter != null && rightCenter != null) {
+        if (panelBoundsOnScreen != null && leftCenter != null && rightCenter != null && !simpleOutline) {
             return@remember ConcentricDevicePanelShape(
                 topRadius = topRadius,
                 panelBounds = panelBoundsOnScreen,
@@ -262,9 +264,18 @@ fun rememberDeviceMatchedBottomPanelShape(
         val rightRadius = effectiveRadius(
             cornerInfo.bottomRightRadiusPx, cornerInfo.bottomRightCenterOnScreen, rightInset, false,
         )
-        DeviceMatchedBottomPanelShape(
-            topRadius, leftRadius, rightRadius, cornerInfo.bottomLeftProfile, cornerInfo.bottomRightProfile,
-        )
+        if (simpleOutline) {
+            object : Shape {
+                override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+                    val top = CornerRadius(with(density) { topRadius.toPx() })
+                    return Outline.Rounded(RoundRect(0f, 0f, size.width, size.height, top, top, rightRadius, leftRadius))
+                }
+            }
+        } else {
+            DeviceMatchedBottomPanelShape(
+                topRadius, leftRadius, rightRadius, cornerInfo.bottomLeftProfile, cornerInfo.bottomRightProfile,
+            )
+        }
     }
 }
 
@@ -306,15 +317,23 @@ private class ConcentricDevicePanelShape(
             displayBottom - panelBounds.bottom).coerceAtLeast(0f)
         // Only the display's lower band is needed. Keep its artificial top outside the panel.
         val displayTop = minOf(panelBounds.top - gap - 1f, leftCenter.y, rightCenter.y)
-        val physicalOutline = DeviceMatchedBottomPanelShape(
-            0.dp, leftRadius, rightRadius, leftProfile, rightProfile,
-        ).createOutline(Size(displayRight - displayLeft, displayBottom - displayTop), layoutDirection, density)
-        val insetPath = physicalOutline.toPath().parallelInset(gap).apply {
-            translate(Offset(displayLeft - panelBounds.left, displayTop - panelBounds.top))
+        return try {
+            val physicalOutline = DeviceMatchedBottomPanelShape(
+                0.dp, leftRadius, rightRadius, leftProfile, rightProfile,
+            ).createOutline(Size(displayRight - displayLeft, displayBottom - displayTop), layoutDirection, density)
+            val insetPath = physicalOutline.toPath().parallelInset(gap).apply {
+                translate(Offset(displayLeft - panelBounds.left, displayTop - panelBounds.top))
+            }
+            val topPath = FolioShape(topStart = topRadius, topEnd = topRadius)
+                .createOutline(size, layoutDirection, density).toPath()
+            Outline.Generic(Path.combine(PathOperation.Intersect, topPath, insetPath))
+        } catch (_: IllegalArgumentException) {
+            // Some device contours cannot be combined by Skia; keep a proportional rounded fallback.
+            val left = CornerRadius((leftRadius.x - gap).coerceAtLeast(0f), (leftRadius.y - gap).coerceAtLeast(0f))
+            val right = CornerRadius((rightRadius.x - gap).coerceAtLeast(0f), (rightRadius.y - gap).coerceAtLeast(0f))
+            val top = CornerRadius(with(density) { topRadius.toPx() })
+            Outline.Rounded(RoundRect(0f, 0f, size.width, size.height, top, top, right, left))
         }
-        val topPath = FolioShape(topStart = topRadius, topEnd = topRadius)
-            .createOutline(size, layoutDirection, density).toPath()
-        return Outline.Generic(Path.combine(PathOperation.Intersect, topPath, insetPath))
     }
 }
 

@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import android.content.Context
+import android.util.LruCache
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -31,14 +33,46 @@ import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
-private data class ArtworkHeaderPalette(
+internal data class ArtworkHeaderPalette(
     val tint: Color,
     val pigments: List<AlbumArtworkPigment> = emptyList(),
 ) {
     fun halo(index: Int): AlbumArtworkPigment = pigments.getOrElse(index) {
         pigments.firstOrNull() ?: AlbumArtworkPigment(tint.toArgb(), 0, 0.5f, 0.5f)
+    }
+}
+
+/** Visible collection tiles and their destination share the same already-resolved pigments. */
+internal object ArtworkHeaderPalettes {
+    private val colors = LruCache<String, ArtworkHeaderPalette>(96)
+    private val decodes = Semaphore(2)
+
+    fun cached(url: String?): ArtworkHeaderPalette? = url?.let(colors::get)
+
+    suspend fun load(context: Context, url: String): ArtworkHeaderPalette? {
+        cached(url)?.let { return it }
+        return decodes.withPermit {
+            cached(url) ?: withContext(Dispatchers.IO) {
+                try {
+                    val bitmap = context.imageLoader.execute(
+                        ImageRequest.Builder(context).data(url).size(100, 100)
+                            .allowHardware(false).build(),
+                    ).image?.toBitmap() ?: return@withContext null
+                    val pigments = bitmap.irideAlbumArtworkPigments()
+                    val tint = pigments.firstOrNull()?.color?.let { Color(it) }
+                        ?: return@withContext null
+                    ArtworkHeaderPalette(tint, pigments).also { colors.put(url, it) }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
     }
 }
 
@@ -53,44 +87,37 @@ internal fun ArtworkHeaderGradientBackground(
     gradientHeight: Dp = IrideFolio.ArtworkGradientHeight,
 ) {
     val context = LocalContext.current
-    // Keep the last complete palette while the next track's artwork loads.
-    var palette by remember(backgroundColor) {
-        mutableStateOf(ArtworkHeaderPalette(artworkTint ?: backgroundColor))
+    val collection = LocalCollectionExpansionSource.current
+    val url = collection?.artworkUrl ?: mediaMetadata?.thumbnailUrl
+    var palette by remember(collection) {
+        mutableStateOf(
+            collection?.palette ?: ArtworkHeaderPalettes.cached(url)
+                ?: ArtworkHeaderPalette(artworkTint ?: backgroundColor),
+        )
     }
     val reducedMotion = rememberReducedMotion()
     val onTopColorChangedState by rememberUpdatedState(onTopColorChanged)
 
-    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, backgroundColor) {
-        val url = mediaMetadata?.thumbnailUrl
-        if (url == null) {
-            if (mediaMetadata == null) palette = ArtworkHeaderPalette(backgroundColor)
+    LaunchedEffect(url, backgroundColor, collection) {
+        // The source palette also covers the first frame before destination metadata exists.
+        collection?.palette?.let {
+            palette = it
             return@LaunchedEffect
         }
-        var loaded: android.graphics.Bitmap? = null
+        if (url == null) return@LaunchedEffect
         for (attempt in 0..2) {
-            loaded = withContext(Dispatchers.IO) {
-                try {
-                    context.imageLoader.execute(
-                        ImageRequest.Builder(context).data(url).size(100, 100)
-                            .allowHardware(false).build(),
-                    ).image?.toBitmap()
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    null
-                }
+            val loaded = ArtworkHeaderPalettes.load(context, url)
+            if (loaded != null) {
+                collection?.palette = loaded
+                palette = loaded
+                return@LaunchedEffect
             }
-            if (loaded != null) break
             if (attempt < 2) delay(1200)
         }
-        val bitmap = loaded ?: return@LaunchedEffect
-        val extracted = withContext(Dispatchers.Default) { bitmap.irideAlbumArtworkPigments() }
-        palette = ArtworkHeaderPalette(
-            tint = extracted.firstOrNull()?.color?.let { Color(it) } ?: artworkTint ?: backgroundColor,
-            pigments = extracted,
-        )
     }
     val transition = updateTransition(palette, label = "artworkHeaderPalette")
+    // A cached source palette is already the transition's initial value. If pigments
+    // arrive later, blend them in instead of flashing from the black fallback.
     val fadeDuration = if (reducedMotion) 0 else 700
     val topTint by transition.animateColor(
         transitionSpec = { tween(fadeDuration) }, label = "artworkHeaderTint",

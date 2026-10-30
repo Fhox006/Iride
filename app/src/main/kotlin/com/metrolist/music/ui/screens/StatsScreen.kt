@@ -90,7 +90,7 @@ fun StatsScreen(
         titleRes = R.string.stats,
         state = lazyListState,
         showTopBar = true,
-        modifier = Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+        modifier = Modifier,
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         navigationIcon = { IridePageBackButton(navController) },
     ) {

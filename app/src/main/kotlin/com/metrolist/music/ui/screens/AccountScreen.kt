@@ -153,7 +153,7 @@ fun AccountScreen(
         titleRes = R.string.account,
         columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
         state = scrollState,
-        modifier = Modifier.fillMaxSize().background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize().background(Color.Transparent),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
     ) {
             item(span = { GridItemSpan(maxLineSpan) }) {

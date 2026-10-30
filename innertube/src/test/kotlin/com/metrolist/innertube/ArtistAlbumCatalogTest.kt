@@ -27,7 +27,8 @@ class ArtistAlbumCatalogTest {
         val endpoint = BrowseEndpoint("moreAlbums")
         val original = page(ArtistSection("Album", listOf(native), endpoint))
         val enriched = original.withCatalogAlbums(listOf(album("itunes:it:1", "First", year = 2022), missing), "Albums", "Singles & EPs")
-        assertEquals(listOf(missing, native), enriched.sections.single().items)
+        val creditedNative = native.copy(artists = listOf(Artist(artist.title, artist.id)))
+        assertEquals(listOf(missing, creditedNative), enriched.sections.single().items)
         assertEquals(endpoint, enriched.sections.single().moreEndpoint)
     }
 
@@ -37,7 +38,7 @@ class ArtistAlbumCatalogTest {
         val ep = album("itunes:it:3", "EP", "EP")
         val enriched = page().withCatalogAlbums(listOf(album, single, ep), "Albums", "Singles & EPs")
         assertEquals(listOf(album), enriched.sections[0].items)
-        assertEquals(listOf(single, ep), enriched.sections[1].items)
+        assertEquals(listOf(ep, single), enriched.sections[1].items)
     }
 
     @Test fun leavesAppearsOnShelfIntactAndIsIdempotent() {

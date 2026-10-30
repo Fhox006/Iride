@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.component.CollectionExpansionKind
+import com.metrolist.music.ui.component.rememberCollectionExpansionTile
+
 import com.metrolist.music.ui.theme.FolioShape
 
 import androidx.compose.foundation.border
@@ -149,10 +152,13 @@ private fun IrideTopItemCard(
     width: Dp,
     imageHeight: Dp,
     onClick: () -> Unit,
+    tapModifier: Modifier = Modifier,
+    coverModifier: Modifier = Modifier,
 ) {
     Column(
         modifier = Modifier
             .width(width)
+            .then(tapModifier)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(),
@@ -167,6 +173,7 @@ private fun IrideTopItemCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(imageHeight)
+                    .then(coverModifier)
                     .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, CardSquircle)
                     .clip(CardSquircle)
             )
@@ -233,6 +240,9 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
 
 @Composable
 fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
+    val (tap, cover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Album, album.id, artworkUrl = album.thumbnailUrl, title = album.title,
+    )
     IrideTopItemCard(
         rank = rank,
         title = album.title,
@@ -241,6 +251,8 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
         width = 200.dp,
         imageHeight = 200.dp,
         onClick = onClick,
+        tapModifier = tap,
+        coverModifier = cover,
     )
 }
 

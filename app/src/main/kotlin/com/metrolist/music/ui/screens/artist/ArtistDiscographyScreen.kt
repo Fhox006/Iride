@@ -116,7 +116,6 @@ fun ArtistDiscographyScreen(
 
     Box(
         Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         IridePageLayout(
             title = artistName.orEmpty(),

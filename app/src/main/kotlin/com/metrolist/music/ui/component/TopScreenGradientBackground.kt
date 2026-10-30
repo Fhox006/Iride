@@ -1,18 +1,7 @@
 package com.metrolist.music.ui.component
 
-import android.graphics.Bitmap
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,41 +14,32 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.imageLoader
-import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
-import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-/**
- * Subtle, top-anchored version of the player's animated gradient, shown behind
- * the main tabs (Home/Library/Search/News). Mirrors whatever [playerBackground]
- * style the user picked for the player, fading to full transparency before the
- * midpoint of the screen so it reads as a tinted top edge, not a full repaint.
- *
- * Meant to be mounted once, persistently, above the tab NavHost — visibility is
- * controlled by the caller via alpha so the internal animation clocks never
- * restart when switching between the four tabs.
- */
-private val TopGradientHeight = 380.dp
-private const val TopGradientOpacity = 0.55f
+internal val LocalSharedTopGradient = staticCompositionLocalOf { false }
 
+private object TopGradientPigments {
+    val colors = android.util.LruCache<String, Color>(24)
+    var last = Color(0xFF30323B)
+}
+
+/** One stationary pigment for ordinary pages; artwork headers retain their own backdrop. */
 @Composable
 fun TopScreenGradientBackground(
     mediaMetadata: MediaMetadata?,
@@ -70,11 +50,8 @@ fun TopScreenGradientBackground(
     backgroundColor: Color = MaterialTheme.colorScheme.background,
     artworkTint: Color? = null,
     artworkGradientHeight: Dp = IrideFolio.ArtworkGradientHeight,
+    sharedBackground: Boolean = false,
 ) {
-    if (playerBackground == PlayerBackgroundStyle.DEFAULT || playerBackground == PlayerBackgroundStyle.BLUR) {
-        return
-    }
-
     if (emphasizeArtwork) {
         ArtworkHeaderGradientBackground(
             mediaMetadata = mediaMetadata,
@@ -87,235 +64,59 @@ fun TopScreenGradientBackground(
         )
         return
     }
+    // Screens may still declare a gradient when used alone. Inside the app the root owns it.
+    if (LocalSharedTopGradient.current && !sharedBackground) return
 
     val context = LocalContext.current
-    val smoothTransition by rememberPreference(BetterGradientSmoothTransitionKey, true)
-    var displayedThumbnail by remember { mutableStateOf<Bitmap?>(null) }
-    var incomingThumbnail by remember { mutableStateOf<Bitmap?>(null) }
-    val crossfadeProgress = remember { Animatable(0f) }
-    var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
-    val bgColor = MaterialTheme.colorScheme.background
-    var artworkAverage by remember { mutableStateOf(bgColor) }
-    val onTopColorChangedState by rememberUpdatedState(onTopColorChanged)
-    val colorCache = remember { mutableMapOf<String, List<Color>>() }
-
-    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, bgColor) {
-        val url = mediaMetadata?.thumbnailUrl
-        if (url == null) {
-            displayedThumbnail = null
-            incomingThumbnail = null
-            crossfadeProgress.snapTo(0f)
-            gradientColors = emptyList()
-            artworkAverage = bgColor
-            return@LaunchedEffect
-        }
-        // Retry a few times: right after reboot the disk cache may be cold and
-        // the network may still be settling — a single cold miss left the gradient
-        // and mini-player blank until the next track change.
-        var bitmap: Bitmap? = null
-        repeat(3) { attempt ->
-            bitmap = withContext(Dispatchers.IO) {
-                val request = ImageRequest.Builder(context)
-                    .data(url)
-                    .size(100, 100)
-                    .allowHardware(false)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .networkCachePolicy(CachePolicy.ENABLED)
-                    .build()
-                runCatching { context.imageLoader.execute(request) }
-                    .getOrNull()?.image?.toBitmap()
+    val fallback = Color(0xFF30323B)
+    var pigment by remember { mutableStateOf(TopGradientPigments.last) }
+    val colors = TopGradientPigments.colors
+    val artworkUrl = mediaMetadata?.thumbnailUrl?.takeIf { it.isNotBlank() }
+    val videoUrl = mediaMetadata?.id?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
+        ?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
+    LaunchedEffect(artworkUrl, videoUrl) {
+        val urls = listOfNotNull(artworkUrl, videoUrl).distinct()
+        for (attempt in 0..2) {
+            for (url in urls) {
+                val cached = colors.get(url)
+                if (cached != null) {
+                    pigment = cached
+                    TopGradientPigments.last = cached
+                    return@LaunchedEffect
+                }
+                val extracted = withContext(Dispatchers.IO) {
+                    val request = ImageRequest.Builder(context).data(url).size(100, 100)
+                        .allowHardware(false).build()
+                    val bitmap = runCatching { context.imageLoader.execute(request) }
+                        .getOrNull()?.image?.toBitmap()
+                    bitmap?.irideArtworkTint(fallback)?.limitArtworkLuminance(0.16f)
+                }
+                if (extracted != null) {
+                    colors.put(url, extracted)
+                    pigment = extracted
+                    TopGradientPigments.last = extracted
+                    return@LaunchedEffect
+                }
             }
-            if (bitmap != null) return@repeat
-            if (attempt < 2) kotlinx.coroutines.delay(1200)
+            if (urls.isEmpty()) return@LaunchedEffect
+            if (attempt < 2) delay(1200)
         }
-
-        if (smoothTransition && displayedThumbnail != null && bitmap != null) {
-            crossfadeProgress.snapTo(0f)
-            incomingThumbnail = bitmap
-            crossfadeProgress.animateTo(1f, tween(700))
-            displayedThumbnail = bitmap
-            incomingThumbnail = null
-            crossfadeProgress.snapTo(0f)
-        } else {
-            displayedThumbnail = bitmap
-        }
-
-        val loadedBitmap = bitmap
-        if (loadedBitmap != null) {
-            val cached = colorCache[url]
-            val colors = cached ?: withContext(Dispatchers.IO) {
-                val tint = loadedBitmap.irideArtworkTint(bgColor)
-                listOf(tint, tint.irideDimmed(0.6f), Color.Black)
-            }.also { colorCache[url] = it }
-            artworkAverage = withContext(Dispatchers.IO) { loadedBitmap.irideAverageColor(bgColor) }
-            gradientColors = colors
-        } else {
-            gradientColors = emptyList()
-            artworkAverage = bgColor
-        }
+        // Retain the last resolved pigment through missing artwork or temporary network errors.
     }
-
-    // The zoomed animation can magnify a bright face/detail in an otherwise dark cover.
-    // Let the whole image set its intensity instead of whichever pixels happen to be enlarged.
-    val artworkOpacity = maxOf(artworkAverage.red, artworkAverage.green, artworkAverage.blue) *
-        IrideFolio.ArtworkBackgroundBrightness
-    val topColor = when (playerBackground) {
-        PlayerBackgroundStyle.GRADIENT ->
-            gradientColors.firstOrNull()?.copy(alpha = TopGradientOpacity)?.compositeOver(bgColor) ?: bgColor
-        PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT ->
-            Color.Black.copy(alpha = 0.3f).compositeOver(artworkAverage)
-                .irideDimmed(artworkOpacity)
-                .copy(alpha = TopGradientOpacity).compositeOver(bgColor)
-        else ->
-            gradientColors.firstOrNull()?.copy(alpha = TopGradientOpacity)?.compositeOver(bgColor) ?: bgColor
-    }
-    LaunchedEffect(topColor, mediaMetadata?.id, mediaMetadata?.thumbnailUrl, playerBackground) {
-        onTopColorChangedState(topColor)
-    }
-
+    val tint by animateColorAsState(pigment, tween(700), label = "sharedTopPigment")
+    val topColor = tint.copy(alpha = 0.55f).compositeOver(Color.Black)
+    val currentOnTopColorChanged by rememberUpdatedState(onTopColorChanged)
+    LaunchedEffect(topColor) { currentOnTopColorChanged(topColor) }
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(TopGradientHeight)
-            .invalidateFrostOnChanges {
-                gradientColors
-                displayedThumbnail
-                incomingThumbnail
-                crossfadeProgress.value
-            }
-            .irideBackgroundGrain(fadeOut = true),
-    ) {
-        when (playerBackground) {
-            PlayerBackgroundStyle.GRADIENT -> {
-                AnimatedContent(
-                    targetState = gradientColors,
-                    transitionSpec = { fadeIn(tween(900)).togetherWith(fadeOut(tween(900))) },
-                    label = "topGradientBackground",
-                ) { colors ->
-                    if (colors.isNotEmpty()) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(TopGradientHeight)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colorStops = arrayOf(
-                                            0.0f to colors[0].copy(alpha = TopGradientOpacity),
-                                            0.45f to colors.getOrElse(1) { colors[0] }.copy(alpha = TopGradientOpacity * 0.6f),
-                                            1.0f to Color.Transparent,
-                                        ),
-                                    ),
-                                ),
-                        )
-                    }
-                }
-            }
-
-            PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
-                TopGradientBlobs(gradientColors, bgColor)
-            }
-
-            PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
-                Box(Modifier.fillMaxWidth().height(TopGradientHeight)) {
-                    BetterAnimatedGradientBackground(
-                        thumbnail = displayedThumbnail,
-                        incomingThumbnail = incomingThumbnail,
-                        crossfadeProgress = crossfadeProgress.value,
-                        saturation = 1f,
-                        artworkOpacity = artworkOpacity,
-                        grainOpacity = 0f,
-                        modifier = Modifier.fillMaxWidth().height(TopGradientHeight),
-                    )
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(TopGradientHeight)
-                            .background(
-                                Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to bgColor.copy(alpha = 1f - TopGradientOpacity),
-                                        0.6f to bgColor.copy(alpha = 1f - TopGradientOpacity * 0.6f),
-                                        1.0f to bgColor,
-                                    ),
-                                ),
-                            ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TopGradientBlobs(colors: List<Color>, bgColor: Color) {
-    val safeColors = colors.ifEmpty {
-        listOf(bgColor, bgColor)
-    }
-    val c0 by androidx.compose.animation.animateColorAsState(safeColors[0], tween(1400), label = "tgb_c0")
-    val c1 by androidx.compose.animation.animateColorAsState(
-        safeColors.getOrElse(1) { safeColors[0] },
-        tween(1400),
-        label = "tgb_c1",
-    )
-
-    val infinite = rememberInfiniteTransition(label = "top_gradient_blobs")
-    val shift by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(14000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "top_gradient_shift",
-    )
-    val resumeFadeAlpha = rememberResumeFadeAlpha()
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(TopGradientHeight)
-            .invalidateFrostOnChanges {
-                c0
-                c1
-                shift
-                resumeFadeAlpha
-            }
-            .graphicsLayer { alpha = resumeFadeAlpha },
-    ) {
-        val w = size.width
-        val h = size.height
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(c0.copy(alpha = TopGradientOpacity), Color.Transparent),
-                center = Offset(w * (0.22f + 0.10f * shift), h * 0.22f),
-                radius = w * 0.62f,
-            ),
-            radius = w * 0.62f,
-            center = Offset(w * (0.22f + 0.10f * shift), h * 0.22f),
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(c1.copy(alpha = TopGradientOpacity * 0.85f), Color.Transparent),
-                center = Offset(w * (0.76f - 0.08f * shift), h * 0.14f),
-                radius = w * 0.55f,
-            ),
-            radius = w * 0.55f,
-            center = Offset(w * (0.76f - 0.08f * shift), h * 0.14f),
-        )
-
-        drawRect(
-            brush = Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.00f to Color.Transparent,
-                    0.45f to Color.Transparent,
-                    0.85f to bgColor.copy(alpha = 0.85f),
-                    1.00f to bgColor,
+        modifier.fillMaxWidth().height(380.dp)
+            .invalidateFrostOnChanges { tint }
+            .background(
+                Brush.verticalGradient(
+                    0f to topColor,
+                    0.45f to topColor.irideDimmed(0.45f),
+                    1f to Color.Black,
                 ),
-                startY = 0f,
-                endY = h,
-            ),
-        )
-    }
+            )
+            .irideBackgroundGrain(fadeOut = true),
+    )
 }

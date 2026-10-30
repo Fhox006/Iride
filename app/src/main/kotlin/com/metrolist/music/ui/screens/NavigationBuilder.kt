@@ -6,11 +6,17 @@ package com.metrolist.music.ui.screens
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.runtime.Composable
+import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavBackStackEntry
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.CompositionLocalProvider
 import com.metrolist.music.ui.component.LocalAnimatedVisibilityScope
+import com.metrolist.music.ui.component.CollectionExpansionPage
+import com.metrolist.music.ui.component.LocalCollectionSourceEntry
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -86,17 +92,17 @@ fun NavGraphBuilder.NavigationBuilder(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
-    composable("onboarding") {
+    portraitComposable("onboarding") {
         OnboardingScreen(navController = navController)
     }
 
-    composable(Screens.Home.route) {
+    portraitComposable(Screens.Home.route) {
         CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
             HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
         }
     }
 
-    composable(
+    portraitComposable(
         route = Screens.Search.route,
     ) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
@@ -118,21 +124,21 @@ fun NavGraphBuilder.NavigationBuilder(
         )
     }
 
-    composable(Screens.Library.route) {
+    portraitComposable(Screens.Library.route) {
         LibraryScreen(navController)
     }
 
-    composable(Screens.ListenTogether.route) {
+    portraitComposable(Screens.ListenTogether.route) {
         ListenTogetherScreen(navController, showTopBar = false)
     }
 
-    composable(route = "listen_together_from_topbar") {
+    portraitComposable(route = "listen_together_from_topbar") {
         ListenTogetherScreen(navController, showTopBar = true)
     }
 
-    composable("history") { HistoryScreen(navController) }
+    portraitComposable("history") { HistoryScreen(navController) }
     // Redirect restored navigation state from the retired News tab.
-    composable("new_releases") {
+    portraitComposable("new_releases") {
         LaunchedEffect(Unit) {
             navController.navigate(Screens.Home.route) {
                 popUpTo("new_releases") { inclusive = true }
@@ -140,8 +146,8 @@ fun NavGraphBuilder.NavigationBuilder(
             }
         }
     }
-    composable("all_charts") { com.metrolist.music.ui.screens.playlist.AllChartsScreen(navController) }
-    composable("stats") { StatsScreen(navController) }
+    portraitComposable("all_charts") { com.metrolist.music.ui.screens.playlist.AllChartsScreen(navController) }
+    portraitComposable("stats") { StatsScreen(navController) }
     dialog(
         route = "reverie/{month}",
         arguments = listOf(navArgument("month") { type = NavType.StringType }),
@@ -160,13 +166,13 @@ fun NavGraphBuilder.NavigationBuilder(
             LaunchedEffect(Unit) { navController.navigateUp() }
         }
     }
-    composable("notes") { NotesScreen(navController) }
-    composable("iride") {
+    portraitComposable("notes") { NotesScreen(navController) }
+    portraitComposable("iride") {
         var readyToAnimate by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { delay(320); readyToAnimate = true }
         IrideScreen(navController, readyToAnimate = readyToAnimate)
     }
-    composable(
+    portraitComposable(
         route = "video_player/{videoId}?title={title}",
         arguments = listOf(
             navArgument("videoId") { type = NavType.StringType },
@@ -179,12 +185,12 @@ fun NavGraphBuilder.NavigationBuilder(
             initialTitle = it.arguments?.getString("title"),
         )
     }
-    composable("mood_and_genres") { MoodAndGenresScreen(navController) }
-    composable("genres_screen") { GenresScreen(navController = navController) }
-    composable("rock_module") { RockModuleScreen(navController = navController) }
-    composable("account") { AccountScreen(navController) }
+    portraitComposable("mood_and_genres") { MoodAndGenresScreen(navController) }
+    portraitComposable("genres_screen") { GenresScreen(navController = navController) }
+    portraitComposable("rock_module") { RockModuleScreen(navController = navController) }
+    portraitComposable("account") { AccountScreen(navController) }
 
-    composable(
+    portraitComposable(
         route = "browse/{browseId}",
         arguments = listOf(navArgument("browseId") { type = NavType.StringType })
     ) {
@@ -194,7 +200,7 @@ fun NavGraphBuilder.NavigationBuilder(
         )
     }
 
-    composable(
+    portraitComposable(
         route = "search/{query}",
         arguments = listOf(navArgument("query") { type = NavType.StringType }),
     ) { backStackEntry ->
@@ -204,14 +210,14 @@ fun NavGraphBuilder.NavigationBuilder(
         )
     }
 
-    composable(
+    portraitComposable(
         route = "album/{albumId}",
         arguments = listOf(navArgument("albumId") { type = NavType.StringType })
     ) {
         AlbumScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}?isPodcastChannel={isPodcastChannel}&portraitSource={portraitSource}",
         arguments = listOf(
             navArgument("artistId") { type = NavType.StringType },
@@ -224,7 +230,7 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}/songs",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) { entry ->
@@ -233,7 +239,7 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}/game",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) { entry ->
@@ -242,7 +248,7 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}/albums",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) { entry ->
@@ -251,7 +257,7 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}/discography",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) { entry ->
@@ -260,7 +266,7 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "artist/{artistId}/items?browseId={browseId}?params={params}",
         arguments = listOf(
             navArgument("artistId") { type = NavType.StringType },
@@ -273,39 +279,39 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable("daily_charts") {
+    portraitComposable("daily_charts") {
         DailyChartsWorldScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "new_releases_chart/{market}",
         arguments = listOf(navArgument("market") { type = NavType.StringType }),
     ) {
         DailyChartScreen(navController, englishTitle = true)
     }
 
-    composable(
+    portraitComposable(
         route = "daily_chart/{market}",
         arguments = listOf(navArgument("market") { type = NavType.StringType }),
     ) {
         DailyChartScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "online_playlist/{playlistId}",
         arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
     ) {
         OnlinePlaylistScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "online_podcast/{podcastId}",
         arguments = listOf(navArgument("podcastId") { type = NavType.StringType })
     ) {
         OnlinePodcastScreen(navController, scrollBehavior)
     }
 
-    composable(
+    portraitComposable(
         route = "local_playlist/{playlistId}",
         arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
     ) { backStackEntry ->
@@ -324,28 +330,28 @@ fun NavGraphBuilder.NavigationBuilder(
         }
     }
 
-    composable(
+    portraitComposable(
         route = "auto_playlist/{playlist}",
         arguments = listOf(navArgument("playlist") { type = NavType.StringType })
     ) {
         AutoPlaylistScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "cache_playlist/{playlist}",
         arguments = listOf(navArgument("playlist") { type = NavType.StringType })
     ) {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.CACHE, initialCache = true)
     }
 
-    composable(
+    portraitComposable(
         route = "top_playlist/{top}",
         arguments = listOf(navArgument("top") { type = NavType.StringType })
     ) {
         TopPlaylistScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "youtube_browse/{browseId}?params={params}",
         arguments = listOf(
             navArgument("browseId") { type = NavType.StringType; nullable = true },
@@ -355,142 +361,154 @@ fun NavGraphBuilder.NavigationBuilder(
         YouTubeBrowseScreen(navController)
     }
 
-    composable("settings") {
+    portraitComposable("settings") {
         SettingsScreen(navController, latestVersionName, activity, snackbarHostState)
     }
 
-    composable("settings/my_account") {
+    portraitComposable("settings/my_account") {
         MyAccountScreen(navController)
     }
 
-    composable("music_import") {
+    portraitComposable("music_import") {
         MusicImportScreen(navController)
     }
 
-    composable("apple_music_import") {
+    portraitComposable("apple_music_import") {
         AppleMusicImportScreen(navController)
     }
 
-    composable("settings/interface") {
+    portraitComposable("settings/interface") {
         InterfaceSettings(navController, activity)
     }
 
-    composable("settings/content") {
+    portraitComposable("settings/content") {
         ContentSettings(navController)
     }
 
-    composable("settings/content/design-test") {
+    portraitComposable("settings/content/design-test") {
         DesignTestScreen(navController)
     }
 
-    composable("settings/content/romanization") {
+    portraitComposable("settings/content/romanization") {
         RomanizationSettings(navController)
     }
 
-    composable("settings/ai") {
+    portraitComposable("settings/ai") {
         AiSettings(navController)
     }
 
-    composable("settings/player") {
+    portraitComposable("settings/player") {
         PlayerSettings(navController)
     }
 
-    composable("settings/storage") {
+    portraitComposable("settings/storage") {
         StorageSettings(navController)
     }
 
-    composable("settings/privacy") {
+    portraitComposable("settings/privacy") {
         PrivacySettings(navController)
     }
 
-    composable("settings/backup_restore") {
+    portraitComposable("settings/backup_restore") {
         BackupAndRestore(navController)
     }
 
-    composable("settings/integrations") {
+    portraitComposable("settings/integrations") {
         IntegrationScreen(navController)
     }
 
-    composable("settings/integrations/discord") {
+    portraitComposable("settings/integrations/discord") {
         DiscordSettings(navController, snackbarHostState)
     }
 
-    composable("settings/integrations/lastfm") {
+    portraitComposable("settings/integrations/lastfm") {
         LastFMSettings(navController)
     }
 
-    composable(route = "settings/integrations/listen_together") {
+    portraitComposable(route = "settings/integrations/listen_together") {
         ListenTogetherSettings(navController)
     }
 
-    composable("settings/discord/login") {
+    portraitComposable("settings/discord/login") {
         DiscordLoginScreen(navController)
     }
 
-    composable("settings/updater") {
+    portraitComposable("settings/updater") {
         UpdaterScreen(navController)
     }
 
-    composable("settings/about") {
+    portraitComposable("settings/about") {
         AboutScreen(navController)
     }
 
-    composable("settings/equalizer") {
+    portraitComposable("settings/equalizer") {
         EqEditorScreen(navController)
     }
 
-    composable("login") {
+    portraitComposable("login") {
         LoginScreen(navController)
     }
 
-    composable("wrapped") {
+    portraitComposable("wrapped") {
         WrappedScreen(navController)
     }
 
-    composable(
+    portraitComposable(
         route = "recognition?autoStart={autoStart}",
         arguments = listOf(navArgument("autoStart") { type = NavType.BoolType; defaultValue = false })
     ) {
         RecognitionScreen(navController, it.arguments?.getBoolean("autoStart") ?: false)
     }
 
-    composable("recognition_history") {
+    portraitComposable("recognition_history") {
         RecognitionHistoryScreen(navController)
     }
 
-    composable("settings/android_auto") {
+    portraitComposable("settings/android_auto") {
         AndroidAutoSettings(navController, scrollBehavior)
     }
 
-    composable("spotify_import") {
+    portraitComposable("spotify_import") {
         SpotifyImportScreen(navController = navController)
     }
 
-    composable("library_playlists") {
+    portraitComposable("library_playlists") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.PLAYLISTS)
     }
-    composable("library_songs") {
+    portraitComposable("library_songs") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.SONGS)
     }
-    composable("library_songs_local") {
+    portraitComposable("library_songs_local") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.LOCAL_SONGS)
     }
-    composable("library_albums") {
+    portraitComposable("library_albums") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.ALBUMS)
     }
-    composable("library_artists") {
+    portraitComposable("library_artists") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.ARTISTS)
     }
-    composable("library_playlists_offline") {
+    portraitComposable("library_playlists_offline") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.PLAYLISTS, initialOffline = true)
     }
-    composable("library_songs_offline") {
+    portraitComposable("library_songs_offline") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.SONGS, initialOffline = true)
     }
-    composable("library_albums_offline") {
+    portraitComposable("library_albums_offline") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.ALBUMS, initialOffline = true)
     }
-    composable("library_artists_offline") {
+    portraitComposable("library_artists_offline") {
         LibraryScreen(navController = navController, initialCategory = LibraryCategory.ARTISTS, initialOffline = true)
+    }
+}
+
+private fun NavGraphBuilder.portraitComposable(
+    route: String,
+    arguments: List<NamedNavArgument> = emptyList(),
+    content: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit,
+) {
+    composable(route = route, arguments = arguments) { entry ->
+        CompositionLocalProvider(LocalAnimatedVisibilityScope provides this, LocalCollectionSourceEntry provides entry.id) {
+            CollectionExpansionPage(entry) { content(entry) }
+        }
     }
 }

@@ -1,6 +1,9 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
+import com.metrolist.music.ui.component.CollectionExpansionKind
+import com.metrolist.music.ui.component.rememberCollectionExpansionTile
+
 import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -180,7 +183,7 @@ fun OnlineSearchScreen(
             SearchGenrePersonalization.rank(listeningGenreScores, tappedGenreScores)
         }
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     LaunchedEffect(lazyListState) {
@@ -549,6 +552,18 @@ fun OnlineSearchScreen(
             }
 
             items(viewState.history, key = { "history_${it.query}" }) { history ->
+                val collectionTile = when {
+                    history.itemId == null -> Modifier to Modifier
+                    history.itemType == "album" -> rememberCollectionExpansionTile(
+                        CollectionExpansionKind.Album, history.itemId,
+                        artworkUrl = history.thumbnailUrl, title = history.title ?: history.query,
+                    )
+                    history.itemType == "playlist" -> rememberCollectionExpansionTile(
+                        CollectionExpansionKind.Playlist, history.itemId,
+                        artworkUrl = history.thumbnailUrl, title = history.title ?: history.query,
+                    )
+                    else -> Modifier to Modifier
+                }
                 SuggestionItem(
                     query = history.title ?: history.query,
                     online = false,
@@ -594,7 +609,8 @@ fun OnlineSearchScreen(
                             TextFieldValue(history.query, TextRange(history.query.length))
                         )
                     },
-                    modifier = Modifier.animateItem(),
+                    modifier = collectionTile.first.animateItem(),
+                    thumbnailModifier = collectionTile.second,
                     pureBlack = pureBlack,
                     useIrideStyle = true,
                 )
@@ -1086,6 +1102,7 @@ fun SuggestionItem(
     thumbnailUrl: String? = null,
     isArtistThumbnail: Boolean = false,
     showDelete: Boolean = !online && !useIrideStyle,
+    thumbnailModifier: Modifier = Modifier,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1117,6 +1134,7 @@ fun SuggestionItem(
                 modifier =
                     Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
                         .size(ListThumbnailSize)
+                        .then(thumbnailModifier)
                         .clip(if (isArtistThumbnail) CircleShape else FolioShape(4.dp)),
             )
         } else if (useIrideStyle) {

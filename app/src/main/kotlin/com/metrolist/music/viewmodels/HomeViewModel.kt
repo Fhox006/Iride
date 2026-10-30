@@ -1505,11 +1505,14 @@ class HomeViewModel @Inject constructor(
                 }
                 else -> return null
             }
-            val existingIds = generated.asSequence()
-                .filterNot { it.title.id == seed.id }
-                .flatMap { it.items.asSequence() }
-                .map { it.id }
-                .toSet()
+            val existingIds = publishLock.withLock {
+                // Consume the lazy sequence while publication cannot mutate its backing list.
+                generated.asSequence()
+                    .filterNot { it.title.id == seed.id }
+                    .flatMap { it.items.asSequence() }
+                    .map { it.id }
+                    .toSet()
+            }
             val items = candidates.distinctBy { it.id }
                 .filterExplicit(hideExplicit)
                 .filter { it is SongItem && !it.isVideoSong || it is AlbumItem || it is ArtistItem || it is PlaylistItem }

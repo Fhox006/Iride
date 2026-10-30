@@ -126,7 +126,7 @@ private fun ServicePlaylistImportScreen(
                     Modifier.align(Alignment.TopEnd).padding(12.dp).size(24.dp), strokeWidth = 2.dp)
                 failure?.let { error ->
                     Column(
-                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp),
+                        Modifier.fillMaxSize().padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                     ) {
                         Text(if (error is ExportifyPageError.Http) stringResource(R.string.spotify_exportify_http_error, error.statusCode)

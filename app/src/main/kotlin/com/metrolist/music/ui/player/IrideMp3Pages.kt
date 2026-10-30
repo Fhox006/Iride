@@ -631,7 +631,7 @@ private fun Mp3QueueSectionTitle(text: String) {
             text,
             color = Color.White.copy(alpha = .65f),
             fontFamily = IBMPlexMonoFontFamily,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Normal,
             fontSize = 11.sp,
             lineHeight = 15.sp,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),

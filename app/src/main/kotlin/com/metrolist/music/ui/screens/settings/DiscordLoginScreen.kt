@@ -64,7 +64,7 @@ fun DiscordLoginScreen(navController: NavController) {
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var webView: WebView? = null
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

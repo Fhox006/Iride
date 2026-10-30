@@ -139,7 +139,6 @@ fun ArtistItemsScreen(
 
     Box(
         Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         if (itemsPage == null) {
             ShimmerHost(modifier = Modifier) {

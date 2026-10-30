@@ -6,6 +6,10 @@
 package com.metrolist.music.viewmodels
 
 import android.content.Context
+import android.util.LruCache
+import com.metrolist.music.db.entities.Playlist
+import com.metrolist.music.utils.get
+import kotlinx.coroutines.flow.onEach
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,11 +44,23 @@ constructor(
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private data class SongsKey(
+        val id: String, val sortType: String, val descending: Boolean, val hideVideos: Boolean,
+        val locale: Locale = Locale.getDefault(),
+    )
+    private companion object {
+        val playlists = LruCache<String, Playlist>(8)
+        val songs = LruCache<SongsKey, List<PlaylistSong>>(8)
+    }
+
     val playlistId = savedStateHandle.get<String>("playlistId")!!
     val playlist =
         database
             .playlist(playlistId)
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .onEach { playlist ->
+                if (playlist == null) playlists.remove(playlistId) else playlists.put(playlistId, playlist)
+            }
+            .stateIn(viewModelScope, SharingStarted.Lazily, playlists.get(playlistId))
     val playlistSongs: StateFlow<List<PlaylistSong>> =
         combine(
             database.playlistSongs(playlistId),
@@ -86,8 +102,15 @@ constructor(
                 }
 
                 PlaylistSongSortType.PLAY_TIME -> filteredSongs.sortedBy { it.song.song.totalPlayTime }
-            }.reversed(sortDescending && sortType != PlaylistSongSortType.CUSTOM)
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.reversed(sortDescending && sortType != PlaylistSongSortType.CUSTOM).also { current ->
+                Companion.songs.put(SongsKey(playlistId, sortType.name, sortDescending, hideVideoSongs), current)
+            }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, songs.get(SongsKey(
+            playlistId,
+            context.dataStore.get(PlaylistSongSortTypeKey, PlaylistSongSortType.CUSTOM.name),
+            context.dataStore.get(PlaylistSongSortDescendingKey, true),
+            context.dataStore.get(HideVideoSongsKey, false),
+        )).orEmpty())
 
     val categoryController = PlaylistCategoryController(database, playlistId, viewModelScope)
     val categories get() = categoryController.categories
@@ -103,7 +126,7 @@ constructor(
     init {
         viewModelScope.launch {
             val sortedSongs =
-                playlistSongs.first().sortedWith(compareBy({ it.map.position }, { it.map.id }))
+                database.playlistSongs(playlistId).first().sortedWith(compareBy({ it.map.position }, { it.map.id }))
             database.transaction {
                 sortedSongs.forEachIndexed { index, playlistSong ->
                     if (playlistSong.map.position != index) {

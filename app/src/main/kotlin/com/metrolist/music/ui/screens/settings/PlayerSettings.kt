@@ -274,7 +274,7 @@ fun PlayerSettings(navController: NavController) {
     }
 
     val playerScrollState = rememberScrollState()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

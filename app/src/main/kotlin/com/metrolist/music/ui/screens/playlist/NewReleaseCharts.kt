@@ -48,6 +48,8 @@ import com.metrolist.music.data.remote.ChartMarket
 import com.metrolist.music.data.remote.DailyChart
 import com.metrolist.music.data.remote.isCurrentFor
 import com.metrolist.music.ui.component.IrideChartPoster
+import com.metrolist.music.ui.component.CollectionExpansionKind
+import com.metrolist.music.ui.component.rememberCollectionExpansionTile
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.IridePageBackButton
@@ -213,10 +215,13 @@ private fun rememberChartRegion(): String {
 
 @Composable
 private fun ChartCard(market: ChartMarket, count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val (tap, cover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Playlist, market.code,
+    )
     val name = chartCountryName(market.code)
     val description = stringResource(R.string.new_charts_playlist_title, name)
-    Column(modifier) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(SquircleShape(7.dp))
+    Column(tap.then(modifier)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1f).then(cover).clip(SquircleShape(7.dp))
             .semantics { contentDescription = description }.clickable(role = Role.Button, onClick = onClick)) {
             IrideChartPoster(market.code, name, stringResource(R.string.new_charts_top_count, count), Modifier.fillMaxSize())
         }

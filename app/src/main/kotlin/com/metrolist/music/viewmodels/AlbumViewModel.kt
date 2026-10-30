@@ -5,6 +5,10 @@
 
 package com.metrolist.music.viewmodels
 
+import android.os.SystemClock
+import android.util.LruCache
+import com.metrolist.music.db.entities.AlbumWithSongs
+import kotlinx.coroutines.flow.onEach
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -51,18 +55,34 @@ constructor(
     private val discoveryRepository: AlbumDiscoveryRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private data class CachedAlbumPage(val page: AlbumPage, val loadedAt: Long)
+
+    private companion object {
+        const val ReuseWindowMs = 120_000L
+        val snapshots = LruCache<String, AlbumWithSongs>(8)
+        val pages = LruCache<String, CachedAlbumPage>(8)
+    }
+
     val albumId = savedStateHandle.get<String>("albumId")!!
-    val playlistId = MutableStateFlow("")
-    val unavailableSongs = MutableStateFlow<List<String>>(emptyList())
+    private val cachedPage = pages.get(albumId)
+    val playlistId = MutableStateFlow(cachedPage?.page?.album?.playlistId.orEmpty())
+    val unavailableSongs = MutableStateFlow(cachedPage?.page?.unavailableSongs.orEmpty())
 
     val albumWithSongs =
         database
             .albumWithSongs(albumId)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
-    private val _discovery = MutableStateFlow(AlbumDiscoveryState())
+            .onEach { album ->
+                if (album == null) snapshots.remove(albumId) else snapshots.put(albumId, album)
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, snapshots.get(albumId))
+    var otherVersions = MutableStateFlow(cachedPage?.page?.otherVersions.orEmpty())
+    private val _discovery = MutableStateFlow(AlbumDiscoveryState(
+        albums = cachedPage?.page?.let {
+            discoveryRepository.usableAlbums(it, it.similarAlbums, hideExplicit = false)
+        }.orEmpty(),
+    ))
     val discovery = _discovery.asStateFlow()
-    private var discoveryPage: AlbumPage? = null
+    private var discoveryPage: AlbumPage? = cachedPage?.page
     private var mixJob: Job? = null
     private var hideDiscoveryExplicit = false
     private var discoveryActive = false
@@ -115,14 +135,16 @@ constructor(
         }
     }
 
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(snapshots.get(albumId) == null)
     val isLoading = _isLoading.asStateFlow()
 
     private val _hasError = MutableStateFlow(false)
     val hasError = _hasError.asStateFlow()
 
     init {
-        fetchFromYouTube()
+        if (cachedPage == null || snapshots.get(albumId) == null ||
+            SystemClock.elapsedRealtime() - cachedPage.loadedAt >= ReuseWindowMs
+        ) fetchFromYouTube()
 
         viewModelScope.launch {
             networkConnectivity.networkStatus
@@ -178,6 +200,7 @@ constructor(
                                     update(album.album, albumPage, album.artists)
                                 }
                             }
+                            pages.put(albumId, CachedAlbumPage(albumPage, SystemClock.elapsedRealtime()))
                             _isLoading.value = false
                             discoveryPage = albumPage
                             val initial = discoveryRepository.usableAlbums(

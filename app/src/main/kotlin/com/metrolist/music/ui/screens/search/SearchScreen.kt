@@ -150,7 +150,7 @@ fun SearchScreen(
         }
     }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotBlank()) searchSource = SearchSource.ONLINE
@@ -378,7 +378,6 @@ fun SearchScreen(
         loaded
     } else null
     val landingColor = when {
-        pureBlack -> Color.Black
         mainTopGradient -> Color.Transparent
         else -> MaterialTheme.colorScheme.background
     }

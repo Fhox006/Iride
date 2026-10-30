@@ -97,6 +97,11 @@ fun BottomSheet(
     // The player panel moves over the app, so its background must travel with its content.
     backgroundFollowsContent: Boolean = false,
     topEdgeColor: Color = Color.Transparent,
+    contentRevealStart: Float = 0.15f,
+    contentRevealEnd: Float = 0.4f,
+    collapsedFadeStart: Float = 0f,
+    collapsedFadeEnd: Float = if (backgroundFollowsContent) 0.25f else 0.15f,
+    collapsedAlpha: (() -> Float)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val gestureLock = remember { mutableStateOf(false) }
@@ -148,7 +153,7 @@ fun BottomSheet(
                     } else {
                         32.dp.toPx()
                     }
-                    val dragSlop = bottomSheetDragSlop(
+                    val dragSlop = if (curtainGestures && state.isCollapsed) viewConfiguration.touchSlop else bottomSheetDragSlop(
                         startYDp = screenStartY,
                         screenHeightDp = size.height / densityScale + expandedTopInset.value,
                         sideDragSlopPx = sideDragSlop,
@@ -172,7 +177,7 @@ fun BottomSheet(
                                 accumulatedX += delta.x
                                 val closing = curtainGestures && accumulatedY > dragSlop &&
                                     accumulatedY > abs(accumulatedX)
-                                val opening = (!curtainGestures || state.isCollapsed) &&
+                                val opening = (!curtainGestures || accumulatedY < 0f) &&
                                     isVerticalDragPastSlop(accumulatedY, accumulatedX, dragSlop)
                                 if (closing || opening) {
                                     dragging = true
@@ -253,7 +258,7 @@ fun BottomSheet(
                     .fillMaxSize()
                     .padding(top = contentTopPadding)
                     .graphicsLayer {
-                        alpha = ((state.progress - 0.15f) * 4).coerceIn(0f, 1f)
+                        alpha = ((state.progress - contentRevealStart) / (contentRevealEnd - contentRevealStart).coerceAtLeast(0.01f)).coerceIn(0f, 1f)
                     },
             ) {
                 CompositionLocalProvider(LocalPlayerSheetGestureLock provides gestureLock) {
@@ -277,9 +282,8 @@ fun BottomSheet(
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            // The moving panel fades its background in as the mini row fades out.
-                            alpha = 1f - (state.progress / (if (backgroundFollowsContent) 0.25f else 0.15f))
-                                .coerceIn(0f, 1f)
+                            alpha = collapsedAlpha?.invoke() ?: (1f - ((state.progress - collapsedFadeStart) /
+                                (collapsedFadeEnd - collapsedFadeStart).coerceAtLeast(0.01f)).coerceIn(0f, 1f))
                         }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },

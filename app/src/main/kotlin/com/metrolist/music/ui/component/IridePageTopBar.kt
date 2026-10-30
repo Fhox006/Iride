@@ -11,9 +11,13 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.utils.rememberReducedMotion
 
@@ -36,12 +40,15 @@ fun IridePageTopBar(
     reducedMotion: Boolean = rememberReducedMotion(),
 ) {
     val backdrop = LocalScreenFrostBackdrop.current
+    val surfaceProgress = if (LocalArtistControlMotion.current != null) 1f else progress
     IridePageTopBar(progress = progress, modifier = modifier) {
         if (navigationIcon != null) {
             IrideFolioCompactControls {
                 Box(
                     Modifier.size(IrideFolio.ControlSurfaceSize)
-                        .irideFolioControlSurface(progress, backdrop)
+                        .trackArtistSourceControl("back")
+                        .artistControlMotion("back")
+                        .irideFolioControlSurface(surfaceProgress, backdrop)
                 ) {
                     navigationIcon()
                 }
@@ -51,13 +58,25 @@ fun IridePageTopBar(
             titleContent?.invoke()
         }
         Row(
-            modifier = Modifier.irideFolioControlSurface(progress, backdrop),
+            modifier = Modifier.trackArtistSourceControl("menu", menuSections.isNotEmpty())
+                .artistControlMotion("menu").irideFolioControlSurface(surfaceProgress, backdrop),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IrideFolioCompactControls { Row(content = actions) }
             IrideFolioOverflowMenu(menuSections)
         }
     }
+}
+
+@Composable
+private fun Modifier.trackArtistSourceControl(kind: String, enabled: Boolean = true): Modifier {
+    val navigation = LocalArtistPortraitNavigation.current
+    val tracking = enabled && navigation != null && LocalArtistControlMotion.current == null
+    val key = remember { Any() }
+    DisposableEffect(navigation, tracking) {
+        onDispose { navigation?.removeControl(key) }
+    }
+    return if (tracking) onGloballyPositioned { navigation.updateControl(key, kind, it.boundsInWindow()) } else this
 }
 
 /**

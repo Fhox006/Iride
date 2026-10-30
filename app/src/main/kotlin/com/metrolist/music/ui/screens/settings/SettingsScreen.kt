@@ -137,7 +137,7 @@ fun SettingsScreen(
     IridePageLayout(
         titleRes = R.string.account,
         state = settingsListState,
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         menuSections = listOf(
             listOf(

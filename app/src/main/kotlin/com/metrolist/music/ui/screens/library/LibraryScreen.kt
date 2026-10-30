@@ -176,6 +176,8 @@ import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
+import com.metrolist.music.ui.component.LocalIridePageTitleVisible
 import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
@@ -579,7 +581,7 @@ fun LibraryAlbumsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
 
             .graphicsLayer { alpha = screenProgress },
     ) {
@@ -824,7 +826,7 @@ fun LibraryArtistsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                .background(Color.Transparent),
         ) {
             CompositionLocalProvider(
                 LocalItemHorizontalPadding provides false,
@@ -1124,7 +1126,7 @@ fun LibraryPlaylistsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
 
             .graphicsLayer { alpha = screenProgress },
     ) {
@@ -1470,7 +1472,7 @@ fun LibrarySongsScreen(
         },
         modifier = Modifier
             .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+            .background(Color.Transparent),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         onNavigateUp = { onReturnToLibrary?.invoke() ?: navController.navigateUp() },
         showNavigationPill = !isCache || !inSelectMode,
@@ -1501,6 +1503,14 @@ fun LibrarySongsScreen(
             }
         },
         overlay = { if (isCache && inSelectMode) selectionTopBar() },
+        collectionHeader = if (isCache) ({
+            IrideGeneratedPlaylistHeader(
+                title = cachedPlaylistStr,
+                thumbnails = remember(filteredSongs) { filteredSongs.mapNotNull { it.song.thumbnailUrl } },
+                metadataLine = pluralStringResource(R.plurals.n_song, filteredSongs.size, filteredSongs.size),
+                badgeIcon = R.drawable.cached,
+            )
+        }) else null,
     ) { song, index ->
         val onCheckedChange: (Boolean) -> Unit = { checked ->
             if (checked) selection.add(song.id) else selection.remove(song.id)
@@ -1593,6 +1603,7 @@ fun LibraryTracksPage(
     onShuffle: () -> Unit,
     onRotation: () -> Unit,
     overlay: @Composable BoxScope.() -> Unit = {},
+    collectionHeader: (@Composable () -> Unit)? = null,
     rowContent: @Composable LazyItemScope.(Song, Int) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1607,6 +1618,7 @@ fun LibraryTracksPage(
         LocalItemHorizontalPadding provides false,
         LocalContentColor provides Color.White,
         LocalLibraryTextColor provides Color.White,
+        LocalIridePageTitleVisible provides (collectionHeader == null),
     ) {
         LibraryListPage(
             titleRes = titleRes,
@@ -1618,6 +1630,7 @@ fun LibraryTracksPage(
             menuSections = listOf(librarySortMenuActions(sortOptions, sortType, onSortTypeChange)),
             overlay = overlay,
         ) {
+            if (collectionHeader != null) item(key = "collection_header") { collectionHeader() }
             item(key = "library_search_actions", contentType = CONTENT_TYPE_HEADER) {
                 if (songs.isNotEmpty() || query.text.isNotBlank()) {
                 LibrarySearchAndActions(
@@ -1738,7 +1751,7 @@ fun LibraryMixScreen(
         Playlist(
             playlist =
                 PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
+                    id = "downloaded",
                     name = stringResource(R.string.offline),
                 ),
             songCount = 0,
@@ -1749,7 +1762,7 @@ fun LibraryMixScreen(
         Playlist(
             playlist =
                 PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
+                    id = "$topSize",
                     name = stringResource(R.string.my_top) + " $topSize",
                 ),
             songCount = 0,
@@ -1760,7 +1773,7 @@ fun LibraryMixScreen(
         Playlist(
             playlist =
                 PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
+                    id = "cached",
                     name = stringResource(R.string.offline_ready_songs),
                 ),
             songCount = 0,
@@ -1771,7 +1784,7 @@ fun LibraryMixScreen(
         Playlist(
             playlist =
                 PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
+                    id = "uploaded",
                     name = stringResource(R.string.uploaded_playlist),
                 ),
             songCount = 0,
@@ -1993,8 +2006,7 @@ fun LibraryMixScreen(
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Box(
-            modifier = Modifier.fillMaxSize()
-                .background(Color.Black),
+            modifier = Modifier.fillMaxSize(),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 if (isListView) {

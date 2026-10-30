@@ -79,7 +79,7 @@ fun NotesScreen(navController: NavController) {
 
     val albumsListState = rememberLazyListState()
     val songsListState = rememberLazyListState()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

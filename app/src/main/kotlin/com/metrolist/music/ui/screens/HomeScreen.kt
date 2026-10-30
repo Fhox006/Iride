@@ -55,14 +55,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
-import com.metrolist.music.ui.component.artistPortraitSharedModifier
+import com.metrolist.music.ui.component.rememberArtistPortraitTile
+import com.metrolist.music.ui.component.rememberCollectionExpansionTile
+import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.rememberIrideArtistArtwork
 import androidx.compose.ui.graphics.asImageBitmap
 import com.metrolist.music.ui.component.LocalArtistPortraitTransitionActive
 import com.metrolist.music.ui.component.ArtistPortraitMotion
-import com.metrolist.music.ui.component.artistPortraitFinish
 import java.util.UUID
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.animateFloat
 import com.metrolist.music.ui.component.LocalAnimatedVisibilityScope
@@ -86,6 +86,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
@@ -330,6 +332,9 @@ private fun HomeSimilarityTitle(
         if (isArtist && artistId != null) {
             rememberArtistThumbnail(artistId, name, thumbnailUrl)
         } else thumbnailUrl
+    val portraitTile = if (isArtist && artistId != null && onClick != null) {
+        rememberArtistPortraitTile(artistId, name, resolvedThumbnail, null, true)
+    } else Modifier to Modifier
     IrideFolioShelfHeader(
         label = stringResource(R.string.home_similar_to),
         title = compactHomeTitle(name),
@@ -342,11 +347,11 @@ private fun HomeSimilarityTitle(
                 artistArtwork = isArtist,
                 requestResolution = 192,
                 hairlineBorder = true,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(48.dp).then(portraitTile.second),
             )
         },
         onClick = onClick,
-        modifier = modifier,
+        modifier = portraitTile.first.then(modifier),
         showNavigationArrow = false,
     )
 }
@@ -739,7 +744,7 @@ private fun HomeScreenContent(
         IrideFolioDisplayHeadings(menuState = menuState) {
             Scaffold(
                 modifier = Modifier,
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = Color.Transparent,
                 contentWindowInsets = WindowInsets(0),
             ) { paddingValues ->
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -928,12 +933,18 @@ private fun HomeScreenContent(
                     }
                     val forYouMiniTile: @Composable (LocalItem) -> Unit = { cell ->
                         val tileShape = if (cell is Artist) CircleShape else FolioShape(6.dp)
+                        val collectionTile = if (cell is Album) {
+                            rememberCollectionExpansionTile(
+                                CollectionExpansionKind.Album, cell.id, artworkUrl = cell.thumbnailUrl, title = cell.title,
+                            )
+                        } else Modifier to Modifier
                         val thumbnail =
                             if (cell is Artist) {
                                 rememberArtistThumbnail(cell.id, cell.title, cell.thumbnailUrl)
                             } else cell.thumbnailUrl
                         val portraitNavigation = LocalArtistPortraitNavigation.current
                         val portraitKey = rememberSaveable { UUID.randomUUID().toString() }
+                        var portraitBounds by remember { mutableStateOf(Rect.Zero) }
                         val portrait =
                             if (cell is Artist) {
                                 rememberIrideArtistArtwork(
@@ -950,33 +961,24 @@ private fun HomeScreenContent(
                                     .value
                             } else null
                         val portraitScope = LocalAnimatedVisibilityScope.current
-                        var portraitGradient = 0f
-                        val sharedShape =
-                            if (
-                                cell is Artist &&
-                                    LocalArtistPortraitTransitionActive.current &&
-                                    portraitScope != null &&
-                                    !homeReducedMotion &&
-                                    portraitNavigation?.seed?.sourceKey == portraitKey
-                            ) {
-                                val roundness by
-                                    portraitScope.transition.animateFloat(
-                                        transitionSpec = {
-                                            tween(ArtistPortraitMotion.Duration,
-                                                easing = ArtistPortraitMotion.Easing)
-                                        },
-                                        label = "homePortraitCorners",
-                                    ) { state ->
-                                        if (state == EnterExitState.Visible) 50f else 0f
-                                    }
-                                portraitGradient = 1f - roundness / 50f
-                                RoundedCornerShape(percent = roundness.toInt())
-                            } else tileShape
+                        val portraitInFlight =
+                            cell is Artist && LocalArtistPortraitTransitionActive.current &&
+                                portraitScope != null && !homeReducedMotion &&
+                                portraitNavigation?.seed?.sourceKey == portraitKey
+                        val homePortraitProgress = if (portraitInFlight) {
+                            val progress by portraitScope!!.transition.animateFloat(
+                                transitionSpec = { tween(ArtistPortraitMotion.Duration, easing = ArtistPortraitMotion.Easing) },
+                                label = "homePortraitVisibility",
+                            ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
+                            progress
+                        } else 1f
                         // These tiles render at roughly half the real grid size, so the outline
                         // uses thinner weights than standard items to keep the same visual weight.
                         Box(
                             modifier =
                                 Modifier.size(forYouCellSize)
+                                    .then(collectionTile.first)
+                                    .then(collectionTile.second)
                                     .clip(tileShape)
                                     .irideFolioCombinedClickable(
                                         onClick = {
@@ -987,6 +989,7 @@ private fun HomeScreenContent(
                                                     cell.title,
                                                     portrait,
                                                     thumbnail,
+                                                    portraitBounds,
                                                 )
                                                 navController.navigate(
                                                     "artist/${cell.id}?portraitSource=$portraitKey"
@@ -1042,9 +1045,9 @@ private fun HomeScreenContent(
                                     contentScale = ContentScale.Crop,
                                     modifier =
                                         Modifier.fillMaxSize()
-                                            .then(artistPortraitSharedModifier(cell.id, portraitKey))
-                                            .clip(sharedShape)
-                                            .artistPortraitFinish(sharedShape, displayedPortrait.tint, MaterialTheme.colorScheme.strokeCard, portraitGradient),
+                                            .onGloballyPositioned { portraitBounds = it.boundsInWindow() }
+                                            .alpha(if (portraitInFlight && homePortraitProgress < 1f) 0f else 1f)
+                                            .clip(tileShape),
                                 )
                             } else {
                                 AsyncImage(
@@ -1067,6 +1070,9 @@ private fun HomeScreenContent(
                             is ForYouShelfTile.Local -> forYouMiniTile(tile.item)
                             is ForYouShelfTile.RecommendedAlbum -> {
                                 val album = tile.item
+                                val collectionTile = rememberCollectionExpansionTile(
+                                    CollectionExpansionKind.Album, album.id, artworkUrl = album.thumbnail, title = album.title,
+                                )
                                 AsyncImage(
                                     model =
                                         ImageRequest.Builder(LocalContext.current)
@@ -1079,6 +1085,8 @@ private fun HomeScreenContent(
                                     contentScale = ContentScale.Crop,
                                     modifier =
                                         Modifier.size(forYouCellSize)
+                                            .then(collectionTile.first)
+                                            .then(collectionTile.second)
                                             .irideArtworkOverlayBorder(
                                                 IrideSoftBorderWidth,
                                                 MaterialTheme.colorScheme.strokeCard,
@@ -1908,8 +1916,13 @@ private fun HomeScreenContent(
                                         ) {
                                             item(key = "home_test_playlist_${playlist.id}") {
                                                 val artwork = testPlaylistTrackThumbnails
+                                                val collectionTile = rememberCollectionExpansionTile(
+                                                    CollectionExpansionKind.Playlist, playlist.id,
+                                                    artworkUrl = artwork.firstOrNull() ?: playlist.thumbnail, title = playlist.title,
+                                                )
                                                 Column(
                                                     modifier = Modifier.width(currentGridHeight)
+                                                        .then(collectionTile.first)
                                                         .irideFolioCombinedClickable(
                                                             onClick = {
                                                                 navController.navigate("online_playlist/${playlist.id}")
@@ -1918,6 +1931,7 @@ private fun HomeScreenContent(
                                                 ) {
                                                     Box(
                                                         modifier = Modifier.size(currentGridHeight)
+                                                            .then(collectionTile.second)
                                                             .clip(FolioShape(8.dp)),
                                                     ) {
                                                         if (artwork.isEmpty()) {

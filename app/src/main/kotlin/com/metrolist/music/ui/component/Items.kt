@@ -449,6 +449,7 @@ inline fun ListItem(
     selectedBackgroundColor: Color? = null,
     isAvailable: Boolean = true,
     showDivider: Boolean = true,
+    titleFontWeight: FontWeight = FontWeight.Bold,
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
     val highlightShape = FolioShape(ThumbnailCornerRadius)
@@ -508,7 +509,7 @@ inline fun ListItem(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = titleFontWeight,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -549,9 +550,11 @@ fun ListItem(
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
     showDivider: Boolean = true,
+    titleFontWeight: FontWeight = FontWeight.Bold,
 ) =
     ListItem(
         title = title,
+        titleFontWeight = titleFontWeight,
         subtitle = {
             badges()
             if (subtitle != null) {
@@ -588,9 +591,11 @@ fun ListItem(
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
     showDivider: Boolean = true,
+    titleFontWeight: FontWeight = FontWeight.Bold,
 ) =
     ListItem(
         title = title,
+        titleFontWeight = titleFontWeight,
         subtitle = {
             badges()
 
@@ -785,6 +790,7 @@ fun SongListItem(
         ListItem(
             showDivider = showDivider,
             title = song.song.title,
+            titleFontWeight = FontWeight.Normal,
             subtitle =
                 subtitleOverride
                     ?: if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
@@ -1016,6 +1022,10 @@ fun ArtistListItem(
                     !artist.artist.isPodcastChannel &&
                     !artist.artist.isPrivatelyOwnedArtist,
         )
+    val (portraitTap, portraitThumbnail) = rememberArtistPortraitTile(
+        artist.id, artist.artist.name, thumbnail, artist.artist.channelId,
+        !artist.artist.isLocal && !artist.artist.isPodcastChannel && !artist.artist.isPrivatelyOwnedArtist,
+    )
     ListItem(
         title = artist.artist.name,
         subtitle =
@@ -1041,6 +1051,7 @@ fun ArtistListItem(
                 contentScale = ContentScale.Crop,
                 modifier =
                     Modifier.size(ListThumbnailSize)
+                        .then(portraitThumbnail)
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
@@ -1050,7 +1061,7 @@ fun ArtistListItem(
             )
         },
         trailingContent = trailingContent,
-        modifier = modifier,
+        modifier = portraitTap.then(modifier),
     )
 }
 
@@ -1078,6 +1089,10 @@ fun ArtistGridItem(
                     !artist.artist.isPodcastChannel &&
                     !artist.artist.isPrivatelyOwnedArtist,
         )
+    val (portraitTap, portraitThumbnail) = rememberArtistPortraitTile(
+        artist.id, artist.artist.name, thumbnail, artist.artist.channelId,
+        !artist.artist.isLocal && !artist.artist.isPodcastChannel && !artist.artist.isPrivatelyOwnedArtist,
+    )
     GridItem(
         title = artist.artist.name,
         subtitle =
@@ -1105,6 +1120,7 @@ fun ArtistGridItem(
                 contentScale = ContentScale.Crop,
                 modifier =
                     Modifier.fillMaxSize()
+                        .then(portraitThumbnail)
                         .irideArtworkOverlayBorder(
                             IrideBaseBorderWidth,
                             MaterialTheme.colorScheme.strokeCard,
@@ -1115,7 +1131,7 @@ fun ArtistGridItem(
         },
         fillMaxWidth = fillMaxWidth,
         size = size,
-        modifier = modifier,
+        modifier = portraitTap.then(modifier),
     )
 }
 
@@ -1167,7 +1183,10 @@ fun AlbumListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
-) =
+) {
+    val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Album, album.id, artworkUrl = album.album.thumbnailUrl, title = album.album.title,
+    )
     ListItem(
         title = album.album.title,
         subtitle =
@@ -1182,18 +1201,22 @@ fun AlbumListItem(
             ),
         badges = badges,
         thumbnailContent = {
-            ItemThumbnail(
-                thumbnailUrl = album.album.thumbnailUrl,
-                isActive = isActive,
-                isPlaying = isPlaying,
-                shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
-                modifier = Modifier.size(ListThumbnailSize),
-                softBorder = true,
-            )
+            Box(Modifier.size(ListThumbnailSize).then(collectionCover)) {
+                ItemThumbnail(
+                    thumbnailUrl = album.album.thumbnailUrl,
+                    isActive = isActive,
+                    isPlaying = isPlaying,
+                    shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
+                    modifier = Modifier.size(ListThumbnailSize),
+                    softBorder = true,
+                )
+
+            }
         },
         trailingContent = trailingContent,
-        modifier = modifier,
+        modifier = collectionTap.then(modifier),
     )
+}
 
 @Composable
 fun AlbumGridItem(
@@ -1245,7 +1268,10 @@ fun AlbumGridItem(
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
-) =
+) {
+    val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Album, album.id, artworkUrl = album.album.thumbnailUrl, title = album.album.title,
+    )
     GridItem(
         title = {
             Text(
@@ -1280,18 +1306,22 @@ fun AlbumGridItem(
         },
         badges = badges,
         thumbnailContent = {
-            ItemThumbnail(
-                thumbnailUrl = album.album.thumbnailUrl,
-                isActive = isActive,
-                isPlaying = isPlaying,
-                shape = FolioShape(5.dp),
-                hairlineBorder = true,
-            )
+            Box(Modifier.fillMaxSize().then(collectionCover)) {
+                ItemThumbnail(
+                    thumbnailUrl = album.album.thumbnailUrl,
+                    isActive = isActive,
+                    isPlaying = isPlaying,
+                    shape = FolioShape(5.dp),
+                    hairlineBorder = true,
+                )
+
+            }
         },
         fillMaxWidth = fillMaxWidth,
         size = size,
-        modifier = modifier,
+        modifier = collectionTap.then(modifier),
     )
+}
 
 @Composable
 fun PlaylistListItem(
@@ -1333,7 +1363,11 @@ fun PlaylistListItem(
         Icon.Download(downloadState)
     },
     trailingContent: @Composable RowScope.() -> Unit = {},
-) =
+) {
+    val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Playlist, playlist.id, playlist.playlist.browseId,
+        artworkUrl = playlist.thumbnails.firstOrNull(), title = playlist.playlist.name,
+    )
     ListItem(
         title = playlist.playlist.name,
         subtitle =
@@ -1360,50 +1394,54 @@ fun PlaylistListItem(
             },
         badges = badges,
         thumbnailContent = {
-            val isStarredPlaylist =
-                playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID ||
-                    playlist.playlist.id == PlaylistEntity.STARRED_PLAYLIST_ID
-            if (isStarredPlaylist) {
-                GlassPlaylistCover(
-                    thumbnails = playlist.thumbnails,
-                    icon = R.drawable.star,
-                    size = ListThumbnailSize,
-                    shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
-                    iconSizeFraction = 0.65f,
-                    softBorder = true,
-                )
-            } else {
-                PlaylistThumbnail(
-                    thumbnails = playlist.thumbnails,
-                    size = ListThumbnailSize,
-                    placeHolder = {
-                        val painter =
-                            when {
-                                playlist.playlist.name == stringResource(R.string.offline) ->
-                                    R.drawable.offline
-                                playlist.playlist.name ==
-                                    stringResource(R.string.cached_playlist) -> R.drawable.cached
-                                playlist.playlist.name ==
-                                    stringResource(R.string.uploaded_playlist) -> R.drawable.backup
-                                else ->
-                                    if (autoPlaylist) R.drawable.trending_up
-                                    else R.drawable.queue_music
-                            }
-                        Icon(
-                            painter = painterResource(painter),
-                            contentDescription = null,
-                            tint = LocalContentColor.current.copy(alpha = 0.8f),
-                            modifier = Modifier.size(ListThumbnailSize / 2),
-                        )
-                    },
-                    shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
-                    softBorder = true,
-                )
+            Box(Modifier.size(ListThumbnailSize).then(collectionCover)) {
+                val isStarredPlaylist =
+                    playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID ||
+                        playlist.playlist.id == PlaylistEntity.STARRED_PLAYLIST_ID
+                if (isStarredPlaylist) {
+                    GlassPlaylistCover(
+                        thumbnails = playlist.thumbnails,
+                        icon = R.drawable.star,
+                        size = ListThumbnailSize,
+                        shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
+                        iconSizeFraction = 0.65f,
+                        softBorder = true,
+                    )
+                } else {
+                    PlaylistThumbnail(
+                        thumbnails = playlist.thumbnails,
+                        size = ListThumbnailSize,
+                        placeHolder = {
+                            val painter =
+                                when {
+                                    playlist.playlist.name == stringResource(R.string.offline) ->
+                                        R.drawable.offline
+                                    playlist.playlist.name ==
+                                        stringResource(R.string.cached_playlist) -> R.drawable.cached
+                                    playlist.playlist.name ==
+                                        stringResource(R.string.uploaded_playlist) -> R.drawable.backup
+                                    else ->
+                                        if (autoPlaylist) R.drawable.trending_up
+                                        else R.drawable.queue_music
+                                }
+                            Icon(
+                                painter = painterResource(painter),
+                                contentDescription = null,
+                                tint = LocalContentColor.current.copy(alpha = 0.8f),
+                                modifier = Modifier.size(ListThumbnailSize / 2),
+                            )
+                        },
+                        shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
+                        softBorder = true,
+                    )
+                }
+
             }
         },
         trailingContent = trailingContent,
-        modifier = modifier,
+        modifier = collectionTap.then(modifier),
     )
+}
 
 @Composable
 fun PlaylistGridItem(
@@ -1445,7 +1483,11 @@ fun PlaylistGridItem(
         Icon.Download(downloadState)
     },
     fillMaxWidth: Boolean = false,
-) =
+) {
+    val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Playlist, playlist.id, playlist.playlist.browseId,
+        artworkUrl = playlist.thumbnails.firstOrNull(), title = playlist.playlist.name,
+    )
     GridItem(
         title = {
             Text(
@@ -1499,55 +1541,59 @@ fun PlaylistGridItem(
         badges = badges,
         thumbnailContent = {
             val width = maxWidth
-            val shape = FolioShape(5.dp)
-            val isStarredPlaylist =
-                playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID ||
-                    playlist.playlist.id == PlaylistEntity.STARRED_PLAYLIST_ID
-            if (isStarredPlaylist) {
-                GlassPlaylistCover(
-                    thumbnails = playlist.thumbnails,
-                    icon = R.drawable.star,
-                    size = width,
-                    shape = shape,
-                    iconSizeFraction = 0.65f,
-                )
-            } else {
-                PlaylistThumbnail(
-                    thumbnails = playlist.thumbnails,
-                    size = width,
-                    placeHolder = {
-                        val painter =
-                            when {
-                                playlist.playlist.name == stringResource(R.string.offline) ->
-                                    R.drawable.offline
-                                playlist.playlist.name ==
-                                    stringResource(R.string.cached_playlist) -> R.drawable.cached
-                                playlist.playlist.name ==
-                                    stringResource(R.string.uploaded_playlist) -> R.drawable.backup
-                                else ->
-                                    if (autoPlaylist) R.drawable.trending_up
-                                    else R.drawable.queue_music
+            Box(Modifier.fillMaxSize().then(collectionCover)) {
+                val shape = FolioShape(5.dp)
+                val isStarredPlaylist =
+                    playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID ||
+                        playlist.playlist.id == PlaylistEntity.STARRED_PLAYLIST_ID
+                if (isStarredPlaylist) {
+                    GlassPlaylistCover(
+                        thumbnails = playlist.thumbnails,
+                        icon = R.drawable.star,
+                        size = width,
+                        shape = shape,
+                        iconSizeFraction = 0.65f,
+                    )
+                } else {
+                    PlaylistThumbnail(
+                        thumbnails = playlist.thumbnails,
+                        size = width,
+                        placeHolder = {
+                            val painter =
+                                when {
+                                    playlist.playlist.name == stringResource(R.string.offline) ->
+                                        R.drawable.offline
+                                    playlist.playlist.name ==
+                                        stringResource(R.string.cached_playlist) -> R.drawable.cached
+                                    playlist.playlist.name ==
+                                        stringResource(R.string.uploaded_playlist) -> R.drawable.backup
+                                    else ->
+                                        if (autoPlaylist) R.drawable.trending_up
+                                        else R.drawable.queue_music
+                                }
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Icon(
+                                    painter = painterResource(painter),
+                                    contentDescription = null,
+                                    tint = LocalContentColor.current.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(width / 2),
+                                )
                             }
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            Icon(
-                                painter = painterResource(painter),
-                                contentDescription = null,
-                                tint = LocalContentColor.current.copy(alpha = 0.8f),
-                                modifier = Modifier.size(width / 2),
-                            )
-                        }
-                    },
-                    shape = shape,
-                    hairlineBorder = true,
-                )
+                        },
+                        shape = shape,
+                        hairlineBorder = true,
+                    )
+                }
+
             }
         },
         fillMaxWidth = fillMaxWidth,
-        modifier = modifier,
+        modifier = collectionTap.then(modifier),
     )
+}
 
 @Composable
 fun MediaMetadataListItem(
@@ -1562,6 +1608,7 @@ fun MediaMetadataListItem(
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
     ListItem(
         title = mediaMetadata.title,
+        titleFontWeight = FontWeight.Normal,
         subtitle =
             if (mediaMetadata.suggestedBy != null) {
                 buildAnnotatedString {
@@ -1652,6 +1699,18 @@ fun YouTubeListItem(
                 !item.isProfile,
             )
         } else null
+    val portraitTile = if (item is ArtistItem) {
+        rememberArtistPortraitTile(item.id, item.title, artistThumbnail ?: item.thumbnail, item.channelId, !item.isProfile)
+    } else Modifier to Modifier
+    val collectionTile = when (item) {
+        is AlbumItem -> rememberCollectionExpansionTile(
+            CollectionExpansionKind.Album, item.id, artworkUrl = item.thumbnail, title = item.title,
+        )
+        is PlaylistItem -> rememberCollectionExpansionTile(
+            CollectionExpansionKind.Playlist, item.id, artworkUrl = item.thumbnail, title = item.title,
+        )
+        else -> Modifier to Modifier
+    }
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
     val content: @Composable () -> Unit = {
@@ -1661,6 +1720,7 @@ fun YouTubeListItem(
             title =
                 if (LocalFolioDisplayHeadings.current != null) item.title.homeSentenceCase()
                 else item.title,
+            titleFontWeight = if (item is SongItem) FontWeight.Normal else FontWeight.Bold,
             subtitle =
                 when (item) {
                     is SongItem -> {
@@ -1724,13 +1784,13 @@ fun YouTubeListItem(
                     shape =
                         if (item is ArtistItem) CircleShape
                         else FolioShape(ThumbnailCornerRadius),
-                    modifier = Modifier.size(ListThumbnailSize),
+                    modifier = Modifier.size(ListThumbnailSize).then(portraitTile.second).then(collectionTile.second),
                     hairlineBorder = hairlineBorder,
                     softBorder = item is SongItem && !hairlineBorder,
                 )
             },
             trailingContent = trailingContent,
-            modifier = modifier,
+            modifier = portraitTile.first.then(collectionTile.first).then(modifier),
             isActive = isActive,
             showDivider = showDivider,
         )
@@ -1803,6 +1863,18 @@ fun YouTubeGridItem(
                 !item.isProfile,
             )
         } else null
+    val portraitTile = if (item is ArtistItem) {
+        rememberArtistPortraitTile(item.id, item.title, artistThumbnail ?: item.thumbnail, item.channelId, !item.isProfile)
+    } else Modifier to Modifier
+    val collectionTile = when (item) {
+        is AlbumItem -> rememberCollectionExpansionTile(
+            CollectionExpansionKind.Album, item.id, artworkUrl = item.thumbnail, title = item.title,
+        )
+        is PlaylistItem -> rememberCollectionExpansionTile(
+            CollectionExpansionKind.Playlist, item.id, artworkUrl = item.thumbnail, title = item.title,
+        )
+        else -> Modifier to Modifier
+    }
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
     val displayTitle =
@@ -1902,6 +1974,7 @@ fun YouTubeGridItem(
                         ContentScale.Crop
                     else null,
                 artistArtwork = item is ArtistItem,
+                modifier = portraitTile.second.then(collectionTile.second),
                 imageLoader = thumbnailImageLoader,
                 placeholder = thumbnailPlaceholder,
                 isActive = isActive,
@@ -1929,7 +2002,7 @@ fun YouTubeGridItem(
         thumbnailRatio = effectiveThumbnailRatio,
         fillMaxWidth = fillMaxWidth,
         size = size,
-        modifier = modifier,
+        modifier = portraitTile.first.then(collectionTile.first).then(modifier),
     )
 }
 

@@ -103,7 +103,7 @@ import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
 import com.metrolist.music.ui.component.IrideFolioMenuAction
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.LibrarySortRow
@@ -712,15 +712,10 @@ fun AutoPlaylistScreen(
                         emptyList(),
                     )
                 }
-            IridePageLayout(
-                background = {
-                    if (albumTopGradientEnabled) {
-                        TopScreenGradientBackground(
-                            mediaMetadata = playlistGradientMediaMetadata,
-                            playerBackground = playerBackgroundStyle,
-                        )
-                    }
-                },
+            IrideCollectionPageLayout(
+                mediaMetadata = playlistGradientMediaMetadata,
+                playerBackground = playerBackgroundStyle,
+                gradientEnabled = albumTopGradientEnabled,
                 title = playlist,
                 state = state,
                 showTopBar = true,
@@ -754,9 +749,11 @@ fun AutoPlaylistScreen(
                 if (songs != null) {
                     if (songs!!.isEmpty()) {
                         item(key = "empty_playlist_title") {
-                            IrideCollectionTitle(
-                                title = playlist,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                            AutoPlaylistHeader(
+                                name = playlist,
+                                songs = songs.orEmpty(),
+                                likeLength = likeLength,
+                                playlistType = playlistType,
                             )
                         }
 
@@ -1048,6 +1045,8 @@ private fun AutoPlaylistHeader(
         badgeIcon = when (playlistType) {
             PlaylistType.LIKE -> R.drawable.star
             PlaylistType.STARRED -> R.drawable.bookmark_filled
+            PlaylistType.DOWNLOAD -> R.drawable.offline
+            PlaylistType.UPLOADED -> R.drawable.backup
             else -> null
         },
         modifier = modifier,

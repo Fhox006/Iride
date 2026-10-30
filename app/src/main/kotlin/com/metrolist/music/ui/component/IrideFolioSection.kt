@@ -21,9 +21,11 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import com.metrolist.music.ui.utils.IrideMotion
@@ -108,9 +110,11 @@ fun IrideFolioSection(
     if (!ready && sectionKey !in seen) {
         Box(blockModifier) { placeholder() }
     } else {
+        val contentVisible = imagesReady && progress.value >= 0.95f
         Box(blockModifier) {
             Column(
                 Modifier.fillMaxWidth()
+                    .then(if (contentVisible) Modifier else Modifier.clearAndSetSemantics { })
                     .irideDepthEnter({ if (imagesReady) progress.value else 0f })
                     .graphicsLayer {
                         renderEffect =
@@ -125,6 +129,15 @@ fun IrideFolioSection(
             )
             if (!imagesReady) {
                 Box(Modifier.matchParentSize().clipToBounds()) { placeholder() }
+            }
+            if (!contentVisible) {
+                Box(
+                    Modifier.matchParentSize().pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) awaitPointerEvent()
+                        }
+                    }
+                )
             }
         }
     }

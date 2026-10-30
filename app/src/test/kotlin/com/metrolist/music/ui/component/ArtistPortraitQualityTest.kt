@@ -32,17 +32,18 @@ class ArtistPortraitQualityTest {
 
     @Test
     fun rejectsChaoticBordersEvenWithLargeSharpFace() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+        assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(1f, 0.1f, 1f)),
-            Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.8f, 0.85f, 0.7f)),
+            Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.85f, 0.7f)),
         ))
     }
 
     @Test
     fun resolutionAndBordersStillMatterBetweenFallbackPortraits() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
-            Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.4f, 0.35f)),
-            Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.8f, 0.9f, 0.9f)),
+        val weaker = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.4f, 0.35f))
+        val sharper = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.9f, 0.9f))
+        assertEquals(sharper, preferredArtistArtwork(
+            listOf(weaker, sharper), { it.source }, { it.quality.borders >= 0.25f }, { it.quality },
         ))
     }
 
@@ -52,7 +53,7 @@ class ArtistPortraitQualityTest {
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.82f, 0.9f, 0.9f)),
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0.8f, 0.9f, 0.9f)),
         ))
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+        assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, choose(
             Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.9f, 0.9f)),
             Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.8f, 0.9f, 0.9f)),
         ))
@@ -117,17 +118,17 @@ class ArtistPortraitQualityTest {
 
     @Test
     fun sharpIllustrationWithPerfectCornersCannotBeatGoodBlendingPortrait() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+        assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 1f, 1f, 1f, 0.15f)),
-            Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f)),
+            Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f)),
         ))
     }
 
     @Test
     fun accidentalFaceDetectionInGraphicDoesNotOutrankRealPortrait() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, choose(
+        assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, choose(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0.95f, 1f, 1f, 1f, 0.15f)),
-            Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f)),
+            Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f)),
         ))
     }
 
@@ -149,7 +150,7 @@ class ArtistPortraitQualityTest {
 
     @Test
     fun existingPortraitSurvivesTemporaryProviderFailure() {
-        val previous = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.85f, 0.8f))
+        val previous = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.85f, 0.85f, 0.8f))
         val chosen = preferredArtistArtwork(
             listOf(Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.2f, 0.7f, 0.6f))),
             { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
@@ -159,7 +160,7 @@ class ArtistPortraitQualityTest {
 
     @Test
     fun establishedAlternativeCannotBeReplacedAgainEvenByBetterApplePhoto() {
-        val previous = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.6f, 0.7f, 0.6f))
+        val previous = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.6f, 0.7f, 0.6f))
         assertEquals(previous, preferredArtistArtwork(
             listOf(Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(1f, 1f, 1f))),
             { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
@@ -180,9 +181,9 @@ class ArtistPortraitQualityTest {
 
     @Test
     fun smallScoreChangeDoesNotReplaceEstablishedPhoto() {
-        val previous = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.8f, 0.85f, 0.8f))
+        val previous = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.85f, 0.8f))
         val chosen = preferredArtistArtwork(
-            listOf(Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.9f, 0.85f, 0.8f))),
+            listOf(Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.9f, 0.85f, 0.8f))),
             { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
         )
         assertEquals(previous, chosen)
@@ -191,10 +192,22 @@ class ArtistPortraitQualityTest {
     @Test
     fun cachedIllustrationCannotPreventReplacementByGoodPortrait() {
         val previous = Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0f, 1f, 1f, 1f, 0.15f))
-        val portrait = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f))
+        val portrait = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.85f, 0.85f, 0.7f, 0.85f, 0.95f))
         assertEquals(portrait, preferredArtistArtwork(
             listOf(portrait), { it.source }, { it.quality.borderScore >= 0.25f }, { it.quality }, previous,
         ))
+    }
+
+    @Test
+    fun cachedSpotifyArtworkCannotOverrideCurrentProviderPolicy() {
+        val cached = Candidate(ArtistArtworkSource.SPOTIFY, ArtistArtworkQuality(1f, 1f, 1f))
+        val fallback = Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, ArtistArtworkQuality(0.8f, 0.9f, 0.9f))
+        val apple = Candidate(ArtistArtworkSource.APPLE_MUSIC, ArtistArtworkQuality(0.8f, 0.9f, 0.9f))
+        for (replacement in listOf(fallback, apple)) {
+            assertEquals(replacement, preferredArtistArtwork(
+                listOf(replacement), { it.source }, { it.quality.borders >= 0.25f }, { it.quality }, cached,
+            ))
+        }
     }
 
     @Test

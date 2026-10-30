@@ -111,7 +111,6 @@ fun ArtistSongsScreen(
 
     Box(
         Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             IridePageLayout(

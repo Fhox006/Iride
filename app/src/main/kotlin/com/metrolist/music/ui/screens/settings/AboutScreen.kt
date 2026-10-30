@@ -74,7 +74,7 @@ fun AboutScreen(navController: NavController) {
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
         )
     val scrollState = rememberScrollState()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

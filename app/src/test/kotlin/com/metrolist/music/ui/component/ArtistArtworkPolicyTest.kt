@@ -69,11 +69,11 @@ class ArtistArtworkPolicyTest {
     }
 
     @Test
-    fun skipsRejectedOrMissingAppleAndSpotify() {
-        assertEquals(ArtistArtworkSource.SPOTIFY, select(
+    fun skipsSpotifyAndUsesYouTubeWhenAppleIsRejectedOrMissing() {
+        assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, select(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, false), Candidate(ArtistArtworkSource.SPOTIFY, true),
             Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, true)))
-        assertEquals(ArtistArtworkSource.SPOTIFY, select(Candidate(ArtistArtworkSource.SPOTIFY, true)))
+        assertNull(select(Candidate(ArtistArtworkSource.SPOTIFY, true)))
         assertEquals(ArtistArtworkSource.YOUTUBE_MUSIC, select(
             Candidate(ArtistArtworkSource.APPLE_MUSIC, false), Candidate(ArtistArtworkSource.SPOTIFY, false),
             Candidate(ArtistArtworkSource.YOUTUBE_MUSIC, false)))

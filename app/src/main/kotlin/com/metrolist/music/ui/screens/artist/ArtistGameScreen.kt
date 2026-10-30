@@ -110,7 +110,7 @@ fun ArtistGameScreen(
             title = stringResource(R.string.guess_game),
             scrollState = rememberScrollState(),
             navigationIcon = { IridePageBackButton(navController) },
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+            modifier = Modifier.fillMaxSize(),
         ) {
             when (val state = uiState) {
                 is GameUiState.Loading -> LoadingContent()

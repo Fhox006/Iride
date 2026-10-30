@@ -118,11 +118,17 @@ internal fun IrideArtistArtworkImage(
     modifier: Modifier = Modifier,
     pagePullOffset: () -> Float = { 0f },
     contentScale: ContentScale = ContentScale.Fit,
+    backingColor: Color? = null,
 ) {
     val image = remember(artwork.bitmap) { artwork.bitmap.asImageBitmap() }
     val motion = artistArtworkMotionModifier(scrollOffset, blurProgress, pullOffset, pagePullOffset)
     Box(modifier) {
         Box(motion) {
+            if (backingColor != null) {
+                Canvas(Modifier.fillMaxSize()) {
+                    drawRect(backingColor)
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Image(
                     image, null, contentScale = contentScale,

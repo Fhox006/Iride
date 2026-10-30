@@ -1,21 +1,32 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.artist
 
+import com.metrolist.music.ui.component.LocalArtistControlMotion
 import com.metrolist.music.ui.component.LocalArtistPortraitTransitionActive
 import com.metrolist.music.ui.component.ArtistPortraitMotion
+import com.metrolist.music.ui.component.IrideExpansionContentMotion
+import com.metrolist.music.ui.component.irideExpansionContentModifier
+import com.metrolist.music.ui.component.irideExpansionControlsModifier
+import com.metrolist.music.ui.component.artistPortraitPanelModifier
+import com.metrolist.music.ui.component.iridePanelGestureModifier
+import com.metrolist.music.ui.component.IrideExpansionMotion
+import com.metrolist.music.ui.component.LocalIrideExpansionBackdrop
+import com.metrolist.music.ui.component.LocalCollectionSourceEntry
+import com.metrolist.music.ui.component.irideExpansionBackdropModifier
+import com.metrolist.music.ui.component.rememberCollectionExpansionTile
+import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.artistPortraitFinish
-import com.metrolist.music.ui.component.artistPortraitOverlayModifier
 import com.metrolist.music.ui.component.invalidateFrostOnChanges
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterExitState
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.shape.RoundedCornerShape
 import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
 import com.metrolist.music.ui.component.LocalAnimatedVisibilityScope
-import com.metrolist.music.ui.component.artistPortraitSharedModifier
+import com.metrolist.music.ui.component.artistPortraitOverlayModifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,6 +68,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -72,6 +84,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -124,7 +138,7 @@ import com.metrolist.music.ui.component.IrideFolioSection
 import com.metrolist.music.ui.component.IrideFolioSectionSkeleton
 import com.metrolist.music.ui.component.IrideFolioSectionEntranceOrder
 import com.metrolist.music.ui.component.LocalFolioSectionEntranceOrder
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.LinkSegment
@@ -178,9 +192,11 @@ fun ArtistScreen(
     portraitSourceKey: String? = null,
 ) {
     val libraryArtist by viewModel.libraryArtist.collectAsState()
+    val portraitFlightActive = LocalArtistPortraitTransitionActive.current
     val portraitSeed =
         LocalArtistPortraitNavigation.current?.seed?.takeIf {
-            it.artistId == viewModel.artistId && it.sourceKey == portraitSourceKey
+            it.artistId == viewModel.artistId &&
+                (if (portraitSourceKey == null) portraitFlightActive else it.sourceKey == portraitSourceKey)
         }
     val flightArtwork = remember(viewModel.artistId) { portraitSeed?.artwork }
     val reducedMotion = rememberReducedMotion()
@@ -207,9 +223,6 @@ fun ArtistScreen(
                     viewModel.artistPage?.artist?.isProfile != true,
         )
     val portraitNavigation = LocalArtistPortraitNavigation.current
-    LaunchedEffect(portraitArtwork) {
-        portraitArtwork?.let { portraitNavigation?.upgrade(viewModel.artistId, it) }
-    }
     val editorial by viewModel.appleMusicEditorial.collectAsState()
     val editorialVideo = editorial?.squareVideoUrl ?: editorial?.wideVideoUrl
     val editorialPreview =
@@ -217,12 +230,22 @@ fun ArtistScreen(
         else editorial?.widePreviewUrl
     val editorialArtwork by
         rememberIrideArtistEditorialArtwork(viewModel.artistId, editorialVideo, editorialPreview)
+    val portraitVisibility = LocalAnimatedVisibilityScope.current
+    val returningHome = LocalArtistPortraitTransitionActive.current &&
+        portraitVisibility?.transition?.targetState == EnterExitState.PostExit
     val artistArtwork =
-        // Keep the tapped bitmap throughout the shared flight; editorial artwork follows it.
-        if (!portraitSettled) flightArtwork
+        // Use the same bitmap at both ends of the shared flight.
+        if (returningHome) portraitSeed?.artwork ?: flightArtwork
+        else if (!portraitSettled) flightArtwork
         else editorialArtwork ?: portraitArtwork ?: portraitSeed?.artwork
+    LaunchedEffect(artistArtwork, portraitSettled) {
+        if (portraitSettled && !returningHome) artistArtwork?.let { portraitNavigation?.upgrade(viewModel.artistId, it) }
+    }
     val tint = artistArtwork?.tint ?: Color.Black
-    IrideArtworkSurface(backgroundColor = tint, contentColor = Color.White) {
+    val tintChannelSpread = maxOf(tint.red, tint.green, tint.blue) - minOf(tint.red, tint.green, tint.blue)
+    val tintBrightness = (tint.red + tint.green + tint.blue) / 3f
+    val artistBackground = if (tintChannelSpread < 0.12f && tintBrightness > 0.55f) Color.Black else tint
+    IrideArtworkSurface(backgroundColor = tint, contentColor = Color.White, paintBackground = false) {
         val entranceOrder = remember(viewModel.artistId) { IrideFolioSectionEntranceOrder() }
         CompositionLocalProvider(LocalFolioSectionEntranceOrder provides entranceOrder) {
             ArtistScreenContent(
@@ -231,7 +254,7 @@ fun ArtistScreen(
                 artistArtwork,
                 portraitSettled,
                 portraitSourceKey,
-                tint,
+                artistBackground,
             )
         }
     }
@@ -274,7 +297,7 @@ private fun ArtistScreenContent(
         rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val showMonthlyListeners by
         rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
-    val imageAspectRatio = 0.82f
+    val imageAspectRatio = 1f
     val irideHorizontalPadding = 20.dp
 
     val albumsTitles =
@@ -353,30 +376,27 @@ private fun ArtistScreenContent(
     ) { mutableSetOf<String>() }
     var contentRevealed by rememberSaveable(viewModel.artistId) { mutableStateOf(false) }
 
+    val portraitFlightActive = LocalArtistPortraitTransitionActive.current
     val portraitSeed = LocalArtistPortraitNavigation.current?.seed?.takeIf {
-        it.artistId == viewModel.artistId && it.sourceKey == portraitSourceKey
+        it.artistId == viewModel.artistId &&
+            (if (portraitSourceKey == null) portraitFlightActive else it.sourceKey == portraitSourceKey)
     }
     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name ?: portraitSeed?.name
     val visibilityScope = LocalAnimatedVisibilityScope.current
     val portraitTransitionActive = LocalArtistPortraitTransitionActive.current
-    val portraitRoundness = if (portraitTransitionActive && portraitSeed != null && visibilityScope != null && !reducedMotion) {
-        val roundness by visibilityScope.transition.animateFloat(
-            transitionSpec = { tween(ArtistPortraitMotion.Duration,
-                easing = ArtistPortraitMotion.Easing) },
-            label = "artistPortraitCorners",
-        ) { state -> if (state == EnterExitState.Visible) 0f else 50f }
-        roundness
-    } else 0f
-
-    val pageContentAlpha = if (portraitTransitionActive && visibilityScope != null && !reducedMotion) {
-        val alpha by visibilityScope.transition.animateFloat(
+    val pageContentAlpha = if (portraitTransitionActive && portraitSeed != null && visibilityScope != null && !reducedMotion) {
+        visibilityScope.transition.animateFloat(
             transitionSpec = {
                 tween(ArtistPortraitMotion.Duration, easing = ArtistPortraitMotion.Easing)
             },
             label = "artistContentHierarchy",
         ) { if (it == EnterExitState.Visible) 1f else 0f }
-        alpha
-    } else 1f
+    } else remember { mutableFloatStateOf(1f) }
+    val expansionBackdrop = LocalIrideExpansionBackdrop.current
+    val pageEntryId = LocalCollectionSourceEntry.current
+    androidx.compose.runtime.SideEffect {
+        if (portraitTransitionActive && portraitSeed != null) expansionBackdrop?.progress = pageContentAlpha
+    }
 
     val editorialEnabled = libraryArtist?.artist?.isPodcastChannel != true &&
         libraryArtist?.artist?.isPrivatelyOwnedArtist != true &&
@@ -400,7 +420,7 @@ private fun ArtistScreenContent(
                 headerRevealed = true
                 return@LaunchedEffect
             }
-            delay(ArtistPortraitMotion.Duration.toLong())
+            if (portraitSeed == null) delay(ArtistPortraitMotion.Duration.toLong())
             headerRevealed = true
         }
     }
@@ -454,82 +474,110 @@ private fun ArtistScreenContent(
         artistPhotoBlurProgress(artistTitleTop(), initialArtistTitleTop(), controlsBottomPx, blurLeadPx, blurFinishGapPx)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        IridePageLayout(
+    var pageFrame by remember { mutableStateOf(Rect.Zero) }
+    val panelContentMotion = remember(portraitSeed, pageContentAlpha) {
+        portraitSeed?.let { IrideExpansionContentMotion(it.bounds, pageContentAlpha) }
+    }
+    panelContentMotion?.frame = pageFrame
+    // This frame must stay outside both animated layers. Measuring the transformed panel
+    // feeds its shrinking bounds back into the next frame's scale and outline.
+    Box(Modifier.fillMaxSize().onGloballyPositioned {
+        pageFrame = it.boundsInWindow()
+        panelContentMotion?.frame = pageFrame
+    }) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .then(if (portraitSeed != null) artistPortraitOverlayModifier(1f) {
+                visibilityScope?.transition?.isRunning == true ||
+                    expansionBackdrop?.inFlight == true || expansionBackdrop?.gesturePreview == true
+            } else Modifier)
+            .then(iridePanelGestureModifier(
+                progress = pageContentAlpha,
+                enabled = portraitSeed != null && portraitTransitionActive && !reducedMotion &&
+                    visibilityScope?.transition?.currentState == EnterExitState.Visible &&
+                    visibilityScope.transition.targetState == EnterExitState.Visible,
+                onDismiss = { navController.popBackStack() },
+            ))
+            .then(artistPortraitPanelModifier(pageContentAlpha) { pageFrame })
+            .then(pageEntryId?.let { irideExpansionBackdropModifier(it) } ?: Modifier)
+    ) {
+        CompositionLocalProvider(
+            LocalArtistControlMotion provides null,
+        ) {
+        IrideCollectionPageLayout(
             background = {
-                val backgroundTint by animateColorAsState(
-                    targetValue = artistBackdropColor,
-                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Medium),
-                    label = "artistPigment",
-                )
-                IrideArtistBackground(tint = backgroundTint)
-                Box(
-                    Modifier.fillMaxWidth()
-                        .invalidateFrostOnChanges {
-                            artworkCaptureProgress.value
-                            headerPull.offset
-                            artistArtworkScroll()
-                            artistBlurProgress()
-                            portraitRoundness
-                            backgroundTint
+                val backgroundTint = artistBackdropColor
+                Box(Modifier.fillMaxSize()) {
+                    IrideArtistBackground(tint = backgroundTint)
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .invalidateFrostOnChanges {
+                                artworkCaptureProgress.value
+                                headerPull.offset
+                                artistArtworkScroll()
+                                artistBlurProgress()
+                                pageContentAlpha.value
+                                backgroundTint
+                            }
+                            .aspectRatio(imageAspectRatio),
+                    ) {
+                        val transitioning = portraitTransitionActive && portraitSeed != null && !reducedMotion
+                        val restoringPortrait = transitioning && visibilityScope?.transition?.targetState == EnterExitState.PostExit
+                        val portraitScrollFactor: () -> Float = {
+                            if (restoringPortrait) IrideExpansionMotion.restorationProgress(pageContentAlpha.value) else 1f
                         }
-                        .aspectRatio(imageAspectRatio)
-                        .then(if (portraitSeed != null) artistPortraitSharedModifier(viewModel.artistId) else Modifier)
-                        .graphicsLayer {
-                            val stretch = (headerPull.offset / size.height.coerceAtLeast(1f)).coerceIn(0f, 0.6f)
-                            scaleX = 1f + stretch
-                            scaleY = 1f + stretch
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                        val portraitScroll: () -> Float = { artistArtworkScroll() * portraitScrollFactor() }
+                        val portraitBlur: () -> Float = { artistBlurProgress() * portraitScrollFactor() }
+                        Box(
+                            Modifier.fillMaxSize()
+                                .graphicsLayer {
+                                    val stretch = (headerPull.offset / size.height.coerceAtLeast(1f)).coerceAtLeast(0f)
+                                    scaleX = 1f + stretch
+                                    scaleY = 1f + stretch
+                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                                }
+                                .graphicsLayer {
+                                    translationY = -portraitScroll()
+                                    clip = true
+                                }
+                                .artistPortraitFinish(backgroundTint) {
+                                    if (restoringPortrait) (pageContentAlpha.value / 0.22f).coerceIn(0f, 1f) else 1f
+                                },
+                        ) {
+                            Box(
+                                Modifier.fillMaxSize(),
+                            ) {
+                            if (artistArtwork != null) {
+                                IrideArtistArtworkImage(
+                                    artwork = artistArtwork,
+                                    scrollOffset = portraitScroll,
+                                    blurProgress = portraitBlur,
+                                    pullOffset = { 0f },
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                    backingColor = backgroundTint,
+                                )
+                            }
+                            if (headerVideoUrl != null) {
+                                IrideArtistEditorialMotion(
+                                    videoUrl = headerVideoUrl,
+                                    active = headerVisible,
+                                    scrollOffset = portraitScroll,
+                                    blurProgress = portraitBlur,
+                                    pullOffset = { 0f },
+                                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = pageContentAlpha.value },
+                                )
+                            }
+                            }
                         }
-                        .clip(RoundedCornerShape(percent = portraitRoundness.roundToInt()))
-                        .graphicsLayer {
-                            // Follow normal scrolling, but leave the portrait outside the page's pull.
-                            translationY = -artistArtworkScroll()
-                            compositingStrategy = CompositingStrategy.Offscreen
-                            clip = true
-                        }
-                        .artistPortraitFinish(
-                            RoundedCornerShape(percent = portraitRoundness.roundToInt()),
-                            backgroundTint,
-                            MaterialTheme.colorScheme.strokeCard.copy(
-                                alpha = MaterialTheme.colorScheme.strokeCard.alpha * (portraitRoundness / 50f).coerceIn(0f, 1f),
-                            ),
-                            gradientStrength = 1f - portraitRoundness / 50f,
-                        )
-                ) {
-                    Crossfade(
-                        targetState = artistArtwork,
-                        animationSpec = tween(if (reducedMotion) 0 else ArtistPortraitMotion.Dissolve),
-                        label = "artistPortraitArtwork",
-                    ) { artwork ->
-                        if (artwork != null) {
-                            IrideArtistArtworkImage(
-                                artwork = artwork,
-                                scrollOffset = artistArtworkScroll,
-                                blurProgress = artistBlurProgress,
-                                pullOffset = { 0f },
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                    if (headerVideoUrl != null) {
-                        IrideArtistEditorialMotion(
-                            videoUrl = headerVideoUrl,
-                            active = headerVisible,
-                            scrollOffset = artistArtworkScroll,
-                            blurProgress = artistBlurProgress,
-                            pullOffset = { 0f },
-                            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = pageContentAlpha },
-                        )
                     }
                 }
             },
             title = artistName.orEmpty(),
-            state = lazyListState,
-            listModifier = artistPortraitOverlayModifier(1f).graphicsLayer { alpha = pageContentAlpha },
-            topBarModifier = artistPortraitOverlayModifier(2f).graphicsLayer { alpha = pageContentAlpha },
             showTopBar = true,
+            state = lazyListState,
+            listModifier = panelContentMotion?.let(::irideExpansionContentModifier) ?: Modifier,
+            topBarModifier = irideExpansionControlsModifier(pageContentAlpha),
             navigationIcon = { IridePageBackButton(navController) },
             actions = {
                 SongMenuIconButton(
@@ -1443,6 +1491,7 @@ private fun ArtistScreenContent(
                 }
             }
         }
+        }
 
         SnackbarHost(
             hostState = snackbarHostState,
@@ -1450,6 +1499,7 @@ private fun ArtistScreenContent(
                 Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
                     .align(Alignment.BottomCenter),
         )
+    }
     }
 }
 
@@ -1468,11 +1518,15 @@ fun RecentAlbumPanel(
     isPlaying: Boolean = false,
 ) {
     val panelInk = MaterialTheme.colorScheme.onBackground
+    val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
+        CollectionExpansionKind.Album, album.id, artworkUrl = album.thumbnailUrl, title = album.title,
+    )
     val panelSecondaryInk = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
     val panelShape = IrideFolio.ControlsShape
     Column(
         modifier =
             Modifier.fillMaxWidth()
+                .then(collectionTap)
                 .irideEnter(enterProgress, 6.dp)
                 .clip(panelShape)
                 .border(
@@ -1501,7 +1555,7 @@ fun RecentAlbumPanel(
                     } else {
                         SquircleShape(radius = 6.dp, cornerSmoothing = 0.48f)
                     },
-                modifier = Modifier.size(if (useMonospace) 108.dp else 96.dp),
+                modifier = Modifier.size(if (useMonospace) 108.dp else 96.dp).then(collectionCover),
                 hairlineBorder = true,
             )
 

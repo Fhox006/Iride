@@ -3,6 +3,8 @@ package com.metrolist.music.ui.player
 import com.metrolist.music.ui.theme.drawFolioRoundRect
 
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.IrideMiniPlayerHeight
+import com.metrolist.music.ui.component.FloatingBottomNavigationHeight
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
@@ -81,6 +83,7 @@ import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -221,6 +224,7 @@ private fun irideSquircle(radius: Dp) = SquircleShape(radius = radius, cornerSmo
 
 @Stable
 class IrideBridgeState {
+    var miniPlayerAlpha by mutableStateOf(1f)
     var miniArt by mutableStateOf<Rect?>(null)
     var playerArt by mutableStateOf<Rect?>(null)
     var miniInfo by mutableStateOf<Rect?>(null)
@@ -410,7 +414,10 @@ fun IrideMp3PlayerContent(
         }
     }
 
-    BoxWithConstraints(modifier.fillMaxSize().clipToBounds().background(IrideMp3BackgroundColor)) {
+    BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
+        val sheetProgress = playerBottomSheetState.progress.coerceIn(0f, 1f)
+        val backgroundAlpha = ((sheetProgress - 0.7f) / 0.3f).coerceIn(0f, 1f)
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = backgroundAlpha }.background(IrideMp3BackgroundColor))
         val panelWidth = maxWidth
         val panelHeight = maxHeight
         val textScale = (panelWidth / 360.dp).coerceIn(0.90f, 1.1f)
@@ -427,7 +434,35 @@ fun IrideMp3PlayerContent(
         SideEffect { if (!displayState.inFullscreenWindow) inlineWheel = measuredWheel }
         val wheelGeometry = if (displayState.inFullscreenWindow) inlineWheel else measuredWheel
         val coverShape = irideSquircle(IrideCoverBorderRadius)
-        Column(Modifier.fillMaxSize().padding(top = topSpacing, bottom = bottomSpacing)) {
+        val finish = ((sheetProgress - 0.5f) / 0.5f).coerceIn(0f, 1f)
+        val dockBottomSpacing = (playerBottomSheetState.collapsedBound -
+            IrideMiniPlayerHeight - FloatingBottomNavigationHeight).coerceAtLeast(0.dp)
+        val dividerInSheet = playerBottomSheetState.value - dockBottomSpacing - FloatingBottomNavigationHeight
+        val scale = 0.85f + 0.15f * finish
+        val deviceTop = IrideMiniPlayerHeight * (1f - finish)
+        val screenBottom = deviceTop + (topSpacing + screenHeight) * scale
+        val wheelTop = deviceTop + (topSpacing + screenHeight + wheelTopSpacing +
+            (wheelHeight - wheelSize) / 2) * scale
+        // Keep the divider as the mask until the entire transformed display has passed it.
+        // Release the mask and dock together only in the gap before the wheel.
+        val clipRelease = ((dividerInSheet - screenBottom) /
+            (wheelTop - screenBottom).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
+        val miniPlayerAlpha = 1f - clipRelease
+        SideEffect { bridgeState?.miniPlayerAlpha = miniPlayerAlpha }
+        Column(
+            Modifier.fillMaxSize()
+                .drawWithContent {
+                    val divider = dividerInSheet.toPx().coerceIn(0f, size.height)
+                    clipRect(bottom = divider + (size.height - divider) * clipRelease) { this@drawWithContent.drawContent() }
+                }
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(0.5f, 0f)
+                    translationY = IrideMiniPlayerHeight.toPx() * (1f - finish)
+                }
+                .padding(top = topSpacing, bottom = bottomSpacing)
+        ) {
             IrideMp3DisplayHost(
                 state = displayState,
                 mediaId = mediaMetadata.id,
@@ -1575,8 +1610,9 @@ internal fun IrideMp3PlayerHandle(
     isExpandable: Boolean,
     contentColor: Color = Color.White,
     modifier: Modifier = Modifier,
+    handleAlpha: Float = 1f,
 ) = com.metrolist.music.ui.component.IrideFolioDragHandle(
-    state, screenHeight, isExpandable, contentColor, modifier,
+    state, screenHeight, isExpandable, contentColor, modifier, handleAlpha = handleAlpha,
 )
 
 @Composable

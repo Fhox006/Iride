@@ -131,7 +131,7 @@ fun RomanizationSettings(navController: NavController) {
     val scope = rememberCoroutineScope()
 
     val scrollState = rememberScrollState()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

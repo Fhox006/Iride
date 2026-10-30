@@ -28,6 +28,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import com.metrolist.music.ui.component.IrideArtistNavigationTransitions
+import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
+import com.metrolist.music.ui.component.LocalCollectionExpansionNavigation
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.snap
@@ -210,9 +212,9 @@ import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingBottomNavigation
 import com.metrolist.music.ui.component.FloatingBottomNavigationHeight
 import com.metrolist.music.ui.component.FrostedPlayerNavigationBackdrop
+import com.metrolist.music.ui.component.iridePlayerExpansionPhase
 import com.metrolist.music.ui.component.LocalIrideBottomDockMotion
 import com.metrolist.music.ui.component.rememberIrideBottomDockMotion
-import com.metrolist.music.ui.component.irideBottomDockMotion
 import com.metrolist.music.ui.component.irideBottomDockEdgeInset
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
@@ -773,7 +775,7 @@ class MainActivity : ComponentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val mainTopGradientEnabled by rememberPreference(MainTopGradientKey, defaultValue = false)
+        val mainTopGradientEnabled by rememberPreference(MainTopGradientKey, defaultValue = true)
         val playerBackgroundStyle by rememberEnumPreference(
             PlayerBackgroundStyleKey,
             defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
@@ -1011,13 +1013,7 @@ class MainActivity : ComponentActivity() {
 
                 val curtainMode = !showRail
 
-                val showTopGradientTarget = mainTopGradientEnabled && !pureBlack &&
-                    currentRoute?.startsWith("settings") == true && currentRoute != Screens.Account.route
-                val topGradientAlpha by animateFloatAsState(
-                    targetValue = if (showTopGradientTarget) 1f else 0f,
-                    animationSpec = tween(400),
-                    label = "topGradientVisibility",
-                )
+                val topGradientAlpha = if (mainTopGradientEnabled) 1f else 0f
 
                 val playerTopPeek = if (curtainMode) maxHeight * 0.14f else 0.dp
                 val dockEdgeInset = irideBottomDockEdgeInset()
@@ -1230,8 +1226,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 val navigationBackdrop = rememberFrostBackdrop(
-                    blurredSampleHeight = playerBottomSheetState.collapsedBound +
-                        IrideFolio.NavigationFrostBlurRadius * 3f + 2.dp,
                     blurredScale = 0.5f,
                     rasterizeContent = true,
                     stableBlur = true,
@@ -1264,9 +1258,10 @@ class MainActivity : ComponentActivity() {
                     } else emptyList()
                 }
                 val folioDragOverlay = remember { com.metrolist.music.ui.component.IrideFolioDragOverlayState() }
+                var artistTransitionTouchLocked by remember { mutableStateOf(false) }
                 val folioPressIndication = com.metrolist.music.ui.component.rememberIrideFolioPressIndication()
 
-                var topGradientScrimColor by remember(topGradientMediaMetadata?.thumbnailUrl, playerBackgroundStyle) {
+                var topGradientScrimColor by remember {
                     mutableStateOf(Color.Black)
                 }
                 CompositionLocalProvider(
@@ -1283,14 +1278,18 @@ class MainActivity : ComponentActivity() {
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalTopNavBarController provides topNavBarController,
                     LocalIrideFolioScrimColor provides lerp(Color.Black, topGradientScrimColor, topGradientAlpha),
+                    com.metrolist.music.ui.component.LocalSharedTopGradient provides mainTopGradientEnabled,
                     LocalScreenFrostBackground provides pageBackgroundBackdrop,
                     LocalPageNavigationAppearance provides pageNavigationAppearance,
                     LocalFloatingPanelAppearance provides floatingPanelAppearance,
                     LocalIrideBottomDockMotion provides rememberIrideBottomDockMotion(),
                 ) {
                     val playerScreenHeight = maxHeight
-                    val floatingNavigationAlpha by remember(playerBottomSheetState) {
-                        derivedStateOf { (1f - playerBottomSheetState.progress / 0.35f).coerceIn(0f, 1f) }
+                    val floatingNavigationAlpha by remember(playerBottomSheetState, irideBridgeState) {
+                        derivedStateOf {
+                            if (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed) 1f
+                            else irideBridgeState.miniPlayerAlpha
+                        }
                     }
                     val floatingNavigationVisible = !isFullscreenStory &&
                         currentRoute != "onboarding" && floatingNavigationAlpha > 0f
@@ -1314,7 +1313,7 @@ class MainActivity : ComponentActivity() {
                                 }
                                 .graphicsLayer {
                                     val playerProgress = if (curtainActive && !isFullscreenStory && currentRoute != "onboarding") {
-                                        playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                        iridePlayerExpansionPhase(playerBottomSheetState.progress)
                                     } else 0f
                                     val progress = maxOf(playerProgress, folioDragOverlay.progress)
                                     renderEffect = playerPageBlurEffects.getOrNull((progress * 20f).toInt())
@@ -1363,24 +1362,20 @@ class MainActivity : ComponentActivity() {
                                         Modifier
                                             .weight(1f),
                                     ) {
-                                        val playerCoversScreen by remember(playerBottomSheetState) {
-                                            derivedStateOf { playerBottomSheetState.progress >= 0.99f }
-                                        }
                                         Box(
                                             Modifier.fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.surface)
+                                                .background(Color.Black)
                                                 .recordFrostBackdrop(pageBackgroundBackdrop),
                                         ) {
-                                            if (!playerCoversScreen) {
-                                                TopScreenGradientBackground(
-                                                    mediaMetadata = topGradientMediaMetadata,
-                                                    playerBackground = playerBackgroundStyle,
-                                                    onTopColorChanged = { topGradientScrimColor = it },
-                                                    modifier = Modifier
-                                                        .align(Alignment.TopStart)
-                                                        .graphicsLayer { alpha = topGradientAlpha },
-                                                )
-                                            }
+                                            TopScreenGradientBackground(
+                                                sharedBackground = true,
+                                                mediaMetadata = topGradientMediaMetadata,
+                                                playerBackground = playerBackgroundStyle,
+                                                onTopColorChanged = { topGradientScrimColor = it },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .graphicsLayer { alpha = topGradientAlpha },
+                                            )
                                         }
 
                                         val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
@@ -1391,7 +1386,12 @@ class MainActivity : ComponentActivity() {
                                         val navEnterDuration = if (navAnimationsEnabled) IrideMotion.Short else 0
                                         val navExitDuration = if (navAnimationsEnabled) IrideMotion.Quick else 0
 
-                                        IrideArtistNavigationTransitions(navController) {
+                                        IrideArtistNavigationTransitions(
+                                            navController,
+                                            onTouchLockChanged = { artistTransitionTouchLocked = it },
+                                        ) {
+                                            val portraitNavigation = LocalArtistPortraitNavigation.current
+                                            val collectionNavigation = LocalCollectionExpansionNavigation.current
                                             NavHost(
                                                 navController = navController,
                                                 startDestination =
@@ -1408,8 +1408,11 @@ class MainActivity : ComponentActivity() {
                                                     val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                                     val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
-                                                    if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
+                                                        EnterTransition.None
+                                                    } else if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        if (targetState.arguments?.getString("portraitSource") != null) EnterTransition.None
+                                                        else fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
                                                     } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
                                                         fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
                                                     } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
@@ -1424,8 +1427,11 @@ class MainActivity : ComponentActivity() {
                                                     val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                                     val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
-                                                    if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
+                                                        ExitTransition.None
+                                                    } else if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        if (targetState.arguments?.getString("portraitSource") != null) ExitTransition.None
+                                                        else fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
                                                     } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
                                                         fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
                                                     } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
@@ -1440,8 +1446,11 @@ class MainActivity : ComponentActivity() {
                                                     val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                                     val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
-                                                    if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
+                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
+                                                        EnterTransition.None
+                                                    } else if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        if (initialState.arguments?.getString("portraitSource") != null) EnterTransition.None
+                                                        else fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
                                                     } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
                                                         fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
                                                     } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
@@ -1456,8 +1465,11 @@ class MainActivity : ComponentActivity() {
                                                     val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                                     val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
-                                                    if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
+                                                        ExitTransition.None
+                                                    } else if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
+                                                        if (initialState.arguments?.getString("portraitSource") != null) ExitTransition.None
+                                                        else fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
                                                     } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
                                                         fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
                                                     } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
@@ -1485,19 +1497,18 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // One surface contains the player row, divider and all navigation tabs.
-                        if (curtainActive && floatingNavigationAlpha > 0f && !isFullscreenStory && currentRoute != "onboarding") {
+                        if (curtainActive && !isFullscreenStory && currentRoute != "onboarding") {
                             FrostedPlayerNavigationBackdrop(
                                 collapsedHeight = playerBottomSheetState.collapsedBound,
+                                panelHeight = playerBottomSheetState.value,
+                                expansion = playerBottomSheetState.progress,
+                                dividerAlpha = floatingNavigationAlpha,
                                 backdrop = navigationBackdrop,
                                 contentColor = floatingPanelAppearance.contentColor,
                                 backgroundColor = floatingPanelAppearance.backgroundColor,
                                 surfaceAlpha = floatingPanelAppearance.surfaceAlpha,
                                 modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .irideBottomDockMotion()
-                                    .graphicsLayer {
-                                        alpha = floatingNavigationAlpha
-                                    },
+                                    .align(Alignment.BottomCenter),
                             )
                         }
 
@@ -1511,16 +1522,13 @@ class MainActivity : ComponentActivity() {
                                         .draggable(
                                             state = playerBottomSheetState,
                                             orientation = Orientation.Vertical,
-                                            enabled = playerBottomSheetState.progress > 0f,
                                             onDragStopped = { velocity -> playerBottomSheetState.performFling(-velocity, null) },
                                         )
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
-                                            enabled = playerBottomSheetState.progress > 0f,
                                             onClick = playerBottomSheetState::collapseSoft,
                                         ),
-                                    contentAlignment = Alignment.BottomCenter,
                                 ) {}
                             }
                             BottomSheetPlayer(
@@ -1536,9 +1544,7 @@ class MainActivity : ComponentActivity() {
                                 screenHeight = playerScreenHeight,
                                 isExpandable = topGradientMediaMetadata != null,
                                 contentColor = floatingPanelAppearance.contentColor,
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = (playerBottomSheetState.progress / 0.25f).coerceIn(0f, 1f)
-                                },
+                                handleAlpha = ((playerBottomSheetState.progress - 0.65f) / 0.3f).coerceIn(0f, 1f),
                             )
                         }
 
@@ -1552,7 +1558,6 @@ class MainActivity : ComponentActivity() {
                                 visible = floatingNavigationVisible,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .irideBottomDockMotion()
                                     .padding(bottom = dockEdgeInset)
                                     .height(FloatingBottomNavigationHeight)
                                     .graphicsLayer {
@@ -1617,6 +1622,18 @@ class MainActivity : ComponentActivity() {
                     }
 
                     DebugBubble()
+                    if (artistTransitionTouchLocked) {
+                        androidx.activity.compose.BackHandler { }
+                        Box(
+                            Modifier.fillMaxSize().pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent().changes.forEach { it.consume() }
+                                    }
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

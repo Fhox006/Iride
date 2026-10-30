@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
+import com.metrolist.music.ui.component.LocalCollectionSourceEntry
+import com.metrolist.music.ui.component.LocalIrideExpansionBackdrop
 import com.metrolist.music.R
 import com.metrolist.music.constants.IrideAnimationsKey
 import com.metrolist.music.utils.rememberPreference
@@ -190,6 +193,12 @@ fun rememberEnterProgress(
     durationMillis: Int = IrideMotion.Medium,
     easing: Easing = IrideMotion.EaseOutExpo,
 ): Float {
+    val sourceEntryId = LocalCollectionSourceEntry.current
+    val backdrop = LocalIrideExpansionBackdrop.current
+    val restoredSource = remember(sourceEntryId) {
+        sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
+    }
+    if (LocalCollectionExpansionProgress.current != null || restoredSource) return if (play) 1f else 0f
     val reducedMotion = rememberReducedMotion()
     if (reducedMotion) return if (play) 1f else 0f
     var started by remember { mutableStateOf(false) }

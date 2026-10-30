@@ -1,5 +1,5 @@
 package com.metrolist.music.ui.theme
 
-// Keep the existing typography entry points while previewing DM Sans throughout the app.
+// Existing typography entry points use the app's DM Sans family.
 val IBMPlexMonoFontFamily = DmSansFontFamily
 val IBMPlexMonoBoldFontFamily = DmSansFontFamily

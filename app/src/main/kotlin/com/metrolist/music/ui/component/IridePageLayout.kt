@@ -490,22 +490,9 @@ private fun PageFrame(
                     Modifier.fillMaxSize().graphicsLayer {
                         translationY = if (translateOverscroll) pagePull.offset else 0f
                     }
+                        .then(LocalCollectionExpansionProgress.current?.let(::irideExpansionControlsModifier) ?: Modifier)
                 ) {
                     content()
-                    if (scrimProgress > 0f) {
-                        Box(
-                            Modifier.fillMaxWidth()
-                                .height(
-                                    statusBarHeight +
-                                        IrideFolio.ControlsTopSpacing +
-                                        IrideFolio.ControlsHeight +
-                                        IrideFolio.TopScrimFadeHeight
-                                )
-                                .align(Alignment.TopCenter)
-                                .graphicsLayer { alpha = scrimProgress }
-                                .background(scrimBrush)
-                        )
-                    }
                     if (titleScrollOffset != null) {
                         Box(Modifier.fillMaxSize().clipToBounds()) {
                             IridePageTitle(
@@ -525,11 +512,27 @@ private fun PageFrame(
                     }
                 }
             }
+            if (scrimProgress > 0f) {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .height(
+                            statusBarHeight +
+                                IrideFolio.ControlsTopSpacing +
+                                IrideFolio.ControlsHeight +
+                                IrideFolio.TopScrimFadeHeight
+                        )
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer { alpha = scrimProgress }
+                        .background(scrimBrush)
+                )
+            }
             if (showTopBar) {
                 IridePageTopBar(
                     title = title,
                     progress = controlsProgress,
-                    modifier = topBarModifier.irideFolioScrollReceiver(scrollState),
+                    modifier = topBarModifier
+                        .then(LocalCollectionExpansionProgress.current?.let(::irideExpansionControlsModifier) ?: Modifier)
+                        .irideFolioScrollReceiver(scrollState),
                     navigationIcon = navigationIcon,
                     actions = actions,
                     menuSections = menuSections,
@@ -661,4 +664,84 @@ fun iridePageStatusBarTopPadding(): Dp {
     val systemHeight =
         if (resourceId != 0) with(density) { resources.getDimension(resourceId).toDp() } else 0.dp
     return maxOf(inset, systemHeight)
+}
+
+/** One renderer for collection pages; callers supply data, controls and list content. */
+@Composable
+internal fun IrideCollectionPageLayout(
+    @StringRes titleRes: Int = 0,
+    title: String =
+        if (titleRes != 0) stringResource(titleRes).lowercase().replaceFirstChar { it.titlecase() }
+        else "",
+    modifier: Modifier = Modifier,
+    state: LazyListState = rememberLazyListState(),
+    listModifier: Modifier = Modifier,
+    topBarModifier: Modifier = Modifier,
+    reducedMotion: Boolean = rememberReducedMotion(),
+    titleTopSpacing: Dp = IridePageLayoutDefaults.ContentTopSpacing,
+    bottomPadding: Dp = 0.dp,
+    contentHorizontalPadding: Dp = 0.dp,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    background: (@Composable BoxScope.() -> Unit)? = null,
+    mediaMetadata: com.metrolist.music.models.MediaMetadata? = null,
+    playerBackground: com.metrolist.music.constants.PlayerBackgroundStyle = com.metrolist.music.constants.PlayerBackgroundStyle.GRADIENT,
+    gradientEnabled: Boolean = true,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
+    topBarContent: (@Composable () -> Unit)? = null,
+    showTopBar: Boolean = false,
+    topBarStrokeColor: Color = Color.White.copy(alpha = 0.08f),
+    overlay: @Composable BoxScope.() -> Unit = {},
+    pageControls: (@Composable BoxScope.() -> Unit)? = null,
+    showPageTitle: Boolean = LocalIridePageTitleVisible.current,
+    showTopScrim: Boolean = true,
+    topScrimEncounter: (() -> Float)? = null,
+    topScrimColor: Color = LocalIrideFolioScrimColor.current,
+    contentTopPadding: Dp? = null,
+    animateTopScrimColor: Boolean = true,
+    overscrollPull: RubberBandPull? = LocalIridePageOverscrollPull.current,
+    translateOverscroll: Boolean = true,
+    content: LazyListScope.() -> Unit,
+) {
+    var scrim by remember { mutableStateOf(Color.Black) }
+    IrideArtworkSurface(backgroundColor = LocalArtworkBackgroundColor.current ?: Color.Black, modifier = Modifier.fillMaxSize()) {
+        IridePageLayout(
+            title = title,
+            modifier = modifier,
+            state = state,
+            listModifier = listModifier,
+            topBarModifier = topBarModifier,
+            reducedMotion = reducedMotion,
+            titleTopSpacing = titleTopSpacing,
+            bottomPadding = bottomPadding,
+            contentHorizontalPadding = contentHorizontalPadding,
+            verticalArrangement = verticalArrangement,
+            background = {
+                if (background != null) background()
+                else if (gradientEnabled) TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata, playerBackground = playerBackground,
+                    emphasizeArtwork = true, backgroundColor = Color.Black,
+                    onTopColorChanged = { scrim = it },
+                )
+            },
+            navigationIcon = navigationIcon,
+            actions = actions,
+            menuSections = menuSections,
+            topBarContent = topBarContent,
+            showTopBar = showTopBar,
+            topBarStrokeColor = topBarStrokeColor,
+            overlay = overlay,
+            pageControls = pageControls,
+            showPageTitle = showPageTitle,
+            showTopScrim = showTopScrim,
+            topScrimEncounter = topScrimEncounter,
+            topScrimColor = if (background == null && gradientEnabled) scrim else topScrimColor,
+            contentTopPadding = contentTopPadding,
+            animateTopScrimColor = if (background == null) false else animateTopScrimColor,
+            overscrollPull = overscrollPull,
+            translateOverscroll = translateOverscroll,
+            content = content,
+        )
+    }
 }

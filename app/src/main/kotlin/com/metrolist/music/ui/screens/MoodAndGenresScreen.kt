@@ -66,7 +66,7 @@ fun MoodAndGenresScreen(
                 playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
             }
             .collectAsStateWithLifecycle()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,

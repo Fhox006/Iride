@@ -135,7 +135,9 @@ import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
+import com.metrolist.music.ui.component.collectionExpansionTarget
+import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
@@ -228,6 +230,7 @@ fun LocalPlaylistScreen(
             headerRevealed = true
         }
     }
+    val collectionExpansion = LocalCollectionExpansionProgress.current
     val screenProgress =
         rememberEnterProgress(
             play = true,
@@ -666,7 +669,7 @@ fun LocalPlaylistScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = screenProgress }) {
+        Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (collectionExpansion != null) 1f else screenProgress }) {
 
             val topBarNavigationIcon: @Composable () -> Unit = {
                 if (inSelectMode) {
@@ -809,15 +812,10 @@ fun LocalPlaylistScreen(
                     }
                 }
             }
-            IridePageLayout(
-                background = {
-                    if (albumTopGradientEnabled) {
-                        TopScreenGradientBackground(
-                            mediaMetadata = playlistGradientMediaMetadata,
-                            playerBackground = playerBackgroundStyle,
-                        )
-                    }
-                },
+            IrideCollectionPageLayout(
+                mediaMetadata = playlistGradientMediaMetadata,
+                playerBackground = playerBackgroundStyle,
+                gradientEnabled = albumTopGradientEnabled,
                 title = playlist?.playlist?.name.orEmpty(),
                 state = lazyListState,
                 showTopBar = true,
@@ -1451,7 +1449,7 @@ fun LocalPlaylistHeader(
             )
         val coverProgress =
             when {
-                skipCoverEnterAnim -> 1f
+                skipCoverEnterAnim || LocalCollectionExpansionProgress.current != null -> 1f
                 else -> animatedCoverProgress
             }
 
@@ -1760,7 +1758,9 @@ fun LocalPlaylistHeader(
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                playlistCoverArt(240.dp)
+                Box(Modifier.size(240.dp).collectionExpansionTarget(ready = playlist.thumbnails.size != 1 || coverLoaded)) {
+                    playlistCoverArt(240.dp)
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

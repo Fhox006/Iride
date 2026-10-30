@@ -177,7 +177,6 @@ internal fun Modifier.irideBottomDockBounds(): Modifier = composed {
 
 private fun Modifier.irideMiniPlayerBounds() =
     irideBottomDockBounds()
-        .irideBottomDockMotion()
         .clip(
             FolioShape(
                 topStart = IrideFolio.ControlsCornerRadius,

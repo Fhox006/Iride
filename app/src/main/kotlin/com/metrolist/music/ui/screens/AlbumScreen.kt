@@ -126,7 +126,9 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
+import com.metrolist.music.ui.component.collectionExpansionTarget
+import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.SongMenuIconButton
@@ -548,6 +550,7 @@ fun AlbumScreen(
     val albumMenuSections =
         albumScreenMenuSections(albumWithSongs = albumWithSongs, onRefetch = viewModel::retry)
 
+    val collectionExpansion = LocalCollectionExpansionProgress.current
     IrideArtworkSurface(
         backgroundColor = Color.Black,
         modifier =
@@ -557,7 +560,7 @@ fun AlbumScreen(
                 // here
                 // would inset edge-to-edge content and show a hairline of window background at the
                 // edges.
-                .graphicsLayer { alpha = screenProgress }
+                .graphicsLayer { alpha = if (collectionExpansion != null) 1f else screenProgress }
     ) {
 
         val topBarNavigationIcon: @Composable () -> Unit = {
@@ -604,18 +607,10 @@ fun AlbumScreen(
                 }
             }
         }
-        IridePageLayout(
-            background = {
-                if (albumTopGradientEnabled) {
-                    TopScreenGradientBackground(
-                        mediaMetadata = albumGradientMediaMetadata,
-                        playerBackground = playerBackgroundStyle,
-                        onTopColorChanged = { albumScrimColor = it },
-                        emphasizeArtwork = true,
-                        artworkTint = albumBackdropColor,
-                    )
-                }
-            },
+        IrideCollectionPageLayout(
+            mediaMetadata = albumGradientMediaMetadata,
+            playerBackground = playerBackgroundStyle,
+            gradientEnabled = albumTopGradientEnabled,
             title = albumWithSongs?.album?.title.orEmpty(),
             state = lazyListState,
             showTopBar = true,
@@ -793,7 +788,7 @@ fun AlbumScreen(
                                     easing = IrideMotion.EaseOutQuart,
                                 )
                             val coverProgress =
-                                if (skipCoverEnterAnim) 1f else animatedCoverProgress
+                                if (skipCoverEnterAnim || collectionExpansion != null) 1f else animatedCoverProgress
 
                             // Disc sits fully hidden behind the cover until this album is the one
                             // playing (or being scratched): then it peeks out to the right and
@@ -844,10 +839,11 @@ fun AlbumScreen(
                                 size = 240.dp,
                                 rotationDegrees = discRotation,
                                 modifier =
-                                    Modifier.offset(
-                                            x = 240.dp * AlbumDiscPeekFraction * discRevealProgress
-                                        )
-                                        .graphicsLayer { alpha = discRevealProgress }
+                                    Modifier.graphicsLayer {
+                                            val reveal = discRevealProgress
+                                            translationX = 240.dp.toPx() * AlbumDiscPeekFraction * reveal
+                                            alpha = reveal
+                                        }
                                         .pointerInput(albumWithSongs.album.id) {
                                             var center = Offset.Zero
                                             var lastAngle = 0f
@@ -999,6 +995,7 @@ fun AlbumScreen(
                                                     AlbumCoverShiftFraction *
                                                     discRevealProgress
                                         }
+                                        .collectionExpansionTarget(ready = coverLoaded)
                                         .irideArtworkOverlayBorder(
                                             IrideBaseBorderWidth,
                                             MaterialTheme.colorScheme.strokeCard,

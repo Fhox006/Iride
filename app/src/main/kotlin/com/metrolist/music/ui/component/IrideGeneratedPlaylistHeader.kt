@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -41,11 +45,13 @@ fun IrideGeneratedPlaylistHeader(
     artwork: (@Composable () -> Unit)? = null,
 ) {
     val coverShape = SquircleShape(radius = IrideFolio.GeneratedPlaylistArtworkRadius, cornerSmoothing = IrideFolio.GeneratedPlaylistArtworkSmoothing)
-    val coverProgress = rememberEnterProgress(
+    val animatedCoverProgress = rememberEnterProgress(
         play = true,
         durationMillis = 420,
         easing = IrideMotion.EaseOutQuart,
     )
+    val coverProgress = if (LocalCollectionExpansionProgress.current != null) 1f else animatedCoverProgress
+    var coverLoaded by remember(thumbnails.firstOrNull()) { mutableStateOf(thumbnails.isEmpty()) }
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = IrideFolio.HorizontalPadding)
             .padding(top = IrideFolio.GeneratedPlaylistTopPadding, bottom = IrideFolio.GeneratedPlaylistBottomPadding),
@@ -59,36 +65,42 @@ fun IrideGeneratedPlaylistHeader(
             },
             contentAlignment = Alignment.Center,
         ) {
-            if (artwork != null) {
-                Surface(
-                    modifier = Modifier.size(IrideFolio.GeneratedPlaylistArtworkSize)
-                        .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, coverShape)
-                        .shadow(IrideFolio.GeneratedPlaylistArtworkShadow, coverShape),
-                    shape = coverShape,
-                    color = MaterialTheme.colorScheme.surface,
-                ) { artwork() }
-            } else if (badgeIcon != null) {
-                GlassPlaylistCover(
-                    thumbnails = thumbnails,
-                    icon = badgeIcon,
-                    size = IrideFolio.GeneratedPlaylistArtworkSize,
-                    shape = coverShape,
-                    iconSizeFraction = IrideFolio.GeneratedPlaylistBadgeSizeFraction,
-                )
-            } else {
-                Surface(
-                    modifier = Modifier.size(IrideFolio.GeneratedPlaylistArtworkSize)
-                        .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, coverShape)
-                        .shadow(IrideFolio.GeneratedPlaylistArtworkShadow, coverShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-                    shape = coverShape,
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    AsyncImage(
-                        model = thumbnails.firstOrNull(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+            Box(Modifier.size(IrideFolio.GeneratedPlaylistArtworkSize).collectionExpansionTarget(
+                ready = artwork != null || badgeIcon != null || coverLoaded,
+            )) {
+                if (artwork != null) {
+                    Surface(
+                        modifier = Modifier.size(IrideFolio.GeneratedPlaylistArtworkSize)
+                            .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, coverShape)
+                            .shadow(IrideFolio.GeneratedPlaylistArtworkShadow, coverShape),
+                        shape = coverShape,
+                        color = MaterialTheme.colorScheme.surface,
+                    ) { artwork() }
+                } else if (badgeIcon != null) {
+                    GlassPlaylistCover(
+                        thumbnails = thumbnails,
+                        icon = badgeIcon,
+                        size = IrideFolio.GeneratedPlaylistArtworkSize,
+                        shape = coverShape,
+                        iconSizeFraction = IrideFolio.GeneratedPlaylistBadgeSizeFraction,
                     )
+                } else {
+                    Surface(
+                        modifier = Modifier.size(IrideFolio.GeneratedPlaylistArtworkSize)
+                            .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, coverShape)
+                            .shadow(IrideFolio.GeneratedPlaylistArtworkShadow, coverShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        shape = coverShape,
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        AsyncImage(
+                            model = thumbnails.firstOrNull(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            onSuccess = { coverLoaded = true },
+                            onError = { coverLoaded = true },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

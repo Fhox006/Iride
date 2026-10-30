@@ -82,7 +82,8 @@ import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideCollectionPageLayout
+import com.metrolist.music.ui.component.collectionExpansionTarget
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.LibrarySortRow
@@ -263,7 +264,7 @@ fun TopPlaylistScreen(
 
     val state = rememberLazyListState()
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
             PlayerBackgroundStyleKey,
@@ -272,17 +273,10 @@ fun TopPlaylistScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            IridePageLayout(
-                background = {
-                    if (mainTopGradient) {
-                        TopScreenGradientBackground(
-                            mediaMetadata = mediaMetadata,
-                            playerBackground = playerBackgroundStyle,
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                    }
-                },
+            IrideCollectionPageLayout(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+                gradientEnabled = mainTopGradient,
                 title = name,
                 state = state,
                 showTopBar = true,
@@ -431,14 +425,11 @@ fun TopPlaylistScreen(
                 if (songs != null) {
                     if (songs!!.isEmpty()) {
                         item(key = "empty_playlist_title") {
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+                            com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader(
+                                title = name,
+                                thumbnails = emptyList(),
+                                metadataLine = pluralStringResource(R.plurals.n_song, 0, 0),
+                                badgeIcon = R.drawable.trending_up,
                             )
                         }
 
@@ -665,6 +656,8 @@ private fun TopPlaylistHeader(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val context = LocalContext.current
+    val thumbnail = songs.firstOrNull()?.thumbnailUrl
+    var coverLoaded by remember(thumbnail) { mutableStateOf(thumbnail == null) }
     Column(
         modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -672,7 +665,7 @@ private fun TopPlaylistHeader(
         Box(modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)) {
             androidx.compose.material3.Surface(
                 modifier =
-                    Modifier.size(240.dp)
+                    Modifier.size(240.dp).collectionExpansionTarget(ready = coverLoaded)
                         .shadow(
                             elevation = 24.dp,
                             shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
@@ -681,9 +674,11 @@ private fun TopPlaylistHeader(
                 shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
             ) {
                 AsyncImage(
-                    model = songs[0].thumbnailUrl,
+                    model = thumbnail,
                     contentDescription = null,
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    onSuccess = { coverLoaded = true },
+                    onError = { coverLoaded = true },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

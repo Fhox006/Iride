@@ -102,7 +102,7 @@ fun LocalSearchScreen(
     val searchFilter by viewModel.filter.collectAsState()
     val result by viewModel.result.collectAsState()
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }.collect(onScrollChanged)
