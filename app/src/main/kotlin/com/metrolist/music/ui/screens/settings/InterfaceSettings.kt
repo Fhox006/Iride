@@ -34,6 +34,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DefaultOpenTabKey
+import com.metrolist.music.constants.GestureNavigationKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.MainTopGradientKey
@@ -44,6 +45,7 @@ import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
@@ -76,6 +78,7 @@ fun InterfaceSettings(
 
     val (defaultOpenTab, onDefaultOpenTabChange) =
         rememberEnumPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME)
+    val (gestureNavigation, onGestureNavigationChange) = rememberPreference(GestureNavigationKey, defaultValue = true)
     val (swipeToSong, onSwipeToSongChange) = rememberPreference(SwipeToSongKey, defaultValue = true)
     val (swipeToRemoveSong, onSwipeToRemoveSongChange) =
         rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
@@ -111,7 +114,7 @@ fun InterfaceSettings(
     IridePageFrame(
         title = stringResource(R.string.interface_settings),
         scrollState = scrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {
@@ -135,6 +138,13 @@ fun InterfaceSettings(
                     title = stringResource(R.string.settings_section_navigation),
                     items =
                         listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.swipe),
+                                title = { Text(stringResource(R.string.gesture_navigation)) },
+                                description = { Text(stringResource(R.string.gesture_navigation_desc)) },
+                                trailingContent = { IrideSwitch(checked = gestureNavigation, onCheckedChange = onGestureNavigationChange) },
+                                onClick = { onGestureNavigationChange(!gestureNavigation) },
+                            ),
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.nav_bar),
                                 title = { Text(stringResource(R.string.default_open_tab)) },

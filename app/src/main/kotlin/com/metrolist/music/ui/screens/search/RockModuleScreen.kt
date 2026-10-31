@@ -23,6 +23,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
@@ -49,9 +50,7 @@ fun RockModuleScreen(
         showTopBar = true,
         bottomPadding =
             LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding() + 20.dp,
-        navigationIcon = {
-            IridePageBackButton(navController)
-        },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
     ) {
         item(key = "rock_trending_title") {
             SharedHomeSectionTitle(

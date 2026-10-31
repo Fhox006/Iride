@@ -59,6 +59,7 @@ import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.TopScreenGradientBackground
@@ -96,7 +97,7 @@ fun NotesScreen(navController: NavController) {
         titleRes = R.string.notes_screen_title,
         state = if (tabIndex == 0) albumsListState else songsListState,
         showTopBar = true,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         contentHorizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(10.dp),
         bottomPadding =

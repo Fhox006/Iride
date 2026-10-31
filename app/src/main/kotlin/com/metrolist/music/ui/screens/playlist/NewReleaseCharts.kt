@@ -52,6 +52,7 @@ import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.rememberCollectionExpansionTile
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
@@ -168,7 +169,7 @@ fun AllChartsScreen(navController: NavController, viewModel: ChartDirectoryViewM
     }
     IridePageLayout(
         title = stringResource(R.string.new_charts_all), state = listState, showTopBar = true,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding() + 24.dp,
     ) {
         item(key = "chart_search") {

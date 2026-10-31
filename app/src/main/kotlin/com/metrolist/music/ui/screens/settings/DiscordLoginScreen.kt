@@ -37,6 +37,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IrideFolioWebView
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.component.TopScreenGradientBackground
@@ -82,7 +83,7 @@ fun DiscordLoginScreen(navController: NavController) {
         title = stringResource(R.string.action_login),
         scrollState = folioWebState.rememberScrollState(),
         scrollOffset = { folioWebState.scrollOffset },
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

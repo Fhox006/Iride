@@ -61,6 +61,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -188,7 +189,7 @@ fun BackupAndRestore(
     IridePageFrame(
         title = stringResource(R.string.app_management_backup),
         scrollState = settingsScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

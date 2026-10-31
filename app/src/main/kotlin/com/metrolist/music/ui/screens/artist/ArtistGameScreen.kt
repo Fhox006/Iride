@@ -56,6 +56,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
@@ -109,7 +110,7 @@ fun ArtistGameScreen(
         IridePageFrame(
             title = stringResource(R.string.guess_game),
             scrollState = rememberScrollState(),
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             modifier = Modifier.fillMaxSize(),
         ) {
             when (val state = uiState) {

@@ -181,6 +181,7 @@ internal fun IrideArtistNavigationTransitions(
                 backdrop.gesturePreview = false
                 backdrop.returnBlur = 0f
                 backdrop.progress = null
+                backdrop.returning = false
                 active = portraits.settle(navController.currentBackStackEntry)
                 collectionActive = collections.settle(navController.currentBackStackEntry)
                 // The visible page's parent snapshot is used by its next predictive gesture.
@@ -209,6 +210,7 @@ internal fun IrideArtistNavigationTransitions(
                     backdrop.returnBlur = if (returning) 1f else 0f
                     backdrop.progress = null
                     backdrop.inFlight = true
+                    backdrop.gesturePreview = false
                     flying = true
                     onTouchLockChanged(true)
                 } else {

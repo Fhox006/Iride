@@ -33,8 +33,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 33
-        versionName = "0.1.0-alpha33"
+        versionCode = 34
+        versionName = "0.1.0-alpha34"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -244,8 +244,10 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
-    implementation(libs.compose.ui.text.google.fonts)
-    debugImplementation(libs.compose.ui.tooling)
+    // Enable Compose inspection tooling only when needed: -Piride.composeTooling=true.
+    if (providers.gradleProperty("iride.composeTooling").orNull.toBoolean()) {
+        debugImplementation(libs.compose.ui.tooling)
+    }
     implementation(libs.compose.animation)
     implementation(libs.compose.reorderable)
 
@@ -300,7 +302,6 @@ dependencies {
     implementation(project(":paxsenix"))
 
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.json)

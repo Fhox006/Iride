@@ -29,8 +29,8 @@ import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
 /** Per-entry snapshots also support album → playlist → album return gestures. */
@@ -109,6 +109,8 @@ internal class IrideExpansionBackdrop(private val graphicsContext: GraphicsConte
 
 internal val LocalIrideExpansionBackdrop = staticCompositionLocalOf<IrideExpansionBackdrop?> { null }
 
+private const val DrawRetainedSceneOnReturn = true
+
 @Composable
 internal fun rememberExpansionBackdropBlurs(): List<RenderEffect?> {
     val radius = with(LocalDensity.current) { 5.dp.toPx() }
@@ -150,8 +152,13 @@ internal fun irideExpansionBackdropModifier(entryId: String): Modifier {
                 this@drawWithContent.drawContent()
             }
             drawLayer(layer)
+        } else if (DrawRetainedSceneOnReturn && backdrop.returning && !layer.isReleased) {
+            // Child layers can be released when the source leaves composition. Use its
+            // independent bitmap, as the gesture preview does, until the live page returns.
+            val snapshot = backdrop.snapshot
+            if (snapshot != null) drawImage(snapshot) else drawLayer(layer)
         } else {
-            // Show the real source as soon as NavHost restores it during the closing flight.
+            // Opening flight: the source is live and already hides the selected tile.
             drawContent()
         }
     }

@@ -37,6 +37,7 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.SpotifyImportConnectedKey
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.utils.rememberPreference
@@ -51,7 +52,7 @@ fun MusicImportScreen(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.music_import_title),
         scrollState = rememberScrollState(),
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = bottom + 24.dp),

@@ -90,6 +90,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.eq.data.EQPreset
 import com.metrolist.music.eq.data.ParametricEQBand
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
@@ -173,7 +174,7 @@ fun EqEditorScreen(
     IridePageFrame(
         title = stringResource(R.string.equalizer_header),
         scrollState = scrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
     ) {
         if (mainTopGradient) {

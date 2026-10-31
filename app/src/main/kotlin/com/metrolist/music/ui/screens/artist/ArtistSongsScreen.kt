@@ -48,6 +48,7 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.LibrarySearchHeader
@@ -117,7 +118,7 @@ fun ArtistSongsScreen(
                 title = stringResource(R.string.songs),
                 state = lazyListState,
                 showTopBar = true,
-                navigationIcon = { IridePageBackButton(navController) },
+                navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
                 bottomPadding =
                     LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                 topBarContent =

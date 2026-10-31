@@ -9,6 +9,7 @@ import com.my.kizzy.gateway.entities.presence.Metadata
 import com.my.kizzy.gateway.entities.presence.Presence
 import com.my.kizzy.gateway.entities.presence.Timestamps
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -26,7 +27,7 @@ open class KizzyRPC(
     private val superPropertiesBase64: String? = null
 ) {
     private val discordWebSocket = DiscordWebSocket(token, os, browser, device)
-    private val discordApiClient = HttpClient()
+    private val discordApiClient = HttpClient(OkHttp)
 
     fun closeRPC() {
         discordWebSocket.close()
@@ -132,7 +133,7 @@ open class KizzyRPC(
             userAgent: String = "Discord-Android/314013;RNA",
             superPropertiesBase64: String? = null
         ): Result<UserInfo> = runCatching {
-            val client = HttpClient()
+            val client = HttpClient(OkHttp)
             val response = client.get("https://discord.com/api/v9/users/@me") {
                 header("Authorization", token)
                 header("User-Agent", userAgent)

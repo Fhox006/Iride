@@ -2,15 +2,9 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.shape.CircleShape
-
-
-
+import androidx.compose.runtime.derivedStateOf
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
-
-/*import android.graphics.Bitmap*/
-/*import androidx.compose.ui.draw.alpha*/
-/*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -23,6 +17,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import com.metrolist.music.ui.component.awaitSettled
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -135,6 +131,8 @@ import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.LocalIrideFolioScrimColor
 import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.utils.headerEnterState
+import com.metrolist.music.ui.utils.rememberEnterProgressState
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
 import com.metrolist.music.ui.component.IrideFolioAlbumShelf
@@ -155,12 +153,10 @@ import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.utils.headerEnter
 import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
-import com.metrolist.music.ui.utils.rememberEnterProgress
-import com.metrolist.music.ui.utils.rememberSectionEnter
+import com.metrolist.music.ui.utils.rememberSectionEnterState
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.TurntableSfx
@@ -173,8 +169,12 @@ import com.metrolist.music.viewmodels.AlbumViewModel
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.exp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import sv.lib.squircleshape.SquircleShape
 
@@ -241,7 +241,9 @@ fun AlbumScreen(
     val discovery by viewModel.discovery.collectAsStateWithLifecycle()
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val collectionExpansion = LocalCollectionExpansionProgress.current
     LaunchedEffect(hideExplicit) {
+        collectionExpansion.awaitSettled()
         viewModel.configureDiscovery(hideExplicit)
     }
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
@@ -278,7 +280,7 @@ fun AlbumScreen(
     // and
     // first layout.
     val screenProgress =
-        rememberEnterProgress(
+        rememberEnterProgressState(
             play = true,
             durationMillis = IrideMotion.Short,
             easing = IrideMotion.EaseOutQuart,
@@ -441,22 +443,23 @@ fun AlbumScreen(
     LaunchedEffect(albumWithSongs) {
         val songs = albumWithSongs?.songs?.map { it.id }
         if (songs.isNullOrEmpty()) return@LaunchedEffect
-        downloadUtil.downloads.collect { downloads ->
-            downloadState =
-                if (songs.all { downloads[it]?.state == Download.STATE_COMPLETED }) {
-                    Download.STATE_COMPLETED
-                } else if (
+        collectionExpansion.awaitSettled()
+        downloadUtil.downloads
+            .map { downloads ->
+                when {
+                    songs.all { downloads[it]?.state == Download.STATE_COMPLETED } ->
+                        Download.STATE_COMPLETED
                     songs.all {
-                        downloads[it]?.state == Download.STATE_QUEUED ||
-                            downloads[it]?.state == Download.STATE_DOWNLOADING ||
-                            downloads[it]?.state == Download.STATE_COMPLETED
-                    }
-                ) {
-                    Download.STATE_DOWNLOADING
-                } else {
-                    Download.STATE_STOPPED
+                        val state = downloads[it]?.state
+                        state == Download.STATE_QUEUED || state == Download.STATE_DOWNLOADING ||
+                            state == Download.STATE_COMPLETED
+                    } -> Download.STATE_DOWNLOADING
+                    else -> Download.STATE_STOPPED
                 }
-        }
+            }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+            .collect { downloadState = it }
     }
 
     /*
@@ -550,7 +553,6 @@ fun AlbumScreen(
     val albumMenuSections =
         albumScreenMenuSections(albumWithSongs = albumWithSongs, onRefetch = viewModel::retry)
 
-    val collectionExpansion = LocalCollectionExpansionProgress.current
     IrideArtworkSurface(
         backgroundColor = Color.Black,
         modifier =
@@ -560,7 +562,7 @@ fun AlbumScreen(
                 // here
                 // would inset edge-to-edge content and show a hairline of window background at the
                 // edges.
-                .graphicsLayer { alpha = if (collectionExpansion != null) 1f else screenProgress }
+                .graphicsLayer { alpha = if (collectionExpansion != null) 1f else screenProgress.value }
     ) {
 
         val topBarNavigationIcon: @Composable () -> Unit = {
@@ -621,17 +623,17 @@ fun AlbumScreen(
             animateTopScrimColor = !albumTopGradientEnabled,
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-            navigationIcon = {
+            navigationIcon = if (gestureNavigationEnabled() && !inSelectMode) null else ({
                 val backProgress =
-                    rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
+                    rememberEnterProgressState(play = true, durationMillis = IrideMotion.Short)
                 Box(modifier = Modifier.irideEnterScale(backProgress, from = 0.8f)) {
                     topBarNavigationIcon()
                 }
-            },
+            }),
             actions = {
                 if (!inSelectMode && albumWithSongs != null) {
                     val actionsProgress =
-                        rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
+                        rememberEnterProgressState(play = true, durationMillis = IrideMotion.Short)
                     IrideOutlineIconButton(
                         onClick = onTopBarLikeClick,
                         icon =
@@ -782,13 +784,17 @@ fun AlbumScreen(
                             var skipCoverEnterAnim by
                                 remember(albumWithSongs.album.id) { mutableStateOf(false) }
                             val animatedCoverProgress =
-                                rememberEnterProgress(
+                                rememberEnterProgressState(
                                     play = coverLoaded,
                                     durationMillis = 420,
                                     easing = IrideMotion.EaseOutQuart,
                                 )
-                            val coverProgress =
-                                if (skipCoverEnterAnim || collectionExpansion != null) 1f else animatedCoverProgress
+                            val coverProgress = remember(animatedCoverProgress, collectionExpansion) {
+                                derivedStateOf {
+                                    if (skipCoverEnterAnim || collectionExpansion != null) 1f
+                                    else animatedCoverProgress.value
+                                }
+                            }
 
                             // Disc sits fully hidden behind the cover until this album is the one
                             // playing (or being scratched): then it peeks out to the right and
@@ -808,7 +814,7 @@ fun AlbumScreen(
                                     playerConnection.service.scratchProcessor.setVelocity(1.0)
                                 }
                             }
-                            val discRevealProgress by
+                            val discRevealProgress =
                                 animateFloatAsState(
                                     targetValue = if (discOut) 1f else 0f,
                                     animationSpec =
@@ -840,7 +846,7 @@ fun AlbumScreen(
                                 rotationDegrees = discRotation,
                                 modifier =
                                     Modifier.graphicsLayer {
-                                            val reveal = discRevealProgress
+                                            val reveal = discRevealProgress.value
                                             translationX = 240.dp.toPx() * AlbumDiscPeekFraction * reveal
                                             alpha = reveal
                                         }
@@ -901,7 +907,7 @@ fun AlbumScreen(
 
                                             detectDragGestures(
                                                 onDragStart = { startPosition ->
-                                                    if (discRevealProgress < 0.4f)
+                                                    if (discRevealProgress.value < 0.4f)
                                                         return@detectDragGestures
                                                     coastJob?.cancel()
                                                     holdWatchJob?.cancel()
@@ -986,14 +992,15 @@ fun AlbumScreen(
                                 modifier =
                                     Modifier.size(240.dp)
                                         .graphicsLayer {
-                                            alpha = coverProgress
-                                            val s = lerp(0.94f, 1f, coverProgress)
+                                            val cp = coverProgress.value
+                                            alpha = cp
+                                            val s = lerp(0.94f, 1f, cp)
                                             scaleX = s
                                             scaleY = s
                                             translationX =
                                                 -240.dp.toPx() *
                                                     AlbumCoverShiftFraction *
-                                                    discRevealProgress
+                                                    discRevealProgress.value
                                         }
                                         .collectionExpansionTarget(ready = coverLoaded)
                                         .irideArtworkOverlayBorder(
@@ -1018,7 +1025,7 @@ fun AlbumScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val artistRowProgress =
-                            headerEnter(
+                            headerEnterState(
                                 revealed = headerRevealed,
                                 play = true,
                                 delayMillis = titleTypingMs + 20,
@@ -1082,7 +1089,7 @@ fun AlbumScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         val metadataProgress =
-                            headerEnter(
+                            headerEnterState(
                                 revealed = headerRevealed,
                                 play = true,
                                 delayMillis = titleTypingMs + 40,
@@ -1115,7 +1122,7 @@ fun AlbumScreen(
 
                 if (albumWithSongs.songs.isNotEmpty()) item(key = "control_panel") {
                     val controlPanelProgress =
-                        headerEnter(
+                        headerEnterState(
                             revealed = headerRevealed,
                             play = true,
                             delayMillis = titleTypingMs + 60,
@@ -1220,7 +1227,7 @@ fun AlbumScreen(
                                 Modifier.fillMaxWidth()
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                    .revealMask(rememberSectionEnter("songs", revealedSections))
+                                    .revealMask(rememberSectionEnterState("songs", revealedSections))
                         ) {
                             filteredSongs.fastForEachIndexed { index, song ->
                                 val onCheckedChange: (Boolean) -> Unit = {
@@ -1328,7 +1335,7 @@ fun AlbumScreen(
                             modifier =
                                 Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .revealMask(
-                                        rememberSectionEnter("other_versions", revealedSections)
+                                        rememberSectionEnterState("other_versions", revealedSections)
                                     ),
                         )
                     }
@@ -1340,7 +1347,7 @@ fun AlbumScreen(
                             isPlaying = isPlaying,
                             coroutineScope = scope,
                             modifier = Modifier.irideEnter(
-                                rememberSectionEnter("other_versions_row", revealedSections),
+                                rememberSectionEnterState("other_versions_row", revealedSections),
                                 10.dp,
                             ),
                             onClick = { navController.navigate("album/${it.id}") },

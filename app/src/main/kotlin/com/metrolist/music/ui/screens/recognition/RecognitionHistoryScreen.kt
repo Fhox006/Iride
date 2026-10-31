@@ -57,6 +57,7 @@ import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.LocalMenuState
@@ -179,7 +180,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
             },
             titleRes = R.string.recognition_history,
             showTopBar = true,
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             bottomPadding = windowInsets.asPaddingValues().calculateBottomPadding(),
             actions = {
                 if (historyItems.isNotEmpty()) {

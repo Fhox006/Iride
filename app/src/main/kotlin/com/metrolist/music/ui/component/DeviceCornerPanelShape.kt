@@ -256,7 +256,7 @@ fun rememberDeviceMatchedBottomPanelShape(
                 x = radius - hPx - sideInset
                 y = radius - bPx
             }
-            return if (x > 0f && y > 0f) CornerRadius(x, y) else CornerRadius.Zero
+            return if (x > 0f && y > 0f) CornerRadius(x, y) else CornerRadius(fallbackPx)
         }
         val leftRadius = effectiveRadius(
             cornerInfo.bottomLeftRadiusPx, cornerInfo.bottomLeftCenterOnScreen, leftInset, true,

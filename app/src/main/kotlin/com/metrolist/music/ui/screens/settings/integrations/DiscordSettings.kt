@@ -90,6 +90,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.InfoLabel
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
@@ -377,7 +378,7 @@ fun DiscordSettings(
     IridePageFrame(
         title = stringResource(R.string.discord_integration),
         scrollState = settingsScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

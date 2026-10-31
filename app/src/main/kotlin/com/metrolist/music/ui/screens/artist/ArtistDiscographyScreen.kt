@@ -46,6 +46,7 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.IrideSegmentedToggle
@@ -121,7 +122,7 @@ fun ArtistDiscographyScreen(
             title = artistName.orEmpty(),
             state = lazyGridState,
             showTopBar = true,
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             columns =

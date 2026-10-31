@@ -5,7 +5,8 @@ import com.metrolist.shazamkit.models.ShazamRequestJson
 import com.metrolist.shazamkit.models.ShazamResponseJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -52,7 +53,7 @@ object Shazam {
     private var isProcessingQueue = false
 
     private val client by lazy {
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(
                     Json {
@@ -63,8 +64,8 @@ object Shazam {
                 )
             }
             expectSuccess = false
-            engine {
-                requestTimeout = 30000
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30000
             }
         }
     }

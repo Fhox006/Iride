@@ -27,6 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +59,8 @@ import androidx.navigation.NavController
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import java.util.UUID
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 internal enum class CollectionExpansionKind { Album, Playlist }
 
@@ -243,6 +247,12 @@ internal val LocalCollectionExpansionProgress = staticCompositionLocalOf<State<F
 internal val LocalCollectionExpansionSource = staticCompositionLocalOf<CollectionExpansionSource?> { null }
 internal val LocalCollectionSourceEntry = staticCompositionLocalOf<String?> { null }
 
+/** Waits for the opening flight before starting work unrelated to its rendering. */
+internal suspend fun State<Float>?.awaitSettled() {
+    val progress = this ?: return
+    snapshotFlow { progress.value >= 1f }.first { it }
+}
+
 private class CollectionArtworkFlight(val layer: GraphicsLayer, val from: Rect, val to: Rect)
 
 private class CollectionExpansionTarget(val layer: GraphicsLayer, val source: CollectionExpansionSource) {
@@ -275,7 +285,11 @@ internal fun rememberCollectionExpansionTile(
         CollectionExpansionSource(kind, id, entryId, alternateId, key, artworkUrl = artworkUrl, title = title)
     }
     val context = LocalContext.current
-    LaunchedEffect(artworkUrl) { artworkUrl?.let { ArtworkHeaderPalettes.load(context, it) } }
+    LaunchedEffect(artworkUrl) {
+        val url = artworkUrl ?: return@LaunchedEffect
+        delay(350)
+        withContext(Dispatchers.Default) { ArtworkHeaderPalettes.load(context, url) }
+    }
     val layer = rememberGraphicsLayer()
     val selected = LocalCollectionExpansionActive.current && navigation.source?.key == key && !reducedMotion
     val visibility = LocalAnimatedVisibilityScope.current
@@ -363,7 +377,7 @@ internal fun CollectionExpansionPage(entry: NavBackStackEntry, content: @Composa
     val target = remember(entry.id, layer) { CollectionExpansionTarget(layer, source) }
     LaunchedEffect(target, progress) {
         snapshotFlow { progress.value >= 1f && target.ready }.collectLatest { settled ->
-            if (settled) target.handoff.animateTo(1f, tween(220))
+            if (settled) target.handoff.animateTo(1f, tween(150))
             else target.handoff.snapTo(0f)
         }
     }

@@ -92,6 +92,7 @@ import com.metrolist.music.listentogether.SuggestionReceivedPayload
 import com.metrolist.music.listentogether.UserInfo
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.TopScreenGradientBackground
@@ -267,7 +268,7 @@ fun ListenTogetherScreen(
             state = lazyListState,
             title = stringResource(R.string.together),
             showTopBar = shouldShowTopBar,
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),

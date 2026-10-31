@@ -51,6 +51,7 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -90,7 +91,7 @@ fun AboutScreen(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.about),
         scrollState = scrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize().background(Color.Transparent),
         background = {
             if (mainTopGradient) {

@@ -4,15 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,37 +52,24 @@ internal fun irideExpansionPanelModifier(
     val deviceRadius = maxOf(corners.bottomLeftRadiusPx, corners.bottomRightRadiusPx).takeIf { it > 0f } ?: fallback
     return Modifier.graphicsLayer {
         val frame = frame()
-        if (frame.width > 0f && frame.height > 0f) {
-            val fraction = progress.value.coerceIn(0f, 1f)
-            val aperture = IrideExpansionMotion.aperture(source, frame, fraction)
-            val scale = (aperture.width / frame.width).coerceAtLeast(0.001f)
-            transformOrigin = TransformOrigin(0f, 0f)
-            scaleX = scale
-            scaleY = scale
-            translationX = aperture.left - frame.left
-            translationY = aperture.top - frame.top
-            val height = aperture.height / scale
-            val radius = ((sourceRadius * (1f - fraction) + deviceRadius * fraction) / scale)
-                .coerceAtMost(minOf(frame.width, height) / 2f)
-            // Animate the RenderNode outline without recording the page again on every frame.
+        if (frame.width <= 0f || frame.height <= 0f) {
+            shape = RectangleShape
             clip = false
+            return@graphicsLayer
         }
-    }.drawWithContent {
-        val bounds = frame()
-        if (bounds.width <= 0f || bounds.height <= 0f) {
-            drawContent()
-        } else {
-            val fraction = progress.value.coerceIn(0f, 1f)
-            val aperture = IrideExpansionMotion.aperture(source, bounds, fraction)
-            val scale = (aperture.width / bounds.width).coerceAtLeast(0.001f)
-            val height = aperture.height / scale
-            val radius = ((sourceRadius * (1f - fraction) + deviceRadius * fraction) / scale)
-                .coerceAtMost(minOf(size.width, height) / 2f)
-            val path = Path().apply {
-                addRoundRect(RoundRect(Rect(0f, 0f, size.width, height), CornerRadius(radius)))
-            }
-            clipPath(path) { this@drawWithContent.drawContent() }
-        }
+        val fraction = progress.value.coerceIn(0f, 1f)
+        val aperture = IrideExpansionMotion.aperture(source, frame, fraction)
+        val scale = (aperture.width / frame.width).coerceAtLeast(0.001f)
+        transformOrigin = TransformOrigin(0f, 0f)
+        scaleX = scale
+        scaleY = scale
+        translationX = aperture.left - frame.left
+        translationY = aperture.top - frame.top
+        val height = aperture.height / scale
+        val radius = ((sourceRadius * (1f - fraction) + deviceRadius * fraction) / scale)
+            .coerceAtMost(minOf(frame.width, height) / 2f)
+        shape = ExpansionPanelShape(height, radius)
+        clip = true
     }
 }
 

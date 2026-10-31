@@ -38,14 +38,17 @@ fun FrostedPlayerNavigationBackdrop(
     modifier: Modifier = Modifier,
     surfaceAlpha: Float = IrideFolio.floatingPillSurfaceAlpha(backdrop, backgroundColor),
     dividerAlpha: Float = 1f - iridePlayerExpansionPhase(expansion),
+    playerVisibility: Float = 1f,
 ) {
-    val collapsedDockHeight = IrideMiniPlayerHeight + FloatingBottomNavigationHeight
+    val collapsedDockHeight = FloatingBottomNavigationHeight +
+        (IrideMiniPlayerHeight + IrideMiniPlayerNavigationSpacing) * playerVisibility
     val progress = iridePlayerExpansionPhase(expansion)
     val collapsedBottomSpacing = (collapsedHeight - collapsedDockHeight).coerceAtLeast(0.dp)
     val bottomSpacing = collapsedBottomSpacing * (1f - progress)
     val dockHeight = (panelHeight - bottomSpacing).coerceAtLeast(collapsedDockHeight)
     val horizontalInset = irideBottomDockEdgeInset() * (1f - progress)
-    val finish = ((expansion - 0.7f) / 0.3f).coerceIn(0f, 1f)
+    val darkening = (expansion / 0.45f).coerceIn(0f, 1f)
+    val finish = darkening * darkening * (3f - 2f * darkening)
     val surface = lerp(IrideFolio.frostedSurfaceColor(contentColor, backgroundColor), Color(0xFF080809), finish)
     val density = LocalDensity.current
     val insetPx = with(density) { horizontalInset.toPx() }
@@ -95,7 +98,7 @@ fun FrostedPlayerNavigationBackdrop(
             .border(1.dp, contentColor.copy(alpha = 0.22f * (1f - progress)), shape)
             .drawWithContent {
                 drawContent()
-                val inset = ((IrideMiniPlayerHeight - IrideMiniPlayerCoverSize) / 2).toPx()
+                val inset = ((IrideMiniPlayerHeight - IrideMiniPlayerCoverSize) / 2).toPx() * playerVisibility
                 val dividerY = (dockHeight - FloatingBottomNavigationHeight).toPx()
                 drawLine(
                     color = contentColor.copy(alpha = IrideFolio.MiniPlayerDividerOpacity * dividerAlpha.coerceIn(0f, 1f)),

@@ -81,6 +81,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.AutoPlaylistSongSortDescendingKey
 import com.metrolist.music.constants.AutoPlaylistSongSortType
@@ -722,9 +723,7 @@ fun AutoPlaylistScreen(
                 showPageTitle = false,
                 bottomPadding =
                     LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                navigationIcon = {
-                    topBarNavigationIcon()
-                },
+                navigationIcon = if (gestureNavigationEnabled() && !(inSelectMode || isSearching)) null else topBarNavigationIcon,
                 actions = {
                     topBarActions()
                 },

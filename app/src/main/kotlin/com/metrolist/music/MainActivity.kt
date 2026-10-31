@@ -105,6 +105,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.toArgb
@@ -862,6 +864,7 @@ class MainActivity : ComponentActivity() {
             pureBlack = pureBlack,
             themeColor = themeColor,
         ) {
+            val systemNavigationMode by com.metrolist.music.utils.rememberSystemNavigationMode()
             BoxWithConstraints(
                 modifier =
                     Modifier
@@ -1017,6 +1020,14 @@ class MainActivity : ComponentActivity() {
 
                 val playerTopPeek = if (curtainMode) maxHeight * 0.14f else 0.dp
                 val dockEdgeInset = irideBottomDockEdgeInset()
+                val playerReady = topGradientMediaMetadata != null
+                val playerDockFraction by animateFloatAsState(
+                    targetValue = if (playerReady) 1f else 0f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    label = "playerDockVisibility",
+                )
+                val collapsedDockHeight = FloatingBottomNavigationHeight + IrideMiniPlayerNavigationSpacing +
+                    IrideMiniPlayerHeight * playerDockFraction
 
                 val playerBottomSheetState =
                     rememberBottomSheetState(
@@ -1024,7 +1035,7 @@ class MainActivity : ComponentActivity() {
                         initialAnchor = persistableAnchor(App.playerAnchorCache),
                         collapsedBound = (if (curtainMode) dockEdgeInset else bottomInset) + when {
                             curtainMode -> FloatingBottomNavigationHeight +
-                                IrideMiniPlayerNavigationSpacing + IrideMiniPlayerHeight
+                                (IrideMiniPlayerHeight + IrideMiniPlayerNavigationSpacing) * if (playerReady) 1f else 0f
                             !showRail -> MiniPlayerHeight + FloatingPillBottomSpacing
                             else -> MiniPlayerHeight
                         },
@@ -1265,6 +1276,7 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(Color.Black)
                 }
                 CompositionLocalProvider(
+                    com.metrolist.music.ui.screens.LocalSystemNavigationMode provides systemNavigationMode,
                     com.metrolist.music.ui.component.LocalIrideFolioPressIndication provides folioPressIndication,
                     androidx.compose.foundation.LocalOverscrollFactory provides null,
                     com.metrolist.music.ui.component.LocalFolioDragOverlay provides folioDragOverlay,
@@ -1499,10 +1511,13 @@ class MainActivity : ComponentActivity() {
                         // One surface contains the player row, divider and all navigation tabs.
                         if (curtainActive && !isFullscreenStory && currentRoute != "onboarding") {
                             FrostedPlayerNavigationBackdrop(
-                                collapsedHeight = playerBottomSheetState.collapsedBound,
-                                panelHeight = playerBottomSheetState.value,
+                                collapsedHeight = dockEdgeInset + collapsedDockHeight,
+                                panelHeight = if (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed) {
+                                    dockEdgeInset + collapsedDockHeight
+                                } else playerBottomSheetState.value,
                                 expansion = playerBottomSheetState.progress,
-                                dividerAlpha = floatingNavigationAlpha,
+                                dividerAlpha = floatingNavigationAlpha * playerDockFraction,
+                                playerVisibility = playerDockFraction,
                                 backdrop = navigationBackdrop,
                                 contentColor = floatingPanelAppearance.contentColor,
                                 backgroundColor = floatingPanelAppearance.backgroundColor,
@@ -1531,14 +1546,17 @@ class MainActivity : ComponentActivity() {
                                         ),
                                 ) {}
                             }
-                            BottomSheetPlayer(
-                                state = playerBottomSheetState,
-                                navController = navController,
-                                pureBlack = pureBlack,
-                                showPeekContent = showRail,
-                                bridgeState = irideBridgeState,
-                                expandedTopInset = playerTopPeek,
-                            )
+                            if (playerDockFraction > 0f) {
+                                BottomSheetPlayer(
+                                    state = playerBottomSheetState,
+                                    navController = navController,
+                                    pureBlack = pureBlack,
+                                    showPeekContent = showRail,
+                                    bridgeState = irideBridgeState,
+                                    expandedTopInset = playerTopPeek,
+                                    modifier = Modifier.graphicsLayer { alpha = playerDockFraction },
+                                )
+                            }
                             IrideMp3PlayerHandle(
                                 state = playerBottomSheetState,
                                 screenHeight = playerScreenHeight,
@@ -1636,6 +1654,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            com.metrolist.music.ui.screens.DeviceExperienceGate(systemNavigationMode)
         }
     }
 

@@ -530,11 +530,11 @@ fun ExportifyWebView(
                 title = stringResource(if (service == PlaylistExportService.SPOTIFY) R.string.music_import_spotify else R.string.music_import_apple),
                 scrollState = popupFolioState.rememberScrollState(),
                 scrollOffset = { popupFolioState.scrollOffset },
-                navigationIcon = {
+                navigationIcon = if (gestureNavigationEnabled()) null else ({
                     IconButton(onClick = dismiss) {
                         Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
                     }
-                },
+                }),
             ) {
                 AndroidView(factory = { popup }, modifier = Modifier.fillMaxSize())
             }

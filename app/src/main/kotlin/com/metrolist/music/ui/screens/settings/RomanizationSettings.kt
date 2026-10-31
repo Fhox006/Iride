@@ -53,6 +53,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
@@ -147,7 +148,7 @@ fun RomanizationSettings(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.lyrics_romanize_title),
         scrollState = scrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

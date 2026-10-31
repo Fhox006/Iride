@@ -23,6 +23,7 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <queries>
+        <package android:name="com.android.settings" />
         <intent>
             <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
         </intent>

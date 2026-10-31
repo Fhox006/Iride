@@ -78,6 +78,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
@@ -188,7 +189,7 @@ fun RecognitionScreen(
         IridePageFrame(
             title = stringResource(R.string.recognize_music),
             scrollState = rememberScrollState(),
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             actions = {
                 IconButton(onClick = { navController.navigate("recognition_history") }) {
                     Icon(

@@ -51,6 +51,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.HistorySource
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.MainTopGradientKey
@@ -236,7 +237,7 @@ fun HistoryScreen(
                 showTopBar = true,
                 bottomPadding =
                     LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                navigationIcon = {
+                navigationIcon = if (gestureNavigationEnabled() && !(inSelectMode || isSearching)) null else ({
                     if (inSelectMode) {
                         IconButton(onClick = onExitSelectionMode) {
                             Icon(
@@ -266,7 +267,7 @@ fun HistoryScreen(
                             )
                         }
                     }
-                },
+                }),
                 actions = {
                     if (inSelectMode) {
                         Checkbox(

@@ -47,7 +47,7 @@ fun LibraryGridPage(
         horizontalArrangement = horizontalArrangement,
         verticalArrangement = verticalArrangement,
         showTopBar = true,
-        navigationIcon = { LibraryNavigationControls(onNavigateUp, controls) },
+        navigationIcon = if (gestureNavigationEnabled() && controls == null) null else ({ LibraryNavigationControls(onNavigateUp, controls) }),
         menuSections = listOf(menuActions) + menuSections,
         content = {
             content()
@@ -80,7 +80,7 @@ fun LibraryListPage(
         overlay = overlay,
         showTopBar = showNavigationPill,
         navigationIcon =
-            if (showNavigationPill) ({ LibraryNavigationControls(onNavigateUp) }) else null,
+            if (showNavigationPill && !gestureNavigationEnabled()) ({ LibraryNavigationControls(onNavigateUp) }) else null,
         menuSections = if (showNavigationPill) menuSections else emptyList(),
         content = {
             content()
@@ -94,7 +94,7 @@ private fun LibraryNavigationControls(
     controls: (@Composable () -> Unit)? = null,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onNavigateUp) {
+        if (!gestureNavigationEnabled()) IconButton(onClick = onNavigateUp) {
             Icon(
                 painterResource(R.drawable.arrow_back),
                 stringResource(R.string.back),
@@ -102,7 +102,7 @@ private fun LibraryNavigationControls(
             )
         }
         if (controls != null) {
-            IrideFolioControlDivider()
+            if (!gestureNavigationEnabled()) IrideFolioControlDivider()
             controls()
         }
     }

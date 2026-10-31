@@ -139,6 +139,7 @@ import com.metrolist.music.ui.component.IrideFolioSectionSkeleton
 import com.metrolist.music.ui.component.IrideFolioSectionEntranceOrder
 import com.metrolist.music.ui.component.LocalFolioSectionEntranceOrder
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.LinkSegment
@@ -578,7 +579,7 @@ private fun ArtistScreenContent(
             state = lazyListState,
             listModifier = panelContentMotion?.let(::irideExpansionContentModifier) ?: Modifier,
             topBarModifier = irideExpansionControlsModifier(pageContentAlpha),
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             actions = {
                 SongMenuIconButton(
                     enabled = libraryArtist != null || artistPage?.artist != null,

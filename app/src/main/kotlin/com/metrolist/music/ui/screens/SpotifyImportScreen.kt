@@ -49,6 +49,7 @@ import com.metrolist.music.ui.component.ExportifyWebView
 import com.metrolist.music.ui.component.IrideFolioMenuAction
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.PlaylistExportService
@@ -90,7 +91,7 @@ private fun ServicePlaylistImportScreen(
     IridePageFrame(
         title = stringResource(if (spotify) R.string.music_import_spotify else R.string.music_import_apple),
         scrollState = rememberScrollState(),
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         menuSections = listOf(buildList {
             add(IrideFolioMenuAction(stringResource(R.string.spotify_exportify_import_csv), R.drawable.download, chooseFile))
             add(IrideFolioMenuAction(stringResource(R.string.spotify_exportify_reload), R.drawable.refresh, { reload++ }))

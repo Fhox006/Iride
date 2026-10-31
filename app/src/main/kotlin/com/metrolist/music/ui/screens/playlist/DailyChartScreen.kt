@@ -62,6 +62,7 @@ import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.IrideFolioRankedSongRow
 import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
 import com.metrolist.music.ui.component.IrideOutlineIconButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
@@ -146,7 +147,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
     IrideCollectionPageLayout(
         title = title, showPageTitle = false, showTopBar = true,
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         actions = {
             IrideOutlineIconButton(onClick = viewModel::toggleBookmark,
                 icon = if (bookmarked) R.drawable.favorite else R.drawable.favorite_border,

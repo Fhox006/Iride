@@ -59,6 +59,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
@@ -388,7 +389,7 @@ fun SearchScreen(
     // The scene paints its pigment on the same clock as the returning photo. The surface still
     // supplies matching ink and navigation colors, including when the base page is transparent.
     IrideArtworkSurface(backgroundColor = pageColor, modifier = Modifier.fillMaxSize(), paintBackground = false) {
-        val searchBack: (@Composable () -> Unit)? = if (submittedQuery.isBlank()) null else ({
+        val searchBack: (@Composable () -> Unit)? = if (submittedQuery.isBlank() || gestureNavigationEnabled()) null else ({
             Box(
                 Modifier.size(48.dp).clickable(
                     interactionSource = remember { MutableInteractionSource() }, indication = null,

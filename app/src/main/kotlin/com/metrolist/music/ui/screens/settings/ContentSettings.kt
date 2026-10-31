@@ -98,6 +98,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DraggableLyricsProviderItem
 import com.metrolist.music.ui.component.DraggableLyricsProviderList
 import com.metrolist.music.ui.component.EnumDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
@@ -771,7 +772,7 @@ fun ContentSettings(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.content),
         scrollState = contentScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

@@ -489,4 +489,50 @@
     <string name="music_services_invalid_file">Il file non contiene playlist valide. Scegli un CSV o ZIP esportato dal servizio.</string>
     <string name="external_album_unavailable">Nessuna corrispondenza YouTube affidabile trovata per questi brani:</string>
     <string name="external_artist_singles">Singoli ed EP</string>
+    <string name="experience_intro_title" translatable="false">Welcome to\nIride.</string>
+    <string name="experience_intro_body" translatable="false">A music app shaped by design. Fluid gestures, thoughtful details, and your sound at the center.</string>
+    <string name="experience_account_title" translatable="false">Your music,\nconnected.</string>
+    <string name="experience_account_body" translatable="false">Connect YouTube to bring your playlists, liked songs and listening history with you.</string>
+    <string name="experience_diagram_welcome" translatable="false">The Iride icon gently breathes.</string>
+    <string name="experience_gesture_easter_egg" translatable="false">Not now, buddy.</string>
+    <string name="experience_diagram_account" translatable="false">Music flows between YouTube and Iride.</string>
+    <string name="experience_android14_title" translatable="false">About\nAndroid 14.</string>
+    <string name="experience_android14_body" translatable="false">We are sorry: Iride is not optimized for Android 14, which is no longer supported. Animations and navigation may not work as intended.</string>
+    <string name="experience_exit" translatable="false">Exit Iride</string>
+    <string name="experience_android14_continue" translatable="false">Continue anyway (not recommended)</string>
+    <string name="experience_setup_title" translatable="false">Switch to\ngestures.</string>
+    <string name="experience_search_settings" translatable="false">Settings / Search navigation / Gestures</string>
+    <string name="experience_open_settings" translatable="false">Open navigation settings</string>
+    <string name="experience_settings_unavailable" translatable="false">Settings could not be opened. Open your phone settings manually and search for “navigation”.</string>
+    <string name="experience_welcome_gestures" translatable="false">Welcome to\ngestures.</string>
+    <string name="experience_already_gestures" translatable="false">Swipe to\ngo back.</string>
+    <string name="experience_back_body" translatable="false">Swipe inward from either edge. When the back arrow appears, release to return.</string>
+    <string name="experience_save_failed" translatable="false">Your choice could not be saved. Please try again.</string>
+    <string name="experience_enter" translatable="false">Got it</string>
+    <string name="experience_label_settings" translatable="false">Settings</string>
+    <string name="experience_label_system" translatable="false">System</string>
+    <string name="experience_label_gestures" translatable="false">Gestures</string>
+    <string name="experience_label_navigation_mode" translatable="false">Navigation mode</string>
+    <string name="experience_label_gesture_navigation" translatable="false">Gesture navigation</string>
+    <string name="experience_label_display" translatable="false">Display</string>
+    <string name="experience_label_navigation_bar" translatable="false">Navigation bar</string>
+    <string name="experience_label_swipe_gestures" translatable="false">Swipe gestures</string>
+    <string name="experience_label_home_screen" translatable="false">Home screen</string>
+    <string name="experience_label_system_navigation" translatable="false">System navigation</string>
+    <string name="experience_label_system_updates" translatable="false">System &amp; updates</string>
+    <string name="experience_label_additional_settings" translatable="false">Additional settings</string>
+    <string name="experience_three_buttons" translatable="false">Three buttons</string>
+    <string name="experience_diagram_settings" translatable="false">Three buttons in the center fade into a gesture bar that moves to the bottom of the phone.</string>
+    <string name="experience_diagram_back" translatable="false">A full-screen artist page pulls back over Home. The Android back arrow appears during the swipe, then the page returns into the artist card.</string>
+    <string name="experience_diagram_compatibility" translatable="false">Android 14 compatibility notice.</string>
+    <string name="gesture_navigation">Gesture navigation</string>
+    <string name="gesture_navigation_desc">Hide back arrows when using system navigation gestures</string>
+    <string name="experience_demo_artist" translatable="false">Artist</string>
+    <string name="experience_demo_artists" translatable="false">Artists</string>
+    <string name="experience_setup_body" translatable="false">Iride is designed around gestures, with fluid transitions that follow your movements.</string>
+    <string name="experience_demo_home" translatable="false">Home</string>
+    <string name="experience_demo_for_you" translatable="false">Artists for you</string>
+    <string name="experience_demo_quick_picks" translatable="false">Quick picks</string>
+    <string name="experience_demo_release" translatable="false">New release</string>
+    <string name="experience_demo_songs" translatable="false">Songs</string>
 </resources>

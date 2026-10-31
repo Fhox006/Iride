@@ -34,6 +34,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.screens.wrapped.pages.ConclusionPage
 import com.metrolist.music.ui.screens.wrapped.pages.PlaylistPage
@@ -194,7 +195,7 @@ fun WrappedScreenContent(navController: NavController) {
                     (pagerState.layoutInfo.pageSize + pagerState.layoutInfo.pageSpacing))
                 .toInt()
         },
-        navigationIcon = {
+        navigationIcon = if (gestureNavigationEnabled() && !(false)) null else ({
             IconButton(onClick = onClose) {
                 Icon(
                     painterResource(R.drawable.arrow_back),
@@ -202,7 +203,7 @@ fun WrappedScreenContent(navController: NavController) {
                     tint = Color.White,
                 )
             }
-        },
+        }),
         actions = {
             IconButton(onClick = { audioService.toggleMute() }) {
                 val icon = if (isMuted) R.drawable.volume_off else R.drawable.volume_up

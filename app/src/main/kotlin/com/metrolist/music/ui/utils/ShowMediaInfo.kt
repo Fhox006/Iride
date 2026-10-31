@@ -161,10 +161,10 @@ fun ShowMediaInfo(videoId: String) {
                         Spacer(Modifier.height(8.dp))
 
                         val advancedItems = listOf(
-                            copyable(stringResource(R.string.media_id), song?.id, R.drawable.media3_icon_bookmark_filled),
-                            copyable(stringResource(R.string.views), info?.viewCount?.let(::numberFormatter), R.drawable.media3_icon_feed),
-                            copyable(stringResource(R.string.likes), info?.like?.let(::numberFormatter), R.drawable.media3_icon_thumb_up_unfilled),
-                            copyable(stringResource(R.string.dislikes), info?.dislike?.let(::numberFormatter), R.drawable.media3_icon_thumb_down_unfilled),
+                            copyable(stringResource(R.string.media_id), song?.id, androidx.media3.session.R.drawable.media3_icon_bookmark_filled),
+                            copyable(stringResource(R.string.views), info?.viewCount?.let(::numberFormatter), androidx.media3.session.R.drawable.media3_icon_feed),
+                            copyable(stringResource(R.string.likes), info?.like?.let(::numberFormatter), androidx.media3.session.R.drawable.media3_icon_thumb_up_unfilled),
+                            copyable(stringResource(R.string.dislikes), info?.dislike?.let(::numberFormatter), androidx.media3.session.R.drawable.media3_icon_thumb_down_unfilled),
                             copyable("Itag", currentFormat?.itag?.toString(), R.drawable.key),
                             copyable(stringResource(R.string.mime_type), currentFormat?.mimeType, R.drawable.info),
                             copyable(stringResource(R.string.codecs), currentFormat?.codecs, R.drawable.radio),

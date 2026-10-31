@@ -74,6 +74,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.CONTENT_TYPE_SONG
 import com.metrolist.music.constants.PodcastFilter
@@ -274,11 +276,7 @@ fun LibraryPodcastsScreen(
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),
                     contentHorizontalPadding = 20.dp,
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
-                        }
-                    },
+                    navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
                 ) {
                     item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
@@ -347,11 +345,7 @@ fun LibraryPodcastsScreen(
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),
                     contentHorizontalPadding = 20.dp,
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
-                        }
-                    },
+                    navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
                 ) {
                     item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
@@ -425,11 +419,7 @@ fun LibraryPodcastsScreen(
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),
                     contentHorizontalPadding = 20.dp,
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
-                        }
-                    },
+                    navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
                 ) {
                     item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {

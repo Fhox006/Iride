@@ -48,6 +48,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
@@ -131,7 +132,7 @@ fun UpdaterScreen(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.updater),
         scrollState = settingsScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

@@ -21,9 +21,11 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -211,6 +213,31 @@ fun rememberEnterProgress(
     return progress
 }
 
+@Composable
+fun rememberEnterProgressState(
+    play: Boolean,
+    delayMillis: Int = 0,
+    durationMillis: Int = IrideMotion.Medium,
+    easing: Easing = IrideMotion.EaseOutExpo,
+): State<Float> {
+    val sourceEntryId = LocalCollectionSourceEntry.current
+    val backdrop = LocalIrideExpansionBackdrop.current
+    val restoredSource = remember(sourceEntryId) {
+        sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
+    }
+    if (LocalCollectionExpansionProgress.current != null || restoredSource) return rememberUpdatedState(if (play) 1f else 0f)
+    val reducedMotion = rememberReducedMotion()
+    if (reducedMotion) return rememberUpdatedState(if (play) 1f else 0f)
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(play) { if (play) started = true }
+    val progress = animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis, delayMillis, easing),
+        label = "irideEnter",
+    )
+    return progress
+}
+
 /**
  * 0f or 1f based on [active], animated between the two with a fixed [durationMillis]. The trigger
  * fires once per [active] transition, so show/hide reads as one motion independent of whatever is
@@ -250,6 +277,15 @@ fun Modifier.irideEnter(
     translationY = (1f - progress) * offsetY.toPx()
 }
 
+fun Modifier.irideEnter(
+    progress: State<Float>,
+    offsetY: Dp = 8.dp,
+): Modifier = graphicsLayer {
+    val p = progress.value
+    alpha = p
+    translationY = (1f - p) * offsetY.toPx()
+}
+
 /** A raised sheet recedes into its resting plane; Y stays fixed throughout the entrance. */
 fun Modifier.irideDepthEnter(progress: () -> Float, intensity: Float = 1f): Modifier = graphicsLayer {
     val p = progress().coerceIn(0f, 1f)
@@ -277,6 +313,17 @@ fun Modifier.irideEnterScale(
     scaleY = s
 }
 
+fun Modifier.irideEnterScale(
+    progress: State<Float>,
+    from: Float = 0.7f,
+): Modifier = graphicsLayer {
+    val p = progress.value
+    alpha = p
+    val s = from + (1f - from) * p
+    scaleX = s
+    scaleY = s
+}
+
 /**
  * Wipes content in from the left edge, like a line being printed. The Iride signature for text that
  * shouldn't be spelled out letter-by-letter (section titles, eyebrows, the top bar title) — the
@@ -287,6 +334,15 @@ fun Modifier.revealMask(progress: Float): Modifier = drawWithContent {
         progress >= 1f -> drawContent()
         progress <= 0f -> Unit
         else -> clipRect(right = size.width * progress) { this@drawWithContent.drawContent() }
+    }
+}
+
+fun Modifier.revealMask(progress: State<Float>): Modifier = drawWithContent {
+    val p = progress.value
+    when {
+        p >= 1f -> drawContent()
+        p <= 0f -> Unit
+        else -> clipRect(right = size.width * p) { this@drawWithContent.drawContent() }
     }
 }
 
@@ -371,6 +427,18 @@ fun headerEnter(
     rememberEnterProgress(play = play, delayMillis = delayMillis, durationMillis = durationMillis)
 }
 
+@Composable
+fun headerEnterState(
+    revealed: Boolean,
+    play: Boolean,
+    delayMillis: Int,
+    durationMillis: Int,
+): State<Float> = if (revealed) {
+    rememberUpdatedState(1f)
+} else {
+    rememberEnterProgressState(play = play, delayMillis = delayMillis, durationMillis = durationMillis)
+}
+
 /**
  * Entrance for a shelf, played **once** per [key] for the lifetime of the screen. Without [seen],
  * a shelf scrolled far off screen and disposed by LazyColumn would replay its wipe-in every time it
@@ -391,5 +459,23 @@ fun rememberSectionEnter(
         )
     } else {
         1f
+    }
+}
+
+@Composable
+fun rememberSectionEnterState(
+    key: String,
+    seen: MutableSet<String>,
+    delayMillis: Int = 0,
+): State<Float> {
+    val firstTime = remember(key) { seen.add(key) }
+    return if (firstTime) {
+        rememberEnterProgressState(
+            play = true,
+            delayMillis = delayMillis,
+            durationMillis = IrideMotion.Short,
+        )
+    } else {
+        rememberUpdatedState(1f)
     }
 }

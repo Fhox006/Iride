@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.artist
 
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -111,7 +112,7 @@ fun ArtistAlbumsScreen(
             titleRes = R.string.albums,
             reducedMotion = rememberReducedMotion(),
             showTopBar = true,
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             state = lazyGridState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
             bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),

@@ -77,6 +77,7 @@ import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
@@ -290,7 +291,7 @@ fun PlayerSettings(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.settings_section_player),
         scrollState = playerScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {

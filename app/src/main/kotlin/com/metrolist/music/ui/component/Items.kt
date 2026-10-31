@@ -8,7 +8,6 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.shape.CircleShape
-
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.widget.Toast
@@ -190,10 +189,15 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -1135,42 +1139,40 @@ fun ArtistGridItem(
     )
 }
 
+private fun albumDownloadState(ids: List<String>, downloads: Map<String, Download>): Int = when {
+    ids.isEmpty() -> Download.STATE_STOPPED
+    ids.all { downloads[it]?.state == STATE_COMPLETED } -> STATE_COMPLETED
+    ids.any {
+        val state = downloads[it]?.state
+        state == STATE_QUEUED || state == STATE_DOWNLOADING
+    } -> STATE_DOWNLOADING
+    else -> Download.STATE_STOPPED
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@Composable
+private fun rememberAlbumDownloadState(albumId: String): androidx.compose.runtime.State<Int> {
+    val database = LocalDatabase.current
+    val downloadUtil = LocalDownloadUtil.current
+    return remember(albumId, database, downloadUtil) {
+        database.albumSongs(albumId)
+            .map { songs -> songs.map { it.id } }
+            .distinctUntilChanged()
+            .flatMapLatest { ids ->
+                downloadUtil.downloads.map { downloads -> albumDownloadState(ids, downloads) }
+            }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+    }.collectAsState(initial = Download.STATE_STOPPED)
+}
+
 @Composable
 fun AlbumListItem(
     album: Album,
     modifier: Modifier = Modifier,
     showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        val downloadUtil = LocalDownloadUtil.current
-        val database = LocalDatabase.current
-
-        val songs by
-            produceState<List<Song>>(initialValue = emptyList(), album.id) {
-                withContext(Dispatchers.IO) {
-                    value = database.albumSongs(album.id).first()
-                }
-            }
-
-        val allDownloads by downloadUtil.downloads.collectAsState()
-
-        val downloadState by
-            remember(songs, allDownloads) {
-                androidx.compose.runtime.mutableIntStateOf(
-                    if (songs.isEmpty()) {
-                        Download.STATE_STOPPED
-                    } else {
-                        when {
-                            songs.all { allDownloads[it.id]?.state == STATE_COMPLETED } ->
-                                STATE_COMPLETED
-                            songs.any {
-                                allDownloads[it.id]?.state in
-                                    listOf(STATE_QUEUED, STATE_DOWNLOADING)
-                            } -> STATE_DOWNLOADING
-                            else -> Download.STATE_STOPPED
-                        }
-                    }
-                )
-            }
+        val downloadState by rememberAlbumDownloadState(album.id)
 
         if (showLikedIcon && album.album.bookmarkedAt != null) {
             Icon.Starred()
@@ -1225,36 +1227,7 @@ fun AlbumGridItem(
     coroutineScope: CoroutineScope,
     showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        val downloadUtil = LocalDownloadUtil.current
-        val database = LocalDatabase.current
-
-        val songs by
-            produceState<List<Song>>(initialValue = emptyList(), album.id) {
-                withContext(Dispatchers.IO) {
-                    value = database.albumSongs(album.id).first()
-                }
-            }
-
-        val allDownloads by downloadUtil.downloads.collectAsState()
-
-        val downloadState by
-            remember(songs, allDownloads) {
-                androidx.compose.runtime.mutableIntStateOf(
-                    if (songs.isEmpty()) {
-                        Download.STATE_STOPPED
-                    } else {
-                        when {
-                            songs.all { allDownloads[it.id]?.state == STATE_COMPLETED } ->
-                                STATE_COMPLETED
-                            songs.any {
-                                allDownloads[it.id]?.state in
-                                    listOf(STATE_QUEUED, STATE_DOWNLOADING)
-                            } -> STATE_DOWNLOADING
-                            else -> Download.STATE_STOPPED
-                        }
-                    }
-                )
-            }
+        val downloadState by rememberAlbumDownloadState(album.id)
 
         if (showLikedIcon && album.album.bookmarkedAt != null) {
             Icon.Starred()

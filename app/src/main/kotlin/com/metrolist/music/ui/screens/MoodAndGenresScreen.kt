@@ -39,6 +39,7 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.NavigationTitle
@@ -91,7 +92,7 @@ fun MoodAndGenresScreen(
             state = lazyListState,
             title = stringResource(R.string.mood_and_genres),
             showTopBar = true,
-            navigationIcon = { IridePageBackButton(navController) },
+            navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         ) {

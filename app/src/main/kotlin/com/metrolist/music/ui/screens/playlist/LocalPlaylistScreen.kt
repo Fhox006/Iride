@@ -108,6 +108,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
@@ -825,9 +826,7 @@ fun LocalPlaylistScreen(
                         .union(WindowInsets.ime)
                         .asPaddingValues()
                         .calculateBottomPadding(),
-                navigationIcon = {
-                    topBarNavigationIcon()
-                },
+                navigationIcon = if (gestureNavigationEnabled() && !(inSelectMode || !locked || isSearching)) null else topBarNavigationIcon,
                 actions = {
                     if (!inSelectMode && locked && !isSearching) {
                         if (playlist?.playlist?.isEditable == true) {

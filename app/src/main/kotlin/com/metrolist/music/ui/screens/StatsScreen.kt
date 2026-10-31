@@ -42,6 +42,7 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IrideIconTile
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.ReverieArchiveDialog
@@ -92,7 +93,7 @@ fun StatsScreen(
         showTopBar = true,
         modifier = Modifier,
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
     ) {
         item(key = "monthly_selector") {
             ReverieMonthSelector(

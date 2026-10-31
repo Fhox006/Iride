@@ -14,11 +14,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import com.metrolist.music.R
+import com.metrolist.music.constants.GestureNavigationKey
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.utils.backToMain
 
 @Composable
+fun gestureNavigationEnabled(): Boolean = rememberPreference(GestureNavigationKey, true).value
+
+@Composable
 fun IridePageBackButton(navController: NavController) {
+    if (gestureNavigationEnabled()) return
     IconButton(
         onClick = navController::navigateUp,
         onLongClick = navController::backToMain,

@@ -70,6 +70,7 @@ import com.metrolist.music.constants.ScrobbleDelaySecondsKey
 import com.metrolist.music.constants.ScrobbleMinSongDurationKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
@@ -302,7 +303,7 @@ fun LastFMSettings(navController: NavController) {
     IridePageFrame(
         title = stringResource(R.string.lastfm_integration),
         scrollState = settingsScrollState,
-        navigationIcon = { IridePageBackButton(navController) },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
         background = {
             if (mainTopGradient) {
@@ -450,7 +451,7 @@ fun LastFMSettings(navController: NavController) {
                                     )
                                 },
                                 enabled = isLoggedIn,
-                                icon = painterResource(R.drawable.media3_icon_thumb_up_unfilled),
+                                icon = painterResource(androidx.media3.session.R.drawable.media3_icon_thumb_up_unfilled),
                             ),
                         ),
                 )

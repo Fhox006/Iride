@@ -153,7 +153,7 @@ fun BottomSheet(
                     } else {
                         32.dp.toPx()
                     }
-                    val dragSlop = if (curtainGestures && state.isCollapsed) viewConfiguration.touchSlop else bottomSheetDragSlop(
+                    val dragSlop = bottomSheetDragSlop(
                         startYDp = screenStartY,
                         screenHeightDp = size.height / densityScale + expandedTopInset.value,
                         sideDragSlopPx = sideDragSlop,
