@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,8 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,7 +85,7 @@ fun AlphabetSlider(
     Box(
         modifier = modifier
             .width(width)
-            .clip(RoundedCornerShape(CollapsedWidth / 2))
+            .clip(FolioShape(CollapsedWidth / 2))
             .background(
                 MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = bgAlpha),
             )
@@ -109,7 +110,6 @@ fun AlphabetSlider(
                         }
                     }
                     isExpanded = false
-                    // selected letter persists — tap same letter in caller to clear
                 }
             },
         contentAlignment = Alignment.Center,
@@ -144,7 +144,6 @@ fun AlphabetSlider(
                 }
             }
         } else if (selectedLetter != null) {
-            // Collapsed with active filter: show the selected letter as a hint
             Text(
                 text = selectedLetter.toString(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),

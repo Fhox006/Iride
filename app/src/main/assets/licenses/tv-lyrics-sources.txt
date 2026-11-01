@@ -1,0 +1,18 @@
+Raindrop FX by SardineFish, MIT license.
+Source: https://github.com/SardineFish/raindrop-fx
+Pinned revision: bae4081bc15815bb094ea040a976dca083bbc3a5
+Bundled file: tv_lyrics/raindrop-fx.js
+License: raindrop-fx-MIT.txt
+Includes zogra-renderer by SardineFish; license: zogra-renderer-MIT.txt.
+Its bundled dependencies are gl-matrix 3.4.3 (MIT, gl-matrix-MIT.txt) and
+reflect-metadata 0.1.13 (Apache 2.0, reflect-metadata-Apache-2.0.txt).
+
+Local fix: BlurRenderer.blur copies the input to its output when iteration is zero.
+Upstream skips both loops in that case and leaves a black output. This permits crisp
+lyrics while keeping the upstream raindrop simulation, textures, and refraction intact.
+
+tv_lyrics/rain-static.webp is a still frame of the same upstream rain simulation
+rendered against black. It is used when WebGL2 is unavailable.
+
+Typography: existing app font res/font/anton.ttf, SIL Open Font License.
+License: anton-OFL.txt.

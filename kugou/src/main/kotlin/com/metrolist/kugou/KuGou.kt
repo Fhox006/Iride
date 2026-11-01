@@ -6,8 +6,10 @@ import com.metrolist.kugou.models.SearchLyricsResponse
 import com.metrolist.kugou.models.SearchSongResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.http.ContentType
@@ -21,7 +23,7 @@ import java.lang.Integer.min
 import kotlin.math.abs
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalEncodingApi::class)
-private val client = HttpClient {
+private val client = HttpClient(OkHttp) {
     expectSuccess = true
 
     install(ContentNegotiation) {
@@ -39,6 +41,13 @@ private val client = HttpClient {
         gzip()
         deflate()
     }
+
+    // Never hang forever on a dead network (wifi switch): bound every request.
+    install(HttpTimeout) {
+        requestTimeoutMillis = 15000
+        connectTimeoutMillis = 10000
+        socketTimeoutMillis = 15000
+    }
 }
 
 private const val PAGE_SIZE = 8
@@ -55,8 +64,10 @@ object KuGou {
         runCatching {
             val keyword = generateKeyword(title, artist, album)
             getLyricsCandidate(keyword, duration)?.let { candidate ->
-                Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
+                val lyrics = Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
                     .normalize()
+                if (lyrics.isBlank()) throw IllegalStateException("No lyrics candidate")
+                lyrics
             } ?: throw IllegalStateException("No lyrics candidate")
         }
 
@@ -68,13 +79,13 @@ object KuGou {
             if (duration == -1 || abs(it.duration - duration) <= DURATION_TOLERANCE) {
                 searchLyricsByHash(it.hash).candidates.firstOrNull()?.let { candidate ->
                     Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
-                        .normalize().let(callback)
+                        .normalize().takeIf { it.isNotBlank() }?.let(callback)
                 }
             }
         }
         searchLyricsByKeyword(keyword, duration).candidates.forEach { candidate ->
             Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
-                .normalize().let(callback)
+                .normalize().takeIf { it.isNotBlank() }?.let(callback)
         }
     }
 
@@ -82,7 +93,7 @@ object KuGou {
         keyword: Keyword, duration: Int
     ): SearchLyricsResponse.Candidate? {
         searchSongs(keyword).data.info.forEach { song ->
-            if (duration == -1 || abs(song.duration - duration) <= DURATION_TOLERANCE) { // if duration == -1, we don't care duration
+            if (duration == -1 || abs(song.duration - duration) <= DURATION_TOLERANCE) {
                 val candidate = searchLyricsByHash(song.hash).candidates.firstOrNull()
                 if (candidate != null) return candidate
             }
@@ -118,7 +129,7 @@ object KuGou {
             parameter("client", "pc")
             parameter(
                 "duration", duration.takeIf { it != -1 }?.times(1000)
-            ) // if duration == -1, we don't care duration
+            )
             val searchQuery = buildString {
                 append(keyword.title)
                 append(" - ")
@@ -178,9 +189,8 @@ object KuGou {
         Keyword(normalizeTitle(title), normalizeArtist(artist), album)
 
     private fun String.normalize(): String =
-        lines().filter { line -> line.matches(ACCEPTED_REGEX) }
+        lines().filter { line -> line.matches(ACCEPTED_REGEX) && !INSTRUMENTAL_REGEX.containsMatchIn(line) }
             .let { lines ->
-                // Remove useless information such as singer, writer, composer, guitar, etc.
                 var headCutLine = 0
                 for (i in min(HEAD_CUT_LIMIT, lines.lastIndex) downTo 0) {
                     if (lines[i].matches(BANNED_REGEX)) {
@@ -205,6 +215,7 @@ object KuGou {
     @Suppress("RegExpRedundantEscape")
     private val ACCEPTED_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\].*".toRegex()
     private val BANNED_REGEX = ".+].+[:：].+".toRegex()
+    private val INSTRUMENTAL_REGEX = "(纯音乐|純音樂)".toRegex()
 
     private const val DURATION_TOLERANCE = 8
 }

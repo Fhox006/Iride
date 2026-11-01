@@ -25,6 +25,8 @@ import kotlinx.serialization.json.Json
 import java.net.Proxy
 import java.io.IOException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.util.*
 import kotlin.io.encoding.Base64
 import timber.log.Timber
@@ -36,7 +38,26 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
+    @Volatile
+    private var dispatcher = okhttp3.Dispatcher()
+    private val connectionPool = okhttp3.ConnectionPool(
+        5,
+        2,
+        java.util.concurrent.TimeUnit.MINUTES,
+    )
+
+    @Volatile
     private var httpClient = createClient()
+
+    fun evictConnections() {
+        connectionPool.evictAll()
+    }
+
+    fun resetConnections() {
+        // evictAll only removes idle sockets; active calls can still occupy the dispatcher.
+        dispatcher.cancelAll()
+        connectionPool.evictAll()
+    }
 
     var locale = YouTubeLocale(
         gl = Locale.getDefault().country,
@@ -54,91 +75,70 @@ class InnerTube {
     var proxy: Proxy? = null
         set(value) {
             field = value
-            httpClient.close()
+            val previousClient = httpClient
+            dispatcher = okhttp3.Dispatcher()
             httpClient = createClient()
+            previousClient.close()
         }
-    
     var proxyAuth: String? = null
 
     var useLoginForBrowse: Boolean = false
 
     @OptIn(ExperimentalSerializationApi::class)
-    private fun createClient() = HttpClient(OkHttp) {
-        expectSuccess = true
+    private fun createClient(): HttpClient {
+        val clientDispatcher = dispatcher
+        return HttpClient(OkHttp) {
+            expectSuccess = true
 
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                explicitNulls = false
-                encodeDefaults = true
-            })
-        }
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    explicitNulls = false
+                    encodeDefaults = true
+                })
+            }
 
-        install(ContentEncoding) {
-            gzip(0.9F)
-            deflate(0.8F)
-        }
+            install(ContentEncoding) {
+                gzip(0.9F)
+                deflate(0.8F)
+            }
 
-        // Enhanced network configuration for better performance
-        engine {
-            config {
-                // Connection pool settings for better connection reuse
-                connectionPool(
-                    okhttp3.ConnectionPool(
-                        5, // maxIdleConnections
-                        2, // keepAliveDuration
-                        java.util.concurrent.TimeUnit.MINUTES
-                    )
-                )
-                
-                // Timeout configurations
-                connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                
-                // Enable HTTP/2 for better performance
-                protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
-                
-                // Retry on connection failure
-                retryOnConnectionFailure(true)
-                
-                // Cache configuration for better performance
-                cache(
-                    okhttp3.Cache(
-                        directory = java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"),
-                        maxSize = 50L * 1024L * 1024L // 50 MB
-                    )
-                )
-                
-                // Apply proxy configuration
-                this@InnerTube.proxy?.let { proxyConfig ->
-                    proxy(proxyConfig)
-                }
-                
-                // Apply proxy authentication
-                this@InnerTube.proxyAuth?.let { auth ->
-                    proxyAuthenticator { _, response ->
-                        response.request.newBuilder()
-                            .header("Proxy-Authorization", auth)
-                            .build()
+            engine {
+                config {
+                    dispatcher(clientDispatcher)
+                    connectionPool(this@InnerTube.connectionPool)
+
+                    connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
+                    retryOnConnectionFailure(true)
+
+                    this@InnerTube.proxy?.let { proxyConfig ->
+                        proxy(proxyConfig)
+                    }
+                    this@InnerTube.proxyAuth?.let { auth ->
+                        proxyAuthenticator { _, response ->
+                            response.request.newBuilder()
+                                .header("Proxy-Authorization", auth)
+                                .build()
+                        }
                     }
                 }
             }
-        }
 
-        // Request timeout configuration
-        install(HttpTimeout) {
-            requestTimeoutMillis = 60000
-            connectTimeoutMillis = 30000
-            socketTimeoutMillis = 60000
-        }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 20000
+                connectTimeoutMillis = 10000
+                socketTimeoutMillis = 15000
+            }
 
-        defaultRequest {
-            url(YouTubeClient.API_URL_YOUTUBE_MUSIC)
-            // Add common headers for better compatibility
-            header("Accept", "application/json")
-            header("Accept-Language", "en-US,en;q=0.9")
-            header("Cache-Control", "no-cache")
+            defaultRequest {
+                url(YouTubeClient.API_URL_YOUTUBE_MUSIC)
+                header("Accept", "application/json")
+                header("Accept-Language", "en-US,en;q=0.9")
+                header("Cache-Control", "no-cache")
+            }
         }
     }
 
@@ -146,7 +146,7 @@ class InnerTube {
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
-            append("X-YouTube-Client-Name", client.clientId /* Not a typo. The Client-Name header does contain the client id. */)
+            append("X-YouTube-Client-Name", client.clientId )
             append("X-YouTube-Client-Version", client.clientVersion)
             append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
             append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
@@ -169,9 +169,13 @@ class InnerTube {
      * Simple retry wrapper for transient IO errors (socket aborts, timeouts).
      * Retries the given block up to [maxAttempts] times with exponential backoff.
      * Cancellation is respected since [delay] will throw if the coroutine is cancelled.
+     *
+     * Defaults to 2 attempts: with a 20s request timeout, 3 attempts could keep a single
+     * call (and the sequential sync queue behind it) busy for over a minute during an
+     * outage. Endpoints that must be more persistent (e.g. [player]) pass 3 explicitly.
      */
     private suspend fun <T> withRetry(
-        maxAttempts: Int = 3,
+        maxAttempts: Int = 2,
         initialDelay: Long = 500L,
         factor: Double = 2.0,
         block: suspend () -> T,
@@ -182,6 +186,8 @@ class InnerTube {
             try {
                 return block()
             } catch (e: IOException) {
+                currentCoroutineContext().ensureActive()
+                connectionPool.evictAll()
                 attempt++
                 if (attempt >= maxAttempts) throw e
                 delay(currentDelay)
@@ -219,7 +225,8 @@ class InnerTube {
         videoId: String,
         playlistId: String?,
         signatureTimestamp: Int?,
-    ) = withRetry {
+        poToken: String? = null,
+    ) = withRetry(maxAttempts = 3) {
         httpClient.post("player") {
             ytClient(client, setLogin = true)
             setBody(
@@ -241,6 +248,9 @@ class InnerTube {
                                 signatureTimestamp
                             )
                         )
+                    } else null,
+                    serviceIntegrityDimensions = if (client.useWebPoTokens && poToken != null) {
+                        PlayerBody.ServiceIntegrityDimensions(poToken)
                     } else null,
                 )
             )
@@ -500,6 +510,12 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         videoId: String,
+    ) = addToPlaylist(client, playlistId, listOf(videoId))
+
+    suspend fun addToPlaylist(
+        client: YouTubeClient,
+        playlistId: String,
+        videoIds: List<String>,
     ) = withRetry {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
@@ -507,9 +523,7 @@ class InnerTube {
                 EditPlaylistBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId.removePrefix("VL"),
-                    actions = listOf(
-                        Action.AddVideoAction(addedVideoId = videoId)
-                    )
+                    actions = videoIds.map { Action.AddVideoAction(addedVideoId = it) },
                 )
             )
         }
@@ -583,13 +597,15 @@ class InnerTube {
     suspend fun createPlaylist(
         client: YouTubeClient,
         title: String,
+        videoIds: List<String>? = null,
     ) = withRetry {
         httpClient.post("playlist/create") {
             ytClient(client, true)
             setBody(
                 CreatePlaylistBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    title = title
+                    title = title,
+                    videoIds = videoIds,
                 )
             )
         }
@@ -615,7 +631,6 @@ class InnerTube {
             )
         }
     }
-    
     suspend fun getUploadCustomThumbnailLink(
         client: YouTubeClient,
         contentLength: Int
@@ -693,7 +708,6 @@ class InnerTube {
         playlistId: String,
     ) = withRetry {
         httpClient.post("playlist/delete") {
-            println("deleting $playlistId")
             ytClient(client, setLogin = true)
             setBody(
                 PlaylistDeleteBody(
@@ -802,7 +816,7 @@ class InnerTube {
             val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
 
             val baseForInfo =
-                response.contents.twoColumnWatchNextResults
+                response.contents?.twoColumnWatchNextResults
                     ?.results
                     ?.results
                     ?.content
@@ -811,7 +825,7 @@ class InnerTube {
                     }?.videoSecondaryInfoRenderer
 
             val baseForTitle =
-                response.contents.twoColumnWatchNextResults
+                response.contents?.twoColumnWatchNextResults
                     ?.results
                     ?.results
                     ?.content
@@ -868,5 +882,21 @@ class InnerTube {
 
         }
 
+    suspend fun createComment(
+        client: YouTubeClient,
+        commentText: String,
+        createCommentParams: String,
+    ) = withRetry {
+        httpClient.post("comment/create_comment") {
+            ytClient(client, setLogin = true)
+            setBody(
+                CreateCommentBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    commentText = commentText,
+                    createCommentParams = createCommentParams,
+                )
+            )
+        }
+    }
 
 }

@@ -56,7 +56,7 @@ constructor(
         _isNetworkAvailable.value = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            true // Assume connected as fallback
+            true
         }
     }
 

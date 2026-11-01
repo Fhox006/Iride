@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -28,15 +28,29 @@
     <string name="history">History</string>
     <string name="stats">Stats</string>
     <string name="mood_and_genres">Mood and Genres</string>
+    <string name="discovery_weekly">Discovery Weekly</string>
+    <string name="discovery_weekly_creating">Creating your mix…</string>
     <string name="account">Account</string>
     <string name="account_content">My YouTube Library</string>
-    <string name="quick_picks">Quick picks</string>
-    <string name="quick_picks_empty">Listen to songs to generate your quick picks</string>
+    <string name="quick_picks">Picked for you</string>
+    <string name="quick_picks_empty">Listen to songs to start getting picks made for you</string>
     <string name="forgotten_favorites">Forgotten favorites</string>
     <string name="keep_listening">Keep listening</string>
-    <string name="your_youtube_playlists">Your YouTube playlists</string>
+    <string name="discs_for_you">Discs picked for you</string>
+    <string name="for_you_shelf_title">On repeat for you</string>
+    <string name="recommended_albums">Recommended albums</string>
+    <string name="recently_listened_albums">Recently listened</string>
+    <string name="clear_recently_listened_albums">Clear</string>
+    <string name="your_youtube_playlists">Your Playlists</string>
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
+    <string name="artist_latest_release">Latest release</string>
+    <string name="genius_section_title">Featuring detection (Genius)</string>
+    <string name="genius_api_key">Genius API Token</string>
+    <string name="genius_api_key_description">Finds "feat." credits the artist\'s own YTM page misses. Get a free token at genius.com/api-clients.</string>
+    <string name="essential_albums">Essential Albums</string>
+    <string name="suggested_follow_artists">You listen a lot — follow them?</string>
+    <string name="new_from_followed_artists">New from artists you follow</string>
 
     <!-- History -->
     <string name="today">Today</string>
@@ -51,6 +65,7 @@
     <string name="top_artists">Top Artists</string>
     <string name="top_albums">Top Albums</string>
     <string name="top_songs">Top Songs</string>
+    <string name="top_genres">Top Genres</string>
     <string name="listening_stats">Your Stats</string>
     <string name="stats_not_enough_data">Keep listening to discover your music story</string>
     <string name="listened">Listened</string>
@@ -58,8 +73,9 @@
 
     <!-- Search -->
     <string name="search">Search</string>
-    <string name="search_yt_music">Search YouTube Music…</string>
+    <string name="search_yt_music">Find something to play…</string>
     <string name="search_library">Search library…</string>
+    <string name="online">Online</string>
     <string name="filter_library">Library</string>
     <string name="filter_liked">Songs</string>
     <string name="filter_downloaded">Downloaded</string>
@@ -85,6 +101,7 @@
 
     <!-- Album screen -->
     <string name="other_versions">Other versions</string>
+    <string name="similar_albums">You might also like</string>
 
     <!-- Playlist -->
     <string name="liked_songs">Songs</string>
@@ -99,6 +116,25 @@
     <string name="shuffle">Shuffle</string>
     <string name="reset">Reset</string>
 
+    <!-- Guess the song game -->
+    <string name="guess_game">Guess the song</string>
+    <string name="guess_game_subtitle">Guess the song and find out how well you really know the artist</string>
+    <string name="guess_game_best_score">Your best score: %1$s</string>
+    <string name="guess_game_best_label">Your best</string>
+    <string name="guess_game_no_score">No score yet</string>
+    <string name="guess_game_play_now">Play now</string>
+    <plurals name="guess_game_songs_left">
+        <item quantity="one">%1$d song left to play</item>
+        <item quantity="other">%1$d songs left to play</item>
+    </plurals>
+    <string name="guess_game_hint_default">Guess to continue</string>
+    <string name="guess_game_hint_wrong">You got it wrong! Wait 3 seconds</string>
+    <string name="guess_game_new_best">New best!</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">Correct</string>
+    <string name="guess_game_not_enough_songs">Not enough songs found to play this game</string>
+    <string name="guess_game_loading_hint">Loading can take a moment — every song is loaded in full upfront so rounds start instantly with no buffering.</string>
+
     <!-- Menu -->
     <string name="details">Details</string>
     <string name="edit">Edit</string>
@@ -107,6 +143,8 @@
     <string name="pause">Pause</string>
     <string name="play_next">Play next</string>
     <string name="add_to_queue">Add to queue</string>
+    <string name="swipe_label_next">NEXT</string>
+    <string name="swipe_label_queue">QUEUE</string>
     <string name="add_to_library">Add to library</string>
     <string name="add_all_to_library">Add all to library</string>
     <string name="remove_from_library">Remove from library</string>
@@ -116,16 +154,32 @@
     <string name="remove_download">Remove download</string>
     <string name="import_playlist">Import playlist</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="category_add">Add</string>
+    <string name="add_to_category">Add to category</string>
+    <string name="new_category">New category</string>
+    <string name="category_name_hint">Category name</string>
+    <string name="added_to_category">Added to category</string>
+    <string name="search_categories">Search categories</string>
+    <string name="action_add">Add</string>
     <string name="view_artist">View artist</string>
     <string name="view_album">View album</string>
     <string name="refetch">Refetch</string>
     <string name="share">Share</string>
+    <string name="share_choose_platform">Share via</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">Looking for link…</string>
+    <string name="share_link_not_found">No link found on this platform for this song</string>
     <string name="delete">Delete</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="remove_from_queue">Remove from queue</string>
     <string name="search_online">Search online</string>
     <string name="action_sync">Sync</string>
+    <string name="library_refresh">Refresh library</string>
+    <string name="library_refreshing">Refreshing…</string>
     <string name="advanced">Advanced</string>
     <string name="tempo_and_pitch">Tempo and Pitch</string>
 
@@ -214,7 +268,7 @@
     <string name="undo">Undo</string>
 
     <!-- Player -->
-    <string name="lyrics_not_found">Lyrics not found</string>
+    <string name="lyrics_not_found">Lyrics missing or loading</string>
     <string name="lyrics_searching">…</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="end_of_song">End of song</string>
@@ -297,7 +351,28 @@
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
-    <string name="queue">Queue</string>
+    <string name="scratch_buffer">Scratch buffer</string>
+    <string name="scratch_buffer_short">Short</string>
+    <string name="scratch_buffer_medium">Medium</string>
+    <string name="scratch_buffer_long">Extended</string>
+    <string name="scratch_buffer_full">Whole track</string>
+    <string name="scratch_buffer_short_desc">Scratch back 15 seconds. Smallest memory use.</string>
+    <string name="scratch_buffer_medium_desc">Scratch back 1 minute.</string>
+    <string name="scratch_buffer_long_desc">Scratch back 3 minutes.</string>
+    <string name="scratch_buffer_full_desc">Keeps the whole song scratchable. Uses the most memory.</string>
+    <string name="queue">Up Next</string>
+    <string name="queue_recently_played">Recently played</string>
+    <string name="queue_recently_played_more">Recently played  ↑</string>
+    <string name="queue_scroll_for_history">Scroll up for history</string>
+    <string name="queue_autoplay">Auto-Mix</string>
+    <string name="queue_continue_listening">Continue listening</string>
+    <string name="queue_filter_all">All</string>
+    <string name="queue_filter_popular">Popular</string>
+    <string name="queue_filter_discover">Discover</string>
+    <string name="queue_filter_familiar">Familiar</string>
+    <string name="queue_filter_party">Party</string>
+    <string name="queue_filter_workout">Workout</string>
+    <string name="queue_filter_deep_cuts">Deep Cuts</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
     <string name="auto_load_more">Auto load more songs</string>
@@ -338,6 +413,7 @@
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
     <string name="hide_explicit">Hide explicit content</string>
+    <string name="hide_explicit_desc">Remove explicit songs from search and browse results</string>
     <string name="show_explicit_badge">Show explicit badge</string>
     <string name="show_explicit_badge_desc">Show the \"E\" icon for explicit songs</string>
 
@@ -363,6 +439,7 @@
 
     <!-- Advanced Mode -->
     <string name="advanced_mode">Advanced Mode</string>
+    <string name="advanced_mode_banner">Advanced mode is on. Expect more settings and technical options across the app — this UI isn\'t tuned for casual, everyday use.</string>
     <string name="my_account">My Account</string>
     <string name="your_contents">Your Contents</string>
     <string name="playback">Playback</string>
@@ -388,6 +465,8 @@
     <string name="clear_resolved_track_cache_dialog">Do you really want to clear the resolved track cache? This will force the app to re-search for audio versions of videos.</string>
     <string name="searching_synced_lyrics">Searching for synced lyrics…</string>
 
-    <string name="iride_style_beta">Iride Style BETA</string>
-    <string name="iride_style_beta_desc">Custom warm dark palette with fixed #25221B background</string>
+    <string name="main_top_gradient">Top gradient on main screens</string>
+    <string name="main_top_gradient_desc">Shows the current song\'s player gradient, subtly blended, behind the top of Home, Library and Search</string>
+    <string name="album_top_gradient">Top gradient on albums</string>
+    <string name="album_top_gradient_desc">Shows the viewed album\'s player gradient, subtly blended, behind the top of Album, Single and EP screens</string>
 </resources>

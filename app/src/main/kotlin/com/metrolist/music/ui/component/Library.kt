@@ -5,15 +5,35 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
+
+import com.metrolist.music.ui.component.SongMenuIconButton
+
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.WatchEndpoint
@@ -38,9 +58,9 @@ fun LibraryArtistListItem(
     artist = artist,
     showLikedIcon = false,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     ArtistMenu(
                         originalArtist = artist,
                         coroutineScope = coroutineScope,
@@ -76,12 +96,12 @@ fun LibraryArtistGridItem(
     fillMaxWidth = true,
     modifier = modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 navController.navigate("artist/${artist.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     ArtistMenu(
                         originalArtist = artist,
                         coroutineScope = coroutineScope,
@@ -106,9 +126,9 @@ fun LibraryAlbumListItem(
     isActive = isActive,
     isPlaying = isPlaying,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     AlbumMenu(
                         originalAlbum = album,
                         navController = navController,
@@ -139,7 +159,7 @@ fun LibraryAlbumGridItem(
     coroutineScope: CoroutineScope,
     album: Album,
     isActive: Boolean = false,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
 ) = AlbumGridItem(
     album = album,
     showLikedIcon = false,
@@ -147,15 +167,14 @@ fun LibraryAlbumGridItem(
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,
     fillMaxWidth = true,
-    showPlayButton = false,
     modifier = modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 navController.navigate("album/${album.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     AlbumMenu(
                         originalAlbum = album,
                         navController = navController,
@@ -164,6 +183,124 @@ fun LibraryAlbumGridItem(
                 }
             }
         )
+)
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LibraryContinueListeningAlbumItem(
+    navController: NavController,
+    menuState: MenuState,
+    coroutineScope: CoroutineScope,
+    album: Album,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    size: Dp,
+    onAlbumSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AlbumGridItem(
+        album = album,
+        showLikedIcon = false,
+        isActive = isActive,
+        isPlaying = isPlaying,
+        coroutineScope = coroutineScope,
+        size = size,
+        fillMaxWidth = true,
+        modifier = modifier.width(size).irideFolioCombinedClickable(
+            onClick = {
+                onAlbumSelected()
+                navController.navigate("album/${album.id}")
+            },
+            onLongClick = {
+                onAlbumSelected()
+                menuState.show(anchored = true) {
+                    AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
+                }
+            },
+        ),
+    )
+}
+
+@Composable
+private fun SuggestedFollowActions(
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clickable(onClick = onFollow)
+                .size(18.dp)
+                .background(MaterialTheme.colorScheme.onSurface, CircleShape),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.add),
+                contentDescription = stringResource(R.string.subscribe),
+                tint = MaterialTheme.colorScheme.background,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clickable(onClick = onDismiss)
+                .size(18.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.close),
+                contentDescription = stringResource(R.string.remove_suggested_follow_artist),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LibrarySuggestedFollowArtistItem(
+    navController: NavController,
+    artist: Artist,
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) = ArtistGridItem(
+    artist = artist,
+    showLikedIcon = false,
+    fillMaxWidth = true,
+    badges = {
+        SuggestedFollowActions(onFollow = onFollow, onDismiss = onDismiss)
+    },
+    modifier = modifier
+        .fillMaxWidth()
+        .irideFolioCombinedClickable(
+            onClick = { navController.navigate("artist/${artist.id}") },
+            onLongClick = onDismiss,
+        )
+)
+
+@Composable
+fun LibrarySuggestedFollowArtistListItem(
+    navController: NavController,
+    artist: Artist,
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) = ArtistListItem(
+    artist = artist,
+    showLikedIcon = false,
+    badges = {
+        SuggestedFollowActions(onFollow = onFollow, onDismiss = onDismiss)
+    },
+    modifier = modifier
+        .fillMaxWidth()
+        .clickable { navController.navigate("artist/${artist.id}") },
 )
 
 @Composable
@@ -176,9 +313,9 @@ fun LibraryPlaylistListItem(
 ) = PlaylistListItem(
     playlist = playlist,
     trailingContent = {
-        androidx.compose.material3.IconButton(
+        SongMenuIconButton(
             onClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     if (playlist.playlist.isEditable || playlist.songCount != 0) {
                         PlaylistMenu(
                             playlist = playlist,
@@ -239,13 +376,21 @@ fun LibraryPlaylistGridItem(
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     playlist: Playlist,
+    isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) = PlaylistGridItem(
     playlist = playlist,
     fillMaxWidth = true,
     modifier = modifier
+        .then(
+            if (isActive) Modifier.border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = com.metrolist.music.ui.theme.FolioShape(14.dp),
+            ) else Modifier,
+        )
         .fillMaxWidth()
-        .combinedClickable(
+        .irideFolioCombinedClickable(
             onClick = {
                 if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.browseId != null)
                     navController.navigate("online_playlist/${playlist.playlist.browseId}")
@@ -253,7 +398,7 @@ fun LibraryPlaylistGridItem(
                     navController.navigate("local_playlist/${playlist.id}")
             },
             onLongClick = {
-                menuState.show {
+                menuState.show(anchored = true) {
                     if (playlist.playlist.isEditable || playlist.songCount != 0) {
                         PlaylistMenu(
                             playlist = playlist,

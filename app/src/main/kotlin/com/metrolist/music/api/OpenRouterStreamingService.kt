@@ -185,7 +185,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         .post(jsonBody.toString().toRequestBody(JSON))
                         .build()
 
-                // Execute first request; retry once with fresh key on 401/403
                 var firstResponse = client.newCall(buildRequest(activeKey)).execute()
                 if ((firstResponse.code == 401 || firstResponse.code == 403) && !keyRefreshed && readKeyFromPrefs != null) {
                     firstResponse.close()

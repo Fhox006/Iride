@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import com.valentinilk.shimmer.defaultShimmerTheme
 import com.valentinilk.shimmer.shimmer
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 @Composable
 fun ShimmerHost(
@@ -31,7 +32,7 @@ fun ShimmerHost(
     showGradient: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val baseModifier = modifier
+    val baseModifier = if (rememberReducedMotion()) modifier else modifier
         .shimmer()
         .graphicsLayer(alpha = 0.99f)
 

@@ -43,10 +43,16 @@ class MetrolistWidgetManager @Inject constructor(
             .build()
     }
 
-    // Cache for album art to avoid reloading
     private var cachedArtworkUri: String? = null
     private var cachedAlbumArt: Bitmap? = null
     private var cachedCircularAlbumArt: Bitmap? = null
+
+    fun getActiveWidgetIds(): IntArray {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val main = appWidgetManager.getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java))
+        val turn = appWidgetManager.getAppWidgetIds(ComponentName(context, TurntableWidgetReceiver::class.java))
+        return main + turn
+    }
 
     suspend fun updateWidgets(
         title: String,
@@ -59,23 +65,19 @@ class MetrolistWidgetManager @Inject constructor(
     ) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
 
-        // Use cached album art if URI hasn't changed, otherwise load new one
         val albumArt: Bitmap?
         val circularAlbumArt: Bitmap?
-        
         if (artworkUri != null && artworkUri == cachedArtworkUri && cachedAlbumArt != null) {
             albumArt = cachedAlbumArt
             circularAlbumArt = cachedCircularAlbumArt
         } else {
             albumArt = artworkUri?.let { loadAlbumArt(it, 300) }
             circularAlbumArt = albumArt?.let { getCircularBitmap(it) }
-            // Update cache
             cachedArtworkUri = artworkUri
             cachedAlbumArt = albumArt
             cachedCircularAlbumArt = circularAlbumArt
         }
 
-        // Update main music player widgets
         val componentName = ComponentName(context, MusicWidgetReceiver::class.java)
         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         if (widgetIds.isNotEmpty()) {
@@ -95,7 +97,6 @@ class MetrolistWidgetManager @Inject constructor(
             }
         }
 
-        // Update turntable widgets
         val turntableComponentName = ComponentName(context, TurntableWidgetReceiver::class.java)
         val turntableWidgetIds = appWidgetManager.getAppWidgetIds(turntableComponentName)
         if (turntableWidgetIds.isNotEmpty()) {
@@ -127,9 +128,8 @@ class MetrolistWidgetManager @Inject constructor(
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
 
-            // Determine which layout and view ID to update
             val layoutAndButton = when {
-                minWidth < 180 && minHeight < 100 -> null // No like button in compact square
+                minWidth < 180 && minHeight < 100 -> null
                 minWidth >= 180 && minHeight < 100 -> {
                     R.layout.widget_compact_wide to R.id.widget_wide_like_button
                 }
@@ -160,21 +160,14 @@ class MetrolistWidgetManager @Inject constructor(
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
 
-        // Determine widget size category
-        // 2x2: approximately 110dp x 110dp (compact square)
-        // 4x1: approximately 250dp x 40dp (wide single row)
-        // Full: approximately 250dp x 110dp (default)
         return when {
             minWidth < 180 && minHeight < 100 -> {
-                // 2x2 Compact - Only play button with album art
                 createCompactSquareRemoteViews(albumArt, isPlaying)
             }
             minWidth >= 180 && minHeight < 100 -> {
-                // 4x1 Wide - Single row with album art, song info, like and play buttons
                 createCompactWideRemoteViews(title, artist, albumArt, isPlaying, isLiked)
             }
             else -> {
-                // Full layout
                 createRemoteViews(title, artist, albumArt, isPlaying, isLiked, duration, currentPosition)
             }
         }
@@ -191,11 +184,9 @@ class MetrolistWidgetManager @Inject constructor(
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_music_player)
 
-        // Set song info
         views.setTextViewText(R.id.widget_song_title, title)
         views.setTextViewText(R.id.widget_artist_name, artist)
 
-        // Set album art with rounded corners
         if (albumArt != null) {
             val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_album_art, roundedAlbumArt)
@@ -203,15 +194,12 @@ class MetrolistWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // Set play/pause icon
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         views.setImageViewResource(R.id.widget_play_pause, playPauseIcon)
 
-        // Set like icon - using nav style (purple) for main widget
         val likeIcon = if (isLiked) R.drawable.ic_widget_star_nav else R.drawable.ic_widget_star_outline_nav
         views.setImageViewResource(R.id.widget_like_button, likeIcon)
 
-        // Set Progress Level
         if (duration > 0) {
             val level = ((currentPosition.toDouble() / duration.toDouble()) * 10000).toInt()
             views.setInt(R.id.widget_progress_fill, "setImageLevel", level)
@@ -219,7 +207,6 @@ class MetrolistWidgetManager @Inject constructor(
             views.setInt(R.id.widget_progress_fill, "setImageLevel", 0)
         }
 
-        // Set click intents
         views.setOnClickPendingIntent(R.id.widget_album_art, getOpenAppIntent())
         views.setOnClickPendingIntent(R.id.widget_play_pause_container, getPlayPauseIntent())
         views.setOnClickPendingIntent(R.id.widget_like_button, getLikeIntent())
@@ -245,7 +232,6 @@ class MetrolistWidgetManager @Inject constructor(
     }
 
     private fun getRoundedCornerBitmap(bitmap: Bitmap, cornerRadius: Float): Bitmap {
-        // Ensure the bitmap is square for thumbnails
         val size = minOf(bitmap.width, bitmap.height)
         val xOffset = (bitmap.width - size) / 2
         val yOffset = (bitmap.height - size) / 2
@@ -260,23 +246,17 @@ class MetrolistWidgetManager @Inject constructor(
         }
         val rect = RectF(0f, 0f, size.toFloat(), size.toFloat())
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-        
         if (squareBitmap != bitmap) {
             squareBitmap.recycle()
         }
-        
         return output
     }
 
     private fun getCircularBitmap(bitmap: Bitmap): Bitmap {
         val size = minOf(bitmap.width, bitmap.height)
-        
-        // First crop to square
         val xOffset = (bitmap.width - size) / 2
         val yOffset = (bitmap.height - size) / 2
         val squareBitmap = Bitmap.createBitmap(bitmap, xOffset, yOffset, size, size)
-        
-        // Create circular output
         val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         val paint = Paint().apply {
@@ -286,7 +266,6 @@ class MetrolistWidgetManager @Inject constructor(
         }
         val radius = size / 2f
         canvas.drawCircle(radius, radius, radius, paint)
-        
         if (squareBitmap != bitmap) {
             squareBitmap.recycle()
         }
@@ -299,7 +278,6 @@ class MetrolistWidgetManager @Inject constructor(
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_compact_square)
 
-        // Set album art with rounded corners
         if (albumArt != null) {
             val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_compact_album_art, roundedAlbumArt)
@@ -307,11 +285,9 @@ class MetrolistWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_compact_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // Set play/pause icon - using low style icons
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_low else R.drawable.ic_widget_play_low
         views.setImageViewResource(R.id.widget_compact_play_pause, playPauseIcon)
 
-        // Set click intents
         views.setOnClickPendingIntent(R.id.widget_compact_album_art, getOpenAppIntent())
         views.setOnClickPendingIntent(R.id.widget_compact_play_container, getPlayPauseIntent())
 
@@ -327,28 +303,22 @@ class MetrolistWidgetManager @Inject constructor(
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_compact_wide)
 
-        // Set song info
         views.setTextViewText(R.id.widget_wide_song_title, title)
         views.setTextViewText(R.id.widget_wide_artist_name, artist)
 
-        // Set album art with rounded corners (48f to match 12dp at ~4x density for 48dp view)
         if (albumArt != null) {
             val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_wide_album_art, roundedAlbumArt)
         } else {
-            // Create rounded default icon
             views.setImageViewBitmap(R.id.widget_wide_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // Set play/pause icon - using low style icons
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_low else R.drawable.ic_widget_play_low
         views.setImageViewResource(R.id.widget_wide_play_pause, playPauseIcon)
 
-        // Set like icon - using navigation style (purple)
         val likeIcon = if (isLiked) R.drawable.ic_widget_star_nav else R.drawable.ic_widget_star_outline_nav
         views.setImageViewResource(R.id.widget_wide_like_button, likeIcon)
 
-        // Set click intents
         views.setOnClickPendingIntent(R.id.widget_wide_album_art, getOpenAppIntent())
         views.setOnClickPendingIntent(R.id.widget_wide_play_container, getPlayPauseIntent())
         views.setOnClickPendingIntent(R.id.widget_wide_like_button, getLikeIntent())
@@ -363,19 +333,15 @@ class MetrolistWidgetManager @Inject constructor(
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_turntable)
 
-        // Set circular album art - create circular default icon if no album art
         if (circularAlbumArt != null) {
             views.setImageViewBitmap(R.id.widget_turntable_album_art, circularAlbumArt)
         } else {
-            // Load and make the default icon circular
             views.setImageViewBitmap(R.id.widget_turntable_album_art, getCircularDefaultIcon())
         }
 
-        // Set play/pause icon - using secondary color icons for turntable
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_secondary else R.drawable.ic_widget_play_secondary
         views.setImageViewResource(R.id.widget_turntable_play_pause, playPauseIcon)
 
-        // Set click intents
         views.setOnClickPendingIntent(R.id.widget_turntable_album_art, getOpenAppIntent())
         views.setOnClickPendingIntent(R.id.widget_turntable_play_container, getTurntablePlayPauseIntent())
         views.setOnClickPendingIntent(R.id.widget_turntable_prev_button, getTurntablePreviousIntent())
@@ -383,9 +349,7 @@ class MetrolistWidgetManager @Inject constructor(
 
         return views
     }
-    
     private fun getCircularDefaultIcon(): Bitmap {
-        // Get the launcher icon and make it circular
         val drawable = context.packageManager.getApplicationIcon(context.packageName)
         val size = 300
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -394,9 +358,7 @@ class MetrolistWidgetManager @Inject constructor(
         drawable.draw(canvas)
         return getCircularBitmap(bitmap)
     }
-    
     private fun getRoundedDefaultIcon(cornerRadius: Float): Bitmap {
-        // Get the launcher icon and make it rounded
         val drawable = context.packageManager.getApplicationIcon(context.packageName)
         val size = 300
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

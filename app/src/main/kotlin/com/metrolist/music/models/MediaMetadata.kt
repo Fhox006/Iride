@@ -34,6 +34,9 @@ data class MediaMetadata(
     val isEpisode: Boolean = false,
     val uploadEntityId: String? = null,
 ) : Serializable {
+    val isExternalAlbumTrack: Boolean
+        get() = album?.id?.startsWith("itunes:") == true
+
     val isVideoSong: Boolean
         get() = musicVideoType != null && musicVideoType != MUSIC_VIDEO_TYPE_ATV
 
@@ -79,21 +82,17 @@ fun Song.toMediaMetadata() =
             )
         },
         duration = song.duration,
-        thumbnailUrl = song.thumbnailUrl,
-        album =
-        album?.let {
-            MediaMetadata.Album(
-                id = it.id,
-                title = it.title,
-            )
+        thumbnailUrl = if (song.albumId?.startsWith("itunes:") == true) {
+            album?.thumbnailUrl ?: song.thumbnailUrl
+        } else song.thumbnailUrl?.takeIf { it.isNotBlank() } ?: album?.thumbnailUrl,
+        album = if (song.albumId?.startsWith("itunes:") == true) {
+            MediaMetadata.Album(song.albumId, song.albumName.orEmpty())
+        } else album?.let {
+            MediaMetadata.Album(id = it.id, title = it.title)
         } ?: song.albumId?.let { albumId ->
-            MediaMetadata.Album(
-                id = albumId,
-                title = song.albumName.orEmpty(),
-            )
+            MediaMetadata.Album(id = albumId, title = song.albumName.orEmpty())
         },
         explicit = song.explicit,
-        // Use a non-ATV type if isVideo is true to indicate it's a video song
         musicVideoType = if (song.isVideo) "MUSIC_VIDEO_TYPE_OMV" else null,
         suggestedBy = null,
         isEpisode = song.isEpisode,

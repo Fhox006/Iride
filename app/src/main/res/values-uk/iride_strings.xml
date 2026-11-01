@@ -1,337 +1,1206 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="local_history">Ð›Ð¾ÐºÐ°Ð»ÑŒÐ½Ð¾</string>
-    <string name="remote_history">Ð’Ñ–Ð´Ð´Ð°Ð»ÐµÐ½Ð¾</string>
-    <string name="weeks">Ð¢Ð¸Ð¶Ð½Ñ–</string>
-    <string name="months">ÐœÑ–ÑÑÑ†Ñ–</string>
-    <string name="years">Ð Ð¾ÐºÐ¸</string>
-    <string name="continuous">Ð‘ÐµÐ·Ð¿ÐµÑ€ÐµÑ€Ð²Ð½Ð¾</string>
-    <string name="liked">Ð’Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ðµ</string>
-    <string name="offline">Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ðµ</string>
-    <string name="my_top">ÐœÑ–Ð¹ Ð¢Ð¾Ð¿</string>
-    <string name="sync_playlist">Ð¡Ð¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="allows_for_sync_witch_youtube">Ð—Ð°ÑƒÐ²Ð°Ð¶Ñ‚Ðµ: Ð¦Ðµ Ð´Ð¾Ð·Ð²Ð¾Ð»ÑÑ” ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð°Ñ†Ñ–ÑŽ Ð· YouTube Music. Ð¦Ðµ ÐÐ• Ð¼Ð¾Ð¶Ð½Ð° Ð±ÑƒÐ´Ðµ Ð·Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ð¿Ñ–Ð·Ð½Ñ–ÑˆÐµ.</string>
-    <string name="select">ÐžÐ±Ñ€Ð°Ñ‚Ð¸ Ð²ÑÐµ</string>
-    <string name="like_all">Ð’Ð¿Ð¾Ð´Ð¾Ð±Ð°Ñ‚Ð¸ Ð²ÑÐµ</string>
-    <string name="dislike_all">ÐŸÐ¾Ð·Ð½Ð°Ñ‡Ð¸Ñ‚Ð¸ Ð²ÑÐµ ÑÐº Ð½Ðµ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ðµ</string>
-    <string name="sort_by_last_updated">ÐÐµÑ‰Ð¾Ð´Ð°Ð²Ð½Ð¾ Ð¾Ð½Ð¾Ð²Ð»ÐµÐ½Ñ–</string>
-    <string name="lyrics">Ð¢ÐµÐºÑÑ‚</string>
-    <string name="already_in_playlist">Ð’Ð¶Ðµ Ð² ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ:</string>
-    <plurals name="n_time">
-        <item quantity="one">%d Ñ€Ð°Ð·</item>
-        <item quantity="few">%d Ñ€Ð°Ð·Ð¸</item>
-        <item quantity="many">%d Ñ€Ð°Ð·Ñ–Ð²</item>
-        <item quantity="other">%d Ñ€Ð°Ð·Ñ–Ð²</item>
+    <string name="local_history">Локально</string>
+    <string name="remote_history">Віддалено</string>
+
+    <string name="charts">Чарти</string>
+    <string name="back_button_desc">Назад</string>
+    <string name="album_cover_desc">Обкладинка альбому</string>
+    <string name="top_music_videos">Найкращі музичні відео</string>
+    <string name="trending">Тренди</string>
+    <string name="parsed_from_link">Parsed from link</string>
+
+    <string name="weeks">Тижні</string>
+    <string name="months">Місяці</string>
+    <string name="years">Роки</string>
+    <string name="continuous">Безперервно</string>
+
+    <string name="liked">Вподобане</string>
+    <string name="starred">Starred Songs</string>
+    <string name="offline">Завантажене</string>
+    <string name="downloads">Downloads</string>
+    <string name="my_top">Мій Топ</string>
+    <string name="weekly_most_playlist_name">Weekly Most</string>
+    <string name="monthly_most_playlist_name">Monthly Most</string>
+    <string name="cached_playlist">Кешовано</string>
+    <string name="uploaded_playlist">Завантажено</string>
+    <string name="filter_uploaded">Завантаженні</string>
+    <string name="sync_playlist">Синхронізувати список відтворення</string>
+    <string name="sync_disabled">Синхронізація вимкнена</string>
+    <string name="allows_for_sync_witch_youtube">Зауважте: Це дозволяє синхронізацію з YouTube Music. Це НЕ можна буде змінити пізніше.</string>
+    <string name="generating_image">Генерація зображення</string>
+    <string name="please_wait">Зачекайте, будь ласка</string>
+    <string name="cancel">Скасувати</string>
+    <string name="enable">Увімкнути</string>
+    <string name="share_lyrics">Поділитися текстом пісні</string>
+    <string name="share_as_text">Поділитися у вигляді тексту</string>
+    <string name="max_selection_limit">Максимальний ліміт вибору</string>
+    <string name="share_selected">Поділитися вибраним</string>
+    <string name="customize_colors">Налаштувати кольори</string>
+    <string name="text_color">Колір тексту</string>
+    <string name="secondary_text_color">Вторинний колір тексту</string>
+    <string name="background_color">Колір тла</string>
+
+    <string name="remove_from_cache">Видалити з кешу</string>
+
+    <!-- Artist discography -->
+    <string name="view_discography">View Discography</string>
+    <string name="discography">Discography</string>
+    <string name="discography_from_artist">From Artist</string>
+    <string name="discography_appears_on">Appears On</string>
+    <string name="discography_singles">Singles</string>
+    <string name="discography_eps">EPs</string>
+    <string name="discography_empty">Nothing more to show</string>
+
+    <!-- Artist about section -->
+    <string name="about_artist">Про нас</string>
+    <string name="show_more">Показати більше</string>
+    <string name="show_less">Показати менше</string>
+    <string name="artist_page_settings">Сторінка виконавця</string>
+    <string name="show_artist_description">Показати опис виконавця</string>
+    <string name="show_artist_subscriber_count">Показати кількість підписників</string>
+    <string name="show_artist_monthly_listeners">Показати щомісячні слухачі</string>
+
+    <!-- Menu descriptions -->
+    <string name="download_playlist_desc">Завантажте всі пісні для відтворення офлайн</string>
+    <string name="remove_download_playlist_desc">Видалити всі завантажені пісні з цього списку відтворення</string>
+    <string name="download_in_progress_desc">Триває завантаження</string>
+    <string name="share_playlist_desc">Поділіться цим плейлистом з іншими</string>
+    <string name="delete_playlist_desc">Видалити цей плейлист назавжди</string>
+    <string name="sync_playlist_desc">Синхронізуйте плейлист з YouTube Music</string>
+    <string name="reorder">Reorder</string>
+    <string name="reorder_desc">Drag songs to set a custom order</string>
+    <string name="menu">Menu</string>
+    <string name="copy_link">Скопіювати посилання</string>
+    <string name="select">Обрати все</string>
+    <string name="like_all">Вподобати все</string>
+    <string name="dislike_all">Позначити все як не вподобане</string>
+    <string name="sort_by_last_updated">Нещодавно оновлені</string>
+    <string name="link_copied">Посилання скопійовано в буфер обміну</string>
+    <string name="starting_radio">Запуск радіо</string>
+    <string name="now_playing">Зараз грає</string>
+
+    <string name="lyrics">Текст</string>
+    <string name="close">Закрити</string>
+    <string name="hide_player_thumbnail">Приховати мініатюру програвача</string>
+    <string name="hide_player_thumbnail_desc">Замінити обкладинку альбому логотипом додатка в програвачі</string>
+    <string name="crop_album_art">Обрізати обкладинку альбому</string>
+    <string name="crop_album_art_desc">Примусове квадратне співвідношення сторін шляхом обрізання мініатюр відео</string>
+
+    <string name="already_in_playlist">Вже в списку відтворення:</string>
+
+        <plurals name="n_time">
+        <item quantity="one">%d раз</item>
+        <item quantity="few">%d рази</item>
+        <item quantity="many">%d разів</item>
+        <item quantity="other">%d разів</item>
     </plurals>
-    <string name="similar_content">ÐŸÐ¾Ð´Ñ–Ð±Ð½Ð¸Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚</string>
-    <string name="player_background_style">Ð¡Ñ‚Ð¸Ð»ÑŒ Ñ„Ð¾Ð½Ñƒ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ð°</string>
-    <string name="follow_theme">Ð”Ð¾Ñ‚Ñ€Ð¸Ð¼ÑƒÐ²Ð°Ñ‚Ð¸ÑÑŒ Ñ‚ÐµÐ¼Ð¸</string>
-    <string name="gradient">Ð“Ñ€Ð°Ð´Ñ–Ñ”Ð½Ñ‚</string>
-    <string name="player_background_blur">Ð Ð¾Ð·Ð¼Ð¸Ñ‚Ñ‚Ñ</string>
-    <string name="enable_swipe_thumbnail">ÐŸÐµÑ€ÐµÐ¼Ð¸ÐºÐ°Ð½Ð½Ñ Ð¿Ñ–ÑÐµÐ½ÑŒ Ð¿Ñ€Ð¾Ð²ÐµÐ´ÐµÐ½Ð½ÑÐ¼ Ð¿Ð¾ Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½Ñ†Ñ–</string>
-    <string name="lyrics_click_change">Ð—Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ñ‚ÐµÐºÑÑ‚ Ð¿Ñ–ÑÐ½Ñ– Ð¿Ñ€Ð¸ Ð½Ð°Ñ‚Ð¸ÑÐºÐ°Ð½Ð½Ñ–</string>
-    <string name="slim_navbar">Ð¢Ð¾Ð½ÐºÐ° Ð½Ð¸Ð¶Ð½Ñ Ð¿Ð°Ð½ÐµÐ»ÑŒ Ð½Ð°Ð²Ñ–Ð³Ð°Ñ†Ñ–Ñ—</string>
-    <string name="advanced_login">Ð’Ñ…Ñ–Ð´ Ñ‡ÐµÑ€ÐµÐ· Ñ‚Ð¾ÐºÐµÐ½</string>
-    <string name="token_hidden">ÐÐ°Ñ‚Ð¸ÑÐ½Ñ–Ñ‚ÑŒ Ð´Ð»Ñ Ð¿Ð¾ÐºÐ°Ð·Ñƒ Ñ‚Ð¾ÐºÐµÐ½Ñƒ</string>
-    <string name="token_shown">ÐŸÐ¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾ Ð½Ð°Ñ‚Ð¸ÑÐ½Ñ–Ñ‚ÑŒ, Ñ‰Ð¾Ð± ÑÐºÐ¾Ð¿Ñ–ÑŽÐ²Ð°Ñ‚Ð¸ Ð°Ð±Ð¾ Ñ€ÐµÐ´Ð°Ð³ÑƒÐ²Ð°Ñ‚Ð¸</string>
-    <string name="token_adv_login_description">Ð¦Ðµ ÐŸÐ ÐžÐ¡Ð£ÐÐ£Ð¢Ð˜Ð™ Ð¼ÐµÑ‚Ð¾Ð´ Ð²Ñ…Ð¾Ð´Ñƒ Ð² ÑÐ¸ÑÑ‚ÐµÐ¼Ñƒ. ÐÐ»ÑŒÑ‚ÐµÑ€Ð½Ð°Ñ‚Ð¸Ð²Ð½Ð¾ Ð´Ð¾ Ð²ÐµÐ±-Ð¿Ð¾Ñ€Ñ‚Ð°Ð»Ñƒ, Ð²Ð¸ Ð¼Ð¾Ð¶ÐµÑ‚Ðµ Ð±ÐµÐ·Ð¿Ð¾ÑÐµÑ€ÐµÐ´Ð½ÑŒÐ¾ Ð²Ð²ÐµÑÑ‚Ð¸ Ð°Ð±Ð¾ Ð¾Ð½Ð¾Ð²Ð¸Ñ‚Ð¸ ÑÐ²Ñ–Ð¹ Ñ‚Ð¾ÐºÐµÐ½ Ð´Ð»Ñ Ð²Ñ…Ð¾Ð´Ñƒ Ñ‚ÑƒÑ‚. ÐÐ°Ð¿Ñ€Ð¸ÐºÐ»Ð°Ð´, Ñ†Ðµ Ð¼Ð¾Ð¶Ðµ Ð¿Ñ€Ð¸ÑÐºÐ¾Ñ€Ð¸Ñ‚Ð¸ Ð²Ñ…Ñ–Ð´ Ð½Ð° Ð´ÐµÐºÑ–Ð»ÑŒÐºÐ¾Ñ… Ð¿Ñ€Ð¸ÑÑ‚Ñ€Ð¾ÑÑ…. Ð—Ð²ÐµÑ€Ð½Ñ–Ñ‚ÑŒ ÑƒÐ²Ð°Ð³Ñƒ, Ñ‰Ð¾ Ð±ÑƒÐ´ÑŒ-ÑÐºÑ– Ð½ÐµÐ´Ñ–Ð¹ÑÐ½Ñ– Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚Ð¸ Ñ‚Ð¾ÐºÐµÐ½Ñ–Ð², ÑÐºÑ– Ð´Ð¾Ð´Ð°Ñ‚Ð¾Ðº Ð½Ðµ Ð·Ð¼Ð¾Ð¶Ðµ Ñ€Ð¾Ð·Ð¿Ñ–Ð·Ð½Ð°Ñ‚Ð¸, Ð½Ðµ Ð±ÑƒÐ´ÑƒÑ‚ÑŒ Ð¿Ñ€Ð¸Ð¹Ð½ÑÑ‚Ñ–</string>
-    <string name="general">Ð—Ð°Ð³Ð°Ð»ÑŒÐ½Ðµ</string>
-    <string name="default_lib_chips">Ð—Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ð³Ð¾Ð»Ð¾Ð²Ð½Ñƒ ÑÑ‚Ð¾Ñ€Ñ–Ð½ÐºÑƒ Ð±Ñ–Ð±Ð»Ñ–Ð¾Ñ‚ÐµÐºÐ¸</string>
-    <string name="set_quick_picks">ÐÐ°Ð»Ð°ÑˆÑ‚ÑƒÐ²Ð°Ñ‚Ð¸ ÑˆÐ²Ð¸Ð´ÐºÑ– Ð´Ð¾Ð±Ñ–Ñ€ÐºÐ¸</string>
-    <string name="last_song_listened">ÐÐ° Ð¾ÑÐ½Ð¾Ð²Ñ– Ð¾ÑÑ‚Ð°Ð½Ð½ÑŒÐ¾Ñ— Ð¿Ñ€Ð¾ÑÐ»ÑƒÑ…Ð°Ð½Ð¾Ñ— Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="app_language">ÐœÐ¾Ð²Ð° Ð·Ð°ÑÑ‚Ð¾ÑÑƒÐ½ÐºÑƒ</string>
-    <string name="enable_similar_content">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ð¿Ð¾Ð´Ñ–Ð±Ð½Ð¸Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚</string>
-    <string name="similar_content_desc">ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ð¾ Ð´Ð¾Ð´Ð°Ð²Ð°Ñ‚Ð¸ Ð±Ñ–Ð»ÑŒÑˆÐµ ÑÑ…Ð¾Ð¶Ð¸Ñ… Ð¿Ñ–ÑÐµÐ½ÑŒ, ÐºÐ¾Ð»Ð¸ Ð±ÑƒÐ´Ðµ Ð´Ð¾ÑÑÐ³Ð½ÑƒÑ‚Ð¾ ÐºÑ–Ð½Ñ†Ñ Ñ‡ÐµÑ€Ð³Ð¸</string>
-    <string name="default_links">Ð’Ñ–Ð´ÐºÑ€Ð¸Ñ‚Ð¸ Ð¿Ñ–Ð´Ñ‚Ñ€Ð¸Ð¼ÑƒÐ²Ð°Ð½Ñ– Ð¿Ð¾ÑÐ¸Ð»Ð°Ð½Ð½Ñ</string>
-    <string name="open_app_settings_error">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ Ð²Ñ–Ð´ÐºÑ€Ð¸Ñ‚Ð¸ Ð½Ð°Ð»Ð°ÑˆÑ‚ÑƒÐ²Ð°Ð½Ð½Ñ Ð·Ð°ÑÑ‚Ð¾ÑÑƒÐ½ÐºÑƒ</string>
-    <string name="all_time">Ð’ÐµÑÑŒ Ñ‡Ð°Ñ</string>
-    <string name="past_24_hours">ÐœÐ¸Ð½ÑƒÐ»Ñ– 24 Ð³Ð¾Ð´Ð¸Ð½Ð¸</string>
-    <string name="past_week">ÐœÐ¸Ð½ÑƒÐ»Ð¸Ð¹ Ñ‚Ð¸Ð¶Ð´ÐµÐ½ÑŒ</string>
-    <string name="past_month">ÐœÐ¸Ð½ÑƒÐ»Ð¸Ð¹ Ð¼Ñ–ÑÑÑ†ÑŒ</string>
-    <string name="past_year">ÐœÐ¸Ð½ÑƒÐ»Ð¸Ð¹ Ñ€Ñ–Ðº</string>
-    <string name="top_length">Ð”Ð¾Ð²Ð¶Ð¸Ð½Ð° Ð¼Ð¾Ð³Ð¾ Ñ‚Ð¾Ð¿-ÑÐ¿Ð¸ÑÐºÑƒ</string>
-    <string name="history_duration">Ð”Ð¾Ð²Ð¶Ð¸Ð½Ð° Ñ–ÑÑ‚Ð¾Ñ€Ñ–Ñ—</string>
-    <plurals name="seconds">
-        <item quantity="one">%d ÑÐµÐºÑƒÐ½Ð´Ð°</item>
-        <item quantity="few">%d ÑÐµÐºÑƒÐ½Ð´Ð¸</item>
-        <item quantity="many">%d cÐµÐºÑƒÐ½Ð´</item>
-        <item quantity="other">%d cÐµÐºÑƒÐ½Ð´</item>
-    </plurals>
-    <string name="charts">Ð§Ð°Ñ€Ñ‚Ð¸</string>
-    <string name="back_button_desc">ÐÐ°Ð·Ð°Ð´</string>
-    <string name="album_cover_desc">ÐžÐ±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÐ° Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ</string>
-    <string name="top_music_videos">ÐÐ°Ð¹ÐºÑ€Ð°Ñ‰Ñ– Ð¼ÑƒÐ·Ð¸Ñ‡Ð½Ñ– Ð²Ñ–Ð´ÐµÐ¾</string>
-    <string name="trending">Ð¢Ñ€ÐµÐ½Ð´Ð¸</string>
-    <string name="cached_playlist">ÐšÐµÑˆÐ¾Ð²Ð°Ð½Ð¾</string>
-    <string name="generating_image">Ð“ÐµÐ½ÐµÑ€Ð°Ñ†Ñ–Ñ Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="sync_disabled">Ð¡Ð¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ Ð²Ð¸Ð¼ÐºÐ½ÐµÐ½Ð°</string>
-    <string name="please_wait">Ð—Ð°Ñ‡ÐµÐºÐ°Ð¹Ñ‚Ðµ, Ð±ÑƒÐ´ÑŒ Ð»Ð°ÑÐºÐ°</string>
-    <string name="cancel">Ð¡ÐºÐ°ÑÑƒÐ²Ð°Ñ‚Ð¸</string>
-    <string name="share_lyrics">ÐŸÐ¾Ð´Ñ–Ð»Ð¸Ñ‚Ð¸ÑÑ Ñ‚ÐµÐºÑÑ‚Ð¾Ð¼ Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="share_as_text">ÐŸÐ¾Ð´Ñ–Ð»Ð¸Ñ‚Ð¸ÑÑ Ñƒ Ð²Ð¸Ð³Ð»ÑÐ´Ñ– Ñ‚ÐµÐºÑÑ‚Ñƒ</string>
-    <string name="share_as_image">ÐŸÐ¾Ð´Ñ–Ð»Ð¸Ñ‚Ð¸ÑÑ Ñƒ Ð²Ð¸Ð³Ð»ÑÐ´Ñ– Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="max_selection_limit">ÐœÐ°ÐºÑÐ¸Ð¼Ð°Ð»ÑŒÐ½Ð¸Ð¹ Ð»Ñ–Ð¼Ñ–Ñ‚ Ð²Ð¸Ð±Ð¾Ñ€Ñƒ</string>
-    <string name="share_selected">ÐŸÐ¾Ð´Ñ–Ð»Ð¸Ñ‚Ð¸ÑÑ Ð²Ð¸Ð±Ñ€Ð°Ð½Ð¸Ð¼</string>
-    <string name="customize_colors">ÐÐ°Ð»Ð°ÑˆÑ‚ÑƒÐ²Ð°Ñ‚Ð¸ ÐºÐ¾Ð»ÑŒÐ¾Ñ€Ð¸</string>
-    <string name="text_color">ÐšÐ¾Ð»Ñ–Ñ€ Ñ‚ÐµÐºÑÑ‚Ñƒ</string>
-    <string name="secondary_text_color">Ð’Ñ‚Ð¾Ñ€Ð¸Ð½Ð½Ð¸Ð¹ ÐºÐ¾Ð»Ñ–Ñ€ Ñ‚ÐµÐºÑÑ‚Ñƒ</string>
-    <string name="background_color">ÐšÐ¾Ð»Ñ–Ñ€ Ñ‚Ð»Ð°</string>
-    <string name="remove_from_cache">Ð’Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ Ð· ÐºÐµÑˆÑƒ</string>
-    <string name="copy_link">Ð¡ÐºÐ¾Ð¿Ñ–ÑŽÐ²Ð°Ñ‚Ð¸ Ð¿Ð¾ÑÐ¸Ð»Ð°Ð½Ð½Ñ</string>
-    <string name="link_copied">ÐŸÐ¾ÑÐ¸Ð»Ð°Ð½Ð½Ñ ÑÐºÐ¾Ð¿Ñ–Ð¹Ð¾Ð²Ð°Ð½Ð¾ Ð² Ð±ÑƒÑ„ÐµÑ€ Ð¾Ð±Ð¼Ñ–Ð½Ñƒ</string>
-    <string name="player_buttons_style">ÐšÐ¾Ð»ÑŒÐ¾Ñ€Ð¸ ÐºÐ½Ð¾Ð¿Ð¾Ðº Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ð°</string>
-    <string name="default_style">Ð—Ð° Ð·Ð°Ð¼Ð¾Ð²Ñ‡ÑƒÐ²Ð°Ð½Ð½ÑÐ¼</string>
-    <string name="show_downloaded_playlist">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ \"Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ðµ\"</string>
-    <string name="swipe_song_to_add">ÐŸÑ€Ð¾Ð²ÐµÐ´Ñ–Ñ‚ÑŒ Ð¿Ñ–ÑÐ½ÑŽ Ð²Ð»Ñ–Ð²Ð¾, Ñ‰Ð¾Ð± Ð´Ð¾Ð´Ð°Ñ‚Ð¸ Ñ—Ñ— Ð´Ð¾ Ñ‡ÐµÑ€Ð³Ð¸, Ð°Ð±Ð¾ Ð²Ð¿Ñ€Ð°Ð²Ð¾ â€” Ñ‰Ð¾Ð± Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€Ð¸Ñ‚Ð¸ Ð½Ð°ÑÑ‚ÑƒÐ¿Ð½Ð¾ÑŽ</string>
-    <string name="slim">Ð¢Ð¾Ð½ÐºÐ¸Ð¹</string>
-    <string name="auto_playlists">ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ñ– ÑÐ¿Ð¸ÑÐºÐ¸ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="show_top_playlist">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ \"Ð¢Ð¾Ð¿\"</string>
-    <string name="show_cached_playlist">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÐºÐµÑˆÐ¾Ð²Ð°Ð½Ð¸Ð¹ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="show_liked_playlist">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ \"Ð’Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ðµ\"</string>
-    <string name="proxy">ÐŸÑ€Ð¾ÐºÑÑ–</string>
+
+    <string name="seek_forward_dynamic">+%1$d сек. вперед</string>
+    <string name="seek_backward_dynamic">-%1$d сек. назад</string>
+    <string name="seek_seconds_addup">Прогресивний пошук</string>
+    <string name="seek_seconds_addup_description">Якщо ввімкнено, додає 5 додаткових секунд при кожному пропусканні пошуку</string>
+
+    <string name="similar_content">Подібний контент</string>
+
+    <string name="share_as_image">Поділитися у вигляді зображення</string>
+    <string name="copy_as_image">Copy as image</string>
+    <string name="player_background_style">Стиль фону програвача</string>
+    <string name="player_background_solid">Суцільний</string>
+    <string name="follow_theme">Дотримуватись теми</string>
+    <string name="gradient">Градієнт</string>
+    <string name="animated_gradient">Animated Gradient</string>
+    <string name="better_animated_gradient">Better Animated Gradient</string>
+    <string name="better_gradient_smooth_transition">Smooth background transition</string>
+    <string name="better_gradient_smooth_transition_desc">Crossfade between album colors on track skip</string>
+    <string name="player_background_blur">Розмиття</string>
+    <string name="player_buttons_style">Кольори кнопок програвача</string>
+    <string name="default_style">За замовчуванням</string>
+    <string name="primary_color_style">Основний колір</string>
+    <string name="tertiary_color_style">Третинний колір</string>
+    <string name="display_density">Щільність відображення</string>
+    <string name="restart">Перезапустити</string>
+    <string name="restart_required">Restart required!</string>
+    <string name="density_restart_message">Зміна щільності відображення почне діяти після перезапуску програми. Ви хочете перезапустити зараз?</string>
+    <string name="wavy">Хвилястий</string>
+    <string name="enable_swipe_thumbnail">Перемикання пісень проведенням по обкладинці</string>
+    <string name="thumbnail_carousel_mode">Carousel thumbnail mode</string>
+    <string name="thumbnail_carousel_mode_desc">Show prev/next covers peeking from sides with swipe animation</string>
+    <string name="swipe_song_to_add_title">Swipe to queue</string>
+    <string name="swipe_song_to_add">Проведіть пісню вліво, щоб додати її до черги, або вправо — щоб відтворити наступною</string>
+    <string name="swipe_song_to_remove_title">Swipe to remove</string>
+    <string name="swipe_song_to_remove">Проведіть пальцем по пісні, щоб вилучити її зі списку відтворення</string>
+    <string name="lyrics_click_change">Змінити текст пісні при натисканні</string>
+    <string name="lyrics_from_provider">Lyrics from %s</string>
+    <string name="lyrics_auto_scroll">Автопрокрутка тексту пісні</string>
+    <string name="hide_status_bar_fullscreen">Hide status bar on fullscreen</string>
+    <string name="hide_status_bar_fullscreen_desc">Hide the status bar when lyrics fullscreen mode is active</string>
+    <string name="show_interval_indicator">Show interval indicator</string>
+    <string name="show_interval_indicator_desc">Shows a progress bar during long instrumental gaps</string>
+    <string name="respect_agent_positioning">Respect agent positioning</string>
+    <string name="respect_agent_positioning_desc">Align lyrics based on the agent role (e.g. background vocals)</string>
+    <string name="lyrics_glow_effect">Увімкнути ефект сяйва тексту пісень</string>
+    <string name="lyrics_glow_effect_desc">Додайте анімацію сяйва та ефект відскоку до активних текстів пісень</string>
+    <string name="lyrics_animation_style">Стиль анімації слово за словом</string>
+    <string name="lyrics_animation_none">None</string>
+    <string name="lyrics_animation_fade">Fade</string>
+    <string name="lyrics_animation_glow">Glow</string>
+    <string name="lyrics_animation_slide">Slide</string>
+    <string name="lyrics_animation_karaoke">Karaoke</string>
+    <string name="lyrics_animation_apple">Apple Music Style</string>
+    <string name="lyrics_text_size">Розмір тексту пісні</string>
+    <string name="lyrics_line_spacing">Міжрядковий інтервал тексту пісень</string>
+    <string name="enable_lrclib_desc">Community-driven synchronized lyrics database</string>
+    <string name="enable_kugou_desc">Pulls lyrics from KuGou, a popular Chinese music platform</string>
+    <string name="youtube_music_lyrics_note">NOTE: YouTube Music lyrics will be shown automatically when no other source is available. They are usually not synchronized</string>
+    <string name="enable_better_lyrics">Увімкнути кращі тексти пісень</string>
+    <string name="enable_better_lyrics_desc">Використовуйте постачальника Better Lyrics для синхронізованих текстів пісень слово за словом</string>
+    <string name="enable_better_lyrics_unison">Enable Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">Word-by-word synced lyrics, Unison engine</string>
+    <string name="enable_better_lyrics_sillaba">Enable Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">Word-by-word synced lyrics, Sillaba engine</string>
+    <string name="enable_paxsenix">Enable Paxsenix</string>
+    <string name="enable_paxsenix_desc">High-quality synchronized lyrics from Paxsenix API</string>
+    <string name="enable_lyricsplus">Enable LyricsPlus</string>
+    <string name="enable_lyricsplus_desc">Synchronized lyrics from multiple sources</string>
+    <string name="lyrics_provider_selection">Provider selection</string>
+    <string name="lyrics_provider_selection_desc">Choose which lyrics providers are enabled</string>
+    <string name="auto_scroll">Повторна синхронізація</string>
+    <string name="slim">Тонкий</string>
+    <string name="slim_navbar">Тонка нижня панель навігації</string>
+    <string name="auto_playlists">Автоматичні списки відтворення</string>
+    <string name="show_liked_playlist">Показати список відтворення \"Вподобане\"</string>
+    <string name="show_downloaded_playlist">Показати список відтворення \"Завантажене\"</string>
+    <string name="show_top_playlist">Показати список відтворення \"Топ\"</string>
+    <string name="show_cached_playlist">Показати кешований список відтворення</string>
+    <string name="enable_song_cache">Enable song cache</string>
+    <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
+    <string name="show_uploaded_playlist">Показати список відтворення \"Завантажено\"</string>
+    <string name="shuffle_playlist_first">Спочатку перемішати відтворення відтворення/альбому</string>
+    <string name="shuffle_playlist_first_desc">Під час перемішування спочатку відтворювати всі пісні з оригінального списку відтворення/альбому, а потім схожий контент</string>
+    <string name="prevent_duplicate_tracks_in_queue">Prevent duplicate tracks in queue</string>
+    <string name="prevent_duplicate_tracks_in_queue_desc">When adding a track that\'s already in the queue, it will be moved from its previous position rather than added again</string>
+    <string name="show_wrapped_card">Показати обгорнуту картку</string>
+    <string name="skip_silence_desc">Перемотування вперед тихих частин пісень</string>
+    <string name="skip_silence_instant">Миттєво пропустити тишу</string>
+    <string name="skip_silence_instant_desc">Перемотуйте вперед під час тихих моментів замість прискорення відтворення</string>
+
+    <string name="advanced_login">Вхід через токен</string>
+    <string name="token_hidden">Натисніть для показу токену</string>
+    <string name="token_shown">Повторно натисніть, щоб скопіювати або редагувати</string>
+    <string name="token_adv_login_description">Це ПРОСУНУТИЙ метод входу в систему. Альтернативно до веб-порталу, ви можете безпосередньо ввести або оновити свій токен для входу тут. Наприклад, це може прискорити вхід на декількох пристроях. Зверніть увагу, що будь-які недійсні формати токенів, які додаток не зможе розпізнати, не будуть прийняті</string>
+    <string name="yt_sync">Автосинхронізація з акаунтом</string>
+    <string name="settings_section_sync_data">Sync &amp; data</string>
+    <string name="auto_sync">Auto sync</string>
+    <string name="more_content">Більше контенту</string>
+    <string name="other_content">Other content</string>
+    <string name="show_token">Show token</string>
+
+    <string name="sort_ascending">Sort ascending</string>
+    <string name="sort_descending">Sort descending</string>
+
+    <!-- Playlist cover edit -->
+    <string name="edit_playlist_cover">Редагувати обкладинку списку відтворення</string>
+    <string name="edit_playlist_cover_note">Примітка: Щоб змінити обкладинку списку відтворення, ваш обліковий запис має бути пов’язаний з номером телефону та підтверджений у YouTube Music.</string>
+    <string name="edit_playlist_cover_note_wait">Після вибору зображення зачекайте трохи, поки нова обкладинка з’явиться у вашому списку відтворення.</string>
+    <string name="choose_from_library">Виберіть з бібліотеки</string>
+    <string name="remove_custom_image">Вилучити власне зображення</string>
+
+    <!-- General -->
+    <string name="general">Загальне</string>
+    <string name="proxy">Проксі</string>
+    <string name="default_lib_chips">Змінити головну сторінку бібліотеки</string>
+    <string name="set_quick_picks">Налаштувати швидкі добірки</string>
+    <string name="last_song_listened">На основі останньої прослуханої пісні</string>
+    <string name="app_language">Мова застосунку</string>
+    <string name="lyrics_provider_priority">Lyrics provider priority</string>
+    <string name="lyrics_provider_priority_desc">Drag to reorder providers by preference. Higher position means higher priority</string>
+    <string name="experimental_lyrics">Experimental lyrics</string>
+    <string name="experimental_lyrics_desc">Enable the new experimental lyrics component with enhanced animations and performance</string>
+    <string name="experimental_lyrics_beta_title">Experimental feature</string>
+    <string name="experimental_lyrics_beta_message">The new lyrics component is currently in development and may contain bugs. Are you sure you want to enable it?</string>
+    <string name="config_proxy">Налаштувати проксі-сервер</string>
+    <string name="proxy_username">Ім\'я користувача проксі-сервера</string>
+    <string name="proxy_password">Пароль проксі-сервера</string>
+    <string name="enable_authentication">Увімкнути автентифікацію</string>
+    <string name="discord_use_details">Використовуйте деталі замість штату</string>
+    <string name="discord_use_details_description">Помітно показувати назву пісні замість імен виконавців</string>
+
+    <string name="enable_similar_content">Увімкнути подібний контент</string>
+    <string name="similar_content_desc">Автоматично додавати більше схожих пісень, коли буде досягнуто кінця черги</string>
+    <string name="persistent_shuffle_title">Постійне перемішування</string>
+    <string name="persistent_shuffle_desc">Увімкніть випадкове перемішування під час запуску нових пісень або списків відтворення</string>
+    <string name="remember_shuffle_and_repeat">Пам’ятайте про перемішування та повторення</string>
+    <string name="remember_shuffle_and_repeat_desc">Запам\'ятайте режим випадкового відтворення та повтору під час перезапуску програми</string>
     <string name="percentage_format">%d%%</string>
-    <string name="auto_download_on_like">ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ð¾ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÑƒÐ²Ð°Ñ‚Ð¸ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ñ– Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="auto_download_on_like_desc">ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ð¾ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÑƒÐ²Ð°Ñ‚Ð¸ Ð¿Ñ–ÑÐ½Ñ–, ÑÐºÑ– Ð²Ð¸ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð»Ð¸</string>
-    <string name="clear_song_cache_dialog">Ð’Ð¸ Ð²Ð¿ÐµÐ²Ð½ÐµÐ½Ñ–, Ñ‰Ð¾ Ñ…Ð¾Ñ‡ÐµÑ‚Ðµ Ð¾Ñ‡Ð¸ÑÑ‚Ð¸Ñ‚Ð¸ Ð²ÑÑ– ÐºÐµÑˆÐ¾Ð²Ð°Ð½Ñ– Ð¿Ñ–ÑÐ½Ñ–?</string>
-    <string name="clear_downloads_dialog">Ð’Ð¸ Ð²Ð¿ÐµÐ²Ð½ÐµÐ½Ñ–, Ñ‰Ð¾ Ñ…Ð¾Ñ‡ÐµÑ‚Ðµ Ð¾Ñ‡Ð¸ÑÑ‚Ð¸Ñ‚Ð¸ Ð²ÑÑ– Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ?</string>
-    <string name="not_logged_in_youtube">Ð’Ð¸ Ð½Ðµ Ð²Ð²Ñ–Ð¹ÑˆÐ»Ð¸ Ð² YouTube</string>
-    <string name="information">Ð†Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ñ–Ñ</string>
-    <string name="description">ÐžÐ¿Ð¸Ñ</string>
-    <string name="views">ÐŸÐµÑ€ÐµÐ³Ð»ÑÐ´Ð¸</string>
-    <string name="likes">Ð’Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ð½Ñ</string>
-    <string name="dislikes">ÐÐµÐ²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ð½Ñ</string>
-    <string name="lyrics_auto_scroll">ÐÐ²Ñ‚Ð¾Ð¿Ñ€Ð¾ÐºÑ€ÑƒÑ‚ÐºÐ° Ñ‚ÐµÐºÑÑ‚Ñƒ Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="import_online">Ð†Ð¼Ð¿Ð¾Ñ€Ñ‚ÑƒÐ²Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ñƒ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚Ñ– \"m3u\"</string>
-    <string name="import_csv">Ð†Ð¼Ð¿Ð¾Ñ€Ñ‚ÑƒÐ²Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ñƒ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚Ñ– \"csv\"</string>
-    <string name="playlist_add_local_to_synced_note">ÐŸÑ€Ð¸Ð¼Ñ–Ñ‚ÐºÐ°: Ð´Ð¾Ð´Ð°Ð²Ð°Ð½Ð½Ñ Ð»Ð¾ÐºÐ°Ð»ÑŒÐ½Ð¸Ñ… Ð¿Ñ–ÑÐµÐ½ÑŒ Ð´Ð¾ ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð¾Ð²Ð°Ð½Ð¸Ñ… Ð°Ð±Ð¾ Ð²Ñ–Ð´Ð´Ð°Ð»ÐµÐ½Ð¸Ñ… ÑÐ¿Ð¸ÑÐºÑ–Ð² Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð½Ðµ Ð¿Ñ–Ð´Ñ‚Ñ€Ð¸Ð¼ÑƒÑ”Ñ‚ÑŒÑÑ. Ð£ÑÑ– Ñ–Ð½ÑˆÑ– ÐºÐ¾Ð¼Ð±Ñ–Ð½Ð°Ñ†Ñ–Ñ— Ð¼Ð¾Ð¶Ð»Ð¸Ð²Ñ–</string>
-    <string name="new_player_design">ÐÐ¾Ð²Ð¸Ð¹ Ð´Ð¸Ð·Ð°Ð¹Ð½ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ð°</string>
-    <string name="lyrics_romanize_japanese">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð¯Ð¿Ð¾Ð½ÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸</string>
-    <string name="lyrics_romanize_korean">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ ÐšÐ¾Ñ€ÐµÐ¹ÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸</string>
-    <string name="yt_sync">ÐÐ²Ñ‚Ð¾ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ Ð· Ð°ÐºÐ°ÑƒÐ½Ñ‚Ð¾Ð¼</string>
-    <string name="more_content">Ð‘Ñ–Ð»ÑŒÑˆÐµ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚Ñƒ</string>
-    <string name="swipe_sensitivity">Ð§ÑƒÑ‚Ð»Ð¸Ð²Ñ–ÑÑ‚ÑŒ Ð¿Ñ€Ð¾Ð²ÐµÐ´ÐµÐ½Ð½Ñ Ð¿Ð¾ Ð¼Ñ–Ð½Ñ–Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ñƒ</string>
+
+    <string name="import_online">Імпортувати список відтворення у форматі \"m3u\"</string>
+    <string name="import_csv">Імпортувати список відтворення у форматі \"csv\"</string>
+    <string name="playlist_add_local_to_synced_note">Примітка: додавання локальних пісень до синхронізованих або віддалених списків відтворення не підтримується. Усі інші комбінації можливі</string>
+    <string name="export_playlist">Export playlist</string>
+    <string name="export_as_csv">Export as CSV</string>
+    <string name="export_as_m3u">Export as M3U</string>
+    <string name="export_success">Playlist exported successfully</string>
+    <string name="export_failed">Failed to export playlist</string>
+    <string name="export_option_share">Share</string>
+    <string name="export_option_save">Save to Documents</string>
+
+    <string name="auto_download_on_like">Автоматично завантажувати вподобані пісні</string>
+    <string name="auto_download_on_like_desc">Автоматично завантажувати пісні, які ви вподобали</string>
+
+    <string name="swipe_sensitivity">Чутливість проведення по мініпрогравачу</string>
     <string name="sensitivity_percentage">%1$d%%</string>
-    <string name="clear_image_cache_dialog">Ð’Ð¸ Ð´Ñ–Ð¹ÑÐ½Ð¾ Ñ…Ð¾Ñ‡ÐµÑ‚Ðµ Ð¾Ñ‡Ð¸ÑÑ‚Ð¸Ñ‚Ð¸ Ð²ÑÑ– ÐºÐµÑˆÐ¾Ð²Ð°Ð½Ñ– Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ?</string>
-    <string name="disable">Ð’Ð¸Ð¼ÐºÐ½ÑƒÑ‚Ð¸</string>
-    <string name="subscribe">ÐŸÑ–Ð´Ð¿Ð¸ÑÐ°Ñ‚Ð¸ÑÑ</string>
-    <string name="subscribed">ÐŸÑ–Ð´Ð¿Ð¸ÑÐ°Ð½Ñ–</string>
-    <string name="new_mini_player_design">ÐÐ¾Ð²Ð¸Ð¹ Ð´Ð¸Ð·Ð°Ð¹Ð½ Ð¼Ñ–Ð½Ñ–Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ð°</string>
-    <string name="now_playing">Ð—Ð°Ñ€Ð°Ð· Ð³Ñ€Ð°Ñ”</string>
-    <string name="seek_forward_dynamic">+%1$d ÑÐµÐº. Ð²Ð¿ÐµÑ€ÐµÐ´</string>
-    <string name="seek_backward_dynamic">-%1$d ÑÐµÐº. Ð½Ð°Ð·Ð°Ð´</string>
-    <string name="seek_seconds_addup">ÐŸÑ€Ð¾Ð³Ñ€ÐµÑÐ¸Ð²Ð½Ð¸Ð¹ Ð¿Ð¾ÑˆÑƒÐº</string>
-    <string name="seek_seconds_addup_description">Ð¯ÐºÑ‰Ð¾ Ð²Ð²Ñ–Ð¼ÐºÐ½ÐµÐ½Ð¾, Ð´Ð¾Ð´Ð°Ñ” 5 Ð´Ð¾Ð´Ð°Ñ‚ÐºÐ¾Ð²Ð¸Ñ… ÑÐµÐºÑƒÐ½Ð´ Ð¿Ñ€Ð¸ ÐºÐ¾Ð¶Ð½Ð¾Ð¼Ñƒ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ°Ð½Ð½Ñ– Ð¿Ð¾ÑˆÑƒÐºÑƒ</string>
-    <string name="close">Ð—Ð°ÐºÑ€Ð¸Ñ‚Ð¸</string>
-    <string name="disable_load_more_when_repeat_all">Ð’Ð¸Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ Ð´Ð¾Ð´Ð°Ñ‚ÐºÐ¾Ð²Ð¸Ñ… Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ–Ð² Ð¿Ñ–Ð´ Ñ‡Ð°Ñ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð½Ñ Ð²ÑÑ–Ñ…</string>
-    <string name="disable_load_more_when_repeat_all_desc">ÐÐµ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÑƒÐ²Ð°Ñ‚Ð¸ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ð¾ Ð±Ñ–Ð»ÑŒÑˆÐµ Ð¿Ñ–ÑÐµÐ½ÑŒ Ñ‚Ð° Ð¿Ð¾Ð´Ñ–Ð±Ð½Ð¾Ð³Ð¾ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚Ñƒ, ÐºÐ¾Ð»Ð¸ Ð²Ð²Ñ–Ð¼ÐºÐ½ÐµÐ½Ð¾ Ñ€ÐµÐ¶Ð¸Ð¼ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð½Ñ Ð²ÑÑ–Ñ…</string>
-    <string name="hide_player_thumbnail">ÐŸÑ€Ð¸Ñ…Ð¾Ð²Ð°Ñ‚Ð¸ Ð¼Ñ–Ð½Ñ–Ð°Ñ‚ÑŽÑ€Ñƒ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ð°</string>
-    <string name="hide_player_thumbnail_desc">Ð—Ð°Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÑƒ Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ Ð»Ð¾Ð³Ð¾Ñ‚Ð¸Ð¿Ð¾Ð¼ Ð´Ð¾Ð´Ð°Ñ‚ÐºÐ° Ð² Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡Ñ–</string>
-    <string name="settings_section_ui">Ð†Ð½Ñ‚ÐµÑ€Ñ„ÐµÐ¹Ñ</string>
-    <string name="settings_section_privacy">ÐšÐ¾Ð½Ñ„Ñ–Ð´ÐµÐ½Ñ†Ñ–Ð¹Ð½Ñ–ÑÑ‚ÑŒ Ñ‚Ð° Ð±ÐµÐ·Ð¿ÐµÐºÐ°</string>
-    <string name="settings_section_player_content">ÐŸÐ»ÐµÑ”Ñ€ Ñ– ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚</string>
-    <string name="settings_section_storage">Ð—Ð±ÐµÑ€Ñ–Ð³Ð°Ð½Ð½Ñ Ñ‚Ð° Ð´Ð°Ð½Ñ–</string>
-    <string name="settings_section_system">Ð¡Ð¸ÑÑ‚ÐµÐ¼Ð° Ñ‚Ð° Ð¿Ñ€Ð¾ Ð½Ð°Ñ</string>
-    <string name="starting_radio">Ð—Ð°Ð¿ÑƒÑÐº Ñ€Ð°Ð´Ñ–Ð¾</string>
-    <string name="config_proxy">ÐÐ°Ð»Ð°ÑˆÑ‚ÑƒÐ²Ð°Ñ‚Ð¸ Ð¿Ñ€Ð¾ÐºÑÑ–-ÑÐµÑ€Ð²ÐµÑ€</string>
-    <string name="proxy_username">Ð†Ð¼\'Ñ ÐºÐ¾Ñ€Ð¸ÑÑ‚ÑƒÐ²Ð°Ñ‡Ð° Ð¿Ñ€Ð¾ÐºÑÑ–-ÑÐµÑ€Ð²ÐµÑ€Ð°</string>
-    <string name="proxy_password">ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ð¿Ñ€Ð¾ÐºÑÑ–-ÑÐµÑ€Ð²ÐµÑ€Ð°</string>
-    <string name="enable_authentication">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ð°Ð²Ñ‚ÐµÐ½Ñ‚Ð¸Ñ„Ñ–ÐºÐ°Ñ†Ñ–ÑŽ</string>
-    <string name="lyrics_romanization_cyrillic">ÐšÐ¸Ñ€Ð¸Ð»Ð¸Ñ†Ð°</string>
-    <string name="lyrics_romanize_title">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ</string>
-    <string name="lyrics_romanization">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ Ñ‚ÐµÐºÑÑ‚Ñ–Ð² Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="lyrics_romanize_russian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð Ð¾ÑÑ–Ð¹ÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸</string>
-    <string name="lyrics_romanize_ukrainian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð£ÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÑƒ Ð»Ñ–Ñ€Ð¸ÐºÑƒ</string>
-    <string name="lyrics_romanize_belarusian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð‘Ñ–Ð»Ð¾Ñ€ÑƒÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="lyrics_romanize_kyrgyz">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ ÐšÐ¸Ñ€Ð³Ð¸Ð·ÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="lyrics_romanize_serbian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð¡ÐµÑ€Ð±ÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="lyrics_romanize_bulgarian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð‘Ð¾Ð»Ð³Ð°Ñ€ÑÑŒÐºÑ– Ñ‚ÐµÐºÑÑ‚Ð¸ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="line_by_line_option_title">Ð•ÐšÐ¡ÐŸÐ•Ð Ð˜ÐœÐ•ÐÐ¢ÐÐ›Ð¬ÐÐ Ð’Ð•Ð Ð¡Ð†Ð¯: Ð’Ð¸Ð·Ð½Ð°Ñ‡ÐµÐ½Ð½Ñ Ð¼Ð¾Ð²Ð¸ Ñ€ÑÐ´Ð¾Ðº Ð·Ð° Ñ€ÑÐ´ÐºÐ¾Ð¼</string>
-    <string name="line_by_line_option_desc">ÐšÐ¸Ñ€Ð¸Ð»Ð¸Ñ‡Ð½Ð° Ð¼Ð¾Ð²Ð° Ð±ÑƒÐ´Ðµ Ñ€Ð¾Ð·Ð¿Ñ–Ð·Ð½Ð°Ð²Ð°Ñ‚Ð¸ÑÑ Ñ€ÑÐ´Ð¾Ðº Ð·Ð° Ñ€ÑÐ´ÐºÐ¾Ð¼, Ð° Ð½Ðµ Ð¿Ð¾ Ð²ÑÑ–Ð¹ Ð¿Ñ–ÑÐ½Ñ–.</string>
-    <string name="line_by_line_dialog_title">Ð’Ð¸ Ð²Ð¿ÐµÐ²Ð½ÐµÐ½Ñ–?</string>
-    <string name="line_by_line_dialog_desc">Ð¦Ðµ ÐµÐºÑÐ¿ÐµÑ€Ð¸Ð¼ÐµÐ½Ñ‚Ð°Ð»ÑŒÐ½Ð° Ñ„ÑƒÐ½ÐºÑ†Ñ–Ñ, ÑÐºÐ° Ð¼Ð¾Ð¶Ðµ Ð¿Ñ€Ð°Ñ†ÑŽÐ²Ð°Ñ‚Ð¸ ÑÐº Ð· ÑƒÑÐ¿Ñ–Ñ…Ð¾Ð¼, Ñ‚Ð°Ðº Ñ– Ð· Ð½ÐµÐ²Ð´Ð°Ñ‡ÐµÑŽ. \n\nÐ—Ð° Ð·Ð°Ð¼Ð¾Ð²Ñ‡ÑƒÐ²Ð°Ð½Ð½ÑÐ¼ Ð¼Ð¾Ð²Ð° Ð²Ð¸Ð·Ð½Ð°Ñ‡Ð°Ñ”Ñ‚ÑŒÑÑ Ð½Ð° Ð¾ÑÐ½Ð¾Ð²Ñ– Ð²ÑÑ–Ñ”Ñ— Ð¿Ñ–ÑÐ½Ñ–, Ð°Ð»Ðµ ÑÐºÑ‰Ð¾ Ð²Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ñ†ÑŽ Ð¾Ð¿Ñ†Ñ–ÑŽ, Ð²Ð¾Ð½Ð° Ð±ÑƒÐ´Ðµ Ð²Ð¸Ð·Ð½Ð°Ñ‡Ð°Ñ‚Ð¸ÑÑ Ð¿Ð¾ Ñ€ÑÐ´ÐºÐ°Ñ…. Ð¦Ðµ Ð´Ð¾Ð·Ð²Ð¾Ð»Ð¸Ñ‚ÑŒ Ð¿Ñ€Ð°Ñ†ÑŽÐ²Ð°Ñ‚Ð¸ Ð· Ð±Ð°Ð³Ð°Ñ‚Ð¾Ð¼Ð¾Ð²Ð½Ð¸Ð¼Ð¸ Ð¿Ñ–ÑÐ½ÑÐ¼Ð¸, ÐÐ›Ð• Ð¼Ð¾Ð²Ð° Ð¼Ð¾Ð¶Ðµ Ð±ÑƒÑ‚Ð¸ Ð½Ðµ Ð·Ð°Ð²Ð¶Ð´Ð¸ Ð¿Ñ€Ð°Ð²Ð¸Ð»ÑŒÐ½Ð¾ÑŽ (Ð½Ð°Ð¿Ñ€Ð¸ÐºÐ»Ð°Ð´, ÑÐºÑ‰Ð¾ Ð² ÑƒÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ¾Ð¼Ñƒ Ñ‚ÐµÐºÑÑ‚Ñ– Ð½ÐµÐ¼Ð°Ñ” Ð»Ñ–Ñ‚ÐµÑ€, Ñ…Ð°Ñ€Ð°ÐºÑ‚ÐµÑ€Ð½Ð¸Ñ… Ð´Ð»Ñ ÑƒÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ¾Ñ— Ð¼Ð¾Ð²Ð¸, Ð²Ñ–Ð½ Ð¼Ð¾Ð¶Ðµ Ð±ÑƒÑ‚Ð¸ Ñ‚Ñ€Ð°Ð½ÑÐ»Ñ–Ñ‚ÐµÑ€Ð¾Ð²Ð°Ð½Ð¸Ð¹ ÑÐº Ñ€Ð¾ÑÑ–Ð¹ÑÑŒÐºÐ¸Ð¹). \n\nÐ¯ÐºÑ‰Ð¾ Ñƒ Ð²Ð°Ñ Ð½ÐµÐ¼Ð°Ñ” Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼, Ñ€ÐµÐºÐ¾Ð¼ÐµÐ½Ð´ÑƒÑ”Ñ‚ÑŒÑÑ Ð·Ð°Ð»Ð¸ÑˆÐ¸Ñ‚Ð¸ Ñ†ÑŽ Ð¾Ð¿Ñ†Ñ–ÑŽ Ð²Ð¸Ð¼ÐºÐ½ÐµÐ½Ð¾ÑŽ.</string>
-    <string name="romanize_current_track">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð¿Ð¾Ñ‚Ð¾Ñ‡Ð½Ð¸Ð¹ Ñ‚Ñ€ÐµÐº</string>
-    <string name="edit_playlist_cover">Ð ÐµÐ´Ð°Ð³ÑƒÐ²Ð°Ñ‚Ð¸ Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÑƒ ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="edit_playlist_cover_note">ÐŸÑ€Ð¸Ð¼Ñ–Ñ‚ÐºÐ°: Ð©Ð¾Ð± Ð·Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÑƒ ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ, Ð²Ð°Ñˆ Ð¾Ð±Ð»Ñ–ÐºÐ¾Ð²Ð¸Ð¹ Ð·Ð°Ð¿Ð¸Ñ Ð¼Ð°Ñ” Ð±ÑƒÑ‚Ð¸ Ð¿Ð¾Ð²â€™ÑÐ·Ð°Ð½Ð¸Ð¹ Ð· Ð½Ð¾Ð¼ÐµÑ€Ð¾Ð¼ Ñ‚ÐµÐ»ÐµÑ„Ð¾Ð½Ñƒ Ñ‚Ð° Ð¿Ñ–Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¶ÐµÐ½Ð¸Ð¹ Ñƒ YouTube Music.</string>
-    <string name="edit_playlist_cover_note_wait">ÐŸÑ–ÑÐ»Ñ Ð²Ð¸Ð±Ð¾Ñ€Ñƒ Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ Ð·Ð°Ñ‡ÐµÐºÐ°Ð¹Ñ‚Ðµ Ñ‚Ñ€Ð¾Ñ…Ð¸, Ð¿Ð¾ÐºÐ¸ Ð½Ð¾Ð²Ð° Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÐ° Ð·â€™ÑÐ²Ð¸Ñ‚ÑŒÑÑ Ñƒ Ð²Ð°ÑˆÐ¾Ð¼Ñƒ ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ.</string>
-    <string name="audio_offload">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ñ€Ð¾Ð·Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="audio_offload_description">Ð’Ð¸ÐºÐ¾Ñ€Ð¸ÑÑ‚Ð¾Ð²ÑƒÐ¹Ñ‚Ðµ ÑˆÐ»ÑÑ… Ñ€Ð¾Ð·Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ Ð°ÑƒÐ´Ñ–Ð¾ Ð´Ð»Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð°ÑƒÐ´Ñ–Ð¾. Ð’Ð¸Ð¼ÐºÐ½ÐµÐ½Ð½Ñ Ñ†Ñ–Ñ”Ñ— Ñ„ÑƒÐ½ÐºÑ†Ñ–Ñ— Ð¼Ð¾Ð¶Ðµ Ð·Ð±Ñ–Ð»ÑŒÑˆÐ¸Ñ‚Ð¸ ÑÐ¿Ð¾Ð¶Ð¸Ð²Ð°Ð½Ð½Ñ ÐµÐ½ÐµÑ€Ð³Ñ–Ñ—, Ð°Ð»Ðµ Ð¼Ð¾Ð¶Ðµ Ð±ÑƒÑ‚Ð¸ ÐºÐ¾Ñ€Ð¸ÑÐ½Ð¸Ð¼, ÑÐºÑ‰Ð¾ Ñƒ Ð²Ð°Ñ Ð²Ð¸Ð½Ð¸ÐºÐ½ÑƒÑ‚ÑŒ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ð¸ Ð· Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½ÑÐ¼ Ð°ÑƒÐ´Ñ–Ð¾ Ð°Ð±Ð¾ Ð¿Ð¾ÑÑ‚Ð¾Ð±Ñ€Ð¾Ð±ÐºÐ¾ÑŽ</string>
-    <string name="choose_from_library">Ð’Ð¸Ð±ÐµÑ€Ñ–Ñ‚ÑŒ Ð· Ð±Ñ–Ð±Ð»Ñ–Ð¾Ñ‚ÐµÐºÐ¸</string>
-    <string name="remove_custom_image">Ð’Ð¸Ð»ÑƒÑ‡Ð¸Ñ‚Ð¸ Ð²Ð»Ð°ÑÐ½Ðµ Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="uploaded_playlist">Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð¾</string>
-    <string name="filter_uploaded">Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ–</string>
-    <string name="show_uploaded_playlist">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ \"Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð¾\"</string>
-    <string name="updater">ÐžÐ½Ð¾Ð²Ð»ÐµÐ½Ð½Ñ</string>
-    <string name="check_for_updates">ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡Ð½Ð¾ Ð¿ÐµÑ€ÐµÐ²Ñ–Ñ€ÑÑ‚Ð¸ Ð½Ð°ÑÐ²Ð½Ñ–ÑÑ‚ÑŒ Ð¾Ð½Ð¾Ð²Ð»ÐµÐ½ÑŒ</string>
-    <string name="lyrics_romanize_macedonian">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð¼Ð°ÐºÐµÐ´Ð¾Ð½ÑÑŒÐºÑƒ Ð»Ñ–Ñ€Ð¸ÐºÑƒ</string>
-    <string name="update_notifications">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ ÑÐ¿Ð¾Ð²Ñ–Ñ‰ÐµÐ½Ð½Ñ Ð¿Ñ€Ð¾ Ð¾Ð½Ð¾Ð²Ð»ÐµÐ½Ð½Ñ</string>
-    <string name="update_available_title">Ð”Ð¾ÑÑ‚ÑƒÐ¿Ð½Ðµ Ð¾Ð½Ð¾Ð²Ð»ÐµÐ½Ð½Ñ</string>
-    <string name="update_channel_name">ÐžÐ½Ð¾Ð²Ð»ÐµÐ½Ð½Ñ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼</string>
-    <string name="update_channel_desc">Ð¡Ð¿Ð¾Ð²Ñ–Ñ‰ÐµÐ½Ð½Ñ Ð¿Ñ€Ð¾ Ð½Ð¾Ð²Ñ– Ð²ÐµÑ€ÑÑ–Ñ—</string>
-    <string name="discord_use_details">Ð’Ð¸ÐºÐ¾Ñ€Ð¸ÑÑ‚Ð¾Ð²ÑƒÐ¹Ñ‚Ðµ Ð´ÐµÑ‚Ð°Ð»Ñ– Ð·Ð°Ð¼Ñ–ÑÑ‚ÑŒ ÑˆÑ‚Ð°Ñ‚Ñƒ</string>
-    <string name="discord_use_details_description">ÐŸÐ¾Ð¼Ñ–Ñ‚Ð½Ð¾ Ð¿Ð¾ÐºÐ°Ð·ÑƒÐ²Ð°Ñ‚Ð¸ Ð½Ð°Ð·Ð²Ñƒ Ð¿Ñ–ÑÐ½Ñ– Ð·Ð°Ð¼Ñ–ÑÑ‚ÑŒ Ñ–Ð¼ÐµÐ½ Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²Ñ†Ñ–Ð²</string>
-    <string name="integrations">Ð†Ð½Ñ‚ÐµÐ³Ñ€Ð°Ñ†Ñ–Ñ—</string>
-    <string name="username">Ð†Ð¼\'Ñ ÐºÐ¾Ñ€Ð¸ÑÑ‚ÑƒÐ²Ð°Ñ‡Ð°</string>
-    <string name="password">ÐŸÐ°Ñ€Ð¾Ð»ÑŒ</string>
-    <string name="lastfm_integration">Ð†Ð½Ñ‚ÐµÐ³Ñ€Ð°Ñ†Ñ–Ñ Ð· Last.fm</string>
-    <string name="enable_scrobbling">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ ÑÐºÑ€Ð¾Ð±Ð±Ð»Ñ–Ð½Ð³</string>
-    <string name="lastfm_now_playing">ÐÐ°Ð´Ñ–ÑÐ»Ð°Ñ‚Ð¸ Â«Ð—Ð°Ñ€Ð°Ð· Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÑŽÑ”Ñ‚ÑŒÑÑÂ»</string>
-    <string name="scrobbling_configuration">ÐšÐ¾Ð½Ñ„Ñ–Ð³ÑƒÑ€Ð°Ñ†Ñ–Ñ ÑÐºÑ€Ð¾Ð±Ð»ÑŽÐ²Ð°Ð½Ð½Ñ</string>
-    <string name="scrobble_min_track_duration">ÐŸÑ–ÑÐ½Ñ– Scrobble Ð´Ð¾Ð²ÑˆÑ– Ð·Ð°</string>
-    <string name="scrobble_delay_percent">Ð’Ñ–Ð´ÑÐ¾Ñ‚Ð¾Ðº Ð·Ð°Ñ‚Ñ€Ð¸Ð¼ÐºÐ¸ Scrobble</string>
-    <string name="scrobble_delay_minutes">Ð—Ð°Ñ‚Ñ€Ð¸Ð¼ÐºÐ° Scrobble Ñƒ Ñ…Ð²Ð¸Ð»Ð¸Ð½Ð°Ñ…</string>
-    <string name="swipe_song_to_remove">ÐŸÑ€Ð¾Ð²ÐµÐ´Ñ–Ñ‚ÑŒ Ð¿Ð°Ð»ÑŒÑ†ÐµÐ¼ Ð¿Ð¾ Ð¿Ñ–ÑÐ½Ñ–, Ñ‰Ð¾Ð± Ð²Ð¸Ð»ÑƒÑ‡Ð¸Ñ‚Ð¸ Ñ—Ñ— Ð·Ñ– ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="last_fm_send_likes">ÐÐ°Ð´Ñ–ÑÐ»Ð°Ñ‚Ð¸ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ð½Ñ/Ð½Ðµ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ð½Ñ</string>
-    <string name="last_fm_send_likes_description">ÐŸÑ–ÑÐ½Ñ–, ÑÐºÑ– Ð¿Ð¾Ð´Ð¾Ð±Ð°Ñ”Ñ‚ÑŒÑÑ/Ð½Ðµ Ð¿Ð¾Ð´Ð¾Ð±Ð°Ñ”Ñ‚ÑŒÑÑ, Ð½Ð° Last.fm, ÐºÐ¾Ð»Ð¸ Ð²Ð¾Ð½Ð¸ Ð²Ð¿Ð¾Ð´Ð¾Ð±Ð°Ð½Ñ–/Ð·Ð½ÑÑ‚Ñ– Ð· Iride</string>
-    <string name="lyrics_romanize_chinese">Ð Ð¾Ð¼Ð°Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ ÐºÐ¸Ñ‚Ð°Ð¹ÑÑŒÐºÐ¸Ñ… Ñ‚ÐµÐºÑÑ‚Ñ–Ð²</string>
+
+    <string name="clear_song_cache_dialog">Ви впевнені, що хочете очистити всі кешовані пісні?</string>
+    <string name="clear_image_cache_dialog">Ви дійсно хочете очистити всі кешовані зображення?</string>
+    <string name="clear_downloads_dialog">Ви впевнені, що хочете очистити всі завантаження?</string>
+
+    <string name="disable">Вимкнути</string>
+
+    <string name="not_logged_in_youtube">Ви не ввійшли в YouTube</string>
+
+    <string name="default_links">Відкрити підтримувані посилання</string>
+    <string name="open_app_settings_error">Не вдалося відкрити налаштування застосунку</string>
+    <string name="changelog_empty">No changelogs available</string>
+    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
+    <string name="list_bullet">•</string>
+    <string name="view_on_github">View on GitHub</string>
+    <string name="current_version">Current version</string>
+    <string name="version_format">Version: %s</string>
+    <string name="update_settings">Update settings</string>
+    <string name="check_for_updates_title">Check for updates</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="latest_version_format">Latest: %s</string>
+    <string name="check_for_updates_button">Check for updates</string>
+    <string name="hide_changelog">Hide changelog</string>
+    <string name="view_changelog">View changelog</string>
+    <string name="failed_to_check_updates">Failed to check for updates: %s</string>
+    <string name="update_dialog_title_new_version">New version available</string>
+    <string name="update_dialog_version_available">Iride %s is available.</string>
+    <string name="update_dialog_experimental_build">This build may be experimental.</string>
+    <string name="update_dialog_no_compatible_package">No compatible package found for this build.</string>
+    <string name="update_dialog_back">Back</string>
+    <string name="update_action_download">Download</string>
+    <string name="update_action_install">Install</string>
+    <string name="update_action_retry">Retry</string>
+    <string name="update_state_downloading_percent">Downloading… %d%%</string>
+    <string name="update_state_ready_to_install">Update downloaded — tap to install</string>
+    <string name="update_permission_explanation">To install the update, allow Iride to install apps on the next screen.</string>
+    <string name="update_action_allow">Allow</string>
+    <string name="update_download_started">Update download started</string>
+    <string name="update_download_failed">Could not download the update</string>
+    <string name="update_download_error_no_space">Not enough free space</string>
+    <string name="update_download_error_connection">Connection error</string>
+    <string name="update_download_notification_description">Downloading the new version…</string>
+
+    <string name="all_time">Весь час</string>
+    <string name="past_24_hours">Минулі 24 години</string>
+    <string name="past_week">Минулий тиждень</string>
+    <string name="past_month">Минулий місяць</string>
+    <string name="past_year">Минулий рік</string>
+    <string name="top_length">Довжина мого топ-списку</string>
+    <string name="history_duration">Довжина історії</string>
+    <string name="information">Інформація</string>
+    <string name="description">Опис</string>
+    <string name="album">Album</string>
+    <string name="duration">Duration</string>
+    <string name="views">Перегляди</string>
+    <string name="likes">Вподобання</string>
+    <string name="dislikes">Невподобання</string>
+    <string name="subscribe">Підписатися</string>
+    <string name="subscribed">Підписані</string>
+        <plurals name="seconds">
+        <item quantity="one">%d секунда</item>
+        <item quantity="few">%d секунди</item>
+        <item quantity="many">%d cекунд</item>
+        <item quantity="other">%d cекунд</item>
+    </plurals>
+
+    <!-- Sleep timer -->
+    <string name="set_as_default">Set as default</string>
+    <string name="sleep_timer_default_set">Sleep timer default set to %d minutes</string>
+    <string name="enable_automatic_sleeptimer">Enable automatic sleep timer</string>
+    <string name="sleeptimer_description">Automatically starts the sleep timer at a set time using the default duration</string>
+    <string name="sleep_timer_repeat_description">Set a recurring day and time for the sleep timer to activate automatically</string>
+    <string name="sleep_timer_repeat">Repeat</string>
+    <string name="sleep_timer_daily">Daily</string>
+    <string name="sleep_timer_weekdays">Monday to Friday</string>
+    <string name="sleep_timer_weekdays_weekends">Weekdays / Weekends</string>
+    <string name="sleep_timer_weekends">Saturday to Sunday</string>
+    <string name="sleep_timer_custom">Custom</string>
+    <string name="sleep_timer_start_time">Start time</string>
+    <string name="sleep_timer_end_time">End time</string>
+    <string name="sleep_timer_monday">Monday</string>
+    <string name="sleep_timer_tuesday">Tuesday</string>
+    <string name="sleep_timer_wednesday">Wednesday</string>
+    <string name="sleep_timer_thursday">Thursday</string>
+    <string name="sleep_timer_friday">Friday</string>
+    <string name="sleep_timer_saturday">Saturday</string>
+    <string name="sleep_timer_sunday">Sunday</string>
+    <string name="sleep_timer_stop_after_current_song_title">Stop at the end of current song</string>
+    <string name="sleep_timer_stop_after_current_song_description">Waits for the currently playing song to finish before stopping</string>
+    <string name="sleep_timer_fade_out_title">Fade out</string>
+    <string name="sleep_timer_fade_out_description">Gradually fades out the volume in the final minute</string>
+
+    <!-- Alarm -->
+    <string name="alarm">Alarm</string>
+    <string name="alarm_enabled">Enable alarm</string>
+    <string name="alarm_time">Alarm time</string>
+    <string name="alarm_playlist">Playlist</string>
+    <string name="alarm_select_playlist">Select playlist</string>
+    <string name="alarm_no_playlists">No playlists found</string>
+    <plurals name="alarm_playlist_song_count">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <string name="alarm_selected">Selected</string>
+    <string name="alarm_playlist_helper">Choose which playlist the alarm will play</string>
+    <string name="alarm_add">Add alarm</string>
+    <string name="alarm_empty">No alarms yet. Add one to start scheduled playback</string>
+    <string name="alarm_disabled">Disabled</string>
+    <string name="alarm_random_enabled">Random</string>
+    <string name="alarm_random_disabled">In order</string>
+    <string name="alarm_next_prefix">Next: %s</string>
+    <string name="alarm_new">New alarm</string>
+    <string name="alarm_edit">Edit alarm</string>
+    <string name="alarm_save">Save</string>
+    <string name="alarm_time_picker_value">Time: %s</string>
+    <string name="alarm_delete">Delete alarm</string>
+    <string name="alarm_duplicate_time_warning">Another alarm already exists at this time. If both trigger simultaneously, only one may play</string>
+    <string name="alarm_random_song">Play a random song from the playlist</string>
+    <string name="alarm_next_trigger">Next trigger</string>
+    <string name="alarm_not_scheduled">Not scheduled</string>
+    <string name="alarm_exact_permission_title">Allow exact alarms</string>
+    <string name="alarm_exact_permission_desc">Grants permission for precise alarm timing, improving reliability when the app is in the background</string>
+    <string name="alarm_exact_permission_missing">Exact alarm permission missing: alarm may fire late</string>
+    <string name="alarm_battery_optimization_title">Battery optimization</string>
+    <string name="alarm_battery_optimization_desc">Disable battery optimization for more reliable alarm behavior in the background</string>
+    <string name="open_settings">Settings</string>
+    <string name="lastfm_api_not_configured">LastFM is not configured in this build</string>
+
+    <!-- Player Settings -->
+    <string name="disable_load_more_when_repeat_all">Вимкнути завантаження додаткових параметрів під час повторення всіх</string>
+    <string name="disable_load_more_when_repeat_all_desc">Не завантажувати автоматично більше пісень та подібного контенту, коли ввімкнено режим повторення всіх</string>
+    <string name="pause_music_when_media_is_muted">Призупиняти музику, коли медіа вимкнено</string>
+    <string name="resume_on_bluetooth_connect">Resume on Bluetooth connection</string>
+    <string name="keep_screen_on_when_player_is_expanded">Залишати екран увімкненим, коли програвач розгорнуто</string>
+
+    <string name="crossfade">Crossfade</string>
+    <string name="crossfade_desc">Fades out the current song as the next one fades in</string>
+    <string name="crossfade_duration">Crossfade duration</string>
+    <string name="crossfade_gapless">Disable for gapless albums</string>
+    <string name="crossfade_gapless_desc">Skip crossfade for albums designed to play without gaps</string>
+    <string name="crossfade_beta_title">Beta feature!</string>
+    <string name="crossfade_beta_message">Crossfade is a new feature and may have bugs. If you experience any issues, please report them.\n\nNOTE: This feature disables audio offload due to technical limitations</string>
+    <string name="skip_fade">Fade on skip</string>
+    <string name="skip_fade_desc">Next song starts immediately; previous song fades out briefly in background</string>
+    <string name="skip_fade_duration">Skip fade duration</string>
+
+    <!-- Romanization Settings -->
+    <string name="lyrics_romanization_cyrillic">Кирилица</string>
+    <string name="lyrics_romanize_title">Романізація</string>
+    <string name="lyrics_romanization">Романізація текстів пісень</string>
+    <string name="lyrics_romanize_japanese">Романізувати Японські тексти</string>
+    <string name="lyrics_romanize_korean">Романізувати Корейські тексти</string>
+    <string name="lyrics_romanize_chinese">Романізація китайських текстів</string>
+    <string name="lyrics_romanize_hindi">Romanize Hindi lyrics</string>
+    <string name="lyrics_romanize_punjabi">Romanize Punjabi lyrics</string>
+    <string name="lyrics_romanize_russian">Романізувати Російські тексти</string>
+    <string name="lyrics_romanize_ukrainian">Романізувати Українську лірику</string>
+    <string name="lyrics_romanize_belarusian">Романізувати Білоруські тексти пісень</string>
+    <string name="lyrics_romanize_kyrgyz">Романізувати Киргизькі тексти пісень</string>
+    <string name="lyrics_romanize_serbian">Романізувати Сербські тексти пісень</string>
+    <string name="lyrics_romanize_bulgarian">Романізувати Болгарські тексти пісень</string>
+    <string name="line_by_line_option_title">ЕКСПЕРИМЕНТАЛЬНА ВЕРСІЯ: Визначення мови рядок за рядком</string>
+    <string name="line_by_line_option_desc">Кирилична мова буде розпізнаватися рядок за рядком, а не по всій пісні.</string>
+    <string name="line_by_line_dialog_title">Ви впевнені?</string>
+    <string name="line_by_line_dialog_desc">Це експериментальна функція, яка може працювати як з успіхом, так і з невдачею. \n\nЗа замовчуванням мова визначається на основі всієї пісні, але якщо ввімкнути цю опцію, вона буде визначатися по рядках. Це дозволить працювати з багатомовними піснями, АЛЕ мова може бути не завжди правильною (наприклад, якщо в українському тексті немає літер, характерних для української мови, він може бути транслітерований як російський). \n\nЯкщо у вас немає проблем, рекомендується залишити цю опцію вимкненою.</string>
+    <string name="romanize_current_track">Романізувати поточний трек</string>
+
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">Download Japanese dictionary?</string>
+    <string name="lyrics_romanize_japanese_dict_message">Romanizing Japanese lyrics requires a Japanese dictionary (~13 MB), downloaded once over your internet connection.</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">Downloading Japanese dictionary… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">Download failed. Check your connection and try again.</string>
+    <string name="lyrics_romanize_japanese_dict_download">Download</string>
+
+    <!-- Lyrics Offset Settings -->
+    <string name="lyrics_offset">Текст пісні Offset</string>
+
+    <!-- Material 3 Settings Sections -->
+    <string name="settings_section_ui">Інтерфейс</string>
+    <string name="settings_section_privacy">Конфіденційність та безпека</string>
+    <string name="settings_section_player_content">Плеєр і контент</string>
+    <string name="settings_section_storage">Зберігання та дані</string>
+    <string name="app_data_storage">App Data &amp; Storage</string>
+    <string name="app_management_backup">Data &amp; Storage</string>
+    <string name="settings_section_system">Система та про нас</string>
+    <string name="settings_section_player">Playback</string>
+    <string name="settings_section_content">Content</string>
+    <string name="settings_section_ai">Artificial Intelligence</string>
+    <string name="settings_section_integrations">Integrations</string>
+    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_behavior">Behavior</string>
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_display">Display</string>
+    <string name="settings_section_lab">Lab</string>
+    <string name="settings_section_system_short">System</string>
+
+    <!-- Updater -->
+    <string name="updater">Оновлення</string>
+    <string name="check_for_updates">Автоматично перевіряти наявність оновлень</string>
+    <string name="update_notifications">Увімкнути сповіщення про оновлення</string>
+    <string name="update_available_title">Доступне оновлення</string>
+    <string name="update_channel_name">Оновлення програм</string>
+    <string name="update_channel_desc">Сповіщення про нові версії</string>
+
+    <!-- Offload -->
+    <string name="audio_offload">Увімкнути розвантаження</string>
+    <string name="audio_offload_description">Використовуйте шлях розвантаження аудіо для відтворення аудіо. Вимкнення цієї функції може збільшити споживання енергії, але може бути корисним, якщо у вас виникнуть проблеми з відтворенням аудіо або постобробкою</string>
+    <string name="audio_offload_disabled_by_crossfade">Disabled because crossfade is active</string>
+
+    <!-- Varispeed -->
+    <string name="speed">Playback Speed</string>
+    <string name="varispeed">Enable varispeed</string>
+    <string name="varispeed_description">Link pitch to playback speed, resulting in tape-style speedup and slowdown effects</string>
+
+    <!-- Google Cast -->
     <string name="google_cast">Google Cast</string>
-    <string name="google_cast_description">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ñ‚Ñ€Ð°Ð½ÑÐ»ÑÑ†Ñ–ÑŽ Ð°ÑƒÐ´Ñ–Ð¾ Ð½Ð° Chromecast Ñ‚Ð° Ñ–Ð½ÑˆÑ– Ð¿Ñ€Ð¸ÑÑ‚Ñ€Ð¾Ñ— Ð· Ð¿Ñ–Ð´Ñ‚Ñ€Ð¸Ð¼ÐºÐ¾ÑŽ Cast</string>
-    <string name="hide_video_songs">ÐŸÑ€Ð¸Ñ…Ð¾Ð²Ð°Ñ‚Ð¸ Ð²Ñ–Ð´ÐµÐ¾Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="primary_color_style">ÐžÑÐ½Ð¾Ð²Ð½Ð¸Ð¹ ÐºÐ¾Ð»Ñ–Ñ€</string>
-    <string name="auto_scroll">ÐŸÐ¾Ð²Ñ‚Ð¾Ñ€Ð½Ð° ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð°Ñ†Ñ–Ñ</string>
-    <string name="details_desc">ÐŸÐµÑ€ÐµÐ³Ð»ÑÐ½ÑƒÑ‚Ð¸ Ñ–Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ñ–ÑŽ Ð¿Ñ€Ð¾ Ð¿Ñ–ÑÐ½ÑŽ</string>
-    <string name="edit_desc">Ð—Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ð½Ð°Ð·Ð²Ñƒ Ð°Ð±Ð¾ Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²Ñ†Ñ</string>
-    <string name="start_radio_desc">Ð¡Ñ‚Ð²Ð¾Ñ€Ð¸Ñ‚Ð¸ ÑÑ‚Ð°Ð½Ñ†Ñ–ÑŽ Ð½Ð° Ð¾ÑÐ½Ð¾Ð²Ñ– Ñ†ÑŒÐ¾Ð³Ð¾ ÐµÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð°</string>
-    <string name="play_next_desc">Ð”Ð¾Ð´Ð°Ñ‚Ð¸ Ð½Ð° Ð¿Ð¾Ñ‡Ð°Ñ‚Ð¾Ðº Ñ‡ÐµÑ€Ð³Ð¸</string>
-    <string name="add_to_queue_desc">Ð”Ð¾Ð´Ð°Ñ‚Ð¸ Ð² ÐºÑ–Ð½ÐµÑ†ÑŒ Ñ‡ÐµÑ€Ð³Ð¸</string>
-    <string name="add_to_library_desc">Ð—Ð±ÐµÑ€ÐµÐ³Ñ‚Ð¸ Ñƒ ÑÐ²Ð¾Ñ—Ð¹ Ð±Ñ–Ð±Ð»Ñ–Ð¾Ñ‚ÐµÑ†Ñ–</string>
-    <string name="download_desc">Ð—Ñ€Ð¾Ð±Ð¸Ñ‚Ð¸ Ð´Ð¾ÑÑ‚ÑƒÐ¿Ð½Ð¸Ð¼ Ð´Ð»Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð¾Ñ„Ð»Ð°Ð¹Ð½</string>
-    <string name="add_to_playlist_desc">Ð”Ð¾Ð´Ð°Ñ‚Ð¸ Ð´Ð¾ Ð¾Ð´Ð½Ð¾Ð³Ð¾ Ð·Ñ– ÑÐ²Ð¾Ñ—Ñ… Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚Ñ–Ð²</string>
-    <string name="refetch_desc">ÐžÑ‚Ñ€Ð¸Ð¼Ð°Ñ‚Ð¸ Ð½Ð°Ð¹Ð½Ð¾Ð²Ñ–ÑˆÑ– Ð¼ÐµÑ‚Ð°Ð´Ð°Ð½Ñ– Ð· YouTube Music</string>
-    <string name="share_desc">ÐŸÐ¾Ð´Ñ–Ð»Ð¸Ñ‚Ð¸ÑÑ Ð¿Ð¾ÑÐ¸Ð»Ð°Ð½Ð½ÑÐ¼ Ð½Ð° Ñ†ÐµÐ¹ ÐµÐ»ÐµÐ¼ÐµÐ½Ñ‚</string>
-    <string name="delete_desc">Ð’Ð¸Ð»ÑƒÑ‡Ð¸Ñ‚Ð¸ Ñ†ÐµÐ¹ ÐµÐ»ÐµÐ¼ÐµÐ½Ñ‚ Ð½Ð°Ð·Ð°Ð²Ð¶Ð´Ð¸</string>
-    <string name="advanced_desc">Ð—Ð¼Ñ–Ð½Ð¸Ñ‚Ð¸ Ñ‚ÐµÐ¼Ð¿ Ñ– Ð²Ð¸ÑÐ¾Ñ‚Ñƒ Ñ‚Ð¾Ð½Ñƒ Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="equalizer_desc">ÐÐ°Ð»Ð°ÑˆÑ‚ÑƒÐ²Ð°Ð½Ð½Ñ Ð°ÑƒÐ´Ñ–Ð¾ÐµÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€Ð°</string>
-    <string name="enable_dynamic_icon">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ Ð´Ð¸Ð½Ð°Ð¼Ñ–Ñ‡Ð½Ð¸Ð¹ Ð·Ð½Ð°Ñ‡Ð¾Ðº</string>
-    <string name="mini_player">ÐœÑ–Ð½Ñ–-Ð¿Ð»ÐµÑ”Ñ€</string>
-    <string name="pure_black_mini_player">Ð§Ð¸ÑÑ‚Ð¾ Ñ‡Ð¾Ñ€Ð½Ð¸Ð¹ Ð¼Ñ–Ð½Ñ–-Ð¿Ð»ÐµÑ”Ñ€</string>
-    <string name="cache_size_warning_title">Ð¢Ñ€Ð¸Ð¼Ð°Ð¹ÑÑ!</string>
-    <string name="cache_size_warning_message">Ð’Ð¸ Ð²Ð¸Ð±Ñ€Ð°Ð»Ð¸ Ð¾Ð±Ð¼ÐµÐ¶ÐµÐ½Ð½Ñ Ñ€Ð¾Ð·Ð¼Ñ–Ñ€Ñƒ ÐºÐµÑˆÑƒ, Ð¼ÐµÐ½ÑˆÐµ Ð·Ð° Ñ‚Ðµ, Ñ‰Ð¾ Ð·Ð°Ñ€Ð°Ð· Ð²Ð¸ÐºÐ¾Ñ€Ð¸ÑÑ‚Ð¾Ð²ÑƒÑ” Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð° (%1$s). Ð¯ÐºÑ‰Ð¾ Ð²Ð¸ Ð¿Ñ€Ð¾Ð´Ð¾Ð²Ð¶Ð¸Ñ‚Ðµ, Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð° Ð¼Ð¾Ð¶Ðµ Ð²Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ Ð´ÐµÑÐºÑ– ÐºÐµÑˆÐ¾Ð²Ð°Ð½Ñ– %2$s, Ñ‰Ð¾Ð± Ð²Ð¾Ð½Ð¸ Ð²Ñ–Ð´Ð¿Ð¾Ð²Ñ–Ð´Ð°Ð»Ð¸ Ð½Ð¾Ð²Ð¾Ð¼Ñƒ Ð»Ñ–Ð¼Ñ–Ñ‚Ñƒ. ÐŸÑ€Ð¾Ð´Ð¾Ð²Ð¶Ð¸Ñ‚Ð¸ Ð²ÑÐµ Ð¾Ð´Ð½Ð¾?</string>
-    <string name="cache_size_warning_confirm">ÐŸÑ€Ð¾Ð´Ð¾Ð²Ð¶Ð¸Ñ‚Ð¸</string>
-    <string name="tertiary_color_style">Ð¢Ñ€ÐµÑ‚Ð¸Ð½Ð½Ð¸Ð¹ ÐºÐ¾Ð»Ñ–Ñ€</string>
-    <string name="logging_in">Ð’Ñ…Ñ–Ð´ Ð´Ð¾â€¦</string>
-    <string name="download_playlist_desc">Ð—Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶Ñ‚Ðµ Ð²ÑÑ– Ð¿Ñ–ÑÐ½Ñ– Ð´Ð»Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð¾Ñ„Ð»Ð°Ð¹Ð½</string>
-    <string name="remove_download_playlist_desc">Ð’Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ Ð²ÑÑ– Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ñ– Ð¿Ñ–ÑÐ½Ñ– Ð· Ñ†ÑŒÐ¾Ð³Ð¾ ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="download_in_progress_desc">Ð¢Ñ€Ð¸Ð²Ð°Ñ” Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="share_playlist_desc">ÐŸÐ¾Ð´Ñ–Ð»Ñ–Ñ‚ÑŒÑÑ Ñ†Ð¸Ð¼ Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚Ð¾Ð¼ Ð· Ñ–Ð½ÑˆÐ¸Ð¼Ð¸</string>
-    <string name="delete_playlist_desc">Ð’Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ Ñ†ÐµÐ¹ Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚ Ð½Ð°Ð·Ð°Ð²Ð¶Ð´Ð¸</string>
-    <string name="sync_playlist_desc">Ð¡Ð¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·ÑƒÐ¹Ñ‚Ðµ Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚ Ð· YouTube Music</string>
-    <string name="enable_better_lyrics">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ ÐºÑ€Ð°Ñ‰Ñ– Ñ‚ÐµÐºÑÑ‚Ð¸ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="enable_better_lyrics_desc">Ð’Ð¸ÐºÐ¾Ñ€Ð¸ÑÑ‚Ð¾Ð²ÑƒÐ¹Ñ‚Ðµ Ð¿Ð¾ÑÑ‚Ð°Ñ‡Ð°Ð»ÑŒÐ½Ð¸ÐºÐ° Better Lyrics Ð´Ð»Ñ ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ñ–Ð·Ð¾Ð²Ð°Ð½Ð¸Ñ… Ñ‚ÐµÐºÑÑ‚Ñ–Ð² Ð¿Ñ–ÑÐµÐ½ÑŒ ÑÐ»Ð¾Ð²Ð¾ Ð·Ð° ÑÐ»Ð¾Ð²Ð¾Ð¼</string>
-    <string name="lyrics_animation_style">Ð¡Ñ‚Ð¸Ð»ÑŒ Ð°Ð½Ñ–Ð¼Ð°Ñ†Ñ–Ñ— ÑÐ»Ð¾Ð²Ð¾ Ð·Ð° ÑÐ»Ð¾Ð²Ð¾Ð¼</string>
-    <string name="none">Ð–Ð¾Ð´ÐµÐ½</string>
-    <string name="fade">Ð—Ð³Ð°ÑÐ°Ð½Ð½Ñ</string>
-    <string name="glow">Ð¡ÑÐ¹Ð²Ð¾</string>
-    <string name="slide">Ð¡Ð»Ð°Ð¹Ð´</string>
-    <string name="karaoke">ÐšÐ°Ñ€Ð°Ð¾ÐºÐµ</string>
+    <string name="google_cast_description">Увімкнути трансляцію аудіо на Chromecast та інші пристрої з підтримкою Cast</string>
+
+    <string name="lyrics_romanize_macedonian">Романізувати македонську лірику</string>
+    <string name="lyrics_romanize_as_main">Show romanized lyrics as main</string>
+
+    <string name="integrations">Інтеграції</string>
+    <string name="username">Ім\'я користувача</string>
+    <string name="password">Пароль</string>
+
+    <!-- Last.fm -->
+    <string name="lastfm_integration">Інтеграція з Last.fm</string>
+    <string name="enable_scrobbling">Увімкнути скробблінг</string>
+    <string name="lastfm_now_playing">Надіслати «Зараз відтворюється»</string>
+    <string name="last_fm_send_likes">Надіслати вподобання/не вподобання</string>
+    <string name="last_fm_send_likes_description">Пісні, які подобається/не подобається, на Last.fm, коли вони вподобані/зняті з Iride</string>
+    <string name="logging_in">Вхід до…</string>
+
+    <string name="scrobbling_configuration">Конфігурація скроблювання</string>
+    <string name="scrobble_min_track_duration">Пісні Scrobble довші за</string>
+    <string name="scrobble_delay_percent">Відсоток затримки Scrobble</string>
+    <string name="scrobble_delay_minutes">Затримка Scrobble у хвилинах</string>
+    <string name="hide_video_songs">Приховати відеопісні</string>
+    <string name="square_video_thumbnail">Square video thumbnails</string>
+    <string name="square_video_thumbnail_desc">Crop video thumbnails to square aspect ratio</string>
+    <string name="hide_youtube_shorts">Hide YouTube Shorts</string>
+
+    <string name="details_desc">Переглянути інформацію про пісню</string>
+    <string name="edit_desc">Змінити назву або виконавця</string>
+    <string name="start_radio_desc">Створити станцію на основі цього елемента</string>
+    <string name="play_next_desc">Додати на початок черги</string>
+    <string name="add_to_queue_desc">Додати в кінець черги</string>
+    <string name="add_to_library_desc">Зберегти у своїй бібліотеці</string>
+    <string name="download_desc">Зробити доступним для відтворення офлайн</string>
+    <string name="add_to_playlist_desc">Додати до одного зі своїх плейлистів</string>
+    <string name="refetch_desc">Отримати найновіші метадані з YouTube Music</string>
+    <string name="share_desc">Поділитися посиланням на цей елемент</string>
+    <string name="delete_desc">Вилучити цей елемент назавжди</string>
+    <string name="lyrics_edit_desc">Manually edit the lyrics text</string>
+    <string name="lyrics_refetch_desc">Fetch fresh lyrics from providers</string>
+    <string name="lyrics_search_desc">Search for lyrics by title and artist</string>
+    <string name="lyrics_copy_desc">Copy all lyrics to clipboard</string>
+    <string name="advanced_desc">Змінити темп і висоту тону пісні</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="repeat_one_desc">Restart this song forever, never play another</string>
+    <string name="night_mode">Night mode</string>
+    <string name="equalizer_desc">Налаштування аудіоеквалайзера</string>
+    <string name="enable_dynamic_icon">Увімкнути динамічний значок</string>
+    <string name="mini_player">Міні-плеєр</string>
+    <string name="pure_black_mini_player">Чисто чорний міні-плеєр</string>
+    <string name="mini_player_background_style">Mini-player background style</string>
+    <string name="transparent">Transparent</string>
+    <string name="mini_player_background_not_available">Unavailable when the new mini-player design is disabled</string>
+    <string name="cache_size_warning_title">Тримайся!</string>
+    <string name="cache_size_warning_message">Ви вибрали обмеження розміру кешу, менше за те, що зараз використовує програма (%1$s). Якщо ви продовжите, програма може видалити деякі кешовані %2$s, щоб вони відповідали новому ліміту. Продовжити все одно?</string>
+    <string name="cache_size_warning_confirm">Продовжити</string>
+
+    <string name="lyrics_animation_style_title">Word-by-word animation style</string>
+    <string name="none">Жоден</string>
+    <string name="fade">Згасання</string>
+    <string name="glow">Сяйво</string>
+    <string name="slide">Слайд</string>
+    <string name="karaoke">Караоке</string>
     <string name="apple_music_style">Apple Music</string>
-    <string name="lyrics_text_size">Ð Ð¾Ð·Ð¼Ñ–Ñ€ Ñ‚ÐµÐºÑÑ‚Ñƒ Ð¿Ñ–ÑÐ½Ñ–</string>
-    <string name="lyrics_line_spacing">ÐœÑ–Ð¶Ñ€ÑÐ´ÐºÐ¾Ð²Ð¸Ð¹ Ñ–Ð½Ñ‚ÐµÑ€Ð²Ð°Ð» Ñ‚ÐµÐºÑÑ‚Ñƒ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="shuffle_playlist_first">Ð¡Ð¿Ð¾Ñ‡Ð°Ñ‚ÐºÑƒ Ð¿ÐµÑ€ÐµÐ¼Ñ–ÑˆÐ°Ñ‚Ð¸ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ/Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ</string>
-    <string name="shuffle_playlist_first_desc">ÐŸÑ–Ð´ Ñ‡Ð°Ñ Ð¿ÐµÑ€ÐµÐ¼Ñ–ÑˆÑƒÐ²Ð°Ð½Ð½Ñ ÑÐ¿Ð¾Ñ‡Ð°Ñ‚ÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÑŽÐ²Ð°Ñ‚Ð¸ Ð²ÑÑ– Ð¿Ñ–ÑÐ½Ñ– Ð· Ð¾Ñ€Ð¸Ð³Ñ–Ð½Ð°Ð»ÑŒÐ½Ð¾Ð³Ð¾ ÑÐ¿Ð¸ÑÐºÑƒ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ/Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ, Ð° Ð¿Ð¾Ñ‚Ñ–Ð¼ ÑÑ…Ð¾Ð¶Ð¸Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚</string>
-    <string name="lyrics_glow_effect">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸ ÐµÑ„ÐµÐºÑ‚ ÑÑÐ¹Ð²Ð° Ñ‚ÐµÐºÑÑ‚Ñƒ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="lyrics_glow_effect_desc">Ð”Ð¾Ð´Ð°Ð¹Ñ‚Ðµ Ð°Ð½Ñ–Ð¼Ð°Ñ†Ñ–ÑŽ ÑÑÐ¹Ð²Ð° Ñ‚Ð° ÐµÑ„ÐµÐºÑ‚ Ð²Ñ–Ð´ÑÐºÐ¾ÐºÑƒ Ð´Ð¾ Ð°ÐºÑ‚Ð¸Ð²Ð½Ð¸Ñ… Ñ‚ÐµÐºÑÑ‚Ñ–Ð² Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="show_wrapped_card">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ Ð¾Ð±Ð³Ð¾Ñ€Ð½ÑƒÑ‚Ñƒ ÐºÐ°Ñ€Ñ‚ÐºÑƒ</string>
-    <string name="album_art_for">ÐžÐ±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÐ° Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ Ð´Ð»Ñ %s</string>
-    <string name="wrapped_total_albums_title">Ð’Ð¸ ÑÐ»ÑƒÑ…Ð°Ð»Ð¸</string>
-    <string name="wrapped_total_albums_subtitle">ÑƒÐ½Ñ–ÐºÐ°Ð»ÑŒÐ½Ñ– Ð°Ð»ÑŒÐ±Ð¾Ð¼Ð¸</string>
-    <string name="wrapped_top_album_title">Ð’Ð°Ñˆ Ð½Ð°Ð¹ÐºÑ€Ð°Ñ‰Ð¸Ð¹ Ð°Ð»ÑŒÐ±Ð¾Ð¼ â€“</string>
-    <string name="wrapped_playlist_ready">Ð’Ð°Ñˆ Ð¾ÑÐ¾Ð±Ð¸ÑÑ‚Ð¸Ð¹ Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚ Ð³Ð¾Ñ‚Ð¾Ð²Ð¸Ð¹</string>
-    <string name="wrapped_top_5_albums_title">Ð’Ð°ÑˆÑ– 5 Ð½Ð°Ð¹ÐºÑ€Ð°Ñ‰Ð¸Ñ… Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñ–Ð²</string>
-    <string name="wrapped_album_listening_time">Ð’Ð¸ ÑÐ»ÑƒÑ…Ð°Ð»Ð¸ Ñ†ÐµÐ¹ Ð°Ð»ÑŒÐ±Ð¾Ð¼ Ð¿Ñ€Ð¾Ñ‚ÑÐ³Ð¾Ð¼ %d Ñ…Ð²Ð¸Ð»Ð¸Ð½</string>
-    <string name="wrapped_album_listening_time_minutes">%d Ñ…Ð²Ð¸Ð»Ð¸Ð½</string>
-    <string name="wrapped_no_data">ÐÐµÐ¼Ð°Ñ” Ð´Ð°Ð½Ð¸Ñ…</string>
-    <string name="wrapped_top_5_artists_title">Ð’Ð°ÑˆÑ– Ð½Ð°Ð¹ÐºÑ€Ð°Ñ‰Ñ– Ð°Ñ€Ñ‚Ð¸ÑÑ‚Ð¸ Ñ€Ð¾ÐºÑƒ</string>
-    <string name="wrapped_artist_listening_time">%d Ñ…Ð²Ð¸Ð»Ð¸Ð½</string>
-    <string name="wrapped_top_5_songs_title">Ð’Ð°ÑˆÑ– Ð½Ð°Ð¹ÐºÑ€Ð°Ñ‰Ñ– Ð¿Ñ–ÑÐ½Ñ– Ñ€Ð¾ÐºÑƒ</string>
-    <string name="wrapped_top_song_album_art_content_description">ÐžÐ±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÐ° Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ</string>
-    <string name="wrapped_top_artist_title">Ð’Ð°Ñˆ Ð½Ð°Ð¹ÐºÑ€Ð°Ñ‰Ð¸Ð¹ Ð°Ñ€Ñ‚Ð¸ÑÑ‚ Ñ€Ð¾ÐºÑƒ â€“</string>
-    <string name="wrapped_top_artist_image_content_description">ÐÐ°Ð¹ÐºÑ€Ð°Ñ‰Ðµ Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²Ñ†Ñ</string>
-    <string name="wrapped_top_artist_listening_time">Ð’Ð¸ ÑÐ»ÑƒÑ…Ð°Ð»Ð¸ Ñ—Ñ… Ð¿Ñ€Ð¾Ñ‚ÑÐ³Ð¾Ð¼ %d Ñ…Ð²Ð¸Ð»Ð¸Ð½</string>
-    <string name="wrapped_top_song_title">Ð’Ð°ÑˆÐ° Ð½Ð°Ð¹Ð¿Ð¾Ð¿ÑƒÐ»ÑÑ€Ð½Ñ–ÑˆÐ° Ð¿Ñ–ÑÐ½Ñ â€”</string>
-    <string name="wrapped_top_song_listening_time">Ð’Ð¸ ÑÐ»ÑƒÑ…Ð°Ð»Ð¸ %d Ñ…Ð²Ð¸Ð»Ð¸Ð½</string>
-    <string name="wrapped_total_artists_title">Ð¢Ð¸ ÑÐ»ÑƒÑ…Ð°Ð²/ÑÐ»ÑƒÑ…Ð°Ð»Ð°</string>
-    <string name="wrapped_total_artists_subtitle">ÑƒÐ½Ñ–ÐºÐ°Ð»ÑŒÐ½Ñ– Ð¼Ð¸Ñ‚Ñ†Ñ–</string>
-    <string name="wrapped_total_songs_title">Ð¢Ð¸ ÑÐ»ÑƒÑ…Ð°Ð²/ÑÐ»ÑƒÑ…Ð°Ð»Ð°</string>
-    <string name="wrapped_total_songs_subtitle">ÑƒÐ½Ñ–ÐºÐ°Ð»ÑŒÐ½Ñ– Ð¿Ñ–ÑÐ½Ñ–</string>
+    <string name="album_art_for">Обкладинка альбому для %s</string>
+    <string name="wrapped_total_albums_title">Ви слухали</string>
+    <string name="wrapped_total_albums_subtitle">унікальні альбоми</string>
+    <string name="wrapped_top_album_title">Ваш найкращий альбом –</string>
+    <string name="wrapped_playlist_ready">Ваш особистий плейлист готовий</string>
+    <string name="wrapped_top_5_albums_title">Ваші 5 найкращих альбомів</string>
+    <string name="wrapped_album_listening_time">Ви слухали цей альбом протягом %d хвилин</string>
+    <string name="wrapped_album_listening_time_minutes">%d хвилин</string>
+    <string name="wrapped_no_data">Немає даних</string>
+    <string name="wrapped_top_5_artists_title">Ваші найкращі артисти року</string>
+    <string name="wrapped_artist_listening_time">%d хвилин</string>
+    <string name="wrapped_top_5_songs_title">Ваші найкращі пісні року</string>
+    <string name="wrapped_top_song_album_art_content_description">Обкладинка альбому</string>
+    <string name="wrapped_top_artist_title">Ваш найкращий артист року –</string>
+    <string name="wrapped_top_artist_image_content_description">Найкраще зображення виконавця</string>
+    <string name="wrapped_top_artist_listening_time">Ви слухали їх протягом %d хвилин</string>
+    <string name="wrapped_top_song_title">Ваша найпопулярніша пісня —</string>
+    <string name="wrapped_top_song_listening_time">Ви слухали %d хвилин</string>
+    <string name="wrapped_total_artists_title">Ти слухав/слухала</string>
+    <string name="wrapped_total_artists_subtitle">унікальні митці</string>
+    <string name="wrapped_total_songs_title">Ти слухав/слухала</string>
+    <string name="wrapped_total_songs_subtitle">унікальні пісні</string>
     <string name="wrapped_intro_title">IRIDE</string>
-    <string name="wrapped_intro_subtitle">Ñ‡Ð°Ñ Ð¿Ð¾Ð´Ð¸Ð²Ð¸Ñ‚Ð¸ÑÑ, Ñ‰Ð¾ Ð²Ð¸ ÑÐ»ÑƒÑ…Ð°Ð»Ð¸</string>
-    <string name="wrapped_intro_button">Ð¥Ð¾Ð´Ñ–Ð¼Ð¾!</string>
-    <string name="wrapped_logo_content_description">Ð›Ð¾Ð³Ð¾Ñ‚Ð¸Ð¿ Iride</string>
+    <string name="wrapped_intro_subtitle">час подивитися, що ви слухали</string>
+    <string name="wrapped_intro_button">Ходімо!</string>
+    <string name="wrapped_logo_content_description">Логотип Iride</string>
     <string name="wrapped_year">2025</string>
-    <string name="wrapped_ready_title">Ð’ÐÐ¨ ÐÐ£Ð”Ð†ÐžÐŸÐ†Ð”Ð¡Ð£ÐœÐžÐš Ð—Ð Ð Ð†Ðš Ð“ÐžÐ¢ÐžÐ’Ð˜Ð™!</string>
-    <string name="wrapped_ready_subtitle">Ð§Ð°Ñ Ð¿Ð¾Ð´Ð¸Ð²Ð¸Ñ‚Ð¸ÑÑ, Ñ‰Ð¾ Ð²Ð°Ð¼ ÑÐ¿Ð¾Ð´Ð¾Ð±Ð°Ð»Ð¾ÑÑ Ñ†ÑŒÐ¾Ð³Ð¾ Ñ€Ð¾ÐºÑƒ.</string>
-    <string name="wrapped_thank_you">Ð”ÑÐºÑƒÑŽ, Ñ‰Ð¾ Ð²Ð¸ÑÐ»ÑƒÑ…Ð°Ð»Ð¸</string>
-    <string name="wrapped_special_thanks">ÐžÑÐ¾Ð±Ð»Ð¸Ð²Ð° Ð¿Ð¾Ð´ÑÐºÐ° MO Agamy Ð·Ð° ÑÑ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Iride</string>
-    <string name="wrapped_close">Ð—Ð°ÐºÑ€Ð¸Ñ‚Ð¸ Ð¾Ð±Ð³Ð¾Ñ€Ð½ÑƒÑ‚Ðµ</string>
-    <string name="wrapped_playlist_title">Ð’Ð°Ñˆ %s Ð·Ð°Ð³Ð¾Ñ€Ð½ÑƒÑ‚Ð¸Ð¹</string>
-    <string name="wrapped_create_playlist">Ð¡Ñ‚Ð²Ð¾Ñ€Ð¸Ñ‚Ð¸ Ð¿Ð»ÐµÐ¹Ð»Ð¸ÑÑ‚</string>
-    <string name="wrapped_playlist_saved">Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ð·Ð±ÐµÑ€ÐµÐ¶ÐµÐ½Ð¾</string>
-    <string name="casting_to">Ð¢Ñ€Ð°Ð½ÑÐ»ÑÑ†Ñ–Ñ Ð½Ð° %s</string>
-    <string name="progress_percent">ÐŸÑ€Ð¾Ð³Ñ€ÐµÑ %s%%</string>
-    <string name="listening_to_metrolist">Ð¡Ð»ÑƒÑ…Ð°ÑŽÑ‡Ð¸ Iride</string>
-    <string name="open">Ð’Ñ–Ð´ÐºÑ€Ð¸Ñ‚Ð¸</string>
-    <string name="failed_to_create_image">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ ÑÑ‚Ð²Ð¾Ñ€Ð¸Ñ‚Ð¸ Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ: %s</string>
-    <string name="copied_title">Ð¡ÐºÐ¾Ð¿Ñ–Ð¹Ð¾Ð²Ð°Ð½Ð° Ð½Ð°Ð·Ð²Ð°</string>
-    <string name="copied_artist">Ð¡ÐºÐ¾Ð¿Ñ–Ð¹Ð¾Ð²Ð°Ð½Ð¸Ð¹ Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²ÐµÑ†ÑŒ</string>
-    <string name="error_playing">ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="failed_to_parse_proxy">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ Ð¿Ñ€Ð¾Ð°Ð½Ð°Ð»Ñ–Ð·ÑƒÐ²Ð°Ñ‚Ð¸ URL-Ð°Ð´Ñ€ÐµÑÑƒ Ð¿Ñ€Ð¾ÐºÑÑ–-ÑÐµÑ€Ð²ÐµÑ€Ð°.</string>
-    <plurals name="profiles_count">
-        <item quantity="one">%d Ð¿Ñ€Ð¾Ñ„Ñ–Ð»ÑŒ</item>
-        <item quantity="few">%d Ð¿Ñ€Ð¾Ñ„Ñ–Ð»Ð¸</item>
-        <item quantity="many">%d Ð¿Ñ€Ð¾Ñ„Ñ–Ð»Ñ–Ð²</item>
-        <item quantity="other">%d Ð¿Ñ€Ð¾Ñ„Ñ–Ð»Ñ–Ð²</item>
+    <string name="wrapped_ready_title">ВАШ АУДІОПІДСУМОК ЗА РІК ГОТОВИЙ!</string>
+    <string name="wrapped_ready_subtitle">Час подивитися, що вам сподобалося цього року.</string>
+    <string name="wrapped_thank_you">Дякую, що вислухали</string>
+    <string name="wrapped_special_thanks">Особлива подяка MO Agamy за створення Iride</string>
+    <string name="wrapped_close">Закрити обгорнуте</string>
+    <string name="wrapped_playlist_title">Ваш %s загорнутий</string>
+    <string name="wrapped_create_playlist">Створити плейлист</string>
+    <string name="wrapped_playlist_saved">Список відтворення збережено</string>
+
+    <!-- Equalizer UI -->
+        <plurals name="profiles_count">
+        <item quantity="one">%d профіль</item>
+        <item quantity="few">%d профіли</item>
+        <item quantity="many">%d профілів</item>
+        <item quantity="other">%d профілів</item>
     </plurals>
-    <string name="equalizer_header">Ð•ÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€</string>
-    <string name="no_profiles">ÐÐµÐ¼Ð°Ñ” Ð¿Ñ€Ð¾Ñ„Ñ–Ð»Ñ–Ð² ÐµÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€Ð°</string>
-    <string name="import_profile">Ð†Ð¼Ð¿Ð¾Ñ€Ñ‚ÑƒÐ²Ð°Ñ‚Ð¸ Ð¿Ñ€Ð¾Ñ„Ñ–Ð»ÑŒ</string>
-    <string name="eq_disabled">Ð’Ð¸Ð¼ÐºÐ½ÐµÐ½Ð¾</string>
-    <plurals name="band_count">
-        <item quantity="one">%d Ð´Ñ–Ð°Ð¿Ð°Ð·Ð¾Ð½</item>
-        <item quantity="few">%d Ð´Ñ–Ð°Ð¿Ð°Ð·Ð¾Ð½Ð¸</item>
-        <item quantity="many">%d Ð´Ñ–Ð°Ð¿Ð°Ð·Ð¾Ð½Ñ–Ð²</item>
-        <item quantity="other">%d Ð´Ñ–Ð°Ð¿Ð°Ð·Ð¾Ð½Ñ–Ð²</item>
+    <string name="equalizer_header">Еквалайзер</string>
+    <string name="no_profiles">Немає профілів еквалайзера</string>
+    <string name="import_profile">Імпортувати профіль</string>
+    <string name="system_equalizer">Системний еквалайзер</string>
+    <string name="eq_disabled">Вимкнено</string>
+        <plurals name="band_count">
+        <item quantity="one">%d діапазон</item>
+        <item quantity="few">%d діапазони</item>
+        <item quantity="many">%d діапазонів</item>
+        <item quantity="other">%d діапазонів</item>
     </plurals>
-    <string name="delete_profile_desc">Ð’Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ Ð¿Ñ€Ð¾Ñ„Ñ–Ð»ÑŒ</string>
-    <string name="delete_profile_confirmation">Ð’Ð¸ Ð²Ð¿ÐµÐ²Ð½ÐµÐ½Ñ–, Ñ‰Ð¾ Ñ…Ð¾Ñ‡ÐµÑ‚Ðµ Ð²Ð¸Ð´Ð°Ð»Ð¸Ñ‚Ð¸ %1$s? Ð¦ÑŽ Ð´Ñ–ÑŽ Ð½Ðµ Ð¼Ð¾Ð¶Ð½Ð° ÑÐºÐ°ÑÑƒÐ²Ð°Ñ‚Ð¸.</string>
-    <string name="error_file_read">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ Ð¿Ñ€Ð¾Ñ‡Ð¸Ñ‚Ð°Ñ‚Ð¸ Ñ„Ð°Ð¹Ð»</string>
-    <string name="error_file_open">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ Ð²Ñ–Ð´ÐºÑ€Ð¸Ñ‚Ð¸ Ñ„Ð°Ð¹Ð»: %1$s</string>
-    <string name="import_error_title">ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Ñ–Ð¼Ð¿Ð¾Ñ€Ñ‚Ñƒ</string>
-    <string name="wavy">Ð¥Ð²Ð¸Ð»ÑÑÑ‚Ð¸Ð¹</string>
-    <string name="pause_music_when_media_is_muted">ÐŸÑ€Ð¸Ð·ÑƒÐ¿Ð¸Ð½ÑÑ‚Ð¸ Ð¼ÑƒÐ·Ð¸ÐºÑƒ, ÐºÐ¾Ð»Ð¸ Ð¼ÐµÐ´Ñ–Ð° Ð²Ð¸Ð¼ÐºÐ½ÐµÐ½Ð¾</string>
-    <string name="system_equalizer">Ð¡Ð¸ÑÑ‚ÐµÐ¼Ð½Ð¸Ð¹ ÐµÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€</string>
-    <string name="album_art">ÐžÐ±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÐ° Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ</string>
-    <string name="no_song_playing">ÐŸÑ–ÑÐ½Ñ Ð½Ðµ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÑŽÑ”Ñ‚ÑŒÑÑ</string>
-    <string name="tap_to_open">ÐÐ°Ñ‚Ð¸ÑÐ½Ñ–Ñ‚ÑŒ, Ñ‰Ð¾Ð± Ð²Ñ–Ð´ÐºÑ€Ð¸Ñ‚Ð¸ Iride</string>
-    <string name="previous">ÐŸÐ¾Ð¿ÐµÑ€ÐµÐ´Ð½Ñ–Ð¹</string>
-    <string name="play_pause">Ð’Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ/ÐŸÐ°ÑƒÐ·Ð°</string>
-    <string name="next">Ð”Ð°Ð»Ñ–</string>
-    <string name="like">ÐŸÐ¾Ð´Ð¾Ð±Ð°Ñ”Ñ‚ÑŒÑÑ</string>
-    <string name="widget_description">Ð’Ñ–Ð´Ð¶ÐµÑ‚ Ð¼ÑƒÐ·Ð¸Ñ‡Ð½Ð¾Ð³Ð¾ Ð¿Ð»ÐµÑ”Ñ€Ð° Ð· ÐµÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð°Ð¼Ð¸ ÐºÐµÑ€ÑƒÐ²Ð°Ð½Ð½Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½ÑÐ¼</string>
-    <string name="turntable_widget_description">Ð¨Ð²Ð¸Ð´ÐºÐ¸Ð¹ Ð´Ð¾ÑÑ‚ÑƒÐ¿ Ð´Ð¾ Ð¾ÑÑ‚Ð°Ð½Ð½ÑŒÐ¾Ñ— Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð¾Ñ— ÐºÐ¾Ð¼Ð¿Ð¾Ð·Ð¸Ñ†Ñ–Ñ—</string>
-    <string name="remember_shuffle_and_repeat">ÐŸÐ°Ð¼â€™ÑÑ‚Ð°Ð¹Ñ‚Ðµ Ð¿Ñ€Ð¾ Ð¿ÐµÑ€ÐµÐ¼Ñ–ÑˆÑƒÐ²Ð°Ð½Ð½Ñ Ñ‚Ð° Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="remember_shuffle_and_repeat_desc">Ð—Ð°Ð¿Ð°Ð¼\'ÑÑ‚Ð°Ð¹Ñ‚Ðµ Ñ€ÐµÐ¶Ð¸Ð¼ Ð²Ð¸Ð¿Ð°Ð´ÐºÐ¾Ð²Ð¾Ð³Ð¾ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ Ñ‚Ð° Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ñƒ Ð¿Ñ–Ð´ Ñ‡Ð°Ñ Ð¿ÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÐºÑƒ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð¸</string>
-    <string name="lyrics_offset">Ð¢ÐµÐºÑÑ‚ Ð¿Ñ–ÑÐ½Ñ– Offset</string>
-    <string name="about_artist">ÐŸÑ€Ð¾ Ð½Ð°Ñ</string>
-    <string name="show_more">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ Ð±Ñ–Ð»ÑŒÑˆÐµ</string>
-    <string name="show_less">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ Ð¼ÐµÐ½ÑˆÐµ</string>
-    <string name="artist_page_settings">Ð¡Ñ‚Ð¾Ñ€Ñ–Ð½ÐºÐ° Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²Ñ†Ñ</string>
-    <string name="show_artist_description">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ Ð¾Ð¿Ð¸Ñ Ð²Ð¸ÐºÐ¾Ð½Ð°Ð²Ñ†Ñ</string>
-    <string name="show_artist_subscriber_count">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ ÐºÑ–Ð»ÑŒÐºÑ–ÑÑ‚ÑŒ Ð¿Ñ–Ð´Ð¿Ð¸ÑÐ½Ð¸ÐºÑ–Ð²</string>
-    <string name="show_artist_monthly_listeners">ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚Ð¸ Ñ‰Ð¾Ð¼Ñ–ÑÑÑ‡Ð½Ñ– ÑÐ»ÑƒÑ…Ð°Ñ‡Ñ–</string>
-    <string name="skip_silence_desc">ÐŸÐµÑ€ÐµÐ¼Ð¾Ñ‚ÑƒÐ²Ð°Ð½Ð½Ñ Ð²Ð¿ÐµÑ€ÐµÐ´ Ñ‚Ð¸Ñ…Ð¸Ñ… Ñ‡Ð°ÑÑ‚Ð¸Ð½ Ð¿Ñ–ÑÐµÐ½ÑŒ</string>
-    <string name="skip_silence_instant">ÐœÐ¸Ñ‚Ñ‚Ñ”Ð²Ð¾ Ð¿Ñ€Ð¾Ð¿ÑƒÑÑ‚Ð¸Ñ‚Ð¸ Ñ‚Ð¸ÑˆÑƒ</string>
-    <string name="skip_silence_instant_desc">ÐŸÐµÑ€ÐµÐ¼Ð¾Ñ‚ÑƒÐ¹Ñ‚Ðµ Ð²Ð¿ÐµÑ€ÐµÐ´ Ð¿Ñ–Ð´ Ñ‡Ð°Ñ Ñ‚Ð¸Ñ…Ð¸Ñ… Ð¼Ð¾Ð¼ÐµÐ½Ñ‚Ñ–Ð² Ð·Ð°Ð¼Ñ–ÑÑ‚ÑŒ Ð¿Ñ€Ð¸ÑÐºÐ¾Ñ€ÐµÐ½Ð½Ñ Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="persistent_shuffle_title">ÐŸÐ¾ÑÑ‚Ñ–Ð¹Ð½Ðµ Ð¿ÐµÑ€ÐµÐ¼Ñ–ÑˆÑƒÐ²Ð°Ð½Ð½Ñ</string>
-    <string name="persistent_shuffle_desc">Ð£Ð²Ñ–Ð¼ÐºÐ½Ñ–Ñ‚ÑŒ Ð²Ð¸Ð¿Ð°Ð´ÐºÐ¾Ð²Ðµ Ð¿ÐµÑ€ÐµÐ¼Ñ–ÑˆÑƒÐ²Ð°Ð½Ð½Ñ Ð¿Ñ–Ð´ Ñ‡Ð°Ñ Ð·Ð°Ð¿ÑƒÑÐºÑƒ Ð½Ð¾Ð²Ð¸Ñ… Ð¿Ñ–ÑÐµÐ½ÑŒ Ð°Ð±Ð¾ ÑÐ¿Ð¸ÑÐºÑ–Ð² Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="error_playback_failed">ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Ð²Ñ–Ð´Ñ‚Ð²Ð¾Ñ€ÐµÐ½Ð½Ñ</string>
-    <string name="error_title">ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ°</string>
-    <string name="error_eq_apply_failed">ÐÐµ Ð²Ð´Ð°Ð»Ð¾ÑÑ Ð·Ð°ÑÑ‚Ð¾ÑÑƒÐ²Ð°Ñ‚Ð¸ Ð¿Ñ€Ð¾Ñ„Ñ–Ð»ÑŒ ÐµÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€Ð°: %1$s</string>
-    <string name="crop_album_art">ÐžÐ±Ñ€Ñ–Ð·Ð°Ñ‚Ð¸ Ð¾Ð±ÐºÐ»Ð°Ð´Ð¸Ð½ÐºÑƒ Ð°Ð»ÑŒÐ±Ð¾Ð¼Ñƒ</string>
-    <string name="crop_album_art_desc">ÐŸÑ€Ð¸Ð¼ÑƒÑÐ¾Ð²Ðµ ÐºÐ²Ð°Ð´Ñ€Ð°Ñ‚Ð½Ðµ ÑÐ¿Ñ–Ð²Ð²Ñ–Ð´Ð½Ð¾ÑˆÐµÐ½Ð½Ñ ÑÑ‚Ð¾Ñ€Ñ–Ð½ ÑˆÐ»ÑÑ…Ð¾Ð¼ Ð¾Ð±Ñ€Ñ–Ð·Ð°Ð½Ð½Ñ Ð¼Ñ–Ð½Ñ–Ð°Ñ‚ÑŽÑ€ Ð²Ñ–Ð´ÐµÐ¾</string>
-    <string name="keep_screen_on_when_player_is_expanded">Ð—Ð°Ð»Ð¸ÑˆÐ°Ñ‚Ð¸ ÐµÐºÑ€Ð°Ð½ ÑƒÐ²Ñ–Ð¼ÐºÐ½ÐµÐ½Ð¸Ð¼, ÐºÐ¾Ð»Ð¸ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð²Ð°Ñ‡ Ñ€Ð¾Ð·Ð³Ð¾Ñ€Ð½ÑƒÑ‚Ð¾</string>
-    <string name="enable">Ð£Ð²Ñ–Ð¼ÐºÐ½ÑƒÑ‚Ð¸</string>
-    <string name="player_background_solid">Ð¡ÑƒÑ†Ñ–Ð»ÑŒÐ½Ð¸Ð¹</string>
-    <string name="display_density">Ð©Ñ–Ð»ÑŒÐ½Ñ–ÑÑ‚ÑŒ Ð²Ñ–Ð´Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ</string>
-    <string name="restart">ÐŸÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚Ð¸</string>
-    <string name="density_restart_message">Ð—Ð¼Ñ–Ð½Ð° Ñ‰Ñ–Ð»ÑŒÐ½Ð¾ÑÑ‚Ñ– Ð²Ñ–Ð´Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð½Ñ Ð¿Ð¾Ñ‡Ð½Ðµ Ð´Ñ–ÑÑ‚Ð¸ Ð¿Ñ–ÑÐ»Ñ Ð¿ÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÐºÑƒ Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð¸. Ð’Ð¸ Ñ…Ð¾Ñ‡ÐµÑ‚Ðµ Ð¿ÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚Ð¸ Ð·Ð°Ñ€Ð°Ð·?</string>
-</resources>
+    <string name="delete_profile_desc">Видалити профіль</string>
+    <string name="delete_profile_confirmation">Ви впевнені, що хочете видалити %1$s? Цю дію не можна скасувати.</string>
+    <string name="error_file_read">Не вдалося прочитати файл</string>
+    <string name="error_file_open">Не вдалося відкрити файл: %1$s</string>
+    <string name="import_error_title">Помилка імпорту</string>
+    <string name="error_title">Помилка</string>
+    <string name="error_eq_apply_failed">Не вдалося застосувати профіль еквалайзера: %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
+
+    <!-- Hardcoded strings -->
+    <string name="found_in_settings_content">Found in Settings &gt; Content</string>
+    <string name="your_daily_discover">Your daily discover</string>
+    <string name="plays">plays</string>
+    <string name="casting_to">Трансляція на %s</string>
+    <string name="progress_percent">Прогрес %s%%</string>
+    <string name="listening_to_metrolist">Слухаючи Iride</string>
+    <string name="open">Відкрити</string>
+    <string name="failed_to_create_image">Не вдалося створити зображення: %s</string>
+    <string name="copied_title">Скопійована назва</string>
+    <string name="copied_artist">Скопійований виконавець</string>
+    <string name="error_playing">Помилка відтворення</string>
+    <string name="failed_to_parse_proxy">Не вдалося проаналізувати URL-адресу проксі-сервера.</string>
+
+    <!-- Playback errors -->
+    <string name="error_playback_failed">Помилка відтворення</string>
+    <string name="error_episode_save">Failed to save episode</string>
+    <string name="error_episode_remove">Failed to remove episode</string>
+    <string name="error_podcast_subscribe">Failed to subscribe to podcast</string>
+    <string name="error_podcast_unsubscribe">Failed to unsubscribe from podcast</string>
+    <string name="view_channel">View channel</string>
+
+    <!-- Widget strings -->
+    <string name="album_art">Обкладинка альбому</string>
+    <string name="no_song_playing">Пісня не відтворюється</string>
+    <string name="tap_to_open">Натисніть, щоб відкрити Iride</string>
+    <string name="previous">Попередній</string>
+    <string name="play_pause">Відтворення/Пауза</string>
+    <string name="next">Далі</string>
+    <string name="like">Подобається</string>
+    <string name="not_playing">No song playing</string>
+    <string name="tap_to_play">Tap to open Iride</string>
+    <string name="widget_description">Віджет музичного плеєра з елементами керування відтворенням</string>
+    <string name="turntable_widget_description">Швидкий доступ до останньої відтвореної композиції</string>
+    <string name="widget_music_player">Music Player</string>
+    <string name="widget_turntable">Turntable</string>
+
+    <!-- Music Recognizer Widget strings -->
+    <string name="widget_recognizer_name">Music Recognizer</string>
+    <string name="widget_recognizer_description">Identify songs playing around you directly from your home screen</string>
+    <string name="widget_recognizer_tap_to_search">Tap to identify a song</string>
+    <string name="widget_recognizer_listening">Listening…</string>
+    <string name="widget_recognizer_processing">Identifying…</string>
+    <string name="widget_recognizer_no_match">No match found. Try again</string>
+    <string name="widget_recognizer_error">Recognition failed</string>
+    <string name="widget_recognizer_error_generic">Something went wrong. Please try again</string>
+    <string name="widget_recognizer_unknown_song">Unknown song</string>
+    <string name="widget_recognizer_unknown_artist">Unknown artist</string>
+    <string name="widget_recognizer_mic_desc">Identify a song</string>
+    <string name="widget_recognizer_channel_name">Music Recognition</string>
+    <string name="widget_recognizer_channel_desc">Shows a notification while identifying a song from the widget</string>
+    <string name="widget_recognizer_notification_text">Recording audio to identify the song…</string>
+
+    <!-- Player Client Settings -->
+
+    <!-- Decryption Library Settings -->
+
+    <!-- Listen Together -->
+    <string name="together">Together</string>
+    <string name="listen_together">Listen Together</string>
+    <string name="listen_together_server_url">Server URL</string>
+    <string name="listen_together_choose_server">Choose server</string>
+    <string name="listen_together_custom_server">Custom server</string>
+    <string name="listen_together_use_custom_server">Use custom server</string>
+    <string name="listen_together_username">Username</string>
+    <string name="listen_together_connected">Connected</string>
+    <string name="listen_together_reconnecting">Reconnecting…</string>
+    <string name="listen_together_disconnected">Disconnected</string>
+    <string name="listen_together_connecting">Connecting…</string>
+    <string name="listen_together_error">Connection error</string>
+    <string name="listen_together_create_room">Create room</string>
+    <string name="listen_together_create_room_desc">Create a room and share the code with your friends</string>
+    <string name="listen_together_join_room">Join room</string>
+    <string name="listen_together_room_code">Room code</string>
+    <string name="listen_together_you_are_host">You are the host</string>
+    <string name="listen_together_you_are_guest">You are a guest</string>
+    <string name="mute">Mute</string>
+    <string name="unmute">Unmute</string>
+    <string name="listen_together_join_requests">Join requests</string>
+    <string name="listen_together_view_logs">View logs</string>
+    <string name="listen_together_view_logs_desc">Debug connection events and messages</string>
+    <string name="listen_together_logs">Connection logs</string>
+    <string name="listen_together_no_logs">No logs yet</string>
+    <string name="listen_together_auto_approval_joins">Auto-approve join requests</string>
+    <string name="listen_together_auto_approval_joins_desc">Automatically approve join requests without reviewing them manually</string>
+    <string name="listen_together_auto_approval_suggestions">Auto-approve song suggestions</string>
+    <string name="listen_together_auto_approval_suggestions_desc">Automatically approve and queue song suggestions from guests</string>
+    <string name="listen_together_sync_volume">Sync host volume</string>
+    <string name="listen_together_sync_volume_desc">Guests will match the host\'s volume level</string>
+    <string name="listen_together_in_top_bar">Listen Together in top bar</string>
+    <string name="listen_together_in_top_bar_desc">Show Listen Together in the top app bar instead of the navigation bar</string>
+    <string name="listen_together_description">Listen to music with your friends in real time. Create a room to host, or join an existing room with a code</string>
+    <string name="listen_together_background_disconnect_note">NOTE: You may get disconnected if you create a room while no music is playing and then switch to another app</string>
+    <string name="listen_together_not_configured">Listen Together is not set up. Please configure the server URL in: Listen Together &gt; Settings &gt; Server URL</string>
+    <string name="listen_together_suggestion_received">%1$s suggested %2$s</string>
+    <string name="listen_together_suggestion_sent">Suggestion sent to host!</string>
+    <string name="listen_together_join_request_notification">%1$s wants to join the room</string>
+    <string name="listen_together_notification_channel_name">Listen Together</string>
+    <string name="listen_together_notification_channel_desc">Notifications for Listen Together events</string>
+    <string name="listen_together_room_created">Room created: %s</string>
+    <string name="listen_together_cannot_edit_username_in_room">The username cannot be changed while in a room</string>
+    <string name="waiting_for_approval">Waiting for host approval…</string>
+    <string name="invalid_room_code">Invalid room code</string>
+    <string name="join_request_denied">Join request denied</string>
+    <string name="join_existing_room">Join existing room</string>
+    <string name="room_code">Room code</string>
+    <string name="leave_room">Leave room</string>
+    <string name="join_room">Join</string>
+    <string name="create_room">Create</string>
+    <string name="joining_room">Joining room %s…</string>
+    <string name="creating_room">Creating room…</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="create">Create</string>
+    <string name="join">Join</string>
+    <string name="approve">Approve</string>
+    <string name="reject">Reject</string>
+    <string name="clear">Clear</string>
+    <string name="copy">Copy</string>
+    <string name="copy_all_lyrics">Copy all lyrics</string>
+    <string name="change">Change</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="not_set">Not set</string>
+    <string name="hosting_room">Hosting room</string>
+    <string name="in_room">In room</string>
+    <string name="pending_requests">Pending requests</string>
+    <string name="pending_suggestions">Pending suggestions</string>
+    <string name="suggest_to_host">Suggest to host</string>
+    <string name="kick_user">Kick</string>
+    <string name="host_label">Host</string>
+    <string name="you_label">You</string>
+    <string name="connected_users">Connected users</string>
+    <string name="enter_username">Enter a username</string>
+    <string name="enter_room_code">Enter a room code</string>
+    <string name="listen_together_settings_desc">Configure server, username, and more</string>
+    <string name="error_username_empty">A username is required</string>
+    <string name="resync">Re-sync</string>
+    <string name="copy_code">Copy code</string>
+    <string name="kick_user_desc">Remove this person from the session</string>
+    <string name="permanently_kick_user">Permanently block</string>
+    <string name="permanently_kick_user_desc">Block this person\'s join requests and hide their suggestions</string>
+    <string name="transfer_ownership">Transfer ownership</string>
+    <string name="transfer_ownership_desc">Make this person the host of the room</string>
+    <string name="manage_user">Manage user</string>
+    <string name="listen_together_blocked_users">Blocked users</string>
+    <string name="listen_together_blocked_users_count">%d user(s) blocked</string>
+    <string name="listen_together_no_blocked_users">No blocked users</string>
+    <string name="unblock">Unblock</string>
+    <string name="user_blocked_by_host">Blocked by host</string>
+
+    <!-- AI Lyrics Translation -->
+    <string name="ai_lyrics_translation">AI lyrics translation</string>
+    <string name="ai_translating_lyrics">Translating lyrics…</string>
+    <string name="ai_lyrics_translated">Lyrics translated</string>
+    <string name="ai_provider">Provider</string>
+    <string name="ai_base_url">Base URL</string>
+    <string name="ai_api_key">API key</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_translation_mode">Translation mode</string>
+    <string name="ai_target_language">Target language</string>
+    <string name="ai_setup_guide">API credentials</string>
+    <string name="ai_translation_literal">Translation</string>
+    <string name="ai_translation_literal_desc">Translates the meaning into the target language</string>
+    <string name="ai_translation_transcribed">Transcription</string>
+    <string name="ai_translation_transcribed_desc">Converts pronunciation into the target script</string>
+    <string name="ai_api_key_required">API key required</string>
+    <string name="ai_error_api_key_required">An API key is required</string>
+    <string name="ai_error_no_lyrics">No lyrics to translate</string>
+    <string name="ai_error_lyrics_empty">Lyrics are empty</string>
+    <string name="ai_error_language_required">A target language is required</string>
+    <string name="ai_error_unexpected">Unexpected translation result</string>
+    <string name="ai_error_unknown">An unknown error occurred</string>
+    <string name="ai_error_translation_failed">Translation failed</string>
+    <string name="ai_provider_help">Get API keys</string>
+    <string name="ai_provider_openrouter_help">Visit https://openrouter.ai for free and paid models</string>
+    <string name="ai_provider_openai_help">Visit https://platform.openai.com/api-keys</string>
+    <string name="ai_provider_claude_help">Visit https://console.anthropic.com/settings/keys</string>
+    <string name="ai_provider_gemini_help">Visit https://aistudio.google.com/apikey</string>
+    <string name="ai_provider_perplexity_help">Visit https://perplexity.ai/settings/api</string>
+    <string name="ai_provider_xai_help">Visit https://console.x.ai</string>
+    <string name="ai_provider_deepl_help">Visit https://deepl.com/pro-api for free and paid keys</string>
+    <string name="ai_provider_mistral_help">Visit https://console.mistral.ai/api-keys</string>
+    <string name="ai_deepl_formality">Formality</string>
+    <string name="ai_deepl_formality_default">Default</string>
+    <string name="ai_deepl_formality_more">More formal</string>
+    <string name="ai_deepl_formality_less">Less formal</string>
+    <string name="ai_system_prompt">System prompt</string>
+    <string name="ai_system_prompt_desc">Custom instructions sent to the AI model. Leave empty to use the default prompt</string>
+    <string name="ai_system_prompt_placeholder">Use {lineCount} as a placeholder for the number of lines to translate</string>
+    <string name="ai_system_prompt_default">Default</string>
+    <string name="ai_system_prompt_reset">Reset to default</string>
+
+    <!-- Crash Handler -->
+    <string name="crash_title">App crashed</string>
+    <string name="crash_description">An unexpected error occurred. Please share the crash report to help us fix the issue</string>
+    <string name="crash_share_logs">Share logs</string>
+    <string name="crash_share_title">Share crash report</string>
+    <string name="crash_report_subject">Iride crash report</string>
+    <string name="crash_close">Close</string>
+    <string name="crash_no_log">No crash log available</string>
+
+    <!-- Theme Palette Names -->
+    <string name="palette_dynamic">Dynamic</string>
+    <string name="palette_crimson">Crimson</string>
+    <string name="palette_rose">Rose</string>
+    <string name="palette_purple">Purple</string>
+    <string name="palette_deep_purple">Deep Purple</string>
+    <string name="palette_indigo">Indigo</string>
+    <string name="palette_blue">Blue</string>
+    <string name="palette_sky_blue">Sky Blue</string>
+    <string name="palette_cyan">Cyan</string>
+    <string name="palette_teal">Teal</string>
+    <string name="palette_green">Green</string>
+    <string name="palette_light_green">Light Green</string>
+    <string name="palette_lime">Lime</string>
+    <string name="palette_yellow">Yellow</string>
+    <string name="palette_amber">Amber</string>
+    <string name="palette_orange">Orange</string>
+    <string name="palette_deep_orange">Deep Orange</string>
+    <string name="palette_brown">Brown</string>
+    <string name="palette_grey">Grey</string>
+    <string name="palette_blue_grey">Blue Grey</string>
+
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_system">System</string>
+
+    <!-- Theme Content Descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_pure_black_mode">Pure black mode</string>
+    <string name="cd_light_mode">Light mode</string>
+    <string name="cd_dark_mode">Dark mode</string>
+    <string name="cd_system_mode">System mode</string>
+    <string name="cd_palette_item">%1$s palette</string>
+    <string name="play_all">Play all</string>
+    <string name="mp3_panel_lyrics">ТЕКСТ</string>
+    <string name="mp3_panel_up_next">ДАЛІ</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">Continue Listening</string>
+    <string name="remove_from_continue_listening">Remove from Continue Listening</string>
+    <string name="favorite_albums">Favorites</string>
+    <string name="remove_suggested_follow_artist">Remove suggestion</string>
+
+    <string name="enable_high_refresh_rate">Enable high refresh rate</string>
+    <string name="enable_high_refresh_rate_desc">Forces the display to run at its highest supported refresh rate (e.g. 120Hz)</string>
+
+    <!-- Music Recognition -->
+    <string name="recognize_music">Recognize music</string>
+    <string name="tap_to_recognize">Tap to recognize</string>
+    <string name="listening">Listening…</string>
+    <string name="processing">Processing…</string>
+    <string name="no_match_found">No match found</string>
+    <string name="recognition_error">Recognition error</string>
+    <string name="try_again">Try again</string>
+    <string name="refresh">Refresh</string>
+    <string name="recognition_history">Recognition history</string>
+    <string name="clear_recognition_history">Clear recognition history</string>
+    <string name="clear_recognition_history_confirm">Are you sure you want to clear all recognition history?</string>
+    <string name="delete_from_history">Delete from history</string>
+    <string name="re_listen">Re-listen</string>
+    <string name="play_on_app">Play on Iride</string>
+    <string name="qs_tile_music_recognizer">Recognize music</string>
+    <string name="recognition_notification_channel_name">Music recognition</string>
+    <string name="recognition_notification_channel_desc">Shows a notification while identifying a song from quick settings</string>
+    <string name="recognition_notification_listening">Listening for music…</string>
+    <string name="recognition_notification_processing">Identifying…</string>
+    <string name="recognition_notification_no_match">No match found</string>
+    <string name="recognition_notification_failed">Recognition failed</string>
+    <string name="listen_on_metrolist">Listen on Iride</string>
+
+    <!-- CSV Import Strings -->
+    <string name="map_csv_columns">Map CSV columns</string>
+    <string name="first_row_is_header">First row is header</string>
+    <string name="artist_name_column">Artist name column</string>
+    <string name="song_title_column">Song title column</string>
+    <string name="youtube_url_column">YouTube URL column (optional)</string>
+    <string name="continue_action">Continue</string>
+    <string name="importing_csv">Importing CSV…</string>
+    <string name="importing_playlist">Importing playlist…</string>
+
+    <string name="recently_converted">Recently converted</string>
+    <string name="column_label">Column %d</string>
+
+    <!-- Discord Integration -->
+    <string name="discord_status">Status</string>
+    <string name="discord_status_online">Online</string>
+    <string name="discord_status_idle">Idle</string>
+    <string name="discord_status_dnd">Do Not Disturb</string>
+    <string name="discord_buttons">Buttons</string>
+    <string name="discord_button_1">Button 1</string>
+    <string name="discord_button_2">Button 2</string>
+    <string name="login_successful">Login successful!</string>
+    <string name="discord_information_warning">This feature uses the KizzyRPC library to connect to Discord\'s Gateway and update your Rich Presence status. While no account suspensions from similar usage have been reported, this method is not officially supported by Discord and may be considered a Terms of Service violation. Your token is handled locally and never sent to third-party servers. Proceed at your own discretion!</string>
+    <string name="discord_activity_type">Activity type</string>
+    <string name="discord_activity_playing">Playing</string>
+    <string name="discord_activity_listening">Listening</string>
+    <string name="discord_activity_watching">Watching</string>
+    <string name="discord_activity_competing">Competing</string>
+    <string name="discord_button_text_variables">Variables: {song_name}, {artist_name}, {album_name}</string>
+    <string name="discord_rpc_preview">Rich Presence preview</string>
+    <string name="discord_presence">Presence</string>
+    <string name="discord_connect_description">Sign in with Discord to share what you\'re listening to</string>
+    <string name="discord_playing_metrolist">Playing Iride</string>
+    <string name="discord_watching_metrolist">Watching Iride</string>
+    <string name="discord_competing_metrolist">Competing in Iride</string>
+    <string name="discord_activity_name">Activity name</string>
+    <string name="discord_activity_name_description">Custom name for the activity. Leave empty to use the default</string>
+    <string name="discord_advanced_mode">Advanced mode</string>
+    <string name="discord_advanced_mode_description">Show additional Rich Presence customization options</string>
+    <string name="enable_advanced_settings">Enable advanced settings</string>
+    <string name="disable_advanced_settings">Disable advanced settings</string>
+    <string name="speed_dial">Speed dial</string>
+    <string name="pin_to_speed_dial">Pin to speed dial</string>
+    <string name="unpin_from_speed_dial">Unpin from speed dial</string>
+    <string name="randomize_home_order">Randomize home screen order</string>
+    <string name="randomize_home_order_desc">Randomly reorder home screen sections using weighted priorities</string>
+    <string name="hero_carousel_title">Hero carousel</string>
+    <string name="hero_carousel_desc">A rotating banner with new releases and picks for you</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">Smart boot</string>
+    <string name="smart_boot_desc">Faster startup: Featured loads instantly, sections keep their place while loading, fewer duplicate downloads. Turn off to restore the original behavior (restart to apply fully)</string>
+
+    <!-- Daily Discover -->
+    <string name="daily_discover_sounds_like">Sounds like %1$s</string>
+    <string name="daily_discover_because_you_listen_to">Because you listen to %1$s</string>
+    <string name="daily_discover_similar_to">Similar to %1$s</string>
+    <string name="daily_discover_based_on">Based on %1$s</string>
+    <string name="daily_discover_for_fans_of">For fans of %1$s</string>
+    <string name="from_the_community">From the community</string>
+
+    <!-- Logout dialog -->
+    <string name="logout_dialog_title">Keep library data?</string>
+    <string name="logout_dialog_message">Do you want to keep your playlists and library data? Downloaded songs will always be kept</string>
+    <string name="logout_keep">Keep</string>
+    <string name="logout_clear">Clear</string>
+
+    <!-- Credits / About Screen -->
+    <string name="credits_lead_developer">Lead developer</string>
+    <string name="about_creator_role">Creator of Iride</string>
+    <string name="about_release_badge">First release soon</string>
+    <string name="credits_special_thanks">Special thanks</string>
+    <string name="credits_collaborator">Collaborator</string>
+    <string name="credits_collaborators_section">Collaborators</string>
+    <string name="credits_license_name">GNU General Public License v3.0</string>
+    <string name="credits_license_desc">Free, open-source software. You may use, study, share, and improve it</string>
+    <string name="credits_donations">Donations</string>
+    <string name="credits_donations_desc">Support the project on Ko-fi</string>
+    <string name="credits_discord">Discord server</string>
+    <string name="credits_telegram">Telegram channel</string>
+    <string name="credits_website">Website</string>
+    <string name="credits_instagram">Instagram</string>
+    <string name="credits_github">GitHub</string>
+    <string name="credits_view_repo">View repository</string>
+    <string name="app_version_info">%1$s • %2$s</string>
+    <string name="like_what_i_do">Like what I do?</string>
+    <string name="buy_mo_a_coffee">Buy me a coffee!</string>
+    <string name="community_and_info">Community &amp; Info</string>
+    <string name="metrolist">IRIDE</string>
+    <string name="wanna_play_favorite_song">Want to play their favorite song?</string>
+    <string name="yeah">Yeah!</string>
+    <string name="stands_with_palestine">This project stands with Palestine 🇵🇸</string>
+
+    <!-- Podcasts -->
+    <string name="filter_podcasts">Podcasts</string>
+    <string name="view_podcast">View podcast</string>
+    <string name="podcast_channels">Podcast channels</string>
+    <string name="latest_episodes">Latest episodes</string>
+    <string name="your_shows">Your shows</string>
+    <string name="new_episodes">New episodes</string>
+    <string name="episodes_for_later">Episodes for later</string>
+    <string name="save_episode_for_later">Save for later</string>
+    <string name="save_episode_for_later_desc">Add to your Episodes for later playlist</string>
+    <string name="remove_episode_from_saved">Remove from saved</string>
+    <string name="subscribe_to_podcast">Save podcast to library</string>
+    <plurals name="n_episode">
+        <item quantity="one">%d episode</item>
+        <item quantity="other">%d episodes</item>
+    </plurals>
+    <string name="filter_episodes">Episodes</string>
+    <string name="filter_profiles">Profiles</string>
+    <string name="filter_smart_search">Smart Search</string>
+    <string name="filter_channels">Channels</string>
+    <string name="auto_playlist">Auto playlist</string>
+    <string name="downloaded_episodes">Downloaded episodes</string>
+    <string name="no_subscribed_channels">No subscribed channels</string>
+    <string name="no_downloaded_episodes">No downloaded episodes</string>
+    <plurals name="n_channel">
+        <item quantity="one">%d channel</item>
+        <item quantity="other">%d channels</item>
+    </plurals>
+
+    <!-- Restore confirmation dialog -->
+    <string name="restore_confirm_title">Restore backup?</string>
+    <string name="restore_confirm_message">This will restore your app data from the selected backup</string>
+    <string name="restore_account_warning">You will need to log in again after restoring. The following account will be signed out:</string>
+    <string name="restore">Restore</string>
+    <string name="checking_previous_account">Checking for previous account…</string>
+    <string name="no_account_found">No account found</string>
+
+    <!-- Cache settings -->
+
+    <!-- Upload songs -->
+    <string name="upload_songs">Upload songs</string>
+    <string name="uploading">Uploading…</string>
+    <string name="upload_progress">%1$d of %2$d</string>
+    <string name="upload_complete">Upload complete</string>
+    <string name="upload_failed">Upload failed</string>
+    <string name="upload_file_too_large">File too large (maximum 300MB)</string>
+    <string name="upload_unsupported_format">Unsupported format. Supported formats: MP3, M4A, WMA, FLAC, OGG</string>
+    <string name="delete_uploaded_song">Delete uploaded song</string>
+    <string name="delete_uploaded_song_confirm">Are you sure you want to delete this uploaded song? This action cannot be undone</string>
+    <string name="delete_uploaded_song_success">Uploaded song deleted</string>
+    <string name="delete_uploaded_song_failed">Failed to delete uploaded song</string>
+    <string name="delete_uploaded_songs">Delete uploaded songs</string>
+    <string name="delete_uploaded_songs_confirm">Are you sure you want to delete %1$d uploaded songs? This action cannot be undone</string>
+    <string name="deleted_n_songs">Deleted %1$d songs</string>
+    <string name="deleting">Deleting…</string>
+
+    <!-- Android Auto settings -->
+    <string name="android_auto">Android Auto</string>
+    <string name="android_auto_visible_sections">Visible sections</string>
+    <string name="android_auto_reorder_hint">Tap a section to enable or disable it.\nLong-press the drag handle to reorder. The first section will be shown by default</string>
+    <string name="android_auto_youtube_playlists">Show YouTube suggested playlists</string>
+    <string name="android_auto_youtube_playlists_desc">Show YouTube Music recommended playlists in the playlists section while browsing with Android Auto</string>
+    <string name="android_auto_target_playlist">Quick-add destination</string>
+    <string name="android_auto_target_playlist_desc">Choose the playlist where songs are saved when using the quick-add button in Android Auto</string>
+    <string name="android_auto_target_playlist_auto">Not set</string>
+    <string name="added_to_playlist">Added to playlist</string>
+    <string name="android_auto_target_playlist_not_set">No playlist selected. Choose one in Android Auto settings</string>
+
+    <!-- Stats time transfer -->
+    <string name="time_transfer_title">Time transfer</string>
+    <string name="time_transfer_warning">WARNING: This action cannot be undone once completed. Create a backup before proceeding. Only songs with at least one registered play are eligible</string>
+    <string name="time_transfer_source_song">Source song</string>
+    <string name="time_transfer_target_song">Target song</string>
+    <string name="time_transfer_listen_time_label">Listen time: </string>
+    <string name="time_transfer_convert">Convert</string>
+    <string name="song_dropdown_more_results">Keep typing to narrow results (%d more)</string>
+
+    <!-- Accessibility -->
+    <string name="back">Back</string>
+    <string name="clear_search">Clear search</string>
+    <string name="close_chip">Close</string>
+    <string name="switch_to_list_view">Switch to list view</string>
+    <string name="switch_to_grid_view">Switch to grid view</string>
+    <string name="switch_to_wide_grid_view">Switch to wide grid view</string>
+    <string name="more_options">More options</string>
+
+    <!-- Settings hub descriptions -->
+    <string name="music_settings">Music Settings</string>
+    <string name="music_settings_desc">Appearance, playback and content</string>
+    <string name="settings_appearance_desc">Theme, home screen, player and lyrics</string>
+    <string name="settings_appearance_theme_desc">Colors, dark mode and accents</string>
+    <string name="settings_appearance_interface_desc">Tabs, home screen and library defaults</string>
+    <string name="settings_appearance_player_desc">Player, mini-player and slider</string>
+    <string name="settings_appearance_lyrics_desc">Display, animations and scrolling</string>
+    <string name="settings_playback_desc">Audio quality, crossfade and behavior</string>
+    <string name="settings_content_desc">Language, filters and discovery</string>
+    <string name="settings_ai_desc">Lyrics translation and AI providers</string>
+    <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>
+    <string name="settings_privacy_desc">Listening history and security</string>
+    <string name="settings_storage_desc">Downloads, cache and backup</string>
+    <string name="settings_system_desc">Credits, license and version</string>
+    <string name="settings_account_desc">Sign-in, sync, stats and privacy</string>
+    <string name="android_auto_settings_desc">Visible sections and playlists</string>
+    <string name="manage_account">Manage account</string>
+    <string name="spotify_import_title">Import Music Library</string>
+    <string name="spotify_import_desc">Playlists and songs from Spotify</string>
+    <string name="sign_in_desc">Connect your account to access playlists and recommendations</string>
+    <string name="settings_theme">Theme</string>
+    <string name="player_appearance">Player</string>
+    <string name="interface_settings">Home &amp; Navigation</string>
+    <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
+    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
+    <string name="auto_link_featured_artists">Auto-detect featured artists</string>
+    <string name="auto_link_featured_artists_desc">Strips "feat./ft." credits out of song titles and links the collaborator as a real artist.</string>
+    <string name="show_featured_artists_in_top_songs">Show featured artists in Top Songs</string>
+    <string name="show_featured_artists_in_top_songs_desc">Shows collaborators credited on a track alongside the main artist in Top Songs.</string>
+    <string name="resume_album">Resume Album</string>
+    <string name="resume">Resume</string>
+    <string name="resume_album_track_progress">Track %1$d of %2$d</string>
+    <string name="muzza_player_logic">Fast Playback Engine</string>
+    <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
+
+    <!-- News screen -->
+    <string name="compact_top_navigation_bar">Compact top bar</string>
+    <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
+    <string name="iride_animations">Iride animations</string>
+    <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
+    <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
+    <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
+
+    <string name="better_library_beta">Better Library BETA</string>
+    <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
+    <string name="upload">Upload</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="toggle_view_type">Toggle view type</string>
+    <string name="navigate_back">Go back</string>
+
+    <!-- Comments -->
+    <string name="comments">Comments</string>
+    <string name="comments_count">%s comments</string>
+    <string name="comments_empty">No comments yet</string>
+    <string name="comments_error">Couldn\'t load comments</string>
+    <string name="comments_sign_in_to_comment">Sign in to comment</string>
+    <string name="comments_write_hint">Add a comment…</string>
+    <string name="comments_post">Post</string>
+    <string name="comments_post_failed">Couldn\'t post your comment</string>
+    <string name="comments_sort_top">Top comments</string>
+    <string name="comments_sort_newest">Newest first</string>
+    <string name="comments_reply_count">%d replies</string>
+    <string name="enable_comments">Enable comments</string>
+    <string name="enable_comments_desc">Show YouTube comments for songs in the player (experimental, may not always load)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Add notes, ratings or thoughts…</string>
+    <string name="note_title_placeholder">Title</string>
+    <string name="note_description_placeholder">Add a description…</string>
+    <string name="view_ep">View EP</string>
+    <string name="view_single">View single</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Notes</string>
+    <string name="notes_screen_desc">Your album and track reviews</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Track</string>
+    <string name="notes_empty_albums">No album notes yet</string>
+    <string name="notes_empty_tracks">No track notes yet</string>
+    <string name="notes_delete_title">Delete note?</string>
+    <string name="notes_delete_message">This removes the title, rating and text you wrote for this.</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">Download all favorite albums</string>
+    <string name="download_all_favorite_albums_started">Downloading all favorite albums…</string>
+    <string name="all_favorite_albums_downloaded">All favorite albums downloaded</string>
+    <string name="remove_all_favorite_albums_confirm">Do you really want to remove all favorite albums from downloads?</string>
+    <string name="no_favorite_albums_to_download">No favorite albums to download</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
+
+    <!-- Extra keys -->
+<string name="new_player_design">Новий дизайн програвача</string>
+<string name="new_mini_player_design">Новий дизайн мініпрогравача</string>
+    <string name="featured_for_you">Рекомендовано для вас</string>
+    <string name="trending_artist_subtitle">Набирає популярність у вашій стрічці</string>
+    <string name="artist_radio_subtitle">Нескінченний мікс на основі цього виконавця</string>
+    <string name="artist_radio_title">Радіо %1$s</string>
+    <string name="mood_and_playlists_for_you">Настрій і плейлісти для вас</string>
+    <string name="syncing_library">Синхронізація медіатеки</string>
+    <string name="network_sync_warning">Мережеві функції можуть не працювати до завершення синхронізації.</string>
+    <string name="syncing_your_library">Синхронізація вашої медіатеки…</string>
+    <string name="collapse_section">Згорнути розділ</string>
+    <string name="expand_section">Розгорнути розділ</string>
+    </resources>

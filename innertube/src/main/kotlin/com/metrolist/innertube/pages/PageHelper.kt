@@ -5,10 +5,6 @@ import com.metrolist.innertube.models.MusicResponsiveListItemRenderer.FlexColumn
 import com.metrolist.innertube.models.Run
 
 object PageHelper {
-    // Icon types for library management (YouTube changed these in Feb 2026)
-    // Old icons: LIBRARY_ADD (not in library), LIBRARY_SAVED/LIBRARY_REMOVE (in library)
-    // New icons: BOOKMARK_BORDER (not in library), BOOKMARK (in library)
-    // Note: KEEP/KEEP_OFF are for "Pin to Listen Again" - different from library!
     private val LIBRARY_ADD_ICONS = setOf("LIBRARY_ADD", "BOOKMARK_BORDER")
     private val LIBRARY_SAVED_ICONS = setOf("LIBRARY_SAVED", "BOOKMARK", "LIBRARY_REMOVE")
     private val ALL_LIBRARY_ICONS = LIBRARY_ADD_ICONS + LIBRARY_SAVED_ICONS
@@ -17,8 +13,8 @@ object PageHelper {
      * Data class to hold both library feedback tokens extracted from a menu
      */
     data class LibraryFeedbackTokens(
-        val addToken: String?,      // Token to add song to library (from BOOKMARK_BORDER)
-        val removeToken: String?    // Token to remove song from library (from BOOKMARK)
+        val addToken: String?,
+        val removeToken: String?
     )
 
     /**
@@ -27,7 +23,6 @@ object PageHelper {
      */
     fun isLibraryIcon(iconType: String?): Boolean {
         if (iconType == null) return false
-        // Exclude KEEP/KEEP_OFF (Listen Again pins)
         if (iconType == "KEEP" || iconType == "KEEP_OFF") return false
         return iconType in ALL_LIBRARY_ICONS || iconType.startsWith("LIBRARY_")
     }
@@ -92,24 +87,19 @@ object PageHelper {
             val toggleRenderer = item.toggleMenuServiceItemRenderer ?: continue
             val iconType = toggleRenderer.defaultIcon.iconType
 
-            // Skip KEEP/KEEP_OFF icons (Pin to Listen Again) - these are NOT library actions
             if (iconType == "KEEP" || iconType == "KEEP_OFF") continue
 
-            // Only process library-related icons
             if (!isLibraryIcon(iconType)) continue
 
             val defaultToken = toggleRenderer.defaultServiceEndpoint.feedbackEndpoint?.feedbackToken
             val toggledToken = toggleRenderer.toggledServiceEndpoint?.feedbackEndpoint?.feedbackToken
 
-            // Determine which token is which based on icon type
             when {
                 isAddLibraryIcon(iconType) -> {
-                    // BOOKMARK_BORDER or LIBRARY_ADD: default=add, toggled=remove
                     if (addToken == null) addToken = defaultToken
                     if (removeToken == null) removeToken = toggledToken
                 }
                 isSavedLibraryIcon(iconType) -> {
-                    // BOOKMARK or LIBRARY_SAVED/REMOVE: default=remove, toggled=add
                     if (removeToken == null) removeToken = defaultToken
                     if (addToken == null) addToken = toggledToken
                 }
@@ -136,28 +126,20 @@ object PageHelper {
         val toggledToken = menu.toggledServiceEndpoint?.feedbackEndpoint?.feedbackToken
         val iconType = menu.defaultIcon.iconType
 
-        // Determine if the current icon indicates song is NOT in library
-        // BOOKMARK_BORDER or LIBRARY_ADD = song is NOT in library (default action is ADD)
         val songNotInLibrary = iconType in LIBRARY_ADD_ICONS
 
         return when (type) {
             "LIBRARY_ADD" -> {
-                // We want the ADD token
                 if (songNotInLibrary) {
-                    // Icon shows "add" state, default action adds to library
                     defaultToken
                 } else {
-                    // Icon shows "saved" state, toggled action would add back
                     toggledToken
                 }
             }
             "LIBRARY_REMOVE", "LIBRARY_SAVED" -> {
-                // We want the REMOVE token
                 if (songNotInLibrary) {
-                    // Icon shows "add" state, toggled action would remove
                     toggledToken
                 } else {
-                    // Icon shows "saved" state, default action removes from library
                     defaultToken
                 }
             }

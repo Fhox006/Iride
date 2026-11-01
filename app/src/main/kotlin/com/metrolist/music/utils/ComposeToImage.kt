@@ -26,6 +26,7 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.withClip
@@ -37,6 +38,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.LyricsBackgroundStyle
+import com.metrolist.music.ui.component.LyricsShareStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -60,8 +62,8 @@ object ComposeToImage {
         lyricsAlignment: Layout.Alignment = Layout.Alignment.ALIGN_CENTER,
     ): Bitmap =
         withContext(Dispatchers.Default) {
-            val imageWidth = 1440
-            val padding = 80f
+            val imageWidth = LyricsShareStyle.Width
+            val padding = LyricsShareStyle.Padding
             val contentWidth = imageWidth - (padding * 2)
 
             val defaultBackgroundColor = 0xFF121212.toInt()
@@ -72,41 +74,41 @@ object ComposeToImage {
             val mainTextColor = textColor ?: defaultTextColor
             val secondaryTxtColor = secondaryTextColor ?: defaultSecondaryTextColor
 
-            // --- Paint Setup ---
+            val satoshiTypeface = try {
+                ResourcesCompat.getFont(context, R.font.satoshi_variable)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.DEFAULT
+            val artistTypeface = try {
+                ResourcesCompat.getFont(context, R.font.dm_sans_variable)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.MONOSPACE
+
             val titlePaint = TextPaint().apply {
                 color = mainTextColor
-                textSize = 80f
-                typeface = Typeface.DEFAULT_BOLD
+                textSize = LyricsShareStyle.TitleSize
+                typeface = Typeface.create(satoshiTypeface, Typeface.BOLD)
                 isAntiAlias = true
             }
 
             val artistPaint = TextPaint().apply {
                 color = secondaryTxtColor
-                textSize = 60f
-                typeface = Typeface.DEFAULT
+                textSize = LyricsShareStyle.ArtistSize
+                typeface = artistTypeface
                 isAntiAlias = true
             }
 
             val lyricsPaint = TextPaint().apply {
                 color = mainTextColor
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                typeface = ResourcesCompat.getFont(context, R.font.satoshi_variable) ?: Typeface.DEFAULT
+                fontVariationSettings = "'wght' 900"
                 isAntiAlias = true
-                textSize = when {
-                    lyrics.length < 80 -> 110f
-                    lyrics.length < 180 -> 90f
-                    else -> 70f
-                }
+                textSize = LyricsShareStyle.textSize(lyrics)
             }
 
-            val appNamePaint = TextPaint().apply {
-                color = secondaryTxtColor
-                textSize = 54f
-                typeface = Typeface.DEFAULT_BOLD
-                isAntiAlias = true
-            }
-
-            // --- Layout Calculations ---
-            val headerTextMaxWidth = contentWidth - 300f // space for cover art
+            val coverArtSize = LyricsShareStyle.CoverSize
+            val headerTextMaxWidth = contentWidth - coverArtSize - LyricsShareStyle.CoverGap
 
             val titleLayout = StaticLayout.Builder
                 .obtain(songTitle, 0, songTitle.length, titlePaint, headerTextMaxWidth.toInt())
@@ -122,24 +124,28 @@ object ComposeToImage {
                 .setEllipsize(android.text.TextUtils.TruncateAt.END)
                 .build()
 
-            val lyricsLayout = StaticLayout.Builder
-                .obtain(lyrics, 0, lyrics.length, lyricsPaint, contentWidth.toInt())
-                .setAlignment(lyricsAlignment)
-                .setLineSpacing(0f, 1.3f)
-                .setIncludePad(false)
-                .build()
-
-            val headerHeight = 260f
+            val headerHeight = maxOf(coverArtSize, titleLayout.height + artistLayout.height + 10f)
+            fun createLyricsLayout(textSize: Float): StaticLayout {
+                lyricsPaint.textSize = textSize
+                return StaticLayout.Builder
+                    .obtain(lyrics, 0, lyrics.length, lyricsPaint, contentWidth.toInt())
+                    .setAlignment(lyricsAlignment)
+                    .setLineSpacing(0f, LyricsShareStyle.LineSpacing)
+                    .setIncludePad(false)
+                    .build()
+            }
+            val fittedTextSize = LyricsShareStyle.fittedTextSize(
+                lyrics, LyricsShareStyle.lyricsHeightLimit(headerHeight),
+            ) { createLyricsLayout(it).height.toFloat() }
+            val lyricsLayout = createLyricsLayout(fittedTextSize)
             val lyricsHeight = lyricsLayout.height.toFloat()
-            val footerHeight = 90f
-            val spacing = 80f
-
-            val imageHeight = (padding * 2) + headerHeight + spacing + lyricsHeight + spacing + footerHeight + padding
+            val footerHeight = LyricsShareStyle.LogoHeight
+            val imageHeight = padding * 2 + headerHeight + LyricsShareStyle.HeaderGap + lyricsHeight +
+                LyricsShareStyle.FooterGap + footerHeight
 
             val bitmap = createBitmap(imageWidth, imageHeight.toInt())
             val canvas = Canvas(bitmap)
 
-            // Pre-load cover art
             var coverArtBitmap: Bitmap? = null
             if (coverArtUrl != null) {
                 try {
@@ -150,13 +156,14 @@ object ComposeToImage {
                 } catch (_: Exception) {}
             }
 
-            // Draw Background
             val backgroundRect = RectF(0f, 0f, imageWidth.toFloat(), imageHeight)
             val backgroundPaint = Paint().apply { isAntiAlias = true }
 
             when (backgroundStyle) {
                 LyricsBackgroundStyle.SOLID -> {
-                    backgroundPaint.color = bgColor
+                    backgroundPaint.shader = LinearGradient(
+                        0f, 0f, 0f, imageHeight, LyricsShareStyle.gradientColors(bgColor), null, Shader.TileMode.CLAMP,
+                    )
                     canvas.drawRect(backgroundRect, backgroundPaint)
                 }
                 LyricsBackgroundStyle.BLUR -> {
@@ -165,39 +172,39 @@ object ComposeToImage {
                     if (coverArtBitmap != null) {
                         val scaledBitmap = Bitmap.createScaledBitmap(coverArtBitmap, imageWidth / 10, imageHeight.toInt() / 10, true)
                         val blurredBitmap = fastBlur(scaledBitmap, 1f, 20)
+                        scaledBitmap.recycle()
                         if (blurredBitmap != null) {
                             canvas.drawBitmap(blurredBitmap, null, backgroundRect, null)
                             canvas.drawRect(backgroundRect, Paint().apply { color = 0x4D000000 })
+                            blurredBitmap.recycle()
                         }
                     }
                 }
                 LyricsBackgroundStyle.GRADIENT -> {
                     if (coverArtBitmap != null) {
                         val palette = Palette.from(coverArtBitmap).generate()
-                        val vibrant = palette.getVibrantColor(bgColor)
-                        val darkVibrant = palette.getDarkVibrantColor(bgColor)
-                        backgroundPaint.shader = LinearGradient(0f, 0f, 0f, imageHeight, intArrayOf(vibrant, darkVibrant), null, Shader.TileMode.CLAMP)
+                        val vibrant = palette.getMutedColor(bgColor)
+                        backgroundPaint.shader = LinearGradient(0f, 0f, 0f, imageHeight, LyricsShareStyle.gradientColors(vibrant), null, Shader.TileMode.CLAMP)
                         canvas.drawRect(backgroundRect, backgroundPaint)
                     } else {
-                        backgroundPaint.color = bgColor
+                        backgroundPaint.shader = LinearGradient(0f, 0f, 0f, imageHeight, LyricsShareStyle.gradientColors(bgColor), null, Shader.TileMode.CLAMP)
                         canvas.drawRect(backgroundRect, backgroundPaint)
                     }
                 }
             }
 
-            // --- Draw Header ---
-            val coverArtSize = 260f
             coverArtBitmap?.let {
-                val rect = RectF(padding, padding, padding + coverArtSize, padding + coverArtSize)
-                val path = Path().apply { addRoundRect(rect, 20f, 20f, Path.Direction.CW) }
+                val coverY = padding + (headerHeight - coverArtSize) / 2f
+                val rect = RectF(padding, coverY, padding + coverArtSize, coverY + coverArtSize)
+                val path = Path().apply { addRoundRect(rect, LyricsShareStyle.CoverRadius, LyricsShareStyle.CoverRadius, Path.Direction.CW) }
                 canvas.save()
                 canvas.clipPath(path)
                 canvas.drawBitmap(it, null, rect, null)
                 canvas.restore()
             }
 
-            val headerTextX = padding + coverArtSize + 40f
-            val headerCenterY = padding + coverArtSize / 2f
+            val headerTextX = padding + coverArtSize + LyricsShareStyle.CoverGap
+            val headerCenterY = padding + headerHeight / 2f
             val headerTextHeight = titleLayout.height + artistLayout.height + 10f
             val titleY = headerCenterY - headerTextHeight / 2f
 
@@ -208,45 +215,185 @@ object ComposeToImage {
             artistLayout.draw(canvas)
             canvas.restore()
 
-            // --- Draw Lyrics ---
-            val lyricsY = padding + headerHeight + spacing
+            val lyricsY = padding + headerHeight + LyricsShareStyle.HeaderGap
             canvas.save()
             canvas.translate(padding, lyricsY)
             lyricsLayout.draw(canvas)
             canvas.restore()
 
-            // --- Draw Footer ---
-            val footerY = lyricsY + lyricsHeight + spacing
-            val logoSize = 90f
-            val logoRect = RectF(padding, footerY, padding + logoSize, footerY + logoSize)
-            
-            canvas.drawOval(logoRect, Paint().apply { color = secondaryTxtColor; isAntiAlias = true })
-            
-            ContextCompat.getDrawable(context, R.drawable.small_icon)?.toBitmap()?.let {
+            val footerY = imageHeight - padding - footerHeight
+            val logoRect = RectF(
+                padding,
+                footerY,
+                padding + LyricsShareStyle.LogoWidth,
+                footerY + LyricsShareStyle.LogoHeight,
+            )
+            ContextCompat.getDrawable(context, R.drawable.lyrics_share_wordmark)?.toBitmap(
+                width = LyricsShareStyle.LogoWidth.toInt(),
+                height = LyricsShareStyle.LogoHeight.toInt(),
+            )?.let {
                 val logoPaint = Paint().apply {
-                    colorFilter = PorterDuffColorFilter(bgColor, PorterDuff.Mode.SRC_IN)
+                    colorFilter = PorterDuffColorFilter(0xFFFFFFFF.toInt(), PorterDuff.Mode.SRC_IN)
                     isAntiAlias = true
                 }
-                val iconPadding = 18f
-                val iconRect = RectF(logoRect.left + iconPadding, logoRect.top + iconPadding, logoRect.right - iconPadding, logoRect.bottom - iconPadding)
-                canvas.drawBitmap(it, null, iconRect, logoPaint)
+                canvas.drawBitmap(it, null, logoRect, logoPaint)
             }
-
-            val appNameX = padding + logoSize + 25f
-            val appNameY = footerY + logoSize / 2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
-            canvas.drawText("Iride", appNameX, appNameY, appNamePaint)
 
             return@withContext bitmap
         }
 
-    // Stack Blur v1.0 from http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
-    // Java Author: Mario Klingemann <mario at quasimondo.com>
-    // http://incubator.quasimondo.com
-    //
-    // created Feburary 29, 2004
-    // Android port : Yahel Bouaziz <yahel at kayenko.com>
-    // http://www.kayenko.com
-    // ported to Kotlin and adapted
+    /** Renders the "guess the song" game result card — same monochrome/mono-font look as the New Iride UI. */
+    suspend fun createArtistGameResultImage(
+        context: Context,
+        artistThumbnailUrl: String?,
+        artistName: String,
+        timeText: String,
+        isNewBest: Boolean,
+        correctCount: Int,
+        totalRounds: Int,
+    ): Bitmap =
+        withContext(Dispatchers.Default) {
+            val imageWidth = 1080
+            val padding = 80f
+
+            val monoFont = try {
+                ResourcesCompat.getFont(context, R.font.dm_sans_variable)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.MONOSPACE
+
+            val backgroundColor = 0xFF000000.toInt()
+            val onBackgroundColor = 0xFFFFFFFF.toInt()
+            val secondaryColor = 0xB3FFFFFF.toInt()
+
+            var avatarBitmap: Bitmap? = null
+            if (artistThumbnailUrl != null) {
+                try {
+                    val imageLoader = ImageLoader(context)
+                    val request = ImageRequest.Builder(context).data(artistThumbnailUrl).size(400).allowHardware(false).build()
+                    avatarBitmap = imageLoader.execute(request).image?.toBitmap()
+                } catch (_: Exception) {}
+            }
+
+            val namePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 64f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val timePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 150f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val labelPaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 40f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val badgePaint = TextPaint().apply {
+                color = backgroundColor
+                textSize = 34f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val appNamePaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 36f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val statValuePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 44f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val statLabelPaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 28f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+
+            val avatarSize = 320f
+            val badgeHeight = if (isNewBest) 90f else 0f
+            val statsBoxHeight = 40f + (statValuePaint.descent() - statValuePaint.ascent()) +
+                10f + (statLabelPaint.descent() - statLabelPaint.ascent()) + 40f
+            val imageHeight = padding + avatarSize + 50f + (namePaint.descent() - namePaint.ascent()) + 40f +
+                badgeHeight + 40f + (timePaint.descent() - timePaint.ascent()) + 20f +
+                (labelPaint.descent() - labelPaint.ascent()) + 50f + statsBoxHeight + 60f + padding
+
+            val bitmap = createBitmap(imageWidth, imageHeight.toInt())
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(backgroundColor)
+
+            val centerX = imageWidth / 2f
+            var cursorY = padding
+
+            val avatarRect = RectF(centerX - avatarSize / 2f, cursorY, centerX + avatarSize / 2f, cursorY + avatarSize)
+            if (avatarBitmap != null) {
+                canvas.save()
+                canvas.clipPath(Path().apply { addOval(avatarRect, Path.Direction.CW) })
+                canvas.drawBitmap(avatarBitmap, null, avatarRect, null)
+                canvas.restore()
+            } else {
+                canvas.drawOval(avatarRect, Paint().apply { color = secondaryColor; isAntiAlias = true })
+            }
+            canvas.drawOval(avatarRect, Paint().apply { color = onBackgroundColor; style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true })
+            cursorY += avatarSize + 50f
+
+            cursorY -= namePaint.ascent()
+            canvas.drawText(artistName, centerX, cursorY, namePaint)
+            cursorY += namePaint.descent() + 40f
+
+            if (isNewBest) {
+                val badgeText = context.getString(R.string.guess_game_new_best).uppercase()
+                val badgeWidth = badgePaint.measureText(badgeText) + 80f
+                val badgeRect = RectF(centerX - badgeWidth / 2f, cursorY, centerX + badgeWidth / 2f, cursorY + 70f)
+                canvas.drawRoundRect(badgeRect, 35f, 35f, Paint().apply { color = onBackgroundColor; isAntiAlias = true })
+                val badgeTextY = badgeRect.centerY() - (badgePaint.descent() + badgePaint.ascent()) / 2f
+                canvas.drawText(badgeText, centerX, badgeTextY, badgePaint)
+                cursorY += 90f + 40f
+            }
+
+            cursorY -= timePaint.ascent()
+            canvas.drawText(timeText, centerX, cursorY, timePaint)
+            cursorY += timePaint.descent() + 20f
+
+            cursorY -= labelPaint.ascent()
+            canvas.drawText(context.getString(R.string.guess_game), centerX, cursorY, labelPaint)
+            cursorY += labelPaint.descent() + 50f
+
+            val statsBoxRect = RectF(centerX - 260f, cursorY, centerX + 260f, cursorY + statsBoxHeight)
+            canvas.drawRoundRect(statsBoxRect, 28f, 28f, Paint().apply { color = 0x0FFFFFFF; isAntiAlias = true })
+            var statsCursorY = statsBoxRect.top + 40f
+            statsCursorY -= statValuePaint.ascent()
+            canvas.drawText(
+                context.getString(R.string.guess_game_result_correct, correctCount, totalRounds),
+                centerX,
+                statsCursorY,
+                statValuePaint,
+            )
+            statsCursorY += statValuePaint.descent() + 10f
+            statsCursorY -= statLabelPaint.ascent()
+            canvas.drawText(context.getString(R.string.guess_game_result_correct_label), centerX, statsCursorY, statLabelPaint)
+            cursorY += statsBoxHeight + 60f
+
+            canvas.drawText("IRIDE", centerX, imageHeight - padding + 10f, appNamePaint)
+
+            return@withContext bitmap
+        }
+
     private fun fastBlur(
         sentBitmap: Bitmap,
         scale: Float,

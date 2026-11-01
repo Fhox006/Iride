@@ -2,43 +2,22 @@
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
-
 package com.metrolist.music.ui.component
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
-import com.metrolist.innertube.YouTube
-import com.metrolist.music.LocalDatabase
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
-import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.extensions.isSyncEnabled
-import com.metrolist.music.utils.rememberPreference
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
-import java.util.logging.Logger
+import com.metrolist.music.viewmodels.PlaylistCreationViewModel
+import java.util.UUID
 
 @Composable
 fun CreatePlaylistDialog(
@@ -46,98 +25,48 @@ fun CreatePlaylistDialog(
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
     onPlaylistCreated: ((String) -> Unit)? = null,
+    loadInitialSongs: (suspend () -> List<MediaMetadata>)? = null,
+    loadInitialSongIds: (suspend () -> List<String>)? = null,
+    targetPlaylist: PlaylistEntity? = null,
 ) {
-    val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
-    var syncedPlaylist by remember { mutableStateOf(false) }
+    val draftKey = rememberSaveable { UUID.randomUUID().toString() }
+    val viewModel = hiltViewModel<PlaylistCreationViewModel>()
+    val draft by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val defaultName = stringResource(R.string.playlist_draft_title)
 
-    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
-    val isSignedIn = innerTubeCookie.isNotEmpty()
+    fun initialize() = viewModel.initialize(draftKey, initialTextFieldValue, targetPlaylist) {
+        loadInitialSongs?.invoke() ?: loadInitialSongIds?.invoke()?.let { viewModel.resolveSongs(it) }.orEmpty()
+    }
 
-    val notLoggedInYoutubeStr = stringResource(R.string.not_logged_in_youtube)
-    val syncDisabledStr = stringResource(R.string.sync_disabled)
+    fun dismiss() {
+        viewModel.release()
+        onDismiss()
+    }
 
-    TextFieldDialog(
-        icon = { Icon(painter = painterResource(R.drawable.add), contentDescription = null) },
-        title = { Text(text = stringResource(R.string.create_playlist)) },
-        initialTextFieldValue = TextFieldValue(initialTextFieldValue ?: ""),
-        onDismiss = onDismiss,
-        onDone = { playlistName ->
-            coroutineScope.launch(Dispatchers.IO) {
-                val browseId =
-                    if (syncedPlaylist && isSignedIn) {
-                        YouTube.createPlaylist(playlistName)
-                    } else if (syncedPlaylist) {
-                        Logger.getLogger("CreatePlaylistDialog").warning("Not signed in")
-                        return@launch
-                    } else {
-                        null
-                    }
-
-                val playlistEntity =
-                    PlaylistEntity(
-                        name = playlistName,
-                        browseId = browseId,
-                        bookmarkedAt = LocalDateTime.now(),
-                        isEditable = true,
-                    )
-
-                database.query {
-                    insert(playlistEntity)
-                }
-
-                withContext(Dispatchers.Main) {
-                    onPlaylistCreated?.invoke(playlistEntity.id)
-                }
+    LaunchedEffect(viewModel) { initialize() }
+    LaunchedEffect(draft.created) {
+        draft.created?.let { result ->
+            viewModel.consumeCreated()
+            if (result.savedLocally) {
+                Toast.makeText(context, R.string.playlist_draft_saved_locally, Toast.LENGTH_SHORT).show()
             }
-        },
-        extraContent = {
-            if (allowSyncing) {
-                Row(
-                    modifier = Modifier.padding(vertical = 16.dp, horizontal = 40.dp),
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.sync_playlist),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.allows_for_sync_witch_youtube),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.fillMaxWidth(0.7f),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        Switch(
-                            checked = syncedPlaylist,
-                            onCheckedChange = {
-                                val isYtmSyncEnabled = context.isSyncEnabled()
-                                if (!isSignedIn && !syncedPlaylist) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            notLoggedInYoutubeStr,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                } else if (!isYtmSyncEnabled) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            syncDisabledStr,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                } else {
-                                    syncedPlaylist = !syncedPlaylist
-                                }
-                            },
-                        )
-                    }
-                }
-            }
-        },
-    )
+            onPlaylistCreated?.invoke(result.id)
+            dismiss()
+        }
+    }
+
+    IrideFolioEditorDialog(onDismiss = ::dismiss, dismissEnabled = !draft.saving) {
+        IrideFolioPlaylistComposer(
+            draft = draft,
+            onDismiss = ::dismiss,
+            onNameChange = viewModel::setName,
+            onQueryChange = viewModel::setQuery,
+            onSelectionChange = viewModel::showSelection,
+            onToggleSong = viewModel::toggle,
+            onRefresh = viewModel::refresh,
+            onRetrySeeds = ::initialize,
+            onCreate = { viewModel.create(allowSyncing, defaultName) },
+        )
+    }
 }

@@ -80,7 +80,6 @@ fun VolumeSlider(
         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
         inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    
     val stopIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Slider(

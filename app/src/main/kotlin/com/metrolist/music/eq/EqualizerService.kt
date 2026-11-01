@@ -5,7 +5,10 @@ import android.annotation.SuppressLint
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.metrolist.music.eq.audio.CustomEqualizerAudioProcessor
+import com.metrolist.music.eq.data.EQPreset
+import com.metrolist.music.eq.data.FilterType
 import com.metrolist.music.eq.data.ParametricEQ
+import com.metrolist.music.eq.data.ParametricEQBand
 import com.metrolist.music.eq.data.SavedEQProfile
 import timber.log.Timber
 import javax.inject.Inject
@@ -36,14 +39,11 @@ class EqualizerService @Inject constructor() {
         audioProcessors.add(processor)
         Timber.tag(TAG).d("Audio processor added. Total: ${audioProcessors.size}")
 
-        // Apply pending profile if one was set before processor was available
         if (shouldDisable) {
             processor.disable()
-            // Don't clear shouldDisable here, as we might add more processors
         } else if (pendingProfile != null) {
             val profile = pendingProfile!!
             applyProfileToProcessor(processor, profile)
-            // Don't clear pendingProfile here
         }
     }
 
@@ -68,9 +68,8 @@ class EqualizerService @Inject constructor() {
             return Result.success(Unit)
         }
 
-        pendingProfile = profile // Keep it for future processors
+        pendingProfile = profile
         shouldDisable = false
-        
         var success = true
         var lastError: Exception? = null
 
@@ -87,9 +86,26 @@ class EqualizerService @Inject constructor() {
     }
 
     private fun applyProfileToProcessor(processor: CustomEqualizerAudioProcessor, profile: SavedEQProfile) {
+        val bassBoostDb = profile.bassBoostDb()
+
+        // With transient shaping active the low shelf is driven dynamically by the
+        // processor's envelope stage, so it must not be added as a static band too.
+        processor.setDynamicBass(bassBoostDb, profile.transientStrength)
+
+        val bands = if (profile.transientStrength > 0.0 || bassBoostDb == 0.0) {
+            profile.bands
+        } else {
+            profile.bands + ParametricEQBand(
+                frequency = EQPreset.BASS_SHELF_FREQUENCY,
+                gain = bassBoostDb,
+                q = 0.7,
+                filterType = FilterType.LSC
+            )
+        }
+
         val parametricEQ = ParametricEQ(
             preamp = profile.preamp,
-            bands = profile.bands
+            bands = bands
         )
         processor.applyProfile(parametricEQ)
     }
@@ -107,7 +123,7 @@ class EqualizerService @Inject constructor() {
             return
         }
 
-        shouldDisable = true // Keep state
+        shouldDisable = true
         pendingProfile = null
 
         audioProcessors.forEach { processor ->
@@ -150,7 +166,6 @@ class EqualizerService @Inject constructor() {
      * Release resources (not needed for AudioProcessor, but kept for API compatibility)
      */
     fun release() {
-        // AudioProcessor is managed by ExoPlayer, we just clear our reference
         audioProcessors.clear()
         Timber.tag(TAG).d("Audio processor references cleared")
     }

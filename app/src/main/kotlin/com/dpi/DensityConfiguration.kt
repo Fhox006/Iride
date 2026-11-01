@@ -18,6 +18,8 @@ internal class DensityConfiguration(
 ) : ActivityLifecycleManager() {
 
     private var originalDensityDpi: Int = 0
+    private var originalFontScale: Float = 1f
+    private var originalScaledDensity: Float = 1f
 
     /**
      * Applies the density scaling to the application context.
@@ -32,6 +34,8 @@ internal class DensityConfiguration(
             val resources = context.resources
             val config = Configuration(resources.configuration)
             originalDensityDpi = config.densityDpi
+            originalFontScale = config.fontScale
+            originalScaledDensity = resources.displayMetrics.scaledDensity
             updateDensityDpi(config, resources)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to apply configuration", e)
@@ -44,9 +48,11 @@ internal class DensityConfiguration(
     private fun updateDensityDpi(config: Configuration, resources: Resources) {
         val newDensityDpi = (originalDensityDpi * densityScale).roundToInt()
         config.densityDpi = newDensityDpi
-        Timber.tag(TAG).i("Updated densityDpi to: $newDensityDpi")
+        config.fontScale = originalFontScale
+        Timber.tag(TAG).i("Updated densityDpi to: $newDensityDpi fontScale: $originalFontScale")
         @Suppress("DEPRECATION")
         resources.updateConfiguration(config, resources.displayMetrics)
+        resources.displayMetrics.scaledDensity = resources.displayMetrics.density * originalFontScale
     }
 
     /**

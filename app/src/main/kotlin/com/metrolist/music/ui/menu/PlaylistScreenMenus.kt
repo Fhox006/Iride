@@ -1,8 +1,4 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.menu
 
 import android.content.Context
@@ -17,14 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,16 +31,17 @@ import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.Material3MenuGroup
+import com.metrolist.music.ui.component.IrideFolioContextMenu
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.ui.component.rememberMenuActionScope
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
 import com.metrolist.music.utils.saveToPublicDocuments
 import kotlinx.coroutines.launch
 
-/**
- * Menu for Local Playlist Screen
- */
+/** Menu for Local Playlist Screen */
 @Composable
 fun LocalPlaylistMenu(
     playlist: Playlist,
@@ -55,15 +49,15 @@ fun LocalPlaylistMenu(
     context: Context,
     downloadState: Int,
     onEdit: () -> Unit,
-    onSync: () -> Unit,
     onDelete: () -> Unit,
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onDismiss: () -> Unit,
+    onReorder: (() -> Unit)? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberMenuActionScope()
     val localContext = LocalContext.current
 
     val (showExportDialog, setShowExportDialog) = remember { mutableStateOf(false) }
@@ -72,6 +66,7 @@ fun LocalPlaylistMenu(
         when (downloadState) {
             Download.STATE_COMPLETED -> {
                 Material3MenuItemData(
+                    actionId = R.string.remove_download,
                     title = { Text(stringResource(R.string.remove_download)) },
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
@@ -87,9 +82,11 @@ fun LocalPlaylistMenu(
                 )
             }
 
-            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+            Download.STATE_QUEUED,
+            Download.STATE_DOWNLOADING -> {
                 Material3MenuItemData(
-                    title = { Text(stringResource(R.string.downloading)) },
+                    actionId = R.string.downloading,
+                    title = { Text(stringResource(R.string.folio_cancel_download)) },
                     description = { Text(stringResource(R.string.download_in_progress_desc)) },
                     icon = {
                         CircularProgressIndicator(
@@ -106,6 +103,7 @@ fun LocalPlaylistMenu(
 
             else -> {
                 Material3MenuItemData(
+                    actionId = R.string.action_download,
                     title = { Text(stringResource(R.string.action_download)) },
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
@@ -124,129 +122,132 @@ fun LocalPlaylistMenu(
 
     val isYouTubePlaylist = playlist.playlist.browseId != null
 
-    val menuItems =
-        buildList {
+    val menuItems = buildList {
+        add(
+            Material3MenuItemData(
+                actionId = R.string.edit,
+                title = { Text(stringResource(R.string.folio_rename)) },
+                description = { Text(stringResource(R.string.edit_playlist)) },
+                icon = {
+                    Icon(painter = painterResource(R.drawable.edit), contentDescription = null)
+                },
+                onClick = {
+                    onEdit()
+                    onDismiss()
+                },
+            )
+        )
+
+        if (onReorder != null) {
             add(
                 Material3MenuItemData(
-                    title = { Text(stringResource(R.string.edit)) },
-                    description = { Text(stringResource(R.string.edit_playlist)) },
+                    actionId = R.string.reorder,
+                    title = { Text(stringResource(R.string.reorder)) },
+                    description = { Text(stringResource(R.string.reorder_desc)) },
                     icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.edit),
-                            contentDescription = null,
-                        )
+                        Icon(painter = painterResource(R.drawable.list), contentDescription = null)
                     },
                     onClick = {
-                        onEdit()
+                        onReorder()
                         onDismiss()
                     },
-                ),
-            )
-
-            // Show sync button only for YouTube playlists
-            if (isYouTubePlaylist) {
-                add(
-                    Material3MenuItemData(
-                        title = { Text(stringResource(R.string.action_sync)) },
-                        description = { Text(stringResource(R.string.sync_playlist_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.sync),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            onSync()
-                            onDismiss()
-                        },
-                    ),
                 )
-            }
-
-            if (!isGuest) {
-                add(
-                    Material3MenuItemData(
-                        title = { Text(stringResource(R.string.add_to_queue)) },
-                        description = { Text(stringResource(R.string.add_to_queue_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.queue_music),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            onQueue()
-                            onDismiss()
-                        },
-                    ),
-                )
-            }
-
-            add(downloadMenuItem)
-
-            add(
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.share)) },
-                    description = { Text(stringResource(R.string.share_playlist_desc)) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.share),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        val shareText =
-                            if (isYouTubePlaylist) {
-                                "https://music.youtube.com/playlist?list=${playlist.playlist.browseId}"
-                            } else {
-                                songs.joinToString("\n") { it.song.song.title }
-                            }
-                        val sendIntent: Intent =
-                            Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                type = "text/plain"
-                            }
-                        val shareIntent = Intent.createChooser(sendIntent, null)
-                        context.startActivity(shareIntent)
-                        onDismiss()
-                    },
-                ),
-            )
-
-            // Export menu group
-            add(
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.export_playlist)) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.share),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = { setShowExportDialog(true) },
-                ),
-            )
-
-            add(
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.delete)) },
-                    description = { Text(stringResource(R.string.delete_playlist_desc)) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.delete),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        onDelete()
-                        onDismiss()
-                    },
-                ),
             )
         }
 
-    Material3MenuGroup(items = menuItems)
+        if (!isGuest) {
+            add(
+                Material3MenuItemData(
+                    actionId = R.string.add_to_queue,
+                    title = { Text(stringResource(R.string.add_to_queue)) },
+                    description = { Text(stringResource(R.string.add_to_queue_desc)) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.queue_music),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        onQueue()
+                        onDismiss()
+                    },
+                )
+            )
+        }
+
+        add(downloadMenuItem)
+
+        add(
+            Material3MenuItemData(
+                actionId = R.string.share,
+                title = { Text(stringResource(R.string.share)) },
+                description = { Text(stringResource(R.string.share_playlist_desc)) },
+                icon = {
+                    Icon(painter = painterResource(R.drawable.share), contentDescription = null)
+                },
+                onClick = {
+                    val shareText =
+                        if (isYouTubePlaylist) {
+                            "https://music.youtube.com/playlist?list=${playlist.playlist.browseId}"
+                        } else {
+                            songs.joinToString("\n") { it.song.song.title }
+                        }
+                    val sendIntent: Intent =
+                        Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                            type = "text/plain"
+                        }
+                    val shareIntent = Intent.createChooser(sendIntent, null)
+                    context.startActivity(shareIntent)
+                    onDismiss()
+                },
+            )
+        )
+
+        add(
+            Material3MenuItemData(
+                actionId = R.string.export_playlist,
+                title = { Text(stringResource(R.string.export_playlist)) },
+                icon = {
+                    Icon(painter = painterResource(R.drawable.share), contentDescription = null)
+                },
+                onClick = { setShowExportDialog(true) },
+            )
+        )
+
+        add(
+            Material3MenuItemData(
+                actionId = R.string.delete,
+                title = { Text(stringResource(R.string.delete)) },
+                description = { Text(stringResource(R.string.delete_playlist_desc)) },
+                icon = {
+                    Icon(painter = painterResource(R.drawable.delete), contentDescription = null)
+                },
+                onClick = {
+                    onDelete()
+                    onDismiss()
+                },
+            )
+        )
+    }
+
+    IrideFolioContextMenu(
+        items =
+            menuItems.filter {
+                it.actionId !in
+                    setOf(
+                        R.string.action_download,
+                        R.string.remove_download,
+                        R.string.downloading,
+                    ) &&
+                    (it.actionId !in setOf(R.string.edit, R.string.reorder, R.string.delete) ||
+                        (playlist.playlist.isEditable && !isGuest))
+            },
+        visible = !showExportDialog,
+        onDismiss = onDismiss,
+        retainOpenActions = setOf(R.string.export_playlist),
+    )
 
     if (showExportDialog) {
         ExportDialog(
@@ -255,8 +256,18 @@ fun LocalPlaylistMenu(
                 coroutineScope.launch {
                     val result =
                         when (format) {
-                            "csv" -> PlaylistExporter.exportPlaylistAsCSV(localContext, playlist.playlist.name, songs)
-                            "m3u" -> PlaylistExporter.exportPlaylistAsM3U(localContext, playlist.playlist.name, songs)
+                            "csv" ->
+                                PlaylistExporter.exportPlaylistAsCSV(
+                                    localContext,
+                                    playlist.playlist.name,
+                                    songs,
+                                )
+                            "m3u" ->
+                                PlaylistExporter.exportPlaylistAsM3U(
+                                    localContext,
+                                    playlist.playlist.name,
+                                    songs,
+                                )
                             else -> Result.failure(IllegalArgumentException("Unknown format"))
                         }
                     result
@@ -269,8 +280,10 @@ fun LocalPlaylistMenu(
                                     else -> "*/*"
                                 }
                             shareExportFile(localContext, uri, mimeType)
-                        }.onFailure {
-                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                        }
+                        .onFailure {
+                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT)
+                                .show()
                         }
                 }
                 onDismiss()
@@ -279,8 +292,18 @@ fun LocalPlaylistMenu(
                 coroutineScope.launch {
                     val exportResult =
                         when (format) {
-                            "csv" -> PlaylistExporter.exportPlaylistAsCSV(localContext, playlist.playlist.name, songs)
-                            "m3u" -> PlaylistExporter.exportPlaylistAsM3U(localContext, playlist.playlist.name, songs)
+                            "csv" ->
+                                PlaylistExporter.exportPlaylistAsCSV(
+                                    localContext,
+                                    playlist.playlist.name,
+                                    songs,
+                                )
+                            "m3u" ->
+                                PlaylistExporter.exportPlaylistAsM3U(
+                                    localContext,
+                                    playlist.playlist.name,
+                                    songs,
+                                )
                             else -> Result.failure(IllegalArgumentException("Unknown format"))
                         }
                     exportResult
@@ -294,12 +317,25 @@ fun LocalPlaylistMenu(
                             val saveResult = saveToPublicDocuments(localContext, file, mimeType)
                             saveResult
                                 .onSuccess {
-                                    Toast.makeText(localContext, R.string.export_success, Toast.LENGTH_SHORT).show()
-                                }.onFailure {
-                                    Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                            localContext,
+                                            R.string.export_success,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
                                 }
-                        }.onFailure {
-                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                                .onFailure {
+                                    Toast.makeText(
+                                            localContext,
+                                            R.string.export_failed,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
+                                }
+                        }
+                        .onFailure {
+                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT)
+                                .show()
                         }
                 }
                 onDismiss()
@@ -308,9 +344,7 @@ fun LocalPlaylistMenu(
     }
 }
 
-/**
- * Menu for Auto Playlist Screen (Liked Songs, Downloaded Songs, etc.)
- */
+/** Menu for Auto Playlist Screen (Liked Songs, Downloaded Songs, etc.) */
 @Composable
 fun AutoPlaylistMenu(
     downloadState: Int,
@@ -319,18 +353,21 @@ fun AutoPlaylistMenu(
     onDismiss: () -> Unit,
     songs: List<Song> = emptyList(),
     playlistName: String = "Playlist",
+    onReorder: (() -> Unit)? = null,
+    exportOnly: Boolean = false,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberMenuActionScope()
     val localContext = LocalContext.current
 
-    val (showExportDialog, setShowExportDialog) = remember { mutableStateOf(false) }
+    val (showExportDialog, setShowExportDialog) = remember { mutableStateOf(exportOnly) }
 
     val downloadMenuItem =
         when (downloadState) {
             Download.STATE_COMPLETED -> {
                 Material3MenuItemData(
+                    actionId = R.string.remove_download,
                     title = { Text(stringResource(R.string.remove_download)) },
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
@@ -346,9 +383,11 @@ fun AutoPlaylistMenu(
                 )
             }
 
-            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+            Download.STATE_QUEUED,
+            Download.STATE_DOWNLOADING -> {
                 Material3MenuItemData(
-                    title = { Text(stringResource(R.string.downloading)) },
+                    actionId = R.string.downloading,
+                    title = { Text(stringResource(R.string.folio_cancel_download)) },
                     description = { Text(stringResource(R.string.download_in_progress_desc)) },
                     icon = {
                         CircularProgressIndicator(
@@ -365,6 +404,7 @@ fun AutoPlaylistMenu(
 
             else -> {
                 Material3MenuItemData(
+                    actionId = R.string.action_download,
                     title = { Text(stringResource(R.string.action_download)) },
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
@@ -381,47 +421,80 @@ fun AutoPlaylistMenu(
             }
         }
 
-    Material3MenuGroup(
-        items =
-            listOfNotNull(
-                if (!isGuest) {
-                    Material3MenuItemData(
-                        title = { Text(stringResource(R.string.add_to_queue)) },
-                        description = { Text(stringResource(R.string.add_to_queue_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.queue_music),
-                                contentDescription = null,
+    if (!exportOnly) {
+        IrideFolioContextMenu(
+            items =
+                listOfNotNull(
+                        if (!isGuest) {
+                            Material3MenuItemData(
+                                actionId = R.string.add_to_queue,
+                                title = { Text(stringResource(R.string.add_to_queue)) },
+                                description = { Text(stringResource(R.string.add_to_queue_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.queue_music),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    onQueue()
+                                    onDismiss()
+                                },
                             )
+                        } else {
+                            null
                         },
-                        onClick = {
-                            onQueue()
-                            onDismiss()
-                        },
-                    )
-                } else {
-                    null
-                },
-                if (songs.isNotEmpty()) {
-                    Material3MenuItemData(
-                        title = { Text(stringResource(R.string.export_playlist)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.share),
-                                contentDescription = null,
+                        if (onReorder != null) {
+                            Material3MenuItemData(
+                                actionId = R.string.reorder,
+                                title = { Text(stringResource(R.string.reorder)) },
+                                description = { Text(stringResource(R.string.reorder_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.list),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    onReorder()
+                                    onDismiss()
+                                },
                             )
+                        } else {
+                            null
                         },
-                        onClick = { setShowExportDialog(true) },
+                        if (songs.isNotEmpty()) {
+                            Material3MenuItemData(
+                                actionId = R.string.export_playlist,
+                                title = { Text(stringResource(R.string.export_playlist)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.share),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = { setShowExportDialog(true) },
+                            )
+                        } else {
+                            null
+                        },
+                        downloadMenuItem,
                     )
-                } else {
-                    null
-                },
-                downloadMenuItem,
-            ),
-    )
+                    .filter {
+                        it.actionId !in
+                            setOf(
+                                R.string.action_download,
+                                R.string.remove_download,
+                                R.string.downloading,
+                            )
+                    },
+            visible = !showExportDialog && !exportOnly,
+            onDismiss = onDismiss,
+            retainOpenActions = setOf(R.string.export_playlist),
+        )
+    }
 
     if (showExportDialog) {
-        // Convert Song objects to a format that PlaylistExporter can handle
         val playlistSongs =
             songs.map { song ->
                 PlaylistSong(
@@ -436,13 +509,26 @@ fun AutoPlaylistMenu(
             }
 
         ExportDialog(
-            onDismiss = { setShowExportDialog(false) },
+            onDismiss = {
+                setShowExportDialog(false)
+                if (exportOnly) onDismiss()
+            },
             onShare = { format ->
                 coroutineScope.launch {
                     val result =
                         when (format) {
-                            "csv" -> PlaylistExporter.exportPlaylistAsCSV(localContext, playlistName, playlistSongs)
-                            "m3u" -> PlaylistExporter.exportPlaylistAsM3U(localContext, playlistName, playlistSongs)
+                            "csv" ->
+                                PlaylistExporter.exportPlaylistAsCSV(
+                                    localContext,
+                                    playlistName,
+                                    playlistSongs,
+                                )
+                            "m3u" ->
+                                PlaylistExporter.exportPlaylistAsM3U(
+                                    localContext,
+                                    playlistName,
+                                    playlistSongs,
+                                )
                             else -> Result.failure(IllegalArgumentException("Unknown format"))
                         }
                     result
@@ -455,8 +541,10 @@ fun AutoPlaylistMenu(
                                     else -> "*/*"
                                 }
                             shareExportFile(localContext, uri, mimeType)
-                        }.onFailure {
-                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                        }
+                        .onFailure {
+                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT)
+                                .show()
                         }
                 }
                 onDismiss()
@@ -465,8 +553,18 @@ fun AutoPlaylistMenu(
                 coroutineScope.launch {
                     val exportResult =
                         when (format) {
-                            "csv" -> PlaylistExporter.exportPlaylistAsCSV(localContext, playlistName, playlistSongs)
-                            "m3u" -> PlaylistExporter.exportPlaylistAsM3U(localContext, playlistName, playlistSongs)
+                            "csv" ->
+                                PlaylistExporter.exportPlaylistAsCSV(
+                                    localContext,
+                                    playlistName,
+                                    playlistSongs,
+                                )
+                            "m3u" ->
+                                PlaylistExporter.exportPlaylistAsM3U(
+                                    localContext,
+                                    playlistName,
+                                    playlistSongs,
+                                )
                             else -> Result.failure(IllegalArgumentException("Unknown format"))
                         }
                     exportResult
@@ -480,12 +578,25 @@ fun AutoPlaylistMenu(
                             val saveResult = saveToPublicDocuments(localContext, file, mimeType)
                             saveResult
                                 .onSuccess {
-                                    Toast.makeText(localContext, R.string.export_success, Toast.LENGTH_SHORT).show()
-                                }.onFailure {
-                                    Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                            localContext,
+                                            R.string.export_success,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
                                 }
-                        }.onFailure {
-                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                                .onFailure {
+                                    Toast.makeText(
+                                            localContext,
+                                            R.string.export_failed,
+                                            Toast.LENGTH_SHORT,
+                                        )
+                                        .show()
+                                }
+                        }
+                        .onFailure {
+                            Toast.makeText(localContext, R.string.export_failed, Toast.LENGTH_SHORT)
+                                .show()
                         }
                 }
                 onDismiss()
@@ -494,111 +605,36 @@ fun AutoPlaylistMenu(
     }
 }
 
-/**
- * Menu for Top Playlist Screen
- */
+/** Menu for Top Playlist Screen */
 @Composable
 fun TopPlaylistMenu(
     downloadState: Int,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
     onDismiss: () -> Unit,
+    songs: List<Song> = emptyList(),
+    playlistName: String = "Playlist",
 ) {
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
-
-    val downloadMenuItem =
-        when (downloadState) {
-            Download.STATE_COMPLETED -> {
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.remove_download)) },
-                    description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.offline),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        onDownload()
-                        onDismiss()
-                    },
-                )
-            }
-
-            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.downloading)) },
-                    description = { Text(stringResource(R.string.download_in_progress_desc)) },
-                    icon = {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    },
-                    onClick = {
-                        onDownload()
-                        onDismiss()
-                    },
-                )
-            }
-
-            else -> {
-                Material3MenuItemData(
-                    title = { Text(stringResource(R.string.action_download)) },
-                    description = { Text(stringResource(R.string.download_playlist_desc)) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.download),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        onDownload()
-                        onDismiss()
-                    },
-                )
-            }
-        }
-
-    Material3MenuGroup(
-        items =
-            listOfNotNull(
-                if (!isGuest) {
-                    Material3MenuItemData(
-                        title = { Text(stringResource(R.string.add_to_queue)) },
-                        description = { Text(stringResource(R.string.add_to_queue_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.queue_music),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            onQueue()
-                            onDismiss()
-                        },
-                    )
-                } else {
-                    null
-                },
-                downloadMenuItem,
-            ),
+    AutoPlaylistMenu(
+        downloadState = downloadState,
+        onQueue = onQueue,
+        onDownload = onDownload,
+        onDismiss = onDismiss,
+        songs = songs,
+        playlistName = playlistName,
     )
 }
 
-private fun shareExportFile(
-    context: Context,
-    uri: Uri,
-    mimeType: String,
-) {
+private fun shareExportFile(context: Context, uri: Uri, mimeType: String) {
     val shareIntent =
         Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.export_playlist)))
+    context.startActivity(
+        Intent.createChooser(shareIntent, context.getString(R.string.export_playlist))
+    )
 }
 
 @Composable
@@ -614,13 +650,13 @@ fun ExportDialog(
         onDismiss = onDismiss,
         title = { Text(stringResource(R.string.export_playlist)) },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            IrideFolioSecondaryButton(onClick = onDismiss) {
                 Text(text = stringResource(android.R.string.cancel))
             }
-            TextButton(onClick = { onSave(selected) }) {
+            IrideFolioSecondaryButton(onClick = { onSave(selected) }) {
                 Text(text = stringResource(R.string.export_option_save))
             }
-            TextButton(onClick = { onShare(selected) }) {
+            IrideFolioPrimaryButton(onClick = { onShare(selected) }) {
                 Text(text = stringResource(R.string.export_option_share))
             }
         },
@@ -630,8 +666,7 @@ fun ExportDialog(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
+                    Modifier.fillMaxWidth()
                         .clickable { setSelected("csv") }
                         .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
@@ -644,8 +679,7 @@ fun ExportDialog(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
+                    Modifier.fillMaxWidth()
                         .clickable { setSelected("m3u") }
                         .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
@@ -658,9 +692,7 @@ fun ExportDialog(
     }
 }
 
-/**
- * Menu for Cache Playlist Screen
- */
+/** Menu for Cache Playlist Screen */
 @Composable
 fun CachePlaylistMenu(
     downloadState: Int,
@@ -675,6 +707,7 @@ fun CachePlaylistMenu(
         when (downloadState) {
             Download.STATE_COMPLETED -> {
                 Material3MenuItemData(
+                    actionId = R.string.remove_download,
                     title = { Text(stringResource(R.string.remove_download)) },
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
@@ -690,9 +723,11 @@ fun CachePlaylistMenu(
                 )
             }
 
-            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+            Download.STATE_QUEUED,
+            Download.STATE_DOWNLOADING -> {
                 Material3MenuItemData(
-                    title = { Text(stringResource(R.string.downloading)) },
+                    actionId = R.string.downloading,
+                    title = { Text(stringResource(R.string.folio_cancel_download)) },
                     description = { Text(stringResource(R.string.download_in_progress_desc)) },
                     icon = {
                         CircularProgressIndicator(
@@ -709,6 +744,7 @@ fun CachePlaylistMenu(
 
             else -> {
                 Material3MenuItemData(
+                    actionId = R.string.action_download,
                     title = { Text(stringResource(R.string.action_download)) },
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
@@ -725,11 +761,12 @@ fun CachePlaylistMenu(
             }
         }
 
-    Material3MenuGroup(
+    IrideFolioContextMenu(
         items =
             listOfNotNull(
                 if (!isGuest) {
                     Material3MenuItemData(
+                        actionId = R.string.add_to_queue,
                         title = { Text(stringResource(R.string.add_to_queue)) },
                         description = { Text(stringResource(R.string.add_to_queue_desc)) },
                         icon = {
@@ -748,5 +785,8 @@ fun CachePlaylistMenu(
                 },
                 downloadMenuItem,
             ),
+        visible = true,
+        onDismiss = onDismiss,
+        retainOpenActions = emptySet(),
     )
 }

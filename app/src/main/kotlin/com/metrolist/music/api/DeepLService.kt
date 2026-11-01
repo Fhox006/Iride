@@ -65,7 +65,6 @@ object DeepLService {
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         var currentAttempt = 0
 
-        // Validate input
         if (text.isBlank()) {
             return@withContext Result.failure(Exception("Input text is empty"))
         }
@@ -82,7 +81,6 @@ object DeepLService {
         val lines = text.lines()
         val lineCount = lines.size
 
-        // DeepL language codes (uppercase)
         val deeplLangCode = when (targetLanguage.lowercase()) {
             "zh", "zh-cn", "zh-hans" -> "ZH"
             "zh-tw", "zh-hant" -> "ZH"
@@ -95,7 +93,6 @@ object DeepLService {
 
         while (currentAttempt < maxRetries) {
             try {
-                // Determine if using free or pro API based on active key
                 val baseUrl = if (activeKey.endsWith(":fx")) {
                     "https://api-free.deepl.com/v2/translate"
                 } else {
@@ -124,7 +121,6 @@ object DeepLService {
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    // On 401/403, attempt a one-shot key refresh before failing
                     if ((response.code == 401 || response.code == 403) && !keyRefreshed && readKeyFromPrefs != null) {
                         val freshKey = readKeyFromPrefs()
                         if (freshKey.isNotBlank() && freshKey != activeKey) {
@@ -138,7 +134,6 @@ object DeepLService {
                         return@withContext Result.failure(Exception("API key invalid or expired"))
                     }
 
-                    // Retry on server errors (5xx)
                     if (response.code >= 500) {
                         currentAttempt++
                         kotlinx.coroutines.delay(1000L * currentAttempt)

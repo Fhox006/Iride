@@ -5,17 +5,19 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
+
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ResizableIconButton(
     @DrawableRes icon: Int,
+    contentDescription: String,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
@@ -46,13 +49,16 @@ fun ResizableIconButton(
 ) {
     Image(
         painter = painterResource(icon),
-        contentDescription = null,
+        contentDescription = contentDescription,
         colorFilter = ColorFilter.tint(color),
         modifier = modifier
+            .minimumInteractiveComponentSize()
             .clickable(
                 indication = indication ?: ripple(bounded = false),
                 interactionSource = remember { MutableInteractionSource() },
                 enabled = enabled,
+                onClickLabel = contentDescription,
+                role = Role.Button,
                 onClick = onClick,
             )
             .alpha(if (enabled) 1f else 0.5f),
@@ -76,7 +82,7 @@ fun IconButton(
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .clip(CircleShape)
             .background(color = colors.containerColor)
-            .combinedClickable(
+            .irideFolioCombinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
                 enabled = enabled,

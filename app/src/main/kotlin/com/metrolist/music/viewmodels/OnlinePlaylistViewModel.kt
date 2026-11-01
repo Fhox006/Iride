@@ -1,6 +1,8 @@
 package com.metrolist.music.viewmodels
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.LruCache
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,7 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay // ✅ FIX
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,15 +42,37 @@ class OnlinePlaylistViewModel @Inject constructor(
     private val database: MusicDatabase
 ) : ViewModel() {
 
+    private data class CacheKey(val id: String, val cookie: String?, val videoOptions: List<Boolean>)
+    private data class CachedPlaylist(
+        val playlist: PlaylistItem,
+        val songs: List<SongItem>,
+        val rawSongs: List<SongItem>,
+        val continuation: String?,
+        val loadedAt: Long,
+    )
+    private companion object {
+        const val ReuseWindowMs = 120_000L
+        val snapshots = LruCache<CacheKey, CachedPlaylist>(4)
+    }
+
     private val playlistId = savedStateHandle.get<String>("playlistId")!!
 
     private val normalizedPlaylistId = playlistId.removePrefix("VL")
     val isPodcastPlaylist = normalizedPlaylistId == "RDPN" || normalizedPlaylistId == "SE"
 
-    val playlist = MutableStateFlow<PlaylistItem?>(null)
-    val playlistSongs = MutableStateFlow<List<SongItem>>(emptyList())
+    private val cacheKey = CacheKey(normalizedPlaylistId, YouTube.cookie, listOf(
+        context.dataStore.get(HideVideoSongsKey, false),
+        context.dataStore.get(ResolveVideoSongsKey, true),
+        context.dataStore.get(HideVideoOnlyResultsKey, false),
+        context.dataStore.get(HideVideosInLibraryKey, false),
+    ))
+    private val cached = if (isPodcastPlaylist) null else snapshots.get(cacheKey)
+    private var loadedAt = cached?.loadedAt ?: 0L
+    private var rawSongs = cached?.rawSongs.orEmpty()
+    val playlist = MutableStateFlow(cached?.playlist)
+    val playlistSongs = MutableStateFlow(cached?.songs.orEmpty())
 
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(cached == null)
     val isLoading = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
@@ -60,22 +84,29 @@ class OnlinePlaylistViewModel @Inject constructor(
     val dbPlaylist = database.playlistByBrowseId(playlistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    var continuation: String? = null
+    var continuation: String? = cached?.continuation
         private set
 
     private var proactiveLoadJob: Job? = null
     private var resolveVideoJob: Job? = null
 
-    // Video songs buffered for background resolution when hide=true
     private val pendingVideoSongs = mutableListOf<SongItem>()
 
     init {
-        fetchInitialPlaylistData()
+        if (cached == null || SystemClock.elapsedRealtime() - cached.loadedAt >= ReuseWindowMs) {
+            fetchInitialPlaylistData()
+        } else {
+            viewModelScope.launch(Dispatchers.IO) {
+                applySongFilters(rawSongs)
+                resolveVideoSongsAsync()
+                if (continuation != null) startProactiveBackgroundLoading()
+            }
+        }
     }
 
     private fun fetchInitialPlaylistData() {
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
+            _isLoading.value = playlist.value == null
             _error.value = null
             continuation = null
             proactiveLoadJob?.cancel()
@@ -140,6 +171,8 @@ class OnlinePlaylistViewModel @Inject constructor(
     private suspend fun fetchRegularPlaylist() {
         YouTube.playlist(playlistId)
             .onSuccess { page ->
+                rawSongs = page.songs
+                loadedAt = SystemClock.elapsedRealtime()
                 playlist.value = page.playlist
                 playlistSongs.value = applySongFilters(page.songs)
                 resolveVideoSongsAsync()
@@ -200,6 +233,7 @@ class OnlinePlaylistViewModel @Inject constructor(
 
                 YouTube.playlistContinuation(token)
                     .onSuccess {
+                        rawSongs = rawSongs + it.songs
                         val updated = playlistSongs.value.toMutableList()
                         updated.addAll(it.songs)
                         playlistSongs.value = applySongFilters(updated)
@@ -225,6 +259,7 @@ class OnlinePlaylistViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.playlistContinuation(token)
                 .onSuccess {
+                    rawSongs = rawSongs + it.songs
                     val updated = playlistSongs.value.toMutableList()
                     updated.addAll(it.songs)
                     playlistSongs.value = applySongFilters(updated)
@@ -275,7 +310,6 @@ class OnlinePlaylistViewModel @Inject constructor(
             val shouldHideVideoOnly = if (isUserPlaylistOrLibrary) hideVideosInLibrary else hideVideoOnlyResults
 
             if (hideVideoSongs) {
-                // Resolve buffered video songs and APPEND audio equivalents to the displayed list
                 val toResolve = pendingVideoSongs.toList()
                 toResolve.forEach { song ->
                     if (!isActive) return@launch
@@ -297,12 +331,10 @@ class OnlinePlaylistViewModel @Inject constructor(
                             playlistSongs.value = live.toList()
                         }
                     }
-                    // Unresolvable + hide=true → simply don't add
 
                     if (cached == null) delay(400)
                 }
             } else {
-                // Replace video songs in-place with resolved audio equivalents
                 playlistSongs.value.forEach { song ->
                     if (!isActive) return@launch
                     if (!song.isVideoSong) return@forEach
@@ -374,5 +406,9 @@ class OnlinePlaylistViewModel @Inject constructor(
     override fun onCleared() {
         proactiveLoadJob?.cancel()
         resolveVideoJob?.cancel()
+        if (!isPodcastPlaylist && loadedAt > 0L) playlist.value?.let { current ->
+            snapshots.put(cacheKey, CachedPlaylist(current, playlistSongs.value, rawSongs, continuation, loadedAt))
+        }
+        super.onCleared()
     }
 }

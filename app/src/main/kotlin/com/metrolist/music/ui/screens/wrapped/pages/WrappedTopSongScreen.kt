@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,7 +102,7 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                 contentDescription = stringResource(id = R.string.wrapped_top_song_album_art_content_description),
                     modifier = Modifier
                         .size(200.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .clip(FolioShape(3.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -122,8 +122,6 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                 )
             }
 
-            // Artists are not available in SongWithStats, so this part is removed.
-            // A possible improvement would be to fetch artist data separately.
 
             Spacer(modifier = Modifier.height(8.dp))
 

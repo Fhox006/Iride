@@ -9,6 +9,6 @@ data class ReturnYouTubeDislikeResponse(
     val likes: Int? = null,
     val dislikes: Int? = null,
     val rating: Double? = null,
-    val viewCount: Int? = null,
+    val viewCount: Long? = null,
     val deleted: Boolean? = null,
 )

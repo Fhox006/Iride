@@ -21,11 +21,15 @@ val NavigationBarHeight = 80.dp
 val SlimNavBarHeight = 64.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
+val MiniPlayerBottomSpacing = 8.dp
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
-val ListItemHeight = 64.dp
+val AppPeekHeight = 56.dp
+
+val CurtainCornerRevealHeight = 28.dp
+
+val ListItemHeight = 58.dp
 val SuggestionItemHeight = 56.dp
 val SearchFilterHeight = 48.dp
 val ListThumbnailSize = 48.dp
@@ -35,6 +39,16 @@ val AlbumThumbnailSize = 144.dp
 const val PLAYER_THUMBNAIL_SIZE = 512
 
 val ThumbnailCornerRadius = 3.dp
+
+val IrideBaseBorderWidth = 1.5.dp
+
+val IrideSoftBorderWidth = 1.dp
+
+/**
+ * Artwork outline width that scales with the rendered size so the stroke reads
+ * consistently from miniplayer tiles (~1dp) up to the full player (~2dp).
+ */
+fun irideArtworkBorderWidth(size: Dp): Dp = (size * 0.006f).coerceIn(1.dp, 2.dp)
 
 val PlayerHorizontalPadding = 32.dp
 

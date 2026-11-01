@@ -30,10 +30,8 @@ object PlayerColorExtractor {
         palette: Palette,
         fallbackColor: Int
     ): List<Color> = withContext(Dispatchers.Default) {
-        
-        // Extract all available colors with priority for dominant colors
         val colorCandidates = listOfNotNull(
-            palette.dominantSwatch, // High priority for dominant color
+            palette.dominantSwatch,
             palette.vibrantSwatch,
             palette.darkVibrantSwatch,
             palette.lightVibrantSwatch,
@@ -42,33 +40,28 @@ object PlayerColorExtractor {
             palette.lightMutedSwatch
         )
 
-        // Select best color based on weight (dominance + vibrancy)
         val bestSwatch = colorCandidates.maxByOrNull { calculateColorWeight(it) }
         val fallbackDominant = palette.dominantSwatch?.rgb?.let { Color(it) }
             ?: Color(palette.getDominantColor(fallbackColor))
 
         val primaryColor = if (bestSwatch != null) {
             val bestColor = Color(bestSwatch.rgb)
-            // Ensure the color is suitable for use
             if (isColorVibrant(bestColor)) {
                 enhanceColorVividness(bestColor, 1.3f)
             } else {
-                // If not vibrant, use dominant color with slight enhancement
                 enhanceColorVividness(fallbackDominant, 1.1f)
             }
         } else {
             enhanceColorVividness(fallbackDominant, 1.1f)
         }
-        
-        // Create sophisticated gradient with 3 color points
         listOf(
-            primaryColor, // Start: primary vibrant color
+            primaryColor,
             primaryColor.copy(
                 red = (primaryColor.red * 0.6f).coerceAtLeast(0f),
                 green = (primaryColor.green * 0.6f).coerceAtLeast(0f),
                 blue = (primaryColor.blue * 0.6f).coerceAtLeast(0f)
-            ), // Middle: darker version of primary color
-            Color.Black // End: black
+            ),
+            Color.Black
         )
     }
 
@@ -82,14 +75,10 @@ object PlayerColorExtractor {
         val argb = color.toArgb()
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(argb, hsv)
-        val saturation = hsv[1] // HSV[1] is saturation
-        val brightness = hsv[2] // HSV[2] is brightness
-        
-        // Color is vibrant if it has sufficient saturation and appropriate brightness
-        // Avoid colors that are too dark or too bright
+        val saturation = hsv[1]
+        val brightness = hsv[2]
         return saturation > 0.25f && brightness > 0.2f && brightness < 0.9f
     }
-    
     /**
      * Enhances color vividness by adjusting saturation and brightness
      * 
@@ -101,12 +90,8 @@ object PlayerColorExtractor {
         val argb = color.toArgb()
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(argb, hsv)
-        
-        // Increase saturation for more vivid colors
         hsv[1] = (hsv[1] * saturationFactor).coerceAtMost(1.0f)
-        // Adjust brightness for better visibility
         hsv[2] = (hsv[2] * 0.9f).coerceIn(0.4f, 0.85f)
-        
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
@@ -125,11 +110,8 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(argb, hsv)
         val saturation = hsv[1]
         val brightness = hsv[2]
-        
-        // Give higher priority to dominance (population) while considering vibrancy
-        val populationWeight = population * 2f // Double dominance weight
+        val populationWeight = population * 2f
         val vibrancyBonus = if (saturation > 0.3f && brightness > 0.3f) 1.5f else 1f
-        
         return populationWeight * vibrancyBonus * (saturation + brightness) / 2f
     }
 
@@ -140,25 +122,19 @@ object PlayerColorExtractor {
         const val MAX_COLOR_COUNT = 32
         const val BITMAP_AREA = 8000
         const val IMAGE_SIZE = 200
-        
-        // Color enhancement factors
         const val VIBRANT_SATURATION_THRESHOLD = 0.25f
         const val VIBRANT_BRIGHTNESS_MIN = 0.2f
         const val VIBRANT_BRIGHTNESS_MAX = 0.9f
-        
         const val POPULATION_WEIGHT_MULTIPLIER = 2f
         const val VIBRANCY_THRESHOLD_SATURATION = 0.3f
         const val VIBRANCY_THRESHOLD_BRIGHTNESS = 0.3f
         const val VIBRANCY_BONUS = 1.5f
-        
         const val DEFAULT_SATURATION_FACTOR = 1.4f
         const val VIBRANT_SATURATION_FACTOR = 1.3f
         const val FALLBACK_SATURATION_FACTOR = 1.1f
-        
         const val BRIGHTNESS_MULTIPLIER = 0.9f
         const val BRIGHTNESS_MIN = 0.4f
         const val BRIGHTNESS_MAX = 0.85f
-        
         const val DARKER_VARIANT_FACTOR = 0.6f
     }
 }

@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mp3_comments_view_replies">Mostra risposte</string>
+    <string name="mp3_comments_more_replies">Altre risposte</string>
+    <string name="credits_simpmusic_adaptations">SimpMusic contributors · artist motion artwork, comments and listening room adaptations</string>
+    <string name="credits_archivetune_adaptations">© Rukamori and ArchiveTune contributors · AI integration and audio quality selection</string>
+    <string name="mp3_listen_together_buffering">In attesa di %1$s…</string>
+    <string name="audio_quality_highest">Highest · YT Music Premium</string>
+    <string name="audio_quality_highest_description">Uses the highest quality offered by your signed-in account. Premium audio requires an active YouTube Music subscription; otherwise the best available stream is used.</string>
+    <string name="video_quality">Video quality</string>
+    <string name="video_quality_description">Up to %1$dp · depends on the video, network and device</string>
+    <string name="artist_show_animated_artwork">Show animated artwork</string>
+    <string name="artist_show_static_artwork">Show artist photo</string>
+    <string name="ai_integration_settings">AI integration</string>
+    <string name="ai_integration_settings_description">API provider, models and lyric translation</string>
+    <string name="ai_provider_disabled">Disabled</string>
+    <string name="ai_fetch_models">Fetch models</string>
+    <string name="ai_fetching_models">Fetching models…</string>
+    <string name="ai_models_empty">No models returned by this provider</string>
+    <string name="ai_model_search">Search models</string>
+    <string name="ai_request_parameters">Request parameters</string>
+    <string name="ai_request_parameters_description">Optional JSON parameters for compatible APIs, such as temperature or token limits</string>
+    <string name="ai_request_parameters_invalid">Enter a valid JSON object; model, messages, stream and n cannot be overridden</string>
+    <string name="ai_test_api">Test API</string>
+    <string name="ai_api_testing">Testing connection…</string>
+    <string name="ai_api_connected">Connected</string>
+    <string name="ai_api_not_tested">Connection not tested</string>
+    <string name="ai_api_test_failed">API test failed</string>
+    <string name="ai_model_fetch_failed">Could not fetch models</string>
+    <string name="ai_custom_endpoint_invalid">Enter an HTTP or HTTPS URL without embedded credentials or a fragment</string>
+    <string name="folio_dissolve">Crossfade</string>
+    <string name="daily_chart_world_title">Classifiche nel mondo</string>
+    <string name="daily_chart_world_subtitle">Tutti i paesi e territori</string>
+    <string name="daily_chart_sized_title">Top %1$d · %2$s</string>
+    <string name="daily_chart_search_countries">Cerca un paese</string>
+    <string name="daily_chart_country_coverage">Le classifiche locali dipendono dai paesi coperti da Spotify. I paesi senza dati e gli archivi sono indicati.</string>
+    <string name="daily_chart_country_unavailable">Classifica locale non disponibile</string>
+    <string name="daily_chart_country_daily">Classifica giornaliera</string>
+    <string name="daily_chart_archive_date">Archivio · %1$s</string>
+    <string name="daily_chart_historical_notice">Classifica non recente. Ultimi dati disponibili: %1$s.</string>
+    <string name="daily_chart_no_country_results">Nessun paese trovato</string>
+    <string name="new_releases_title">New Releases</string>
+    <string name="new_releases_home_caption">Discover the latest albums and singles.</string>
+    <string name="home_new_tracks_for_you">New tracks for you</string>
+    <string name="home_trending_title">Trending now</string>
+    <string name="home_new_albums_title">New albums for you</string>
+    <string name="new_charts_title">Charts</string>
+    <string name="new_charts_refresh">Refresh Charts</string>
+    <string name="new_charts_rank_up">Moved up</string>
+    <string name="new_charts_rank_down">Moved down</string>
+    <string name="new_charts_rank_new">New chart entry</string>
+    <string name="new_charts_all">All Charts</string>
+    <string name="new_charts_search">Search countries</string>
+    <string name="new_charts_global">Global</string>
+    <string name="new_charts_top_100">TOP 100</string>
+    <string name="new_charts_top_count">Top %1$d</string>
+    <string name="new_charts_daily">Updated daily</string>
+    <string name="new_charts_loading">Checking chart availability…</string>
+    <string name="new_charts_unavailable">No current chart available</string>
+    <string name="new_charts_coverage">The source lists %1$d markets. Daily charts include up to 100 tracks; availability is checked when you browse.</string>
+    <string name="new_charts_other_countries">Other Countries</string>
+    <string name="new_charts_unavailable_note">A current daily chart is not available for these countries.</string>
+    <string name="new_charts_source_error">The chart directory could not refresh. Available cached charts are still shown.</string>
+    <string name="new_charts_retry">Retry</string>
+    <string name="new_charts_local_unavailable">A current chart for your region is not available.</string>
+    <string name="new_charts_no_results">No countries found</string>
+    <string name="new_releases_spotlight">In the Spotlight</string>
+    <string name="new_releases_playlists">Playlists to Explore</string>
+    <string name="new_releases_artists">Artists to Discover</string>
+    <string name="new_releases_youtube_albums">New Albums on YouTube Music</string>
+    <string name="new_releases_country">Trending in %1$s</string>
+    <string name="new_releases_genre_albums">New %1$s Albums</string>
+    <string name="new_charts_playlist_title">%1$s Chart</string>
+    <string name="new_releases_world">New Around the World</string>
+    <string name="new_releases_latest_eps">The Latest EPs</string>
+    <string name="new_releases_next_discovery">Your Next Discovery</string>
+    <string name="new_releases_genre_tracks">Fresh %1$s Tracks</string>
+    <string name="new_releases_genre_rap">Hip-Hop</string>
+    <string name="new_releases_genre_soul">R&amp;B and Soul</string>
+    <string name="new_releases_genre_electronic">Dance and Electronic</string>
+    <string name="new_releases_genre_rock">Rock and Alternative</string>
+    <string name="new_releases_genre_ambient">Ambient</string>
+    <string name="new_releases_genre_classical">Classical</string>
+    <string name="new_releases_genre_folk">Country and Folk</string>
+    <string name="new_releases_genre_pop">Pop</string>
+    <string name="new_releases_genre_jazz">Jazz</string>
+    <string name="new_releases_genre_latin">Latin</string>
+    <string name="new_releases_details">%1$s · %2$s</string>
+    <string name="new_releases_checking_followed">Checking new releases from artists you follow…</string>
+    <string name="new_releases_just_released">JUST RELEASED</string>
+    <string name="new_releases_followed_albums">New Albums from Artists You Follow</string>
+    <string name="new_releases_followed_singles">New Songs from Artists You Follow</string>
+    <string name="new_releases_for_you">New Albums for You</string>
+    <string name="new_releases_making_waves">Songs Making Waves</string>
+    <string name="new_releases_followed_albums_empty">No new albums or EPs to show from the past two weeks. Star artists to keep up with their next release.</string>
+    <string name="new_releases_followed_singles_empty">No new singles to show from your followed artists in the past two weeks.</string>
+    <string name="new_releases_empty">No verified releases from the past two weeks are available yet.</string>
+    <string name="new_releases_unavailable">This release is not available on YouTube Music.</string>
+    <string name="new_releases_connection_error">This release is temporarily unavailable.</string>
+    <string name="new_releases_refresh_error">Some releases could not be updated. Please try again.</string>
+    <string name="new_releases_refresh">Refresh Releases</string>
+    <string name="new_releases_retry">Try Again</string>
+    <string name="new_releases_album">Album</string>
+    <string name="new_releases_ep">EP</string>
+    <string name="new_releases_single">Single</string>
+    <string name="daily_charts_title">Classifiche giornaliere</string>
+    <string name="daily_chart_title">Top 100 · %1$s</string>
+    <string name="daily_chart_global">Globale</string>
+    <string name="daily_chart_italy">Italia</string>
+    <string name="daily_chart_us">Stati Uniti</string>
+    <string name="daily_chart_daily">100 brani · aggiornamento giornaliero</string>
+    <string name="daily_chart_source_date">Spotify · Kworb · %1$s</string>
+    <string name="daily_chart_play">Riproduci</string>
+    <string name="daily_chart_refresh">Aggiorna</string>
+    <string name="daily_chart_back">Indietro</string>
+    <string name="daily_chart_load_failed">Classifica non disponibile. Tocca Aggiorna per riprovare.</string>
+    <string name="daily_chart_cached">Aggiornamento non riuscito. Mostriamo la classifica salvata con la sua data originale.</string>
+    <string name="daily_chart_unavailable">Traccia audio corrispondente non trovata</string>
+    <string name="daily_chart_search_failed">Ricerca audio non riuscita. Tocca il brano per riprovare.</string>
+    <string name="daily_chart_starting">Preparazione della traccia audio…</string>
+    <string name="daily_chart_explicit_hidden">Brano nascosto dal filtro contenuti espliciti</string>
+    <string name="artist_monthly_listeners">%1$s monthly listeners</string>
+    <string name="iride_explore_title">Esplora</string>
+    <string name="spotify_exportify_import_csv">Import CSV or ZIP</string>
+    <string name="account_youtube_music_sign_in">Accedi a YouTube Music</string>
+    <string name="about_iride_name">Iride</string>
+    <string name="about_iride_release">Prima release • %1$s</string>
+    <string name="about_developer_github">Fhox su GitHub</string>
+    <string name="about_developer_label">Sviluppatore: Fhox</string>
+    <string name="credits_metrolist_author">Mo Agamy</string>
+    <string name="credits_metrolist_base">Creatore di Metrolist, base di Iride</string>
+    <string name="library_simple_grid">Simple grid</string>
+    <string name="library_dense_grid">Dense grid</string>
+    <string name="quick_picks_section_title">Picked for you</string>
+    <string name="search_songs_recommendations">Songs &amp; recommendations</string>
+    <string name="iride_search_online_hint">Cerca su Iride</string>
+    <string name="search_track_artists">Artists on these tracks</string>
+    <string name="search_similar_artists">Similar artists</string>
+    <string name="search_albums_to_explore">Albums to explore</string>
+    <string name="search_playlists_to_explore">Playlists to explore</string>
+    <string name="home_mood_youtube_music">Mixes for your mood</string>
+    <string name="home_test_section">Test</string>
+    <string name="home_test_mood_label">CHILL</string>
+    <string name="home_test_mood_type">MIX</string>
+    <string name="home_test_brand_label">Iride</string>
+    <string name="offline_ready_songs">Downloads</string>
+    <string name="in_rotation">In rotation</string>
+    <string name="download_all_albums">Download all albums</string>
+    <string name="download_all_playlists">Download all playlists</string>
+    <string name="download_songs_to_see_recent">Download songs to see them here.</string>
+    <string name="library_empty_albums">Albums in your library will appear in this section.</string>
+    <string name="library_empty_artists">Artists in your library will appear in this section.</string>
+    <string name="library_empty_playlists">Playlists in your library will appear in this section.</string>
+    <string name="library_empty_songs">Songs in your library will appear in this section.</string>
+    <string name="home_youtube_music_playlists">Your YouTube Music playlists</string>
+    <string name="home_similar_to">Similar to</string>
+    <string name="home_radios_for_you">Radios for you</string>
+    <string name="home_radio_badge">Start radio</string>
+    <string name="home_artist_radio_title">%1$s radio</string>
+    <string name="home_artist_radio_subtitle">A continuous mix inspired by this artist</string>
+    <string name="home_radio_unavailable">Radio unavailable right now</string>
+    <string name="home_no_mood_playlists">No mixes in this mood</string>
+    <string name="for_you_artists_title">Inspired by your favorite artists</string>
+    <string name="home_fresh_find_old_favorite">Your favorites and discoveries</string>
+    <string name="advanced_animation">Advanced animation</string>
+    <string name="advanced_animation_desc">Globe lens, motion blur and film viewfinder on Home. Turn off if the app stutters</string>
+    <string name="advanced_moving">Advanced moving</string>
+    <string name="advanced_moving_desc">Drag a shelf and the whole page follows like a map. The shelf stays put, the rest snaps back</string>
+    <string name="eq_global_profile">Profilo EQ</string>
+    <string name="eq_global_subtitle">Per tutti i dispositivi senza profilo</string>
+    <string name="eq_use_for_all_devices">Applica a tutti i dispositivi</string>
+    <string name="eq_bass_boost">Bass Boost</string>
+    <string name="eq_matched_profile">Profilo consigliato</string>
+    <string name="eq_hide_custom">Nascondi personalizzato</string>
+    <string name="eq_show_custom">Mostra personalizzato</string>
+    <string name="eq_delete_title">Eliminare profilo?</string>
+    <string name="eq_delete_message">Vuoi eliminare il profilo per %1$s? Potrai ricrearlo.</string>
+    <string name="eq_delete_confirm">Elimina</string>
+    <string name="eq_profile_label">Profilo</string>
+    <string name="eq_reset_to_base">Ripristina a Base</string>
+    <string name="eq_general_title">Preset EQ generale</string>
+    <string name="eq_specific_title">Preset EQ %1$s</string>
+    <string name="eq_not_connected">Non connesso</string>
+    <string name="eq_header_general">Per tutti i dispositivi</string>
+    <string name="eq_header_saved">Salvato</string>
+    <string name="eq_header_modified">Modificato</string>
+    <string name="eq_header_offline">Offline</string>
+    <string name="eq_bass_off">Off</string>
+    <string name="eq_bass_punch">Punch</string>
+    <string name="design_test">Design test</string>
+    <string name="design_test_new_grain">Nuova grana</string>
+    <string name="design_test_reset">Ripristina</string>
+    <string name="design_test_edge_section">Bordo</string>
+    <string name="design_test_edge_blur">Raggio blur bordo</string>
+    <string name="design_test_edge_passes">Passaggi blur bordo</string>
+    <string name="design_test_edge_particles">Densità grana bordo</string>
+    <string name="design_test_mist_section">Alone spray</string>
+    <string name="design_test_mist_blur">Raggio blur alone</string>
+    <string name="design_test_mist_passes">Passaggi blur alone</string>
+    <string name="design_test_mist_strength">Intensità alone</string>
+    <string name="design_test_offset_x">Spostamento orizzontale</string>
+    <string name="design_test_offset_y">Spostamento verticale</string>
+    <string name="design_test_particles_section">Particelle</string>
+    <string name="design_test_particle_density">Numero particelle</string>
+    <string name="design_test_particle_size">Dimensione particelle</string>
+    <string name="design_test_show_circles">Mostra le ellissi</string>
+    <string name="design_test_drag_help">Trascina il centro per spostare. Trascina il bordo per ruotare e ingrandire.</string>
+    <string name="design_test_snap_letters">Aggancia al bordo delle lettere</string>
+    <string name="design_test_left_halo">Ellisse sinistra (ciano)</string>
+    <string name="design_test_right_halo">Ellisse destra (magenta)</string>
+    <string name="design_test_halo_x">Posizione X</string>
+    <string name="design_test_halo_y">Posizione Y</string>
+    <string name="design_test_halo_radius_x">Raggio orizzontale</string>
+    <string name="design_test_halo_radius_y">Raggio verticale</string>
+    <string name="design_test_halo_angle">Rotazione</string>
+    <string name="design_test_halo_feather">Sfumatura cerchio</string>
+    <string name="design_test_halo_strength">Intensità cerchio</string>
+    <string name="home_mood_empty">No playlists available for this filter</string>
+    <string name="home_mood_load_error">Couldn’t load playlists</string>
+    <string name="home_mood_retry">Retry</string>
+    <string name="home_feed_unavailable">Home non disponibile. Riprova quando torna la connessione.</string>
+    <string name="search_albums">Cerca album</string>
+    <string name="search_artists">Cerca artisti</string>
+    <string name="search_playlists">Cerca playlist</string>
+    <string name="search_songs">Cerca brani</string>
+    <string name="search_podcasts">Cerca podcast</string>
+    <string name="search_downloads">Cerca download</string>
+    <string name="no_downloads_yet">No downloads yet</string>
+    <string name="local_songs">Local Songs</string>
+    <string name="rock_module_title">Rock</string>
+    <string name="rock_trending_songs">Brani del momento</string>
+    <string name="rock_community_playlists">Playlist della community</string>
+    <string name="rock_module_empty_songs">Nessun brano Rock trovato</string>
+    <string name="rock_module_empty_playlists">Nessuna playlist Rock trovata</string>
+    <string name="rock_module_load_error">Impossibile caricare i risultati</string>
+    <string name="rock_module_loading">Caricamento…</string>
+    <string name="spotify_exportify_title">Spotify</string>
+    <string name="home_iride_features_title">Only on Iride</string>
+    <string name="home_iride_feature_stats_title">Statistics</string>
+    <string name="home_iride_feature_stats_description">Your listening, in detail</string>
+    <string name="home_iride_feature_spotify_title">Import playlists</string>
+    <string name="home_iride_feature_spotify_description">Choose your music service</string>
+    <string name="spotify_exportify_description">Sign in with Exportify and bring your playlists to Iride</string>
+    <string name="spotify_exportify_service">Exportify ? exportify.app</string>
+    <string name="spotify_exportify_login_service">Spotify ? Sign in</string>
+    <string name="spotify_exportify_change_account">Change account</string>
+    <string name="spotify_exportify_changing_account">Signing out of Spotify?</string>
+    <string name="spotify_exportify_instructions">Sign in to Spotify and authorize Exportify. Loading may take a few minutes. Export all playlists or download a single CSV.</string>
+    <string name="spotify_exportify_receiving">Receiving file? Playlists will appear below.</string>
+    <string name="spotify_exportify_received">File received. Iride is finding tracks. You can leave this screen and keep using the app while the import continues.</string>
+    <string name="spotify_exportify_saving">Saving playlists to Iride?</string>
+    <string name="spotify_exportify_done">Playlists saved. Open them below or from your library.</string>
+    <string name="spotify_exportify_choose_file">Choose CSV or ZIP</string>
+    <string name="spotify_exportify_open_browser">Open Exportify in browser</string>
+    <string name="spotify_exportify_browser_label">Browser</string>
+    <string name="spotify_exportify_login_help">For Google or Facebook sign-in, open Exportify in your browser, then import the downloaded file.</string>
+    <string name="spotify_exportify_browser_error">Exportify could not finish loading or downloading. Try again or import the downloaded CSV or ZIP.</string>
+    <string name="spotify_exportify_http_error">The sign-in page returned HTTP error %1$d. Try again.</string>
+    <string name="spotify_exportify_connection_error">Could not load the sign-in page. Check your connection and try again.</string>
+    <string name="spotify_exportify_reload">Try again</string>
+    <string name="spotify_exportify_loading_page">Loading page?</string>
+    <string name="spotify_exportify_loaded">Playlists downloaded</string>
+    <string name="spotify_exportify_match_count">%1$d found ? %2$d not found</string>
+    <string name="spotify_exportify_failed_count">%1$d searches failed</string>
+    <string name="spotify_exportify_progress">%1$d / %2$d</string>
+    <string name="spotify_exportify_save">Save to Iride</string>
+    <string name="spotify_exportify_confirm_save">Save %1$d playlists with %2$d matched tracks? %3$d unmatched or failed tracks will be skipped.</string>
+    <string name="spotify_exportify_saved">Saved ? Open</string>
+    <string name="spotify_exportify_retry">Retry searches</string>
+    <string name="spotify_exportify_remove">Remove from preview</string>
+    <string name="spotify_exportify_dismiss">Dismiss message</string>
+    <string name="spotify_exportify_cancel">Cancel</string>
+    <string name="spotify_exportify_invalid_file">This file does not contain valid Exportify playlists. Choose a CSV or ZIP exported by Exportify.</string>
+    <string name="spotify_exportify_invalid_csv">Invalid CSV</string>
+    <string name="spotify_exportify_file_too_large">File is too large. Export fewer playlists or choose individual CSV files.</string>
+    <string name="spotify_exportify_read_failed">Could not read the file. Try selecting it again.</string>
+    <string name="spotify_exportify_save_failed">Could not save playlists. They remain here so you can retry.</string>
+    <string name="spotify_exportify_leave_title">Leave import?</string>
+    <string name="spotify_exportify_leave_message">The import continues while Iride is running. Force-stopping the app will cancel it.</string>
+    <string name="spotify_exportify_leave">Leave</string>
+    <string name="spotify_exportify_background_message">Playlists are importing in the background. Leave this screen and keep using Iride; force-stopping the app cancels the import.</string>
+    <string name="spotify_exportify_liked_playlist_name">Liked from Spotify</string>
+    <string name="mp3_now_playing">Now Playing</string>
+    <string name="mp3_manage_queue">Manage queue</string>
+    <string name="mp3_read_lyrics">Read song lyrics</string>
+    <string name="mp3_song_info">Find similar</string>
+    <string name="mp3_queue_description">Choose what to play next</string>
+    <string name="mp3_up_next">Up next</string>
+    <string name="mp3_queue_empty">No upcoming songs</string>
+    <string name="mp3_history_empty">No recent songs</string>
+    <string name="mp3_queue_and_history">Coda · Cronologia</string>
+    <string name="mp3_reorder">Reorder song</string>
+    <string name="mp3_exit_fullscreen">Exit full screen lyrics</string>
+    <string name="mp3_remove_queue">Remove from queue</string>
+    <string name="mp3_back">Back</string>
+    <string name="mp3_translate">Translation</string>
+    <string name="mp3_fullscreen">Full screen lyrics</string>
+    <string name="mp3_time_left">%1$ds left</string>
+    <string name="mp3_songs_left">%1$d songs left in queue</string>
+    <string name="mp3_menu">MENU</string>
+    <string name="mp3_shuffle">SHUFFLE</string>
+    <string name="mp3_this">THIS</string>
+    <string name="mp3_shuffle_this">Shuffle this</string>
+    <string name="mp3_move_up">Previous category</string>
+    <string name="mp3_move_down">Next category</string>
+    <string name="mp3_select">Open selected category</string>
+    <string name="mp3_play">Play</string>
+    <string name="mp3_pause">Pause</string>
+    <string name="mp3_previous">Previous song</string>
+    <string name="mp3_next">Next song</string>
+    <string name="iride_menu_next">Next</string>
+    <string name="iride_menu_queue">Queue</string>
+    <string name="iride_star">Star</string>
+    <string name="iride_remove_star">Remove star</string>
+    <string name="iride_star_all">Star all</string>
+    <string name="iride_unstar_all">Unstar all</string>
+    <string name="mp3_mute">Toggle mute</string>
+    <string name="mp3_playback_controls">Show playback controls</string>
+    <string name="mp3_add_favorite">@string/iride_star</string>
+    <string name="mp3_remove_favorite">@string/iride_remove_star</string>
+    <string name="mp3_close">Close player</string>
+    <string name="mp3_shuffle_on">Song radio on</string>
+    <string name="mp3_shuffle_off">Start song radio</string>
+    <string name="mp3_more">More actions</string>
+    <string name="mp3_lyrics_customize">Customize lyrics</string>
+    <string name="mp3_lyrics_gradient" translatable="false">Gradiente</string>
+    <string name="mp3_lyrics_tv" translatable="false">Rain</string>
+    <string name="mp3_lyrics_loading">Finding lyrics…</string>
+    <string name="mp3_lyrics_previous_line">Previous lyrics line</string>
+    <string name="mp3_lyrics_next_line">Next lyrics line</string>
+    <string name="song_menu_view_artists">View artists</string>
+    <string name="song_menu_view_collaborators">View collaborators</string>
+    <string name="folio_remove_from_playlist">Remove from playlist</string>
+    <string name="folio_artists_for_you">Artists for you</string>
+    <string name="folio_explore_artist">Explore artist</string>
+    <string name="folio_rename">Rename</string>
+    <string name="folio_cancel_download">Cancel download</string>
+    <string name="iride_clear_search">Clear search text</string>
+    <string name="iride_clear_search_history" translatable="false">Cancella cronologia</string>
+    <string name="new_player_design">New player design</string>
+    <string name="new_mini_player_design">New mini player design</string>
+    <string name="top_navigation_bar_desc">Text tabs at the top and a fully black screen instead of the bottom navigation pill</string>
+    <string name="update_interstitial_enable_install_desc">Allow Iride to install updates from this source</string>
+    <string name="album_discovery_mix" translatable="false">Albums You May Like</string>
+    <string name="album_discovery_style" translatable="false">More in This Style</string>
+    <string name="album_discovery_style_context" translatable="false">New discoveries inspired by this album</string>
+    <string name="vocal_voice_level" translatable="false">Karaoke</string>
+    <string name="vocal_instrumental" translatable="false">Instrumental</string>
+    <string name="vocal_original" translatable="false">Original</string>
+    <string name="vocal_prepare" translatable="false">Download</string>
+    <string name="vocal_downloading_status" translatable="false">Downloading…</string>
+    <string name="vocal_starting_status" translatable="false">Starting…</string>
+    <string name="vocal_active_status" translatable="false">Active</string>
+    <string name="vocal_inactive_status" translatable="false">Off</string>
+    <string name="vocal_retry" translatable="false">Retry</string>
+    <string name="vocal_preparation_failed" translatable="false">Karaoke unavailable. Try again.</string>
+    <string name="vocal_engine_unavailable" translatable="false">Karaoke is unavailable on this device.</string>
+    <string name="vocal_local_playback_only" translatable="false">Available for music played on this phone, including headphones and Bluetooth.</string>
+    <string name="vocal_song_too_large" translatable="false">Track is too large to prepare on this device.</string>
+    <string name="vocal_no_space" translatable="false">Not enough storage to prepare this track.</string>
+    <string name="vocal_memory_unavailable" translatable="false">Not enough memory. Close other apps and try again.</string>
+    <string name="go_to_source" translatable="false">Go to source</string>
+    <string name="reverie_archive_title">I tuoi Reverie</string>
+    <string name="reverie_audio_preparing_all">Preparazione audio · %1$d / %2$d</string>
+    <string name="reverie_audio_prepare_error">Audio non disponibile. Controlla la connessione e riprova.</string>
+    <string name="reverie_coming_month">Il tuo mese prende forma. Reverie di %1$s ti aspetta dal %2$s, con almeno 9 brani, 30 minuti e 3 giorni di ascolto.</string>
+    <string name="reverie_partial_month">Questo mese ha dati parziali: lo conserviamo nelle statistiche. Il primo mese completo è %1$s; il suo Reverie sarà disponibile dal %2$s, con ascolti sufficienti.</string>
+    <string name="reverie_insufficient_month">Questo mese resta nelle statistiche. Per comporre un Reverie servono almeno 9 brani, 30 minuti e 3 giorni di ascolto in un mese completo.</string>
+    <string name="reverie_name" translatable="false">Reverie</string>
+    <string name="reverie_edition" translatable="false">IRIDE / %1$s</string>
+    <string name="reverie_home_description">Un mese di ascolti.\nUna traccia da ripercorrere.</string>
+    <string name="reverie_home_action">Rivedi il tuo mese</string>
+    <string name="reverie_open_archive">Apri archivio Reverie</string>
+    <string name="reverie_play_month">Guarda il riepilogo mensile</string>
+    <string name="reverie_choose_month">Seleziona un mese da ripercorrere.</string>
+    <string name="reverie_no_months">Ascolta un po’ di musica: i tuoi riepiloghi mensili compariranno qui.</string>
+    <string name="reverie_loading">Componiamo il tuo mese…</string>
+    <string name="reverie_error">Non siamo riusciti a comporre questo mese. Riprova.</string>
+    <string name="reverie_empty">Reverie disponibile solo per mesi terminati e completi, con almeno 9 brani, 30 minuti di musica e 3 giorni di ascolto.</string>
+    <string name="reverie_retry">Riprova</string>
+    <string name="reverie_watch_selected">Guarda Reverie · %1$s</string>
+    <string name="reverie_overture">IL TUO MESE.\nIN MUSICA.</string>
+    <string name="reverie_overture_note">Ogni ascolto lascia una traccia.</string>
+    <string name="reverie_time_title">TEMPO\nBEN SPESO.</string>
+    <string name="reverie_time_note">La musica ti ha fatto compagnia.</string>
+    <string name="reverie_rhythm_title">IL TUO\nRITMO.</string>
+    <string name="reverie_artist_title">UNA VOCE\nSU TUTTE.</string>
+    <string name="reverie_song_title">ANCORA.\nE ANCORA.</string>
+    <string name="reverie_colours_title">LE TUE\nSFUMATURE.</string>
+    <string name="reverie_genres_title">IL TUO\nSUONO.</string>
+    <string name="reverie_genres_note">I generi dei tuoi brani, pesati per tempo di ascolto.</string>
+    <string name="reverie_gestures">Tocca o scorri a destra e sinistra per cambiare capitolo. Tieni premuto per mettere in pausa. Scorri in basso per chiudere.</string>
+    <string name="reverie_colours_note">Dalle categorie delle playlist YouTube Music.</string>
+    <string name="reverie_album_title">UN MONDO\nIN UN DISCO.</string>
+    <string name="reverie_poster_title">IL MESE\nÈ TUO.</string>
+    <string name="reverie_minutes">MINUTI DI MUSICA</string>
+    <string name="reverie_plays">ASCOLTI</string>
+    <string name="reverie_tracks">BRANI DIVERSI</string>
+    <string name="reverie_artists">ARTISTI</string>
+    <string name="reverie_active_days">GIORNI IN MUSICA</string>
+    <string name="reverie_peak_day">IL GIORNO PIÙ ASCOLTATO</string>
+    <string name="reverie_top_artist">ARTISTA DEL MESE</string>
+    <string name="reverie_top_song">BRANO DEL MESE</string>
+    <string name="reverie_top_album">ALBUM DEL MESE</string>
+    <string name="reverie_your_artists">LE TUE VOCI</string>
+    <string name="reverie_your_songs">LE TUE TRACCE</string>
+    <string name="reverie_month_in_music">IL MIO MESE IN MUSICA</string>
+    <string name="reverie_minute_value">%1$s min</string>
+    <string name="reverie_play_value">%1$s ascolti</string>
+    <string name="reverie_chapter">Capitolo %1$d di %2$d: %3$s</string>
+    <string name="reverie_previous">Capitolo precedente</string>
+    <string name="reverie_next">Capitolo successivo</string>
+    <string name="reverie_pause">Metti in pausa il riepilogo</string>
+    <string name="reverie_resume">Riprendi il riepilogo</string>
+    <string name="reverie_replay">Riguarda</string>
+    <string name="reverie_mute">Disattiva musica</string>
+    <string name="reverie_unmute">Attiva musica</string>
+    <string name="reverie_audio_unavailable">Anteprima non disponibile · il racconto continua</string>
+    <string name="reverie_audio_preparing">Prepariamo la prossima traccia…</string>
+    <string name="reverie_share_image">Condividi immagine</string>
+    <string name="reverie_copy_image">Copia immagine</string>
+    <string name="reverie_image_copied">Immagine copiata</string>
+    <string name="reverie_export_error">Impossibile preparare l’immagine. Riprova.</string>
+    <string name="reverie_exporting">Prepariamo la locandina…</string>
+    <string name="mp3_watch_track_video">Watch the track video</string>
+    <string name="mp3_youtube_video">Video da YouTube</string>
+    <string name="mp3_video_no_results">Nessun video trovato per questo brano.</string>
+    <string name="mp3_video_error">Video non disponibile. Riprova oppure torna al menu.</string>
+    <string name="mp3_video_speed">Velocità · %1$.2f×</string>
+    <string name="mp3_video_back_ten">−10 secondi</string>
+    <string name="mp3_video_forward_ten">+10 secondi</string>
+    <string name="mp3_video_seek_seconds">%1$+d</string>
+    <string name="mp3_queue_recommended">Consigliati in coda</string>
+    <string name="mp3_queue_filter_empty">Nessun brano in coda per questo filtro.</string>
+    <string name="mp3_queue_moods_loading">Rilevamento dei mood?</string>
+    <string name="playlist_draft_title">New playlist</string>
+    <string name="playlist_picker_title">Add to playlist</string>
+    <string name="playlist_picker_close">Close playlist picker</string>
+    <string name="playlist_picker_search">Find a playlist</string>
+    <string name="playlist_picker_contains">Contains tracks from this selection</string>
+    <string name="playlist_picker_add_error">Could not add tracks. Choose a playlist to try again.</string>
+    <string name="playlist_picker_no_results">No playlists found.</string>
+    <string name="playlist_draft_untitled">Untitled</string>
+    <string name="playlist_draft_name">Playlist name</string>
+    <string name="playlist_draft_create">Create</string>
+    <string name="playlist_draft_add_music">Add music</string>
+    <string name="playlist_draft_add">Add</string>
+    <string name="playlist_draft_saving">Saving</string>
+    <string name="playlist_draft_close">Close playlist editor</string>
+    <string name="playlist_draft_search">Find a song or artist</string>
+    <string name="playlist_draft_discover">Discover</string>
+    <string name="playlist_draft_refresh">Refresh suggestions</string>
+    <string name="playlist_draft_retry">Try again</string>
+    <string name="playlist_draft_start">Start with a song. The next ones will follow.</string>
+    <string name="playlist_draft_empty_selection">Your first track is in Discover.</string>
+    <string name="playlist_draft_no_results">No matches. Try another song or artist.</string>
+    <string name="playlist_draft_offline">Discovery is unavailable. You can still use your library.</string>
+    <string name="playlist_draft_seed_error">Could not load your tracks. Try again before creating.</string>
+    <string name="playlist_draft_save_error">Could not save. Your tracks are still here.</string>
+    <string name="playlist_draft_saved_locally">Saved on this device. Account sync is unavailable.</string>
+    <plurals name="playlist_draft_tracks">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+    <string name="music_import_title">Servizi streaming</string>
+    <string name="music_import_description">Gestisci accessi, sincronizzazione e importazione delle playlist.</string>
+    <string name="music_import_spotify">Spotify</string>
+    <string name="music_import_youtube">YouTube Music</string>
+    <string name="music_import_apple">Apple Music</string>
+    <string name="music_import_soundcloud">SoundCloud</string>
+    <string name="music_import_deezer">Deezer</string>
+    <string name="music_import_tidal">Tidal</string>
+    <string name="music_import_in_development">Altri servizi in arrivo.</string>
+    <string name="music_import_soon">Prossimamente</string>
+    <string name="music_import_open_browser">Open in browser</string>
+    <string name="music_import_no_browser">Install a browser to open this page.</string>
+    <string name="music_import_reading">Reading playlists…</string>
+    <string name="music_import_saving">Saving…</string>
+    <string name="music_import_saved">Saved · Open playlist</string>
+    <string name="music_import_match_count">%1$d found · %2$d unavailable</string>
+    <string name="music_services_login_sync">Login e sincronizzazione</string>
+    <string name="music_services_youtube_capabilities">Integrazione completa: account, libreria, playlist e sincronizzazione con YouTube Music.</string>
+    <string name="music_services_spotify_capabilities">Solo importazione delle playlist. Nessuna sincronizzazione o riproduzione da Spotify.</string>
+    <string name="music_services_apple_capabilities">Solo importazione delle playlist, tramite Playlisted.</string>
+    <string name="music_services_connection_hint">Il puntino indica il collegamento a YouTube Music o un accesso già effettuato ai servizi di importazione.</string>
+    <string name="music_services_connected">Collegato</string>
+    <string name="music_services_not_connected">Non collegato</string>
+    <string name="music_services_apple_instructions">Accedi a Playlisted, collega Apple Music e seleziona le playlist. Premi Export to CSV: Iride riceverà il file e cercherà i brani. Dal menu puoi aprire il browser o importare un CSV scaricato.</string>
+    <string name="music_services_invalid_file">Il file non contiene playlist valide. Scegli un CSV o ZIP esportato dal servizio.</string>
+    <string name="external_album_unavailable">Nessuna corrispondenza YouTube affidabile trovata per questi brani:</string>
+    <string name="external_artist_singles">Singoli ed EP</string>
+    <string name="experience_intro_title" translatable="false">Welcome to\nIride.</string>
+    <string name="experience_intro_body" translatable="false">A music app shaped by design. Fluid gestures, thoughtful details, and your sound at the center.</string>
+    <string name="experience_account_title" translatable="false">Your music,\nconnected.</string>
+    <string name="experience_account_body" translatable="false">Connect YouTube to bring your playlists, liked songs and listening history with you.</string>
+    <string name="experience_diagram_welcome" translatable="false">The Iride icon gently breathes.</string>
+    <string name="experience_gesture_easter_egg" translatable="false">Not now, buddy.</string>
+    <string name="experience_diagram_account" translatable="false">Music flows between YouTube and Iride.</string>
+    <string name="experience_android14_title" translatable="false">About\nAndroid 14.</string>
+    <string name="experience_android14_body" translatable="false">We are sorry: Iride is not optimized for Android 14, which is no longer supported. Animations and navigation may not work as intended.</string>
+    <string name="experience_exit" translatable="false">Exit Iride</string>
+    <string name="experience_android14_continue" translatable="false">Continue anyway (not recommended)</string>
+    <string name="experience_setup_title" translatable="false">Switch to\ngestures.</string>
+    <string name="experience_search_settings" translatable="false">Settings / Search navigation / Gestures</string>
+    <string name="experience_open_settings" translatable="false">Open navigation settings</string>
+    <string name="experience_settings_unavailable" translatable="false">Settings could not be opened. Open your phone settings manually and search for “navigation”.</string>
+    <string name="experience_welcome_gestures" translatable="false">Welcome to\ngestures.</string>
+    <string name="experience_already_gestures" translatable="false">Swipe to\ngo back.</string>
+    <string name="experience_back_body" translatable="false">Swipe inward from either edge. When the back arrow appears, release to return.</string>
+    <string name="experience_save_failed" translatable="false">Your choice could not be saved. Please try again.</string>
+    <string name="experience_enter" translatable="false">Got it</string>
+    <string name="experience_label_settings" translatable="false">Settings</string>
+    <string name="experience_label_system" translatable="false">System</string>
+    <string name="experience_label_gestures" translatable="false">Gestures</string>
+    <string name="experience_label_navigation_mode" translatable="false">Navigation mode</string>
+    <string name="experience_label_gesture_navigation" translatable="false">Gesture navigation</string>
+    <string name="experience_label_display" translatable="false">Display</string>
+    <string name="experience_label_navigation_bar" translatable="false">Navigation bar</string>
+    <string name="experience_label_swipe_gestures" translatable="false">Swipe gestures</string>
+    <string name="experience_label_home_screen" translatable="false">Home screen</string>
+    <string name="experience_label_system_navigation" translatable="false">System navigation</string>
+    <string name="experience_label_system_updates" translatable="false">System &amp; updates</string>
+    <string name="experience_label_additional_settings" translatable="false">Additional settings</string>
+    <string name="experience_three_buttons" translatable="false">Three buttons</string>
+    <string name="experience_diagram_settings" translatable="false">Three buttons in the center fade into a gesture bar that moves to the bottom of the phone.</string>
+    <string name="experience_diagram_back" translatable="false">A full-screen artist page pulls back over Home. The Android back arrow appears during the swipe, then the page returns into the artist card.</string>
+    <string name="experience_diagram_compatibility" translatable="false">Android 14 compatibility notice.</string>
+    <string name="gesture_navigation">Gesture navigation</string>
+    <string name="gesture_navigation_desc">Hide back arrows when using system navigation gestures</string>
+    <string name="experience_demo_artist" translatable="false">Artist</string>
+    <string name="experience_demo_artists" translatable="false">Artists</string>
+    <string name="experience_setup_body" translatable="false">Iride is designed around gestures, with fluid transitions that follow your movements.</string>
+    <string name="experience_demo_home" translatable="false">Home</string>
+    <string name="experience_demo_for_you" translatable="false">Artists for you</string>
+    <string name="experience_demo_quick_picks" translatable="false">Quick picks</string>
+    <string name="experience_demo_release" translatable="false">New release</string>
+    <string name="experience_demo_songs" translatable="false">Songs</string>
+</resources>

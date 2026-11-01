@@ -10,6 +10,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import com.metrolist.music.playback.MusicService
+import timber.log.Timber
 
 class TurntableWidgetReceiver : AppWidgetProvider() {
 
@@ -18,8 +19,6 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // Only trigger update through MusicService if it's already running
-        // This prevents BackgroundServiceStartNotAllowedException on Android 14+
         if (MusicService.isRunning) {
             val intent = Intent(context, MusicService::class.java).apply {
                 action = ACTION_UPDATE_TURNTABLE_WIDGET
@@ -27,10 +26,9 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
             try {
                 context.startService(intent)
             } catch (e: Exception) {
-                // Service might be restricted in background
+                Timber.w(e, "Turntable widget: failed to request update")
             }
         }
-        // If service is not running, widget shows default layout until user opens app
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -38,8 +36,6 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
 
         when (intent.action) {
             ACTION_TURNTABLE_PLAY_PAUSE, ACTION_TURNTABLE_NEXT, ACTION_TURNTABLE_PREVIOUS -> {
-                // User interactions from widget buttons can start the service
-                // Android allows starting FGS from widget PendingIntent clicks
                 val serviceIntent = Intent(context, MusicService::class.java).apply {
                     action = when (intent.action) {
                         ACTION_TURNTABLE_PLAY_PAUSE -> MusicWidgetReceiver.ACTION_PLAY_PAUSE
@@ -52,7 +48,7 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
                 try {
                     context.startService(serviceIntent)
                 } catch (e: Exception) {
-                    // Service might be restricted in background
+                    Timber.w(e, "Turntable widget: failed to forward command ${intent.action}")
                 }
             }
         }

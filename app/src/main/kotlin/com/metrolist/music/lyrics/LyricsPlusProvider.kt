@@ -11,7 +11,7 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
@@ -45,13 +45,11 @@ object LyricsPlusProvider : LyricsProvider {
     private val baseUrls = listOf(
         "https://lyricsplus.binimum.org",
         "https://lyricsplus.atomix.one",
-        "https://lyricsplus-seven.vercel.app", // might fail since its on vercel...
-        //"https://lyricsplus.prjktla.workers.dev", seems to be easily rate-limited
-        //"https://lyrics-plus-backend.vercel.app", deployment paused
+        "https://lyricsplus-seven.vercel.app",
     )
 
     private val client by lazy {
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(
                     Json {
@@ -88,7 +86,6 @@ object LyricsPlusProvider : LyricsProvider {
                 parameter("album", album)
             }
             parameter("source", "apple,musixmatch-word")
-            // Disabled sources: lyricsplus,musixmatch,spotify — re-enable for broader coverage if needed
         }
 
         if (response.status == HttpStatusCode.OK) {
@@ -115,7 +112,6 @@ object LyricsPlusProvider : LyricsProvider {
                 }
             }
         }
-        // Return first non-null result, cancel remaining
         var result: LyricsPlusResponse? = null
         for (job in jobs) {
             val res = job.await()
@@ -137,7 +133,6 @@ object LyricsPlusProvider : LyricsProvider {
             val minutes = line.time / 1000 / 60
             val seconds = (line.time / 1000) % 60
             val millis = line.time % 1000 / 10
-            
             if (line.text.isNotBlank()) {
                 String.format(Locale.US, "[%02d:%02d.%02d]%s", minutes, seconds, millis, line.text)
             } else {
@@ -156,11 +151,9 @@ object LyricsPlusProvider : LyricsProvider {
     ): Result<String> = runCatching {
         val response = fetchLyrics(title, artist, duration, album)
         val lrc = convertToLrc(response)
-        
         if (lrc.isNullOrBlank()) {
             throw IllegalStateException("Lyrics unavailable")
         }
-        
         lrc
     }
 

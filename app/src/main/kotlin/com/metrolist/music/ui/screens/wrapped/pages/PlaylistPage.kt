@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.wrapped.pages
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -11,8 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -98,7 +99,7 @@ fun PlaylistPage() {
                 contentDescription = stringResource(R.string.album_cover_desc),
                 modifier = Modifier
                     .size(256.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(FolioShape(3.dp))
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(

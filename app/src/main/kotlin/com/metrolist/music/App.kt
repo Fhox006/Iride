@@ -27,21 +27,36 @@ import com.metrolist.kugou.KuGou
 import com.metrolist.lastfm.LastFM
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.constants.*
+import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.di.ApplicationScope
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
+import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.utils.CrashHandler
+import com.metrolist.music.utils.DiagnosticLog
+import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.MiniPlayerSnapshotStore
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
+import com.metrolist.music.utils.keepPreferencesWarm
+import com.metrolist.music.utils.preferencesSnapshot
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.ui.component.dismissedAnchor
+import com.metrolist.music.ui.component.ArtistArtworkEntryPoint
+import com.metrolist.music.ui.component.persistablePlayerAnchor
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import timber.log.Timber
@@ -59,21 +74,102 @@ class App :
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
+    @Inject
+    lateinit var connectivityObserver: NetworkConnectivityObserver
+
+    @Inject
+    lateinit var database: MusicDatabase
+
     override fun onCreate() {
         super.onCreate()
 
-        // Install crash handler first
         CrashHandler.install(this)
 
-        // Initialize cipher deobfuscator for WEB_REMIX streaming
         CipherDeobfuscator.initialize(this)
 
-        Timber.plant(Timber.DebugTree())
+        GenreProvider.init(this)
 
-        // تهيئة إعدادات التطبيق عند الإقلاع
+        JapaneseDictManager.init(this)
+
+        dataStore.keepPreferencesWarm(applicationScope)
+
+        applicationScope.launch(Dispatchers.IO) {
+            EntryPointAccessors.fromApplication(this@App, ArtistArtworkEntryPoint::class.java)
+                .artistArtworkLoader().restoreSelections()
+        }
+
+        playerAnchorCache = persistablePlayerAnchor(dataStore.get(PlayerAnchorKey, dismissedAnchor))
+        MiniPlayerSnapshotStore.initialize(this)
+        if (!dataStore.get(PersistentQueueKey, true)) MiniPlayerSnapshotStore.update(null)
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+            removeLibraryPreviewSong()
+        }
+        Timber.plant(DiagnosticLog.tree)
+
         applicationScope.launch {
             initializeSettings()
             observeSettingsChanges()
+        }
+
+        observeConnectivity()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_MODERATE) {
+            coil3.SingletonImageLoader.get(this).memoryCache?.clear()
+            EntryPointAccessors.fromApplication(this, ArtistArtworkEntryPoint::class.java)
+                .artistArtworkLoader().clearMemory()
+        }
+    }
+
+    private fun removeLibraryPreviewSong() {
+        applicationScope.launch(Dispatchers.IO) {
+            database.query {
+                getSongByIdBlocking("iride-debug-local-track")?.let { delete(it.song) }
+            }
+        }
+    }
+
+    /**
+     * Release calls bound to a dead default network and restore account credentials before
+     * consumers retry their failed loads. Capability-only updates do not reset working calls.
+     */
+    @OptIn(FlowPreview::class)
+    private fun observeConnectivity() {
+        applicationScope.launch(Dispatchers.IO) {
+            connectivityObserver.networkChanged
+                .debounce(300)
+                .collect {
+                    YouTube.resetConnections()
+                    if (connectivityObserver.networkStatus.value) {
+                        try {
+                            val prefs = dataStore.data.first()
+                            prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
+                            prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
+                            prefs[DataSyncIdKey]?.let { raw ->
+                                YouTube.dataSyncId =
+                                    raw.takeIf { !it.contains("||") }
+                                        ?: raw.takeIf { it.endsWith("||") }?.substringBefore("||")
+                                        ?: raw.substringAfter("||")
+                            }
+                            if (YouTube.visitorData.isNullOrEmpty() || YouTube.visitorData == "null") {
+                                YouTube.visitorData().getOrNull()?.also { fresh ->
+                                    YouTube.visitorData = fresh
+                                    dataStore.edit { settings ->
+                                        settings[VisitorDataKey] = fresh
+                                    }
+                                }
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e, "Could not restore account after network change")
+                        }
+                    }
+                }
         }
     }
 
@@ -99,7 +195,6 @@ class App :
             KuGou.useTraditionalChinese = true
         }
 
-        // Initialize LastFM with API keys from BuildConfig (GitHub Secrets)
         LastFM.initialize(
             apiKey = BuildConfig.LASTFM_API_KEY.takeIf { it.isNotEmpty() } ?: "",
             secret = BuildConfig.LASTFM_SECRET.takeIf { it.isNotEmpty() } ?: "",
@@ -136,16 +231,18 @@ class App :
 
         YouTube.useLoginForBrowse = settings[UseLoginForBrowse] ?: true
 
-        val channel =
-            NotificationChannel(
-                "updates",
-                getString(R.string.update_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply {
-                description = getString(R.string.update_channel_desc)
-            }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(channel)
+        if (OptionalNotificationsEnabled) {
+            val channel =
+                NotificationChannel(
+                    "updates",
+                    getString(R.string.update_channel_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = getString(R.string.update_channel_desc)
+                }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
+        }
     }
 
     private fun observeSettingsChanges() {
@@ -234,16 +331,13 @@ class App :
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
-        val cacheSize =
-            runBlocking {
-                dataStore.data.map { it[MaxImageCacheSizeKey] ?: 512 }.first()
-            }
+        // Read synchronously from snapshot to avoid blocking Main thread (App.onCreate warms it)
+        val cacheSize = preferencesSnapshot?.get(MaxImageCacheSizeKey) ?: 256
         return ImageLoader
             .Builder(this)
             .apply {
                 crossfade(true)
                 allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                // Memory cache for fast image loading (prevents network requests on recomposition)
                 memoryCache {
                     MemoryCache
                         .Builder()
@@ -260,17 +354,23 @@ class App :
                             .maxSizeBytes(cacheSize * 1024 * 1024L)
                             .build(),
                     )
-                    // Allow reading from disk cache as fallback when network is unavailable
                     networkCachePolicy(CachePolicy.ENABLED)
                 }
             }.build()
     }
 
     companion object {
+        @Volatile
+        var playerAnchorCache: Int = dismissedAnchor
+            private set
+
+        fun setPlayerAnchorCache(value: Int) {
+            playerAnchorCache = value
+        }
+
         suspend fun forgetAccount(context: Context) {
             Timber.d("forgetAccount: Starting logout process")
 
-            // Clear DataStore preferences
             Timber.d("forgetAccount: Clearing DataStore preferences")
             context.dataStore.edit { settings ->
                 settings.remove(InnerTubeCookieKey)
@@ -283,7 +383,6 @@ class App :
             }
             Timber.d("forgetAccount: DataStore preferences cleared")
 
-            // Immediately clear YouTube object's auth state
             Timber.d("forgetAccount: Clearing YouTube object auth state")
             Timber.d(
                 "forgetAccount: Before - cookie=${YouTube.cookie?.take(
@@ -297,7 +396,6 @@ class App :
                 "forgetAccount: After - cookie=${YouTube.cookie}, visitorData=${YouTube.visitorData}, dataSyncId=${YouTube.dataSyncId}",
             )
 
-            // Clear WebView cookies to prevent auto-relogin
             Timber.d("forgetAccount: Clearing WebView CookieManager")
             withContext(Dispatchers.Main) {
                 android.webkit.CookieManager.getInstance().apply {

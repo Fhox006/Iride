@@ -13,6 +13,12 @@ import com.metrolist.music.api.DeepLService
 import com.metrolist.music.api.MistralService
 import com.metrolist.music.api.OpenRouterService
 import com.metrolist.music.api.OpenRouterStreamingService
+import com.metrolist.music.ai.AiProvider
+import com.metrolist.music.ai.AiRequestParametersKey
+import com.metrolist.music.ai.AiServiceConfig
+import com.metrolist.music.ai.AiTextService
+import com.metrolist.music.ai.archiveAiProvider
+import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,10 +57,8 @@ object LyricsTranslationHelper {
     private var translationJob: kotlinx.coroutines.Job? = null
     private var isCompositionActive = true
 
-    // Cache translations in memory to avoid redundant API calls during a session
     private val translationCache = ConcurrentHashMap<String, List<String>>()
 
-    // Map of language codes to full names for better AI understanding
     private val LanguageCodeToName = mapOf(
         "en" to "English",
         "es" to "Spanish",
@@ -123,17 +127,14 @@ object LyricsTranslationHelper {
      * This allows updating the UI progressively during streaming.
      */
     private fun tryParsePartialTranslation(content: String, expectedLines: Int): List<String> {
-        // AI usually returns lines separated by newlines or numbered lists
         val lines = content.lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            // Remove common AI formatting like "1. ", "Line 1: ", etc.
             .map { line ->
                 line.replace(Regex("^\\d+\\.\\s*"), "")
                     .replace(Regex("^Line\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
                     .replace(Regex("^-\\s*"), "")
             }
-        
         return lines
     }
 
@@ -148,17 +149,13 @@ object LyricsTranslationHelper {
             lyrics.forEach { it.translatedTextFlow.value = null }
             return
         }
-        
-        // Only load if language and mode match
         if (lyricsEntity.translationLanguage != targetLanguage || lyricsEntity.translationMode != mode) {
             _hasActiveTranslations.value = false
             lyrics.forEach { it.translatedTextFlow.value = null }
             return
         }
-        
         val translatedLines = lyricsEntity.translatedLyrics.split("\n")
         val nonEmptyEntries = lyrics.filter { it.text.isNotBlank() }
-        
         if (translatedLines.size >= nonEmptyEntries.size) {
             var transIndex = 0
             lyrics.forEach { entry ->
@@ -167,8 +164,6 @@ object LyricsTranslationHelper {
                     transIndex++
                 }
             }
-            
-            // Also cache them
             val fullText = nonEmptyEntries.joinToString("\n") { it.text }
             val cacheKey = getCacheKey(fullText, mode, targetLanguage)
             translationCache[cacheKey] = translatedLines
@@ -194,15 +189,17 @@ object LyricsTranslationHelper {
         systemPrompt: String = "",
     ) {
         translationJob?.cancel()
+        if (archiveAiProvider(provider) == AiProvider.NONE) {
+            _status.value = TranslationStatus.Idle
+            return
+        }
         _status.value = TranslationStatus.Translating
 
-        // Clear existing translations to indicate re-translation
         lyrics.forEach { it.translatedTextFlow.value = null }
 
         translationJob =
             scope.launch(Dispatchers.IO) {
                 try {
-                    // Validate inputs
                     val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
                     if (effectiveApiKey.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_api_key_required))
@@ -214,7 +211,6 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Filter out empty lines and keep track of their indices
                     val nonEmptyEntries =
                         lyrics.mapIndexedNotNull { index, entry ->
                             if (entry.text.isNotBlank()) index to entry else null
@@ -225,14 +221,11 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Create text from non-empty lines only
                     val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
 
-                    // Check cache first
                     val cacheKey = getCacheKey(fullText, mode, targetLanguage)
                     val cachedTranslations = translationCache[cacheKey]
                     if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size) {
-                        // Use cached translations
                         nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
                             if (idx < cachedTranslations.size) {
                                 lyrics[originalIndex].translatedTextFlow.value = cachedTranslations[idx]
@@ -241,8 +234,6 @@ object LyricsTranslationHelper {
                         _hasActiveTranslations.value = true
                         _status.value = TranslationStatus.Success
 
-                        // Persist cached translations to DB so loadTranslationsFromDatabase can't
-                        // overwrite them with a stale empty entity (e.g. after an untranslate race).
                         if (songId.isNotBlank() && database != null) {
                             try {
                                 val currentLyrics = database.lyrics(songId).first()
@@ -270,13 +261,11 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Validate language for all modes
                     if (targetLanguage.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_language_required))
                         return@launch
                     }
 
-                    // Convert language code to full language name for better AI understanding
                     val fullLanguageName =
                         LanguageCodeToName[targetLanguage]
                             ?: try {
@@ -286,10 +275,38 @@ object LyricsTranslationHelper {
                             }
                             ?: targetLanguage
 
+                    val archiveProvider = archiveAiProvider(provider)
                     val result =
-                        if (provider == "DeepL") {
+                        if (archiveProvider != null) {
+                            // ArchiveTune's shared API path also powers model tests in settings.
+                            val requestParameters = context.dataStore.data.first()[AiRequestParametersKey].orEmpty()
+                            val config = AiServiceConfig(archiveProvider, apiKey, baseUrl, model, requestParameters)
+                            val extraPrompt = buildString {
+                                if (systemPrompt.isNotBlank()) {
+                                    append(systemPrompt.replace("{lineCount}", nonEmptyEntries.size.toString()))
+                                }
+                                when (mode) {
+                                    "Transcribed" -> append("\nTranscribe the sound of each input into $fullLanguageName script instead of translating its meaning. Preserve pronunciation and line count.")
+                                    "Romanized" -> append("\nRomanize each input into simple ASCII Latin script instead of translating its meaning. Preserve pronunciation and line count.")
+                                }
+                            }
+                            try {
+                                Result.success(
+                                    AiTextService.translateLines(
+                                        config = config,
+                                        targetLanguage = fullLanguageName,
+                                        lines = nonEmptyEntries.map { it.second.text },
+                                        formatName = "line-by-line",
+                                        customPrompt = extraPrompt,
+                                    ),
+                                )
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                Result.failure(failure)
+                            }
+                        } else if (provider == "DeepL") {
                             Timber.d("Using DeepL for translation")
-                            // DeepL only supports translation mode
                             DeepLService.translate(
                                 text = fullText,
                                 targetLanguage = targetLanguage,
@@ -298,7 +315,6 @@ object LyricsTranslationHelper {
                             )
                         } else if (provider == "Mistral") {
                             Timber.d("Using Mistral for translation")
-                            // Use Mistral API directly
                             MistralService.translate(
                                 text = fullText,
                                 targetLanguage = fullLanguageName,
@@ -309,11 +325,11 @@ object LyricsTranslationHelper {
                             )
                         } else if (useStreaming && provider != "Custom") {
                             Timber.d("Using streaming for translation with provider: $provider")
-                            // Use streaming for supported providers
                             var translatedLines: List<String>? = null
                             var hasError = false
                             var errorMessage = ""
                             val contentAccumulator = StringBuilder()
+                            val streamStartTime = System.currentTimeMillis()
 
                             OpenRouterStreamingService
                                 .streamTranslation(
@@ -328,21 +344,20 @@ object LyricsTranslationHelper {
                                     Timber.v("Received streaming chunk: $chunk")
                                     when (chunk) {
                                         is OpenRouterStreamingService.StreamChunk.Content -> {
-                                            // Accumulate content for progressive parsing
                                             contentAccumulator.append(chunk.text)
 
-                                            // Try to parse partial content and update UI progressively
-                                            val partialContent = contentAccumulator.toString()
-                                            val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
-                                            if (partialResult.isNotEmpty()) {
-                                                // Update lyrics with partial translations as they become available
-                                                partialResult.forEachIndexed { idx, translation ->
-                                                    if (idx < nonEmptyEntries.size && translation.isNotBlank()) {
-                                                        val originalIndex = nonEmptyEntries[idx].first
-                                                        lyrics[originalIndex].translatedTextFlow.value = translation
+                                            if (System.currentTimeMillis() - streamStartTime >= 1500L) {
+                                                val partialContent = contentAccumulator.toString()
+                                                val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
+                                                if (partialResult.isNotEmpty()) {
+                                                    partialResult.forEachIndexed { idx, translation ->
+                                                        if (idx < nonEmptyEntries.size && translation.isNotBlank()) {
+                                                            val originalIndex = nonEmptyEntries[idx].first
+                                                            lyrics[originalIndex].translatedTextFlow.value = translation
+                                                        }
                                                     }
+                                                    _status.value = TranslationStatus.Translating
                                                 }
-                                                _status.value = TranslationStatus.Translating
                                             }
                                         }
 
@@ -384,7 +399,6 @@ object LyricsTranslationHelper {
                             }
                         } else {
                             Timber.d("Using non-streaming for translation")
-                            // Use non-streaming for Custom provider or when streaming is disabled
                             OpenRouterService.translate(
                                 text = fullText,
                                 targetLanguage = fullLanguageName,
@@ -398,16 +412,6 @@ object LyricsTranslationHelper {
 
                     result
                         .onSuccess { translatedLines ->
-                            // Check if composition is still active before updating state
-                            if (!isCompositionActive) {
-                                return@onSuccess
-                            }
-
-                            // Cache the translations
-                            val cacheKey = getCacheKey(fullText, mode, targetLanguage)
-                            translationCache[cacheKey] = translatedLines
-
-                            // Save to database if songId is provided
                             if (songId.isNotBlank() && database != null) {
                                 try {
                                     val currentLyrics = database.lyrics(songId).first()
@@ -421,7 +425,6 @@ object LyricsTranslationHelper {
                                                 ),
                                             )
                                         }
-                                        // Signal that translations have been saved
                                         _translationSaved.tryEmit(Unit)
                                     }
                                 } catch (e: Exception) {
@@ -429,12 +432,17 @@ object LyricsTranslationHelper {
                                 }
                             }
 
-                            // Map translations back to original non-empty entries only
+                            if (!isCompositionActive) {
+                                return@onSuccess
+                            }
+
+                            val cacheKey = getCacheKey(fullText, mode, targetLanguage)
+                            translationCache[cacheKey] = translatedLines
+
                             val expectedCount = nonEmptyEntries.size
 
                             when {
                                 translatedLines.size >= expectedCount -> {
-                                    // Perfect match or more - map to non-empty entries
                                     nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
                                         lyrics[originalIndex].translatedTextFlow.value = translatedLines[idx]
                                     }
@@ -443,7 +451,6 @@ object LyricsTranslationHelper {
                                 }
 
                                 translatedLines.size < expectedCount -> {
-                                    // Fewer translations than expected - map what we have
                                     translatedLines.forEachIndexed { idx, translation ->
                                         if (idx < nonEmptyEntries.size) {
                                             val originalIndex = nonEmptyEntries[idx].first
@@ -455,7 +462,6 @@ object LyricsTranslationHelper {
                                 }
                             }
 
-                            // Auto-hide success message after 3 seconds
                             delay(3000)
                             if (_status.value is TranslationStatus.Success && isCompositionActive) {
                                 _status.value = TranslationStatus.Idle
@@ -468,11 +474,9 @@ object LyricsTranslationHelper {
 
                             val errorMessage = error.message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
 
-                            // Show error in UI
                             _status.value = TranslationStatus.Error(errorMessage)
                         }
                 } catch (e: Exception) {
-                    // Ignore cancellation exceptions or if composition is no longer active
                     if (e !is kotlinx.coroutines.CancellationException && isCompositionActive) {
                         val errorMessage = e.message ?: context.getString(com.metrolist.music.R.string.ai_error_translation_failed)
                         _status.value = TranslationStatus.Error(errorMessage)

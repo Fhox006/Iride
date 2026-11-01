@@ -129,7 +129,7 @@
         <item quantity="other">%d segundu</item>
     </plurals>
     <string name="disable_load_more_when_repeat_all">\"Errepikatu guztiak\" moduan gehiago kargatzea desgaitu</string>
-    <string name="disable_load_more_when_repeat_all_desc">Ez kargatu automatikoki abesti gehiago eta antzeko edukia â€˜Errepikatu guztiakâ€™ modua aktibatuta dagoenean</string>
+    <string name="disable_load_more_when_repeat_all_desc">Ez kargatu automatikoki abesti gehiago eta antzeko edukia ‘Errepikatu guztiak’ modua aktibatuta dagoenean</string>
     <string name="lyrics_romanization_cyrillic">Kirilikoa</string>
     <string name="lyrics_romanize_title">Erromanizazio</string>
     <string name="lyrics_romanization">Letren erromanizazioa</string>

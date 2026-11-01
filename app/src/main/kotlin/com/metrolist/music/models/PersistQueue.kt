@@ -24,18 +24,22 @@ sealed class QueueType : Serializable {
 }
 
 sealed class QueueData : Serializable {
+    // Keep PersistQueue's serialized shape compatible with existing saved queues.
+    data class SourceData(
+        val sourceRoute: String,
+        val queueData: QueueData? = null,
+    ) : QueueData()
+
     data class YouTubeData(
         val endpoint: String,
         val continuation: String? = null
     ) : QueueData()
-    
     data class YouTubeAlbumRadioData(
         val playlistId: String,
         val albumSongCount: Int = 0,
         val continuation: String? = null,
         val firstTimeLoaded: Boolean = false
     ) : QueueData()
-    
     data class LocalAlbumRadioData(
         val albumId: String,
         val startIndex: Int = 0,

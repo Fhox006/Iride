@@ -6,7 +6,6 @@ import timber.log.Timber
 import javax.xml.parsers.DocumentBuilderFactory
 
 object TTMLParser {
-    
     data class ParsedLine(
         val text: String,
         val startTime: Double,
@@ -15,14 +14,12 @@ object TTMLParser {
         val isBackground: Boolean = false,
         val backgroundLines: List<ParsedLine> = emptyList()
     )
-    
     data class ParsedWord(
         val text: String,
         val startTime: Double,
         val endTime: Double,
         val hasTrailingSpace: Boolean = true
     )
-    
     private data class SpanInfo(
         val text: String,
         val startTime: Double,
@@ -69,7 +66,6 @@ object TTMLParser {
             val root = doc.documentElement
 
             var globalOffset = 0.0
-            // Manual search for head/metadata/audio to avoid getElementsByTagName
             val head = findChild(root, "head")
             if (head != null) {
                 val meta = findChild(head, "metadata")
@@ -115,7 +111,7 @@ object TTMLParser {
             }
             "p" -> {
                 parseP(element, lines, offset, currentAgent)
-                return // Don't descend into p, parseP handles children
+                return
             }
         }
 
@@ -129,14 +125,11 @@ object TTMLParser {
     private fun parseP(p: Element, lines: MutableList<ParsedLine>, offset: Double, divAgent: String?) {
         val begin = p.getAttribute("begin")
         if (begin.isEmpty()) return
-        
         val startTime = parseTime(begin) + offset
         val spanInfos = mutableListOf<SpanInfo>()
         val backgroundLines = mutableListOf<ParsedLine>()
-        
         val agent = getAttr(p, "agent").ifEmpty { divAgent }
         val isPBackground = getAttr(p, "role") == "x-bg"
-        
         var child = p.firstChild
         while (child != null) {
             if (child is Element) {
@@ -155,10 +148,8 @@ object TTMLParser {
             }
             child = child.nextSibling
         }
-        
         val words = mergeSpansIntoWords(spanInfos)
         val lineText = if (words.isEmpty()) getDirectText(p).trim() else buildLineText(words)
-        
         if (lineText.isNotEmpty()) {
             val bgLines = if (backgroundLines.isNotEmpty()) {
                 listOf(ParsedLine(
@@ -195,7 +186,6 @@ object TTMLParser {
         val begin = span.getAttribute("begin")
         val start = if (begin.isNotEmpty()) parseTime(begin) + offset else parentStart
         val spanInfos = mutableListOf<SpanInfo>()
-        
         var child = span.firstChild
         var hasSpans = false
         while (child != null) {
@@ -209,12 +199,10 @@ object TTMLParser {
             }
             child = child.nextSibling
         }
-        
         if (!hasSpans) {
             val text = nodeText(span).trim()
             return ParsedLine(text, start, emptyList(), isBackground = true)
         }
-        
         val words = mergeSpansIntoWords(spanInfos)
         val text = if (words.isEmpty()) getDirectText(span).trim() else buildLineText(words)
         return ParsedLine(text, start, words, isBackground = true)
@@ -250,7 +238,6 @@ object TTMLParser {
         var text = StringBuilder(spanInfos[0].text)
         var start = spanInfos[0].startTime
         var end = spanInfos[0].endTime
-        
         for (i in 1 until spanInfos.size) {
             val prev = spanInfos[i - 1]
             val curr = spanInfos[i]
@@ -298,8 +285,6 @@ object TTMLParser {
             if (isBgLine) lastBg = true
             sb.append(formatLrcTime(line.startTime)).append(tag)
             if (line.words.isNotEmpty()) {
-                // Rich-sync inline format: <MM:SS.mm>word <MM:SS.mm>word <endTime>
-                // detectTier() uses RICH_SYNC_WORD_REGEX = "<MM:SS.mm>([^<]+)" to identify SYNCED_WORD
                 line.words.forEachIndexed { i, w ->
                     sb.append(formatWordTime(w.startTime)).append(w.text)
                     if (i < line.words.lastIndex && w.hasTrailingSpace && !w.text.endsWith('-')) sb.append(' ')

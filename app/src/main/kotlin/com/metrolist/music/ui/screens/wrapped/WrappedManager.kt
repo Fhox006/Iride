@@ -110,30 +110,26 @@ class WrappedManager(
         withContext(Dispatchers.IO) {
             val playlistMap = mutableMapOf<WrappedScreenType, String>()
 
-            // Intro Part: Random song from top 6-30
             val introSongPool = topSongs.subList(5, topSongs.size)
             val introSong = introSongPool.randomOrNull()?.id ?: topSongs.last().id
             playlistMap[WrappedScreenType.Welcome] = introSong
             playlistMap[WrappedScreenType.MinutesTease] = introSong
             playlistMap[WrappedScreenType.MinutesReveal] = introSong
 
-            // Music Part: Top 1 song
             val topSong = topSongs.first()
             playlistMap[WrappedScreenType.TotalSongs] = topSong.id
             playlistMap[WrappedScreenType.TopSongReveal] = topSong.id
             playlistMap[WrappedScreenType.Top5Songs] = topSong.id
 
-            // Album Part: Random song from top album
             val topAlbum = _state.value.topAlbum
             val albumSong = topAlbum?.let { album ->
                 val albumSongs = databaseDao.albumSongs(album.id).first()
                 albumSongs.randomOrNull()?.id
-            } ?: topSong.id // Fallback to top song if no album songs
+            } ?: topSong.id
             playlistMap[WrappedScreenType.TotalAlbums] = albumSong
             playlistMap[WrappedScreenType.TopAlbumReveal] = albumSong
             playlistMap[WrappedScreenType.Top5Albums] = albumSong
 
-            // Artist Part: Top artist's song with specific rule
             val topArtist = topArtists.firstOrNull()
             val fromTimestamp = Calendar.getInstance().apply {
                 set(WrappedConstants.YEAR, Calendar.JANUARY, 1, 0, 0, 0)
@@ -153,22 +149,18 @@ class WrappedManager(
                 if (artistTopSongs.isNotEmpty()) {
                     val artistTopSong = artistTopSongs.first()
                     if (artistTopSong.id == topSong.id) {
-                        // Overlap: Use the artist's second song.
-                        // If a second song doesn't exist, use a random song from their list.
                         artistTopSongs.getOrNull(1)?.id ?: artistTopSongs.filter { it.id != topSong.id }.randomOrNull()?.id ?: artistTopSong.id
                     } else {
                         artistTopSong.id
                     }
                 } else {
-                    // Data anomaly: Fallback to the user's top song.
                     topSong.id
                 }
-            } ?: topSong.id // Fallback if no top artist.
+            } ?: topSong.id
             playlistMap[WrappedScreenType.TotalArtists] = artistSong
             playlistMap[WrappedScreenType.TopArtistReveal] = artistSong
             playlistMap[WrappedScreenType.Top5Artists] = artistSong
 
-            // End Part
             val endSongPool = topSongs.subList(2, 5)
             val endSong = endSongPool.randomOrNull()?.id ?: topSongs[2].id
             playlistMap[WrappedScreenType.Playlist] = endSong

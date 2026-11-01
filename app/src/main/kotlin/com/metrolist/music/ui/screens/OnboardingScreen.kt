@@ -5,54 +5,21 @@
 
 package com.metrolist.music.ui.screens
 
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
@@ -60,108 +27,118 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AppLanguageKey
 import com.metrolist.music.constants.ContentLanguageKey
 import com.metrolist.music.constants.OnboardingCompletedKey
+import com.metrolist.music.ui.theme.FolioShape
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.utils.SystemNavigationMode
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.needsNavigationSetup
 import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState { 4 }
+    val navigationMode = LocalSystemNavigationMode.current
+    var setupWasRequired by rememberSaveable { mutableStateOf(needsNavigationSetup(navigationMode)) }
+    val includeSetup = setupWasRequired || needsNavigationSetup(navigationMode)
+    val tutorialPage = if (includeSetup) 3 else 2
+    val pagerState = rememberPagerState { tutorialPage + 1 }
 
-    val notificationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) {
-        coroutineScope.launch { pagerState.animateScrollToPage(2) }
+    // Keep the completed setup step after enabling gestures, but omit it for existing gesture users.
+    LaunchedEffect(navigationMode) {
+        if (needsNavigationSetup(navigationMode)) setupWasRequired = true
     }
+    val gesturePage = if (navigationMode == SystemNavigationMode.Gestures) tutorialPage else 2
 
-    fun completeOnboarding() {
-        coroutineScope.launch {
-            context.dataStore.edit {
-                it[OnboardingCompletedKey] = true
-                it[AppLanguageKey] = "en"
-                it[ContentLanguageKey] = "en"
-            }
+    // Returning from Settings advances to the fourth page only once gestures are active.
+    LaunchedEffect(navigationMode, pagerState.settledPage) {
+        if (pagerState.settledPage >= 2 && pagerState.settledPage != gesturePage) {
+            pagerState.animateScrollToPage(gesturePage)
+        }
+    }
+    var loginRequested by rememberSaveable { mutableStateOf(false) }
+
+    suspend fun completeOnboarding() {
+        context.dataStore.edit {
+            it[OnboardingCompletedKey] = true
+            it[AppLanguageKey] = "en"
+            it[ContentLanguageKey] = "en"
+        }
+        navController.navigate(if (loginRequested) "login" else Screens.Home.route) {
+            popUpTo("onboarding") { inclusive = true }
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding(),
     ) {
         HorizontalPager(
             state = pagerState,
             userScrollEnabled = false,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
         ) { page ->
-            when (page) {
-                0 -> WelcomePage(
-                    onNext = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(1) }
+            CompositionLocalProvider(LocalExperienceVisible provides (pagerState.currentPage == page)) {
+                when (page) {
+                    0 -> WelcomePage(
+                        onNext = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                        },
+                    )
+                    1 -> LoginPage(
+                        onLogin = {
+                            loginRequested = true
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(2)
+                            }
+                        },
+                        onSkip = {
+                            loginRequested = false
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(2)
+                            }
+                        },
+                    )
+                    else -> if (page == tutorialPage) {
+                        GestureNavigationFlow(
+                            mode = navigationMode,
+                            applyInsets = false,
+                            onComplete = { completeOnboarding() },
+                        )
+                    } else {
+                        GestureSetupPage(applyInsets = false)
                     }
-                )
-                1 -> NotificationsPage(
-                    onEnable = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            coroutineScope.launch { pagerState.animateScrollToPage(2) }
-                        }
-                    },
-                    onSkip = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(2) }
-                    }
-                )
-                2 -> LoginPage(
-                    onLogin = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(3) }
-                    },
-                    onSkip = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(3) }
-                    }
-                )
-                3 -> ImportMusicPage(
-                    onLearnHow = {
-                        completeOnboarding()
-                        navController.navigate("spotify_import") {
-                            popUpTo("onboarding") { inclusive = true }
-                        }
-                    },
-                    onSkip = {
-                        completeOnboarding()
-                        navController.navigate(Screens.Home.route) {
-                            popUpTo("onboarding") { inclusive = true }
-                        }
-                    }
-                )
+                }
             }
         }
 
-        // Page indicators
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 24.dp)
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 4.dp, bottom = 16.dp)
+                .semantics {
+                    progressBarRangeInfo = ProgressBarRangeInfo(
+                        current = pagerState.currentPage.toFloat(),
+                        range = 0f..(pagerState.pageCount - 1).toFloat(),
+                        steps = pagerState.pageCount - 2,
+                    )
+                },
         ) {
-            repeat(4) { index ->
-                val isSelected = pagerState.currentPage == index
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1f else 0.7f,
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "dotScale"
-                )
+            repeat(pagerState.pageCount) { index ->
                 Box(
                     modifier = Modifier
-                        .scale(scale)
-                        .size(if (isSelected) 10.dp else 8.dp)
-                        .clip(CircleShape)
+                        .size(width = 24.dp, height = 3.dp)
+                        .clip(FolioShape(1.dp))
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        )
+                            if (pagerState.currentPage == index) MaterialTheme.colorScheme.textPrimary
+                            else MaterialTheme.colorScheme.strokeHairline,
+                        ),
                 )
             }
         }
@@ -170,396 +147,26 @@ fun OnboardingScreen(navController: NavController) {
 
 @Composable
 private fun WelcomePage(onNext: () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top,
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 40.dp)
-            .padding(top = 72.dp, bottom = 48.dp)
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(140.dp)
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Iride",
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 12.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "BETA",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
-        ) {
-            Text(
-                text = "Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 350))
-        ) {
-            Button(
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Get Started",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.size(8.dp))
-                Icon(
-                    painter = painterResource(R.drawable.arrow_forward),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 40.dp)
-            .padding(bottom = 48.dp)
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.notification),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(72.dp)
-            )
-        }
-
-        Spacer(Modifier.height(40.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
-        ) {
-            Text(
-                text = "Stay Updated",
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
-        ) {
-            Text(
-                text = "Notifications let you know when music is playing and control the player directly from the lock screen.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(64.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 300))
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = onEnable,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Enable Notifications",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onSkip,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "No Thanks",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-        }
-    }
+    ExperiencePage(
+        title = stringResource(R.string.experience_intro_title),
+        description = stringResource(R.string.experience_intro_body),
+        illustration = { NavigationMotionIllustration(NavigationDemo.Welcome) },
+        illustrationMaxHeight = 128.dp,
+        applyInsets = false,
+        actions = { ExperienceButton(stringResource(R.string.onboarding_get_started), onNext) },
+    )
 }
 
 @Composable
 private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 40.dp)
-            .padding(bottom = 48.dp)
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.login),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(72.dp)
-            )
-        }
-
-        Spacer(Modifier.height(40.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
-        ) {
-            Text(
-                text = "Connect Your Account",
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
-        ) {
-            Text(
-                text = "Sign in with your YouTube account to sync playlists, liked songs and listening history.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(64.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 300))
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = onLogin,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Sign in with YouTube",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onSkip,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Continue Without Account",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun ImportMusicPage(onLearnHow: () -> Unit, onSkip: () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 40.dp)
-            .padding(bottom = 48.dp)
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(20.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.download),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(40.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Bring Your Music With You",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.tertiaryContainer)
-                        .padding(horizontal = 12.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "BETA",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
-        ) {
-            Text(
-                text = "Import your saved playlists and tracks from Spotify — your library, your way.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(64.dp))
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(700, delayMillis = 300))
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = onLearnHow,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Import from Spotify",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onSkip,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Skip for now",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-        }
-    }
+    ExperiencePage(
+        title = stringResource(R.string.experience_account_title),
+        description = stringResource(R.string.experience_account_body),
+        illustration = { NavigationMotionIllustration(NavigationDemo.Account) },
+        applyInsets = false,
+        actions = {
+            ExperienceButton(stringResource(R.string.onboarding_login_cta), onLogin)
+            ExperienceButton(stringResource(R.string.onboarding_login_skip), onSkip, secondary = true)
+        },
+    )
 }

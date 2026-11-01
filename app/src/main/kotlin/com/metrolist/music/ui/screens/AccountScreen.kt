@@ -5,63 +5,92 @@
 
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -69,10 +98,12 @@ import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.AccountContentType
 import com.metrolist.music.viewmodels.AccountViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -94,53 +125,88 @@ fun AccountScreen(
     val podcastChannels by viewModel.podcastChannels.collectAsState()
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
+    val topNavBarController = LocalTopNavBarController.current
 
-    // Retry loading if data is still null when screen opens (e.g. previous attempt failed)
     LaunchedEffect(Unit) {
-        if (playlists == null && albums == null && artists == null) {
+        if (playlists == null || albums == null || artists == null) {
             viewModel.refresh()
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.account_content)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { paddingValues ->
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = LocalPlayerAwareWindowInsets.current
-                .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
-                .asPaddingValues(),
-            modifier = Modifier.padding(paddingValues),
-        ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            ChipsRow(
-                chips =
-                    listOf(
-                        AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
-                        AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
-                        AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
-                        AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
-                    ),
-                currentValue = selectedContentType,
-                onValueUpdate = { viewModel.setSelectedContentType(it) },
-            )
+    val scrollState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val scrollToTop =
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+    LaunchedEffect(scrollToTop?.value) {
+        if (scrollToTop?.value == true) {
+            scrollState.animateScrollToItem(0)
+            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
+    }
+    IridePageLayout(
+        titleRes = R.string.account,
+        columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
+        state = scrollState,
+        modifier = Modifier.fillMaxSize().background(Color.Transparent),
+        bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+    ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ChipsRow(
+                    chips =
+                        listOf(
+                            AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
+                            AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
+                            AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
+                            AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
+                        ),
+                    currentValue = selectedContentType,
+                    onValueUpdate = { viewModel.setSelectedContentType(it) },
+                    useIrideStyle = true,
+                )
+            }
 
+            AccountContentGridItems(
+                navController = navController,
+                menuState = menuState,
+                haptic = haptic,
+                coroutineScope = coroutineScope,
+                selectedContentType = selectedContentType,
+                playlists = playlists,
+                albums = albums,
+                artists = artists,
+                rdpnPlaylist = rdpnPlaylist,
+                sePlaylist = sePlaylist,
+                podcastPlaylists = podcastPlaylists,
+                podcastChannels = podcastChannels,
+            )
+    }
+}
+
+/**
+ * The actual account-content grid items (playlists/albums/artists/podcasts), shared between the
+ * New Iride UI branch and the classic push-navigation branch of [AccountScreen] above — only the
+ * surrounding chrome (top bar style) differs between the two.
+ */
+private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGridItems(
+    navController: NavController,
+    menuState: com.metrolist.music.ui.component.MenuState,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    selectedContentType: AccountContentType,
+    playlists: List<com.metrolist.innertube.models.PlaylistItem>?,
+    albums: List<com.metrolist.innertube.models.AlbumItem>?,
+    artists: List<com.metrolist.innertube.models.ArtistItem>?,
+    rdpnPlaylist: com.metrolist.innertube.models.PlaylistItem?,
+    sePlaylist: com.metrolist.innertube.models.PlaylistItem?,
+    podcastPlaylists: List<PodcastEntity>,
+    podcastChannels: List<com.metrolist.innertube.models.ArtistItem>,
+) {
         when (selectedContentType) {
             AccountContentType.PLAYLISTS -> {
                 items(
@@ -152,13 +218,12 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("online_playlist/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubePlaylistMenu(
                                                 playlist = item,
                                                 coroutineScope = coroutineScope,
@@ -189,13 +254,12 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("album/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubeAlbumMenu(
                                                 albumItem = item,
                                                 navController = navController,
@@ -226,13 +290,12 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .irideFolioCombinedClickable(
                                     onClick = {
                                         navController.navigate("artist/${item.id}")
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
+                                        menuState.show(anchored = true) {
                                             YouTubeArtistMenu(
                                                 artist = item,
                                                 onDismiss = menuState::dismiss,
@@ -253,7 +316,6 @@ fun AccountScreen(
             }
 
             AccountContentType.PODCASTS -> {
-                // Show RDPN "New Episodes" playlist if available
                 rdpnPlaylist?.let { rdpn ->
                     item(
                         key = "rdpn_playlist",
@@ -268,7 +330,6 @@ fun AccountScreen(
                     }
                 }
 
-                // Show SE "Episodes for Later" playlist if available
                 sePlaylist?.let { se ->
                     item(
                         key = "se_playlist",
@@ -283,7 +344,6 @@ fun AccountScreen(
                     }
                 }
 
-                // Subscribed podcast shows
                 if (podcastPlaylists.isNotEmpty()) {
                     item(
                         key = "podcasts_header",
@@ -313,7 +373,6 @@ fun AccountScreen(
                     }
                 }
 
-                // Podcast channels
                 if (podcastChannels.isNotEmpty()) {
                     item(
                         key = "channels_header",
@@ -351,8 +410,6 @@ fun AccountScreen(
                 }
             }
         }
-        }
-    }
 }
 
 @Composable
@@ -375,7 +432,7 @@ private fun SePlaylistAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -387,7 +444,7 @@ private fun SePlaylistAccountItem(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(FolioShape(8.dp)),
                 )
             } else {
                 Icon(
@@ -444,7 +501,7 @@ private fun PodcastAccountItem(
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FolioShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -456,7 +513,7 @@ private fun PodcastAccountItem(
                     modifier =
                         Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(FolioShape(8.dp)),
                 )
             } else {
                 Icon(

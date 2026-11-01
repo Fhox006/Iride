@@ -33,14 +33,13 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.1.0-alpha15"
+        versionCode = 34
+        versionName = "0.1.0-alpha34"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // LastFM API keys from GitHub Secrets
         val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
         val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
         if (lastFmKey.isBlank()) {
@@ -54,7 +53,6 @@ android {
 
     flavorDimensions += listOf("variant")
     productFlavors {
-        // FOSS variant (default) - F-Droid compatible, no Google Play Services
         create("foss") {
             dimension = "variant"
             isDefault = true
@@ -62,14 +60,12 @@ android {
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // GMS variant - with Google Cast support (requires Google Play Services)
         create("gms") {
             dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "true")
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // IzzyOnDroid variant - no Google Cast, no built-in updater (store handles updates)
         create("izzy") {
             dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "false")
@@ -114,6 +110,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig =
+                if (workflowDebugKeystoreFile != null) {
+                    signingConfigs.getByName("workflowDebug")
+                } else if (persistentDebugKeystoreFile.exists()) {
+                    signingConfigs.getByName("persistentDebug")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
         debug {
             if (applicationIdOverride == null) {
@@ -131,6 +135,14 @@ android {
                 } else {
                     signingConfigs.getByName("debug")
                 }
+        }
+        create("performance") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            matchingFallbacks += listOf("debug")
+            if (appNameOverride == null) {
+                resValue("string", "app_name", "Iride Test")
+            }
         }
     }
 
@@ -186,6 +198,7 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
+            excludes += "com/atilika/kuromoji/ipadic/**"
         }
     }
 }
@@ -203,22 +216,27 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     }
 }
 
-// Android provides org.json as a platform API (/apex/com.android.art/javalib/core-libart.jar).
-// The standalone org.json:json artefact bundles an older Apache Harmony copy of JSONArray that
-// contains an internal `myArrayList` field absent from the platform class.  Without obfuscation
-// R8 inlines against this internal field; at runtime the platform class is resolved instead,
-// producing a NoSuchFieldError.  Excluding the artefact globally ensures only the platform
-// class is ever referenced.
+// Keep the workspace's compile-only verification command meaningful for the flavored app.
+// Without this alias, `compileDebugKotlin` selects only library modules and skips all app UI.
+tasks.register("compileDebugKotlin") {
+    dependsOn("compileFossDebugKotlin")
+}
+
 configurations.configureEach {
     exclude(group = "org.json", module = "json")
 }
 
 dependencies {
+    implementation("net.java.dev.jna:jna:5.19.1@aar")
+    implementation("org.apache.commons:commons-compress:1.27.1")
+    testImplementation(libs.junit)
+
     implementation(libs.guava)
     implementation(libs.coroutines.guava)
     implementation(libs.concurrent.futures)
 
     implementation(libs.activity)
+    implementation(libs.core.splashscreen)
     implementation(libs.hilt.navigation)
     implementation(libs.datastore)
 
@@ -226,8 +244,10 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
-    implementation(libs.compose.ui.text.google.fonts)
-    implementation(libs.compose.ui.tooling)
+    // Enable Compose inspection tooling only when needed: -Piride.composeTooling=true.
+    if (providers.gradleProperty("iride.composeTooling").orNull.toBoolean()) {
+        debugImplementation(libs.compose.ui.tooling)
+    }
     implementation(libs.compose.animation)
     implementation(libs.compose.reorderable)
 
@@ -250,10 +270,11 @@ dependencies {
     implementation("io.github.stoyan-vuchev:squircle-shape-android:3.0.1")
 
     implementation(libs.media3)
+    implementation(libs.media3.hls)
+    implementation(libs.media3.ui)
     implementation(libs.media3.session)
     implementation(libs.media3.okhttp)
 
-    // Google Cast - only included in GMS flavor (not available in F-Droid/FOSS builds)
     "gmsImplementation"(libs.media3.cast)
     "gmsImplementation"(libs.mediarouter)
     "gmsImplementation"(libs.cast.framework)
@@ -268,6 +289,7 @@ dependencies {
 
     implementation(libs.hilt)
     implementation(libs.jsoup)
+    implementation(libs.security.crypto)
     ksp(libs.hilt.compiler)
 
     implementation(project(":innertube"))
@@ -280,11 +302,10 @@ dependencies {
     implementation(project(":paxsenix"))
 
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.json)
 
-    // Protobuf for message serialization (lite version for Android)
     implementation(libs.protobuf.javalite)
     implementation(libs.protobuf.kotlin.lite)
 

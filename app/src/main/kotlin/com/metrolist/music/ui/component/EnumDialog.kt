@@ -13,11 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.utils.rememberPreference
 
 @Composable
 fun <T> EnumDialog(
@@ -46,6 +51,10 @@ fun <T> EnumDialog(
                 RadioButton(
                     selected = value == current,
                     onClick = null,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = MaterialTheme.colorScheme.textPrimary,
+                        unselectedColor = MaterialTheme.colorScheme.textSecondary,
+                    ),
                 )
 
                 Column(
@@ -53,12 +62,14 @@ fun <T> EnumDialog(
                 ) {
                     Text(
                         text = valueText(value),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = IBMPlexMonoFontFamily),
+                        color = MaterialTheme.colorScheme.textPrimary,
                     )
                     if (valueDescription != null) {
                         Text(
                             text = valueDescription(value),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.textSecondary,
                         )
                     }
                 }

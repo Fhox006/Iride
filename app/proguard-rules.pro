@@ -150,6 +150,10 @@
 
 ## Queue Persistence Rules
 # Keep queue-related classes to prevent serialization issues in release builds
+-keep class com.sun.jna.** { *; }
+-dontwarn java.awt.**
+-keep class com.metrolist.music.playback.vocals.SpleeterNative$** { *; }
+
 -keep class com.metrolist.music.models.PersistQueue { *; }
 -keep class com.metrolist.music.models.PersistPlayerState { *; }
 -keep class com.metrolist.music.models.QueueData { *; }

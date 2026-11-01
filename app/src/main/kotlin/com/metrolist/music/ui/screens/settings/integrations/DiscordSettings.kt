@@ -1,13 +1,14 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings.integrations
+
+import androidx.compose.foundation.shape.CircleShape
+
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -23,9 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,16 +34,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -89,17 +84,24 @@ import com.metrolist.music.constants.DiscordTokenKey
 import com.metrolist.music.constants.DiscordUseDetailsKey
 import com.metrolist.music.constants.DiscordUsernameKey
 import com.metrolist.music.constants.EnableDiscordRPCKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.ui.component.EnumDialog
-import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.InfoLabel
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
-import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.utils.DiscordRPC
 import com.metrolist.music.utils.SuperProperties
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.my.kizzy.rpc.KizzyRPC
 import kotlinx.coroutines.Dispatchers
@@ -107,9 +109,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private enum class DiscordStatus { ONLINE, IDLE, DND }
+private enum class DiscordStatus {
+    ONLINE,
+    IDLE,
+    DND,
+}
 
-private enum class DiscordActivityType { LISTENING, PLAYING, WATCHING, COMPETING }
+private enum class DiscordActivityType {
+    LISTENING,
+    PLAYING,
+    WATCHING,
+    COMPETING,
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -121,14 +132,14 @@ fun DiscordSettings(
     val song by playerConnection.currentSong.collectAsState(null)
     val playbackState by playerConnection.playbackState.collectAsState()
 
-    var position by rememberSaveable(playbackState) {
-        mutableLongStateOf(playerConnection.player.currentPosition)
-    }
+    var position by
+        rememberSaveable(playbackState) {
+            mutableLongStateOf(playerConnection.player.currentPosition)
+        }
 
     val coroutineScope = rememberCoroutineScope()
     val loginSuccessfulStr = stringResource(R.string.login_successful)
 
-    // Preferences
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var discordUsername by rememberPreference(DiscordUsernameKey, "")
     var discordName by rememberPreference(DiscordNameKey, "")
@@ -156,7 +167,6 @@ fun DiscordSettings(
     var showButton2TextDialog by rememberSaveable { mutableStateOf(false) }
     var showActivityNameDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Map string prefs to enums for dialogs
     val currentStatus =
         when (discordStatus) {
             "idle" -> DiscordStatus.IDLE
@@ -171,7 +181,6 @@ fun DiscordSettings(
             else -> DiscordActivityType.LISTENING
         }
 
-    // Fetch user info when token changes
     LaunchedEffect(discordToken) {
         val token = discordToken
         if (token.isEmpty()) {
@@ -181,16 +190,17 @@ fun DiscordSettings(
             return@LaunchedEffect
         }
         launch(Dispatchers.IO) {
-            KizzyRPC
-                .getUserInfo(
+            KizzyRPC.getUserInfo(
                     token,
                     SuperProperties.userAgent,
                     SuperProperties.superPropertiesBase64,
-                ).onSuccess {
+                )
+                .onSuccess {
                     discordUsername = it.username
                     discordName = it.name
                     discordAvatar = it.avatar ?: ""
-                }.onFailure {
+                }
+                .onFailure {
                     discordUsername = ""
                     discordName = ""
                     discordAvatar = ""
@@ -198,7 +208,6 @@ fun DiscordSettings(
         }
     }
 
-    // Update playback position
     LaunchedEffect(playbackState) {
         if (playbackState == STATE_READY) {
             while (isActive) {
@@ -208,7 +217,6 @@ fun DiscordSettings(
         }
     }
 
-    // Dialogs
     if (showTokenDialog) {
         var isVerifying by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
@@ -221,16 +229,17 @@ fun DiscordSettings(
                 isVerifying = true
                 error = null
                 coroutineScope.launch(Dispatchers.IO) {
-                    KizzyRPC
-                        .getUserInfo(
+                    KizzyRPC.getUserInfo(
                             token,
                             SuperProperties.userAgent,
                             SuperProperties.superPropertiesBase64,
-                        ).onSuccess {
+                        )
+                        .onSuccess {
                             discordToken = token
                             showTokenDialog = false
                             snackbarHostState.showSnackbar(loginSuccessfulStr)
-                        }.onFailure {
+                        }
+                        .onFailure {
                             error = "Invalid token"
                             isVerifying = false
                         }
@@ -241,10 +250,7 @@ fun DiscordSettings(
             extraContent = {
                 if (isVerifying) {
                     LinearProgressIndicator(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                 }
                 if (error != null) {
@@ -303,10 +309,13 @@ fun DiscordSettings(
             values = DiscordActivityType.entries.toList(),
             valueText = {
                 when (it) {
-                    DiscordActivityType.LISTENING -> stringResource(R.string.discord_activity_listening)
+                    DiscordActivityType.LISTENING ->
+                        stringResource(R.string.discord_activity_listening)
                     DiscordActivityType.PLAYING -> stringResource(R.string.discord_activity_playing)
-                    DiscordActivityType.WATCHING -> stringResource(R.string.discord_activity_watching)
-                    DiscordActivityType.COMPETING -> stringResource(R.string.discord_activity_competing)
+                    DiscordActivityType.WATCHING ->
+                        stringResource(R.string.discord_activity_watching)
+                    DiscordActivityType.COMPETING ->
+                        stringResource(R.string.discord_activity_competing)
                 }
             },
         )
@@ -357,482 +366,503 @@ fun DiscordSettings(
         )
     }
 
-    Column(
-        modifier =
-            Modifier
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ).verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-            ),
+    val settingsScrollState = rememberScrollState()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-        // Warning Card
-        AnimatedVisibility(visible = !infoDismissed) {
-            Card(
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
+    IridePageFrame(
+        title = stringResource(R.string.discord_integration),
+        scrollState = settingsScrollState,
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        modifier = Modifier.fillMaxSize(),
+        background = {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.warning),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.discord_information_warning),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                    Modifier.windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current
+                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
                         )
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(
-                            onClick = { infoDismissed = true },
-                            modifier = Modifier.align(Alignment.End),
+                        .padding(horizontal = 16.dp)
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Top)
+                    )
+                )
+
+                AnimatedVisibility(visible = !infoDismissed) {
+                    Card(
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            ),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.Top,
                         ) {
-                            Text(stringResource(R.string.dismiss))
+                            Icon(
+                                painter = painterResource(R.drawable.warning),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.discord_information_warning),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { infoDismissed = true },
+                                    modifier = Modifier.align(Alignment.End),
+                                ) {
+                                    Text(stringResource(R.string.dismiss))
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Profile Card (fully rounded)
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp,
-                            bottom = if (isLoggedIn) 20.dp else 8.dp,
-                        ).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Avatar with status dot
-                Box(modifier = Modifier.size(56.dp)) {
-                    if (isLoggedIn && discordAvatar.isNotEmpty()) {
-                        AsyncImage(
-                            model = discordAvatar,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape),
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(R.drawable.discord),
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .align(Alignment.Center)
-                                    .alpha(0.4f),
-                        )
-                    }
-                    if (isLoggedIn) {
-                        val statusColor =
-                            when (discordStatus) {
-                                "idle" -> MaterialTheme.colorScheme.tertiary
-                                "dnd" -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.primary
-                            }
-                        Surface(
-                            color = statusColor,
-                            shape = CircleShape,
-                            modifier =
-                                Modifier
-                                    .size(16.dp)
-                                    .align(Alignment.BottomEnd)
-                                    .border(
-                                        2.dp,
-                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        CircleShape,
-                                    ),
-                            content = {},
-                        )
-                    }
-                }
-
-                Spacer(Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text =
-                            if (isLoggedIn) {
-                                discordName
-                            } else {
-                                stringResource(R.string.not_logged_in)
-                            },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.alpha(if (isLoggedIn) 1f else 0.5f),
-                    )
-                    if (discordUsername.isNotEmpty()) {
-                        Text(
-                            text = "@$discordUsername",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (!isLoggedIn) {
-                        Text(
-                            text = stringResource(R.string.discord_connect_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                // Only show logout inline when logged in
-                if (isLoggedIn) {
-                    OutlinedButton(onClick = {
-                        discordName = ""
-                        discordToken = ""
-                        discordUsername = ""
-                        discordAvatar = ""
-                    }) {
-                        Text(stringResource(R.string.action_logout))
-                    }
-                }
-            }
-
-            // Login buttons below when not logged in
-            if (!isLoggedIn) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = { navController.navigate("settings/discord/login") },
-                    ) {
-                        Text(stringResource(R.string.action_login))
-                    }
-                    OutlinedButton(
-                        onClick = { showTokenDialog = true },
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.token),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.advanced_login))
-                    }
-                }
-            }
-        }
-
-        // Options section (card-based)
-        Material3SettingsGroup(
-            title = stringResource(R.string.options),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.enable_discord_rpc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = discordRPC,
-                                onCheckedChange = onDiscordRPCChange,
-                                enabled = isLoggedIn,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (discordRPC) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                }
-                            )
-                        },
-                        enabled = isLoggedIn,
-                        onClick = { if (isLoggedIn) onDiscordRPCChange(!discordRPC) },
-                    ),
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.discord_use_details)) },
-                        description = {
-                            Text(stringResource(R.string.discord_use_details_description))
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = useDetails,
-                                onCheckedChange = onUseDetailsChange,
-                                enabled = isLoggedIn && discordRPC,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (useDetails) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                }
-                            )
-                        },
-                        enabled = isLoggedIn && discordRPC,
-                        onClick = {
-                            if (isLoggedIn && discordRPC) onUseDetailsChange(!useDetails)
-                        },
-                    ),
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.discord_advanced_mode)) },
-                        description = {
-                            Text(stringResource(R.string.discord_advanced_mode_description))
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = advancedMode,
-                                onCheckedChange = onAdvancedModeChange,
-                                enabled = isLoggedIn && discordRPC,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (advancedMode) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                }
-                            )
-                        },
-                        enabled = isLoggedIn && discordRPC,
-                        onClick = {
-                            if (isLoggedIn && discordRPC) onAdvancedModeChange(!advancedMode)
-                        },
-                    ),
-                ),
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        // Advanced customization section
-        AnimatedVisibility(visible = isLoggedIn && discordRPC && advancedMode) {
-            Column(modifier = Modifier.animateContentSize()) {
-                // Presence settings
-                Material3SettingsGroup(
-                    title = stringResource(R.string.discord_presence),
-                    items =
-                        listOf(
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.discord_status)) },
-                                description = {
-                                    Text(
-                                        when (currentStatus) {
-                                            DiscordStatus.ONLINE -> {
-                                                stringResource(R.string.discord_status_online)
-                                            }
-
-                                            DiscordStatus.IDLE -> {
-                                                stringResource(R.string.discord_status_idle)
-                                            }
-
-                                            DiscordStatus.DND -> {
-                                                stringResource(R.string.discord_status_dnd)
-                                            }
-                                        },
-                                    )
-                                },
-                                onClick = { showStatusDialog = true },
-                            ),
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.discord_activity_type)) },
-                                description = {
-                                    Text(
-                                        when (currentActivityType) {
-                                            DiscordActivityType.LISTENING -> {
-                                                stringResource(R.string.discord_activity_listening)
-                                            }
-
-                                            DiscordActivityType.PLAYING -> {
-                                                stringResource(R.string.discord_activity_playing)
-                                            }
-
-                                            DiscordActivityType.WATCHING -> {
-                                                stringResource(R.string.discord_activity_watching)
-                                            }
-
-                                            DiscordActivityType.COMPETING -> {
-                                                stringResource(R.string.discord_activity_competing)
-                                            }
-                                        },
-                                    )
-                                },
-                                onClick = { showActivityTypeDialog = true },
-                            ),
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.discord_activity_name)) },
-                                description = {
-                                    Text(
-                                        activityName.ifEmpty {
-                                            stringResource(R.string.discord_activity_name_description)
-                                        },
-                                    )
-                                },
-                                onClick = { showActivityNameDialog = true },
-                            ),
-                        ),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                // Button customization
-                Material3SettingsGroup(
-                    title = stringResource(R.string.discord_buttons),
-                    items =
-                        listOf(
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.discord_button_1)) },
-                                description = {
-                                    Text(button1Text.ifEmpty { "Listen on YouTube Music" })
-                                },
-                                trailingContent = {
-                                    Switch(
-                                        checked = button1Visible,
-                                        onCheckedChange = { button1Visible = it },
-                                        thumbContent = {
-                                            Icon(
-                                                painter = painterResource(
-                                                    id = if (button1Visible) R.drawable.check else R.drawable.close
-                                                ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        }
-                                    )
-                                },
-                                onClick = { showButton1TextDialog = true },
-                            ),
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.discord_button_2)) },
-                                description = {
-                                    Text(button2Text.ifEmpty { "Visit Metrolist" })
-                                },
-                                trailingContent = {
-                                    Switch(
-                                        checked = button2Visible,
-                                        onCheckedChange = { button2Visible = it },
-                                        thumbContent = {
-                                            Icon(
-                                                painter = painterResource(
-                                                    id = if (button2Visible) R.drawable.check else R.drawable.close
-                                                ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        }
-                                    )
-                                },
-                                onClick = { showButton2TextDialog = true },
-                            ),
-                        ),
-                )
-
-                // Variable hint
                 Card(
+                    shape = FolioShape(28.dp),
                     colors =
                         CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier =
+                            Modifier.padding(
+                                    start = 20.dp,
+                                    end = 20.dp,
+                                    top = 20.dp,
+                                    bottom = if (isLoggedIn) 20.dp else 8.dp,
+                                )
+                                .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.info),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(20.dp),
+                        Box(modifier = Modifier.size(56.dp)) {
+                            if (isLoggedIn && discordAvatar.isNotEmpty()) {
+                                AsyncImage(
+                                    model = discordAvatar,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp).clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(R.drawable.discord),
+                                    contentDescription = null,
+                                    modifier =
+                                        Modifier.size(36.dp).align(Alignment.Center).alpha(0.4f),
+                                )
+                            }
+                            if (isLoggedIn) {
+                                val statusColor =
+                                    when (discordStatus) {
+                                        "idle" -> MaterialTheme.colorScheme.tertiary
+                                        "dnd" -> MaterialTheme.colorScheme.error
+                                        else -> MaterialTheme.colorScheme.primary
+                                    }
+                                Surface(
+                                    color = statusColor,
+                                    shape = CircleShape,
+                                    modifier =
+                                        Modifier.size(16.dp)
+                                            .align(Alignment.BottomEnd)
+                                            .border(
+                                                2.dp,
+                                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                CircleShape,
+                                            ),
+                                    content = {},
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text =
+                                    if (isLoggedIn) {
+                                        discordName
+                                    } else {
+                                        stringResource(R.string.not_logged_in)
+                                    },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.alpha(if (isLoggedIn) 1f else 0.5f),
+                            )
+                            if (discordUsername.isNotEmpty()) {
+                                Text(
+                                    text = "@$discordUsername",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (!isLoggedIn) {
+                                Text(
+                                    text = stringResource(R.string.discord_connect_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        if (isLoggedIn) {
+                            IrideFolioSecondaryButton(
+                                onClick = {
+                                    discordName = ""
+                                    discordToken = ""
+                                    discordUsername = ""
+                                    discordAvatar = ""
+                                }
+                            ) {
+                                Text(stringResource(R.string.action_logout))
+                            }
+                        }
+                    }
+
+                    if (!isLoggedIn) {
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            IrideFolioSecondaryButton(
+                                onClick = { navController.navigate("settings/discord/login") }
+                            ) {
+                                Text(stringResource(R.string.action_login))
+                            }
+                            IrideFolioSecondaryButton(onClick = { showTokenDialog = true }) {
+                                Icon(
+                                    painterResource(R.drawable.token),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.advanced_login))
+                            }
+                        }
+                    }
+                }
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.options),
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.enable_discord_rpc)) },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = discordRPC,
+                                        onCheckedChange = onDiscordRPCChange,
+                                        enabled = isLoggedIn,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (discordRPC) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn,
+                                onClick = { if (isLoggedIn) onDiscordRPCChange(!discordRPC) },
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.discord_use_details)) },
+                                description = {
+                                    Text(stringResource(R.string.discord_use_details_description))
+                                },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = useDetails,
+                                        onCheckedChange = onUseDetailsChange,
+                                        enabled = isLoggedIn && discordRPC,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (useDetails) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn && discordRPC,
+                                onClick = {
+                                    if (isLoggedIn && discordRPC) onUseDetailsChange(!useDetails)
+                                },
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.discord_advanced_mode)) },
+                                description = {
+                                    Text(stringResource(R.string.discord_advanced_mode_description))
+                                },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = advancedMode,
+                                        onCheckedChange = onAdvancedModeChange,
+                                        enabled = isLoggedIn && discordRPC,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (advancedMode) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                enabled = isLoggedIn && discordRPC,
+                                onClick = {
+                                    if (isLoggedIn && discordRPC)
+                                        onAdvancedModeChange(!advancedMode)
+                                },
+                            ),
+                        ),
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                AnimatedVisibility(visible = isLoggedIn && discordRPC && advancedMode) {
+                    Column(modifier = Modifier.animateContentSize()) {
+                        Material3SettingsGroup(
+                            title = stringResource(R.string.discord_presence),
+                            items =
+                                listOf(
+                                    Material3SettingsItem(
+                                        title = { Text(stringResource(R.string.discord_status)) },
+                                        description = {
+                                            Text(
+                                                when (currentStatus) {
+                                                    DiscordStatus.ONLINE -> {
+                                                        stringResource(
+                                                            R.string.discord_status_online
+                                                        )
+                                                    }
+
+                                                    DiscordStatus.IDLE -> {
+                                                        stringResource(R.string.discord_status_idle)
+                                                    }
+
+                                                    DiscordStatus.DND -> {
+                                                        stringResource(R.string.discord_status_dnd)
+                                                    }
+                                                }
+                                            )
+                                        },
+                                        onClick = { showStatusDialog = true },
+                                    ),
+                                    Material3SettingsItem(
+                                        title = {
+                                            Text(stringResource(R.string.discord_activity_type))
+                                        },
+                                        description = {
+                                            Text(
+                                                when (currentActivityType) {
+                                                    DiscordActivityType.LISTENING -> {
+                                                        stringResource(
+                                                            R.string.discord_activity_listening
+                                                        )
+                                                    }
+
+                                                    DiscordActivityType.PLAYING -> {
+                                                        stringResource(
+                                                            R.string.discord_activity_playing
+                                                        )
+                                                    }
+
+                                                    DiscordActivityType.WATCHING -> {
+                                                        stringResource(
+                                                            R.string.discord_activity_watching
+                                                        )
+                                                    }
+
+                                                    DiscordActivityType.COMPETING -> {
+                                                        stringResource(
+                                                            R.string.discord_activity_competing
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        },
+                                        onClick = { showActivityTypeDialog = true },
+                                    ),
+                                    Material3SettingsItem(
+                                        title = {
+                                            Text(stringResource(R.string.discord_activity_name))
+                                        },
+                                        description = {
+                                            Text(
+                                                activityName.ifEmpty {
+                                                    stringResource(
+                                                        R.string.discord_activity_name_description
+                                                    )
+                                                }
+                                            )
+                                        },
+                                        onClick = { showActivityNameDialog = true },
+                                    ),
+                                ),
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.discord_button_text_variables),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Material3SettingsGroup(
+                            title = stringResource(R.string.discord_buttons),
+                            items =
+                                listOf(
+                                    Material3SettingsItem(
+                                        title = { Text(stringResource(R.string.discord_button_1)) },
+                                        description = {
+                                            Text(button1Text.ifEmpty { "Listen on YouTube Music" })
+                                        },
+                                        trailingContent = {
+                                            IrideSwitch(
+                                                checked = button1Visible,
+                                                onCheckedChange = { button1Visible = it },
+                                                thumbContent = {
+                                                    Icon(
+                                                        painter =
+                                                            painterResource(
+                                                                id =
+                                                                    if (button1Visible)
+                                                                        R.drawable.check
+                                                                    else R.drawable.close
+                                                            ),
+                                                        contentDescription = null,
+                                                        modifier =
+                                                            Modifier.size(SwitchDefaults.IconSize),
+                                                    )
+                                                },
+                                            )
+                                        },
+                                        onClick = { showButton1TextDialog = true },
+                                    ),
+                                    Material3SettingsItem(
+                                        title = { Text(stringResource(R.string.discord_button_2)) },
+                                        description = {
+                                            Text(button2Text.ifEmpty { "Visit Metrolist" })
+                                        },
+                                        trailingContent = {
+                                            IrideSwitch(
+                                                checked = button2Visible,
+                                                onCheckedChange = { button2Visible = it },
+                                                thumbContent = {
+                                                    Icon(
+                                                        painter =
+                                                            painterResource(
+                                                                id =
+                                                                    if (button2Visible)
+                                                                        R.drawable.check
+                                                                    else R.drawable.close
+                                                            ),
+                                                        contentDescription = null,
+                                                        modifier =
+                                                            Modifier.size(SwitchDefaults.IconSize),
+                                                    )
+                                                },
+                                            )
+                                        },
+                                        onClick = { showButton2TextDialog = true },
+                                    ),
+                                ),
                         )
+
+                        Card(
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                ),
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.info),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.discord_button_text_variables),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
 
                 Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.discord_rpc_preview),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
+                )
+
+                RichPresence(
+                    song = song,
+                    currentPlaybackTimeMillis = position,
+                    activityType = activityType,
+                    activityName = activityName,
+                    button1Text = button1Text,
+                    button1Visible = button1Visible,
+                    button2Text = button2Text,
+                    button2Visible = button2Visible,
+                )
+
+                Spacer(Modifier.height(24.dp))
             }
         }
-
-        // Preview section
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = stringResource(R.string.discord_rpc_preview),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
-        )
-
-        RichPresence(
-            song = song,
-            currentPlaybackTimeMillis = position,
-            activityType = activityType,
-            activityName = activityName,
-            button1Text = button1Text,
-            button1Visible = button1Visible,
-            button2Text = button2Text,
-            button2Visible = button2Visible,
-        )
-
-        // Bottom padding for mini player
-        Spacer(Modifier.height(24.dp))
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.discord_integration)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -883,16 +913,15 @@ fun RichPresence(
                         model = song?.song?.thumbnailUrl,
                         contentDescription = null,
                         modifier =
-                            Modifier
-                                .size(96.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                            Modifier.size(96.dp)
+                                .clip(FolioShape(3.dp))
                                 .align(Alignment.TopStart)
                                 .run {
                                     if (song == null) {
                                         border(
                                             2.dp,
                                             MaterialTheme.colorScheme.onSurface,
-                                            RoundedCornerShape(3.dp),
+                                            FolioShape(3.dp),
                                         )
                                     } else {
                                         this
@@ -903,32 +932,24 @@ fun RichPresence(
                     song?.artists?.firstOrNull()?.thumbnailUrl?.let {
                         Box(
                             modifier =
-                                Modifier
-                                    .border(
+                                Modifier.border(
                                         2.dp,
                                         MaterialTheme.colorScheme.surfaceContainer,
                                         CircleShape,
-                                    ).padding(2.dp)
-                                    .align(Alignment.BottomEnd),
+                                    )
+                                    .padding(2.dp)
+                                    .align(Alignment.BottomEnd)
                         ) {
                             AsyncImage(
                                 model = it,
                                 contentDescription = null,
-                                modifier =
-                                    Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape),
+                                modifier = Modifier.size(32.dp).clip(CircleShape),
                             )
                         }
                     }
                 }
 
-                Column(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .padding(horizontal = 6.dp),
-                ) {
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 6.dp)) {
                     Text(
                         text = song?.song?.title ?: "Song Title",
                         color = MaterialTheme.colorScheme.onSurface,
@@ -977,7 +998,7 @@ fun RichPresence(
                     } else {
                         button1Text.ifEmpty { "Listen on YouTube Music" }
                     }
-                OutlinedButton(
+                IrideFolioSecondaryButton(
                     enabled = song != null,
                     onClick = {
                         val intent =
@@ -1003,7 +1024,7 @@ fun RichPresence(
                     } else {
                         button2Text.ifEmpty { "Visit Metrolist" }
                     }
-                OutlinedButton(
+                IrideFolioSecondaryButton(
                     onClick = {
                         val intent =
                             Intent(
@@ -1036,10 +1057,7 @@ fun SongProgressBar(
             progress = { progress },
             amplitude = { 1f },
             wavelength = 16.dp,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(6.dp),
+            modifier = Modifier.fillMaxWidth().height(6.dp),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),

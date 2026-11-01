@@ -1,0 +1,23 @@
+Local vocal separation in Iride
+
+Spleeter 2-stem fp16 models
+Deezer SA, MIT license (spleeter-license.txt)
+https://github.com/deezer/spleeter
+Models converted and distributed by sherpa-onnx:
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/source-separation-models
+
+sherpa-onnx 1.13.8 Android runtime
+Apache License 2.0 (sherpa-onnx-license.txt)
+https://github.com/k2-fsa/sherpa-onnx
+
+ONNX Runtime (included in the sherpa-onnx Android runtime)
+Microsoft Corporation, MIT license (onnxruntime-license.txt)
+https://github.com/microsoft/onnxruntime
+
+Java Native Access 5.19.1
+Apache License 2.0 option (jna-license.txt, jna-apache-license.txt)
+https://github.com/java-native-access/jna
+
+Apache Commons Compress 1.27.1
+The Apache Software Foundation, Apache License 2.0
+https://commons.apache.org/proper/commons-compress/

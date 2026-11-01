@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.menu
 
+import androidx.compose.foundation.shape.CircleShape
+
+
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -181,7 +183,6 @@ fun QueueMenu(
         }
     }
 
-    // Song header with like button (for episodes, this toggles save for later)
     val isEpisode = librarySong?.song?.isEpisode == true || mediaMetadata.isEpisode
     val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
     MediaMetadataListItem(
@@ -199,7 +200,6 @@ fun QueueMenu(
                         dbSong?.let { songWithArtists ->
                             val songEntity = songWithArtists.song
                             if (songEntity.isEpisode) {
-                                // Episode: toggle save for later
                                 val isCurrentlySaved = songEntity.inLibrary != null
                                 database.query {
                                     update(songEntity.copy(inLibrary = if (isCurrentlySaved) null else java.time.LocalDateTime.now()))
@@ -230,8 +230,7 @@ fun QueueMenu(
                                     }
                                 }
                             } else {
-                                // Regular song: toggle like
-                                val s = songEntity.toggleLike()
+                                val s = songEntity.toggleLike(syncToYouTube = false)
                                 database.query {
                                     update(s)
                                 }
@@ -269,7 +268,6 @@ fun QueueMenu(
             bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        // Quick actions grid
         item {
             NewActionGrid(
                 actions = listOf(
@@ -328,7 +326,6 @@ fun QueueMenu(
             )
         }
 
-        // Play next / Add to queue
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -374,7 +371,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Download section
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -459,7 +455,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Navigation section (Artist, Album)
         item {
             Material3MenuGroup(
                 items = buildList {
@@ -525,7 +520,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Details and refetch section
         item {
             Material3MenuGroup(
                 items = buildList {

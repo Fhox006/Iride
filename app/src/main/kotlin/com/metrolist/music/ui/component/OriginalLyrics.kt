@@ -30,9 +30,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -58,14 +56,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -79,6 +74,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -138,6 +134,7 @@ import com.metrolist.music.constants.LyricsLineSpacingKey
 import com.metrolist.music.constants.LyricsRomanizeAsMainKey
 import com.metrolist.music.constants.LyricsRomanizeCyrillicByLineKey
 import com.metrolist.music.constants.LyricsRomanizeList
+import com.metrolist.music.constants.LyricsRomanizeToggleKey
 import com.metrolist.music.constants.LyricsScrollKey
 import com.metrolist.music.constants.LyricsTextPositionKey
 import com.metrolist.music.constants.LyricsTextSizeKey
@@ -148,6 +145,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.db.entities.LYRICS_OFFSET_BIAS_MS
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.LyricsTranslationHelper
@@ -172,6 +170,7 @@ import com.metrolist.music.lyrics.LyricsUtils.romanizeKorean
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.ui.screens.settings.defaultList
 import com.metrolist.music.ui.theme.InterFontFamily
@@ -202,7 +201,13 @@ fun OriginalLyrics(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
     showLyrics: Boolean,
+    pillsController: LyricsPillController? = null,
+    textScale: Float = 1f,
+    singleLineOnly: Boolean = false,
+    compactPresentation: Boolean = false,
+    fullness: () -> Float = { 0f },
 ) {
+    val currentSliderPositionProvider by rememberUpdatedState(sliderPositionProvider)
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
@@ -214,15 +219,18 @@ fun OriginalLyrics(
     val shareLyricsStr = stringResource(R.string.share_lyrics)
     val failedToCreateImageTemplate = stringResource(R.string.failed_to_create_image)
 
-    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val preferredLyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
+    val lyricsTextPosition = preferredLyricsTextPosition
     val changeLyrics by rememberPreference(LyricsClickKey, true)
     val scrollLyrics by rememberPreference(LyricsScrollKey, true)
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
     val romanizeAsMain by rememberPreference(LyricsRomanizeAsMainKey, false)
     val romanizeCyrillicByLine by rememberPreference(LyricsRomanizeCyrillicByLineKey, false)
+    var romanizeToggleEnabled by rememberPreference(LyricsRomanizeToggleKey, false)
     val lyricsGlowEffect by rememberPreference(LyricsGlowEffectKey, false)
     val lyricsAnimationStyle by rememberEnumPreference(LyricsAnimationStyleKey, LyricsAnimationStyle.APPLE)
-    val lyricsTextSize by rememberPreference(LyricsTextSizeKey, 24f)
+    val preferredTextSize by rememberPreference(LyricsTextSizeKey, 24f)
+    val lyricsTextSize = preferredTextSize * textScale
     val lyricsLineSpacing by rememberPreference(LyricsLineSpacingKey, 1.05f)
 
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
@@ -247,11 +255,12 @@ fun OriginalLyrics(
         defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
     )
 
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            ForceDarkTheme ||
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
 
     val decodedList =
@@ -396,8 +405,10 @@ fun OriginalLyrics(
 
     val aiApiKeyRequiredStr = stringResource(R.string.ai_api_key_required)
 
-    // Listen for manual trigger
-    LaunchedEffect(showLyrics, lines.size) {
+    // Listen for manual trigger. Kept alive for the whole composition (LaunchedEffect(Unit))
+    // so the manualTrigger SharedFlow always has a collector — restarting on every key change
+    // used to create resubscribe gaps where a click landed and was silently dropped.
+    LaunchedEffect(Unit) {
         LyricsTranslationHelper.manualTrigger.collect {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
             if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
@@ -500,7 +511,31 @@ fun OriginalLyrics(
     // Professional animation states for smooth Metrolist-style transitions
     var isAnimating by remember { mutableStateOf(false) }
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
+    val scrollPause = remember { LyricsScrollPause() }
+    androidx.compose.runtime.SideEffect {
+        pillsController?.canSelectLyrics = lines.any { it.text.isNotBlank() }
+        pillsController?.isSelectionModeActive = isSelectionModeActive
+        pillsController?.selectionAction = {
+            if (isSelectionModeActive) {
+                isSelectionModeActive = false
+                selectedIndices.clear()
+            } else if (lines.isNotEmpty()) {
+                isSelectionModeActive = true
+                selectedIndices.clear()
+                val selected = currentLineIndex.takeIf { it in lines.indices }
+                    ?: lines.indexOfFirst { it.text.isNotBlank() }
+                if (selected >= 0) selectedIndices.add(selected)
+            }
+        }
+    }
     var isLyricsLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isSelectionModeActive) {
+        if (isSelectionModeActive) {
+            isAutoScrollEnabled = false
+            scrollPause.manualScroll()
+        }
+    }
 
     // Handle back button press - close selection mode instead of exiting screen
     BackHandler(enabled = isSelectionModeActive) {
@@ -571,21 +606,12 @@ fun OriginalLyrics(
         }
         while (isActive) {
             delay(8) // Faster update for word-by-word animation
-            val sliderPosition = sliderPositionProvider()
+            val sliderPosition = currentSliderPositionProvider()
             isSeeking = sliderPosition != null
             val position = sliderPosition ?: playerConnection.player.currentPosition
             currentPlaybackPosition = position
-            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
+            val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
             currentLineIndex = findCurrentLineIndex(lines, position + lyricsOffset)
-        }
-    }
-
-    LaunchedEffect(isSeeking, lastPreviewTime) {
-        if (isSeeking) {
-            lastPreviewTime = 0L
-        } else if (lastPreviewTime != 0L) {
-            delay(LyricsPreviewTime)
-            lastPreviewTime = 0L
         }
     }
 
@@ -622,8 +648,31 @@ fun OriginalLyrics(
             isAnimating = false
         }
     }
+    androidx.compose.runtime.SideEffect {
+        pillsController?.scrollAction = { direction ->
+            val layout = lazyListState.layoutInfo
+            val center = (layout.viewportStartOffset + layout.viewportEndOffset) / 2
+            val nearest = layout.visibleItemsInfo.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }
+            if (nearest != null && layout.totalItemsCount > 0) {
+                val target = (nearest.index + direction).coerceIn(0, layout.totalItemsCount - 1)
+                isAutoScrollEnabled = false
+                scrollPause.manualScroll()
+                lastPreviewTime = System.currentTimeMillis()
+                scope.launch {
+                    lazyListState.animateScrollToItem(target, -center + nearest.size / 2)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(currentLineIndex, lastPreviewTime, initialScrollDone, isAutoScrollEnabled) {
         if (!isSynced) return@LaunchedEffect
+        if (!isAutoScrollEnabled && !isSelectionModeActive && currentLineIndex != previousLineIndex &&
+            currentLineIndex >= 0 && scrollPause.canResume()
+        ) {
+            isAutoScrollEnabled = true
+            lastPreviewTime = 0L
+        }
         if (isAutoScrollEnabled) {
             if ((currentLineIndex == 0 && shouldScrollToFirstLine) || !initialScrollDone) {
                 shouldScrollToFirstLine = false
@@ -687,7 +736,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -715,7 +764,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -744,7 +793,7 @@ fun OriginalLyrics(
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                             ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
                         Row(
@@ -839,6 +888,7 @@ fun OriginalLyrics(
                 modifier =
                     Modifier
                         .fadingEdge(vertical = 64.dp)
+                        .trackLyricsTouch(scrollPause)
                         .nestedScroll(
                             remember {
                                 object : NestedScrollConnection {
@@ -847,10 +897,9 @@ fun OriginalLyrics(
                                         available: Offset,
                                         source: NestedScrollSource,
                                     ): Offset {
-                                        if (source == NestedScrollSource.UserInput) {
+                                        if (source == NestedScrollSource.UserInput && consumed.y != 0f) {
                                             isAutoScrollEnabled = false
-                                        }
-                                        if (!isSelectionModeActive) { // Only update preview time if not selecting
+                                            scrollPause.manualScroll()
                                             lastPreviewTime = System.currentTimeMillis()
                                         }
                                         return super.onPostScroll(consumed, available, source)
@@ -860,10 +909,6 @@ fun OriginalLyrics(
                                         consumed: Velocity,
                                         available: Velocity,
                                     ): Velocity {
-                                        isAutoScrollEnabled = false
-                                        if (!isSelectionModeActive) { // Only update preview time if not selecting
-                                            lastPreviewTime = System.currentTimeMillis()
-                                        }
                                         return super.onPostFling(consumed, available)
                                     }
                                 }
@@ -893,29 +938,8 @@ fun OriginalLyrics(
                     }
                 }
 
-                if (lyrics == null) {
-                    item {
-                        ShimmerHost {
-                            repeat(10) {
-                                Box(
-                                    contentAlignment =
-                                        when (lyricsTextPosition) {
-                                            LyricsPosition.LEFT -> Alignment.CenterStart
-                                            LyricsPosition.CENTER -> Alignment.Center
-                                            LyricsPosition.RIGHT -> Alignment.CenterEnd
-                                        },
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 24.dp, vertical = 4.dp),
-                                ) {
-                                    TextPlaceholder()
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    val lyricsOffset = currentSong?.song?.lyricsOffset?.toLong() ?: 0L
+                run {
+                    val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                     val effectivePlaybackPosition = currentPlaybackPosition + lyricsOffset
 
                     itemsIndexed(
@@ -926,8 +950,8 @@ fun OriginalLyrics(
                         val itemModifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp)) // Clip for background
-                                .combinedClickable(
+                                .clip(FolioShape(8.dp)) // Clip for background
+                                .irideFolioCombinedClickable(
                                     enabled = true,
                                     onClick = {
                                         if (isSelectionModeActive) {
@@ -947,7 +971,7 @@ fun OriginalLyrics(
                                             }
                                         } else if (isSynced && changeLyrics && !isGuest) {
                                             // Professional seek action with smooth animation
-                                            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
+                                            val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                                             playerConnection.seekTo((item.time - lyricsOffset).coerceAtLeast(0))
                                             // Smooth slow scroll when clicking on lyrics (3 seconds)
                                             scope.launch {
@@ -1016,6 +1040,8 @@ fun OriginalLyrics(
                                 when {
                                     !isSynced || (isSelectionModeActive && isSelected) -> 1f
                                     isActiveByIndex || isActiveByTime -> 1f
+                                    singleLineOnly -> 0f
+                                    compactPresentation -> fullness()
                                     else -> 0.35f
                                 },
                             animationSpec = spring(
@@ -1123,7 +1149,9 @@ fun OriginalLyrics(
                             modifier =
                                 itemModifier
                                     .graphicsLayer {
-                                        this.alpha = if (item.isBackground) alpha * 0.8f else alpha
+                                        val contentAlpha = if (compactPresentation && isSynced && !isSelectionModeActive &&
+                                            !isActiveByIndex && !isActiveByTime) fullness() else alpha
+                                        this.alpha = if (item.isBackground) contentAlpha * 0.8f else contentAlpha
                                         this.scaleX = scale * bgScale
                                         this.scaleY = scale * bgScale
                                         this.transformOrigin = TransformOrigin(originX, 1f)
@@ -1145,10 +1173,10 @@ fun OriginalLyrics(
                             val romanizedText = romanizedTextState
                             val isRomanizedAvailable = romanizedText != null
 
-                            val mainText = if (romanizeAsMain && isRomanizedAvailable) romanizedText else item.text
-                            val subText = if (romanizeAsMain && isRomanizedAvailable) item.text else romanizedText
+                            val mainText = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) romanizedText else item.text
+                            val subText = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) item.text else romanizedText
 
-                            val hasWordTimings = if (romanizeAsMain && isRomanizedAvailable) false else item.words?.isNotEmpty() == true
+                            val hasWordTimings = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) false else item.words?.isNotEmpty() == true
 
                             // Word-by-word animation styles
                             if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.NONE) {
@@ -1754,11 +1782,12 @@ fun OriginalLyrics(
                                     letterSpacing = 1.5.sp,
                                 )
                             }
-                            if (currentSong?.romanizeLyrics == true && enabledLanguages.isNotEmpty()) {
+                            if (romanizeToggleEnabled && currentSong?.romanizeLyrics == true && enabledLanguages.isNotEmpty()) {
                                 // Show secondary text (romanized or original) if available
                                 subText?.let { text ->
                                     Text(
                                         text = text,
+                                        fontFamily = InterFontFamily,
                                         fontSize = 18.sp,
                                         color = expressiveAccent.copy(alpha = 0.6f),
                                         textAlign =
@@ -1778,6 +1807,7 @@ fun OriginalLyrics(
                             translatedText?.let { translated ->
                                 Text(
                                     text = translated,
+                                    fontFamily = InterFontFamily,
                                     fontSize = 16.sp,
                                     color = expressiveAccent.copy(alpha = 0.5f),
                                     textAlign =
@@ -1809,7 +1839,7 @@ fun OriginalLyrics(
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                FilledTonalButton(onClick = {
+                IrideFolioPrimaryButton(onClick = {
                     scope.launch {
                         performSmoothPageScroll(currentLineIndex, 800)
                     }
@@ -1834,7 +1864,7 @@ fun OriginalLyrics(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledTonalButton(
+                    IrideFolioPrimaryButton(
                         onClick = {
                             isSelectionModeActive = false
                             selectedIndices.clear()
@@ -1846,7 +1876,7 @@ fun OriginalLyrics(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    Button(
+                    IrideFolioFrostedButton(
                         onClick = {
                             if (selectedIndices.isNotEmpty()) {
                                 val sortedIndices = selectedIndices.sorted()
@@ -1871,17 +1901,19 @@ fun OriginalLyrics(
                         enabled = selectedIndices.isNotEmpty(),
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.arrow_forward),
-                            contentDescription = "Share",
+                            painter = painterResource(id = R.drawable.share),
+                            contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.share_as_image))
                     }
                 }
             }
         }
 
         if (showProgressDialog) {
-            BasicAlertDialog(onDismissRequest = { /* Don't dismiss */ }) {
+            IrideFolioDialog(onDismissRequest = { /* Don't dismiss */ }) {
                 Card( // Use Card for better styling
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

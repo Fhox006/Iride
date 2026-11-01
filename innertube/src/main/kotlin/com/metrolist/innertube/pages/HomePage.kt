@@ -20,17 +20,21 @@ import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.utils.parseTime
+import kotlinx.serialization.Serializable
 import timber.log.Timber
 
+@Serializable
 data class HomePage(
     val chips: List<Chip>?,
     val sections: List<Section>,
     val continuation: String? = null,
 ) {
+    @Serializable
     data class Chip(
         val title: String,
         val endpoint: BrowseEndpoint?,
         val deselectEndPoint: BrowseEndpoint?,
+        val isSelected: Boolean = false,
     ) {
         companion object {
             fun fromChipCloudChipRenderer(renderer: SectionListRenderer.Header.ChipCloudRenderer.Chip): Chip? {
@@ -38,11 +42,13 @@ data class HomePage(
                     title = renderer.chipCloudChipRenderer.text?.runs?.firstOrNull()?.text ?: return null,
                     endpoint = renderer.chipCloudChipRenderer.navigationEndpoint?.browseEndpoint,
                     deselectEndPoint = renderer.chipCloudChipRenderer.onDeselectedCommand?.browseEndpoint,
+                    isSelected = renderer.chipCloudChipRenderer.isSelected,
                 )
             }
         }
     }
 
+    @Serializable
     data class Section(
         val title: String,
         val label: String?,
@@ -67,17 +73,14 @@ data class HomePage(
 
                 val items = mutableListOf<YTItem>()
 
-                // Parse musicTwoRowItemRenderer items (songs, albums, playlists, artists, podcasts)
                 renderer.contents.mapNotNull { it.musicTwoRowItemRenderer }
                     .mapNotNull { fromMusicTwoRowItemRenderer(it) }
                     .let { items.addAll(it) }
 
-                // Parse musicMultiRowListItemRenderer items (podcast episodes)
                 renderer.contents.mapNotNull { it.musicMultiRowListItemRenderer }
                     .mapNotNull { fromMusicMultiRowListItemRenderer(it) }
                     .let { items.addAll(it) }
 
-                // Parse musicResponsiveListItemRenderer items (quick picks songs)
                 renderer.contents.mapNotNull { it.musicResponsiveListItemRenderer }
                     .mapNotNull { fromMusicResponsiveListItemRenderer(it) }
                     .let { items.addAll(it) }
@@ -121,7 +124,6 @@ data class HomePage(
             }
 
             private fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-                // Quick picks uses musicResponsiveListItemRenderer for songs
                 if (!renderer.isSong) return null
 
                 val secondaryLine = renderer.flexColumns
@@ -156,6 +158,8 @@ data class HomePage(
                             )
                         },
                     duration = secondaryLine.lastOrNull()?.firstOrNull()?.text?.parseTime(),
+                    musicVideoType = renderer.musicVideoType,
+                    endpoint = renderer.navigationEndpoint?.watchEndpoint,
                     thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     explicit = renderer.badges?.find {
                         it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -165,7 +169,6 @@ data class HomePage(
             }
 
             private fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
-                // Debug logging for type detection
                 val title = renderer.title.runs?.firstOrNull()?.text ?: "unknown"
                 val pageType = renderer.navigationEndpoint.browseEndpoint
                     ?.browseEndpointContextSupportedConfigs
@@ -177,7 +180,6 @@ data class HomePage(
                     Timber.d("HomePage twoRow '$title': no type matched - pageType=$pageType, hasWatchEndpoint=$hasWatchEndpoint")
                 }
 
-                // Debug for episodes
                 if (renderer.isEpisode) {
                     val overlayVideoId = renderer.thumbnailOverlay
                         ?.musicItemThumbnailOverlayRenderer?.content
@@ -216,6 +218,9 @@ data class HomePage(
                                 )
                             },
                             duration = null,
+                            musicVideoType = renderer.navigationEndpoint.watchEndpoint
+                                .watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType,
+                            endpoint = renderer.navigationEndpoint.watchEndpoint,
                             thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512)
                                 ?: return null,
                             explicit = renderer.subtitleBadges?.any {
@@ -319,7 +324,6 @@ data class HomePage(
                         val subtitleRuns = renderer.subtitle?.runs?.splitBySeparator()
                         val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
-                        // Find podcast link in subtitle (has isPodcastEndpoint)
                         val podcastRun = renderer.subtitle?.runs?.find {
                             it.navigationEndpoint?.browseEndpoint?.isPodcastEndpoint == true
                         }

@@ -12,7 +12,6 @@ import kotlinx.serialization.Serializable
  * Message types for Listen Together protocol
  */
 object MessageTypes {
-    // Client -> Server
     const val CREATE_ROOM = "create_room"
     const val JOIN_ROOM = "join_room"
     const val LEAVE_ROOM = "leave_room"
@@ -30,7 +29,6 @@ object MessageTypes {
     const val APPROVE_SUGGESTION = "approve_suggestion"
     const val REJECT_SUGGESTION = "reject_suggestion"
 
-    // Server -> Client
     const val ROOM_CREATED = "room_created"
     const val JOIN_REQUEST = "join_request"
     const val JOIN_APPROVED = "join_approved"
@@ -79,7 +77,7 @@ data class TrackInfo(
     val title: String,
     val artist: String,
     val album: String? = null,
-    val duration: Long, // milliseconds
+    val duration: Long,
     val thumbnail: String? = null,
     @SerialName("suggested_by") val suggestedBy: String? = null
 )
@@ -105,13 +103,12 @@ data class RoomState(
     val users: List<UserInfo>,
     @SerialName("current_track") val currentTrack: TrackInfo? = null,
     @SerialName("is_playing") val isPlaying: Boolean,
-    val position: Long, // milliseconds
-    @SerialName("last_update") val lastUpdate: Long, // unix timestamp ms
+    val position: Long,
+    @SerialName("last_update") val lastUpdate: Long,
     val volume: Float = 1f,
     val queue: List<TrackInfo> = emptyList()
 )
 
-// Request payloads
 
 @Serializable
 data class CreateRoomPayload(
@@ -139,7 +136,7 @@ data class RejectJoinPayload(
 data class PlaybackActionPayload(
     val action: String,
     @SerialName("track_id") val trackId: String? = null,
-    val position: Long? = null, // milliseconds
+    val position: Long? = null,
     @SerialName("track_info") val trackInfo: TrackInfo? = null,
     @SerialName("insert_next") val insertNext: Boolean? = null,
     val queue: List<TrackInfo>? = null,
@@ -169,7 +166,6 @@ data class ChatPayload(
     val message: String
 )
 
-// Suggestions payloads
 
 @Serializable
 data class SuggestTrackPayload(
@@ -207,7 +203,6 @@ data class SuggestionRejectedPayload(
     val reason: String? = null
 )
 
-// Response payloads
 
 @Serializable
 data class RoomCreatedPayload(
@@ -296,7 +291,6 @@ data class SyncStatePayload(
     val volume: Float? = null
 )
 
-// Reconnection payloads
 
 @Serializable
 data class ReconnectPayload(

@@ -63,7 +63,6 @@ class SilenceDetectorAudioProcessor(
             return
         }
 
-        // Analyze the incoming PCM for silence without mutating the buffer position.
         if (instantModeEnabled && sampleRate > 0 && channelCount > 0) {
             detectSilence(inputBuffer)
         } else {
@@ -76,7 +75,6 @@ class SilenceDetectorAudioProcessor(
     }
 
     private fun detectSilence(inputBuffer: ByteBuffer) {
-        // Ensure predictable endian access for getShort(index).
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
         val frameCount = inputBuffer.remaining() / 2 / channelCount

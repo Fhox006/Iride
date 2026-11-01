@@ -29,7 +29,6 @@ import kotlin.coroutines.resumeWithException
 
 class PoTokenWebView private constructor(
     context: Context,
-    // to be used exactly once only during initialization!
     private val continuation: Continuation<PoTokenWebView>,
 ) {
     private val webView = WebView(context)
@@ -41,21 +40,17 @@ class PoTokenWebView private constructor(
     }
     private lateinit var expirationInstant: Instant
 
-    //region Initialization
     init {
         val webViewSettings = webView.settings
-        //noinspection SetJavaScriptEnabled we want to use JavaScript!
         webViewSettings.javaScriptEnabled = true
         webViewSettings.userAgentString = USER_AGENT
-        webViewSettings.blockNetworkLoads = true // the WebView does not need internet access
+        webViewSettings.blockNetworkLoads = true
 
-        // so that we can run async functions and get back the result
         webView.addJavascriptInterface(this, JS_INTERFACE)
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                 val msg = m.message()
-                // Log all console messages for debugging
                 when (m.messageLevel()) {
                     ConsoleMessage.MessageLevel.ERROR -> Timber.tag(TAG).e("JS: $msg")
                     ConsoleMessage.MessageLevel.WARNING -> Timber.tag(TAG).w("JS: $msg")
@@ -88,7 +83,6 @@ class PoTokenWebView private constructor(
                 webView.context.assets.open("po_token.html").bufferedReader().use { it.readText() }
             }
 
-            // calls downloadAndRunBotguard() when the page has finished loading
             val data = html.replaceFirst("</script>", "\n$JS_INTERFACE.downloadAndRunBotguard()</script>")
             webView.loadDataWithBaseURL("https://www.youtube.com", data, "text/html", "utf-8", null)
         }
@@ -152,11 +146,8 @@ class PoTokenWebView private constructor(
                 val (integrityToken, expirationTimeInSeconds) = parseIntegrityTokenData(responseBody)
                 Timber.tag(TAG).d("Parsed integrityToken (${integrityToken.take(50)}...), expires in $expirationTimeInSeconds sec")
 
-                // leave 10 minutes of margin just to be sure
                 expirationInstant = Instant.now().plusSeconds(expirationTimeInSeconds).minus(10, ChronoUnit.MINUTES)
 
-                // Store integrityToken and create the minter callback ONCE
-                // NOTE: createPoTokenMinter is now async, so we use .then()
                 Timber.tag(TAG).d("Evaluating createPoTokenMinter JavaScript...")
                 webView.evaluateJavascript(
                     """try {
@@ -190,15 +181,12 @@ class PoTokenWebView private constructor(
         Timber.tag(TAG).d("poToken minter created successfully, initialization complete")
         continuation.resume(this)
     }
-    //endregion
 
-    //region Obtaining poTokens
     suspend fun generatePoToken(identifier: String): String {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { cont ->
                 Timber.tag(TAG).d("generatePoToken() called with identifier $identifier")
                 addPoTokenEmitter(identifier, cont)
-                // NOTE: obtainPoToken is now async, so we use .then()
                 webView.evaluateJavascript(
                     """try {
                         identifier = "$identifier"
@@ -250,9 +238,7 @@ class PoTokenWebView private constructor(
 
     val isExpired: Boolean
         get() = Instant.now().isAfter(expirationInstant)
-    //endregion
 
-    //region Handling multiple emitters
     private fun addPoTokenEmitter(identifier: String, continuation: Continuation<String>) {
         poTokenContinuations[identifier] = continuation
     }
@@ -266,9 +252,7 @@ class PoTokenWebView private constructor(
         poTokenContinuations.clear()
         return result
     }
-    //endregion
 
-    //region Utils
     private fun makeBotguardServiceRequest(
         url: String,
         data: String,
@@ -318,7 +302,6 @@ class PoTokenWebView private constructor(
         webView.removeAllViews()
         webView.destroy()
     }
-    //endregion
 
     companion object {
         private const val TAG = "PoTokenWebView"

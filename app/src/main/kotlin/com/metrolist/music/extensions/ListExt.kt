@@ -6,8 +6,16 @@
 package com.metrolist.music.extensions
 
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.Song
+
+private const val MIN_GENUINE_ARTIST_SONG_COUNT = 3
+
+private const val MIN_GENUINE_ARTIST_TIME_LISTENED_MS = 20 * 60 * 1000L
+
+fun List<Artist>.filterGenuineFavorites() =
+    filter { it.songCount >= MIN_GENUINE_ARTIST_SONG_COUNT || (it.timeListened ?: 0) >= MIN_GENUINE_ARTIST_TIME_LISTENED_MS }
 
 fun <T> List<T>.reversed(reversed: Boolean) = if (reversed) asReversed() else this
 
@@ -42,7 +50,6 @@ fun <T : Any> List<T>.mergeNearbyElements(
     return mergedList
 }
 
-// Extension function to filter explicit content for local Song entities
 fun List<Song>.filterExplicit(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.song.explicit }
@@ -50,7 +57,6 @@ fun List<Song>.filterExplicit(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter video songs for local Song entities
 fun List<Song>.filterVideoSongs(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.song.isVideo }
@@ -58,7 +64,6 @@ fun List<Song>.filterVideoSongs(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter explicit content for local Album entities
 fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.album.explicit }
@@ -66,7 +71,6 @@ fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter YouTube Shorts playlist
 fun List<Playlist>.filterYoutubeShorts(enabled: Boolean = false) =
     if (enabled) {
         filterNot { it.playlist.browseId?.startsWith("SS") == true }

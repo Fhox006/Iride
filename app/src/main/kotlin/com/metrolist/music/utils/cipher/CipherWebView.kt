@@ -67,7 +67,6 @@ class CipherWebView private constructor(
                 val msg = m.message()
                 val src = "${m.sourceId()}:${m.lineNumber()}"
 
-                // Log all console messages for debugging
                 when (m.messageLevel()) {
                     ConsoleMessage.MessageLevel.ERROR -> {
                         if (!msg.contains("is not defined")) {
@@ -109,19 +108,16 @@ class CipherWebView private constructor(
                 val preprocessArgs = sigInfo.preprocessArgs
 
                 if (!sigConstArgs.isNullOrEmpty() && preprocessFunc != null && !preprocessArgs.isNullOrEmpty()) {
-                    // Full wrapper: JI(48, 1918, f1(1, 6528, sig))
                     val mainArgsStr = sigConstArgs.joinToString(", ")
                     val prepArgsStr = preprocessArgs.joinToString(", ")
                     Timber.tag(TAG).d("Sig function needs full wrapper:")
                     Timber.tag(TAG).d("  $sigFuncName($mainArgsStr, $preprocessFunc($prepArgsStr, sig))")
                     add("window._cipherSigFunc = function(sig) { return $sigFuncName($mainArgsStr, $preprocessFunc($prepArgsStr, sig)); };")
                 } else if (!sigConstArgs.isNullOrEmpty()) {
-                    // Wrapper with constant args only (no preprocessing)
                     val argsStr = sigConstArgs.joinToString(", ")
                     Timber.tag(TAG).d("Sig function needs wrapper with constant args: $argsStr")
                     add("window._cipherSigFunc = function(sig) { return $sigFuncName($argsStr, sig); };")
                 } else if (isHardcoded) {
-                    // For hardcoded mode without full args, we'll inject the function export after player.js loads
                     Timber.tag(TAG).d("Will export sig function $sigFuncName in hardcoded mode (legacy)")
                     add("window._cipherSigFunc = typeof $sigFuncName !== 'undefined' ? $sigFuncName : null;")
                 } else {
@@ -131,8 +127,6 @@ class CipherWebView private constructor(
             if (nFuncName != null) {
                 val nConstArgs = nFuncInfo.constantArgs
                 if (!nConstArgs.isNullOrEmpty()) {
-                    // Generate wrapper function for n-functions that require constant args
-                    // e.g. GU(6, 6010, n) -> window._nTransformFunc = function(n) { return GU(6, 6010, n); };
                     val argsStr = nConstArgs.joinToString(", ")
                     Timber.tag(TAG).d("N-function needs wrapper with constant args: $argsStr")
                     add("window._nTransformFunc = function(n) { return $nFuncName($argsStr, n); };")
@@ -173,7 +167,6 @@ class CipherWebView private constructor(
         playerJsFile.writeText(modifiedJs)
         Timber.tag(TAG).d("Player.js written to cache: ${playerJsFile.absolutePath} (${modifiedJs.length} chars)")
 
-        // Build HTML with comprehensive discovery and validation
         val html = buildDiscoveryHtml()
         Timber.tag(TAG).d("Discovery HTML built (${html.length} chars)")
 
@@ -399,7 +392,6 @@ function discoverAndInit() {
 </script>
 </head><body></body></html>"""
 
-    // ==================== JAVASCRIPT INTERFACE ====================
 
     @JavascriptInterface
     fun logDebug(message: String) {
@@ -426,7 +418,6 @@ function discoverAndInit() {
 
     @JavascriptInterface
     fun onNDiscoveryDone(funcName: String, info: String) {
-        // Legacy interface - redirects to new combined discovery
         Timber.tag(TAG).d("Legacy onNDiscoveryDone: funcName=$funcName, info=$info")
         if (funcName.isNotEmpty()) {
             discoveredNFuncName = funcName
@@ -452,7 +443,6 @@ function discoverAndInit() {
         initContinuation.resumeWithException(CipherException("Player JS load failed: $error"))
     }
 
-    // ==================== SIGNATURE DEOBFUSCATION ====================
 
     suspend fun deobfuscateSignature(obfuscatedSig: String): String {
         Timber.tag(TAG).d("========== DEOBFUSCATE SIGNATURE ==========")
@@ -493,7 +483,6 @@ function discoverAndInit() {
         sigContinuation = null
     }
 
-    // ==================== N-TRANSFORM ====================
 
     suspend fun transformN(nValue: String): String {
         Timber.tag(TAG).d("========== N-TRANSFORM ==========")
@@ -533,7 +522,6 @@ function discoverAndInit() {
         nContinuation = null
     }
 
-    // ==================== CLEANUP ====================
 
     fun close() {
         Timber.tag(TAG).d("Closing CipherWebView...")
@@ -546,7 +534,6 @@ function discoverAndInit() {
         Timber.tag(TAG).d("CipherWebView closed")
     }
 
-    // ==================== UTILITIES ====================
 
     private fun escapeJsString(s: String): String {
         return s.replace("\\", "\\\\")

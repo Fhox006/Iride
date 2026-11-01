@@ -5,15 +5,29 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.foundation.shape.CircleShape
+
+
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -26,27 +40,32 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.pressScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 @Immutable
 private data class NavItemState(
@@ -61,7 +80,6 @@ internal fun isRouteSelected(currentRoute: String?, screenRoute: String, navigat
     if (navigationItems.any { it.route == screenRoute } &&
         currentRoute.startsWith("$screenRoute/")) return true
 
-    // Fix: match the route template, not the resolved route
     if (screenRoute == "search_input" &&
         (currentRoute.startsWith("search/") || currentRoute == "search/{query}")) return true
 
@@ -93,25 +111,10 @@ fun AppNavigationRail(
                 isRouteSelected(currentRoute, screen.route, navigationItems)
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
-            val scope = rememberCoroutineScope()
 
-            var pressed by remember { mutableStateOf(false) }
-            val iconScale by animateFloatAsState(
-                targetValue = if (pressed) 0.75f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "iconScale"
-            )
-
-            // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -126,11 +129,6 @@ fun AppNavigationRail(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
-                                    scope.launch {
-                                        pressed = true
-                                        delay(50)
-                                        pressed = false
-                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -145,24 +143,13 @@ fun AppNavigationRail(
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
-                    scope.launch {
-                        pressed = true
-                        delay(50)
-                        pressed = false
-                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
-                    // For search item, click is handled via InteractionSource
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    Box(
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        }
-                    ) {
+                    Box(modifier = Modifier.pressScale(interactionSource)) {
                         if (screen == Screens.Account && accountImageUrl != null) {
                             AsyncImage(
                                 model = accountImageUrl,
@@ -172,10 +159,18 @@ fun AppNavigationRail(
                                     .clip(CircleShape)
                             )
                         } else {
-                            Icon(
-                                painter = painterResource(id = iconRes),
-                                contentDescription = stringResource(screen.titleId)
-                            )
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
+                                label = "navIcon",
+                            ) { selected ->
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (selected) screen.iconIdActive else screen.iconIdInactive
+                                    ),
+                                    contentDescription = stringResource(screen.titleId)
+                                )
+                            }
                         }
                     }
                 }
@@ -212,25 +207,10 @@ fun AppNavigationBar(
                 isRouteSelected(currentRoute, screen.route, navigationItems)
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
-            val scope = rememberCoroutineScope()
 
-            var pressed by remember { mutableStateOf(false) }
-            val iconScale by animateFloatAsState(
-                targetValue = if (pressed) 0.75f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "iconScale"
-            )
-
-            // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -245,11 +225,6 @@ fun AppNavigationBar(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
-                                    scope.launch {
-                                        pressed = true
-                                        delay(50)
-                                        pressed = false
-                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -264,24 +239,13 @@ fun AppNavigationBar(
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
-                    scope.launch {
-                        pressed = true
-                        delay(50)
-                        pressed = false
-                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
-                    // For search item, click is handled via InteractionSource
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    Box(
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        }
-                    ) {
+                    Box(modifier = Modifier.pressScale(interactionSource)) {
                         if (screen == Screens.Account && accountImageUrl != null) {
                             AsyncImage(
                                 model = accountImageUrl,
@@ -291,10 +255,18 @@ fun AppNavigationBar(
                                     .clip(CircleShape)
                             )
                         } else {
-                            Icon(
-                                painter = painterResource(id = iconRes),
-                                contentDescription = stringResource(screen.titleId)
-                            )
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
+                                label = "navIcon",
+                            ) { selected ->
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (selected) screen.iconIdActive else screen.iconIdInactive
+                                    ),
+                                    contentDescription = stringResource(screen.titleId)
+                                )
+                            }
                         }
                     }
                 },
@@ -307,6 +279,207 @@ fun AppNavigationBar(
                         )
                     }
                 } else null
+            )
+        }
+    }
+}
+
+@Composable
+fun TopNavigationBar(
+    navigationItems: List<Screens>,
+    currentRoute: String?,
+    onItemClick: (Screens, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color.Black,
+    horizontalPadding: Dp = 20.dp,
+    compact: Boolean = false,
+    accountImageUrl: String? = null,
+) {
+    if (compact) {
+        val leftItems = navigationItems.filter { it != Screens.Search && it != Screens.Account }
+        val searchSelected = remember(currentRoute) {
+            isRouteSelected(currentRoute, Screens.Search.route, navigationItems)
+        }
+        val currentSearchSelected by rememberUpdatedState(searchSelected)
+        val accountSelected = remember(currentRoute) {
+            isRouteSelected(currentRoute, Screens.Account.route, navigationItems)
+        }
+        val currentAccountSelected by rememberUpdatedState(accountSelected)
+
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(containerColor)
+                .statusBarsPadding()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .height(40.dp)
+                .padding(start = horizontalPadding, end = horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leftItems.forEach { screen ->
+                    val isSelected = remember(currentRoute, screen.route) {
+                        isRouteSelected(currentRoute, screen.route, navigationItems)
+                    }
+                    val currentIsSelected by rememberUpdatedState(isSelected)
+                    val titleColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                        animationSpec = if (isSelected) tween(220) else snap(),
+                        label = "titleColor"
+                    )
+                    val titleInteractionSource = remember { MutableInteractionSource() }
+                    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+                    LaunchedEffect(isSelected) {
+                        if (isSelected) bringIntoViewRequester.bringIntoView()
+                    }
+
+                    Text(
+                        text = stringResource(screen.titleId),
+                        style = TextStyle(
+                            fontFamily = IBMPlexMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            letterSpacing = (-0.1).sp,
+                            color = titleColor
+                        ),
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier
+                            .bringIntoViewRequester(bringIntoViewRequester)
+                            .padding(end = 20.dp)
+                            .pressScale(titleInteractionSource)
+                            .clickable(
+                                interactionSource = titleInteractionSource,
+                                indication = null
+                            ) {
+                                onItemClick(screen, currentIsSelected)
+                            }
+                    )
+                }
+            }
+
+            val accountTint by animateColorAsState(
+                targetValue = if (accountSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                animationSpec = if (accountSelected) tween(220) else snap(),
+                label = "accountTint"
+            )
+            val accountInteractionSource = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .pressScale(accountInteractionSource, pressedScale = 0.85f)
+                    .clickable(
+                        interactionSource = accountInteractionSource,
+                        indication = null
+                    ) {
+                        onItemClick(Screens.Account, currentAccountSelected)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (accountImageUrl != null) {
+                    AsyncImage(
+                        model = accountImageUrl,
+                        contentDescription = stringResource(Screens.Account.titleId),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(id = Screens.Account.iconIdInactive),
+                        contentDescription = stringResource(Screens.Account.titleId),
+                        tint = accountTint,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            val searchTint by animateColorAsState(
+                targetValue = if (searchSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                animationSpec = if (searchSelected) tween(220) else snap(),
+                label = "searchTint"
+            )
+            val searchInteractionSource = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .pressScale(searchInteractionSource, pressedScale = 0.85f)
+                    .clickable(
+                        interactionSource = searchInteractionSource,
+                        indication = null
+                    ) {
+                        onItemClick(Screens.Search, currentSearchSelected)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = Screens.Search.iconIdInactive),
+                    contentDescription = stringResource(Screens.Search.titleId),
+                    tint = searchTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        return
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(containerColor)
+            .statusBarsPadding()
+            .height(40.dp)
+            .horizontalScroll(rememberScrollState())
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            )
+            .padding(start = horizontalPadding, end = horizontalPadding),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        navigationItems.forEach { screen ->
+            val isSelected = remember(currentRoute, screen.route) {
+                isRouteSelected(currentRoute, screen.route, navigationItems)
+            }
+            val currentIsSelected by rememberUpdatedState(isSelected)
+
+            val titleColor by animateColorAsState(
+                targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                animationSpec = if (isSelected) tween(220) else snap(),
+                label = "titleColor"
+            )
+            val titleInteractionSource = remember { MutableInteractionSource() }
+
+            Text(
+                text = stringResource(screen.titleId),
+                style = TextStyle(
+                    fontFamily = IBMPlexMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    letterSpacing = (-0.1).sp,
+                    color = titleColor
+                ),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .padding(end = 20.dp)
+                    .pressScale(titleInteractionSource)
+                    .clickable(
+                        interactionSource = titleInteractionSource,
+                        indication = null
+                    ) {
+                        onItemClick(screen, currentIsSelected)
+                    }
             )
         }
     }

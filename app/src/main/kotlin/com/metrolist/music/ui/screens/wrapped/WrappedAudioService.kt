@@ -14,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.metrolist.music.R
 import com.metrolist.music.constants.AudioQuality
+import com.metrolist.music.constants.MuzzaPlayerLogicKey
 import com.metrolist.music.utils.YTPlayerUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -106,12 +107,21 @@ class WrappedAudioService(
             val audioQuality = context.dataStore.get(com.metrolist.music.constants.AudioQualityKey).let {
                 AudioQuality.valueOf(it ?: AudioQuality.AUTO.name)
             }
+            val muzzaPlayerLogicEnabled = context.dataStore.get(MuzzaPlayerLogicKey, true)
             val playbackData = withContext(Dispatchers.IO) {
-                YTPlayerUtils.playerResponseForPlayback(
-                    videoId = songId,
-                    audioQuality = audioQuality,
-                    connectivityManager = connectivityManager,
-                ).getOrNull()
+                if (muzzaPlayerLogicEnabled) {
+                    YTPlayerUtils.playerResponseForPlaybackMuzza(
+                        videoId = songId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                    ).getOrNull()
+                } else {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        videoId = songId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                    ).getOrNull()
+                }
             }
             val streamUrl = playbackData?.streamUrl
             if (streamUrl.isNullOrBlank()) {

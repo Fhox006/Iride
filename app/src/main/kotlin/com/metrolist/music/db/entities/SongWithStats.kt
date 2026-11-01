@@ -16,12 +16,12 @@ data class SongWithStats(
     val title: String,
     @Relation(
         entity = ArtistEntity::class,
-        parentColumn = "id",               // Song's primary key column
-        entityColumn = "id",               // Artist's primary key column
+        parentColumn = "id",
+        entityColumn = "id",
         associateBy = Junction(
-            value = SortedSongArtistMap::class,  // Junction table for the many-to-many relationship
-            parentColumn = "songId",            // Foreign key to the Song table
-            entityColumn = "artistId"           // Foreign key to the Artist table
+            value = SortedSongArtistMap::class,
+            parentColumn = "songId",
+            entityColumn = "artistId"
         )
     )
     val artists: List<ArtistEntity>,

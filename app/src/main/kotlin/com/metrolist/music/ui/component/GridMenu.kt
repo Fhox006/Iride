@@ -26,19 +26,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.R
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberPreference
 
 val GridMenuItemHeight = 108.dp
 
@@ -87,7 +91,7 @@ fun LazyGridScope.GridMenuItem(
     item {
         Column(
             modifier = modifier
-                .clip(ShapeDefaults.Large)
+                .clip(FolioShape(5.dp))
                 .height(GridMenuItemHeight)
                 .clickable(
                     enabled = enabled,
@@ -105,7 +109,7 @@ fun LazyGridScope.GridMenuItem(
             )
             Text(
                 text = stringResource(title),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = IBMPlexMonoFontFamily),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier
@@ -165,7 +169,7 @@ fun LazyGridScope.SleepTimerGridMenu(
     item {
         Column(
             modifier = modifier
-                .clip(ShapeDefaults.Large)
+                .clip(FolioShape(5.dp))
                 .height(GridMenuItemHeight)
                 .clickable(
                     onClick = onClick
@@ -189,7 +193,7 @@ fun LazyGridScope.SleepTimerGridMenu(
                 text = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(
                     id = R.string.sleep_timer
                 ),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = IBMPlexMonoFontFamily),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier.fillMaxWidth()

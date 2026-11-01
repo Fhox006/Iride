@@ -1,9 +1,8 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -26,19 +25,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,15 +44,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
@@ -65,25 +65,32 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.UseLoginForBrowse
 import com.metrolist.music.constants.VisitorDataKey
-import com.metrolist.music.constants.YtmSyncKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.InfoLabel
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
-import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyAccountScreen(
-    navController: NavController,
-) {
+fun MyAccountScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
@@ -92,12 +99,12 @@ fun MyAccountScreen(
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
     val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
-    val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
     val (visitorData, onVisitorDataChange) = rememberPreference(VisitorDataKey, "")
     val (dataSyncId, onDataSyncIdChange) = rememberPreference(DataSyncIdKey, "")
     val (accountNamePref, onAccountNameChange) = rememberPreference(AccountNameKey, "")
     val (accountEmail, onAccountEmailChange) = rememberPreference(AccountEmailKey, "")
-    val (accountChannelHandle, onAccountChannelHandleChange) = rememberPreference(AccountChannelHandleKey, "")
+    val (accountChannelHandle, onAccountChannelHandleChange) =
+        rememberPreference(AccountChannelHandleKey, "")
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by rememberSaveable { mutableStateOf(false) }
@@ -111,403 +118,447 @@ fun MyAccountScreen(
                 Text(
                     text = stringResource(R.string.logout_dialog_message),
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 18.dp)
+                    modifier = Modifier.padding(horizontal = 18.dp),
                 )
             },
             buttons = {
-                TextButton(onClick = {
-                    scope.launch {
-                        accountSettingsViewModel.clearAllLibraryData()
-                        accountSettingsViewModel.logoutKeepData(context, onInnerTubeCookieChange)
-                        showLogoutDialog = false
+                IrideFolioSecondaryButton(
+                    onClick = {
+                        scope.launch {
+                            accountSettingsViewModel.clearAllLibraryData()
+                            accountSettingsViewModel.logoutKeepData(
+                                context,
+                                onInnerTubeCookieChange,
+                            )
+                            showLogoutDialog = false
+                        }
                     }
-                }) { Text(stringResource(R.string.logout_clear)) }
-                TextButton(onClick = {
-                    scope.launch {
-                        accountSettingsViewModel.logoutKeepData(context, onInnerTubeCookieChange)
-                        showLogoutDialog = false
+                ) {
+                    Text(stringResource(R.string.logout_clear))
+                }
+                IrideFolioPrimaryButton(
+                    onClick = {
+                        scope.launch {
+                            accountSettingsViewModel.logoutKeepData(
+                                context,
+                                onInnerTubeCookieChange,
+                            )
+                            showLogoutDialog = false
+                        }
                     }
-                }) { Text(stringResource(R.string.logout_keep)) }
-            }
+                ) {
+                    Text(stringResource(R.string.logout_keep))
+                }
+            },
         )
     }
 
     if (showTokenEditor) {
-        val text = """
+        val text =
+            """
             ***INNERTUBE COOKIE*** =$innerTubeCookie
             ***VISITOR DATA*** =$visitorData
             ***DATASYNC ID*** =$dataSyncId
             ***ACCOUNT NAME*** =$accountNamePref
             ***ACCOUNT EMAIL*** =$accountEmail
             ***ACCOUNT CHANNEL HANDLE*** =$accountChannelHandle
-        """.trimIndent()
+        """
+                .trimIndent()
 
         TextFieldDialog(
             initialTextFieldValue = androidx.compose.ui.text.input.TextFieldValue(text),
             onDone = { data ->
-                var cookie = ""; var visitorDataValue = ""; var dataSyncIdValue = ""
-                var accountNameValue = ""; var accountEmailValue = ""; var accountChannelHandleValue = ""
+                var cookie = ""
+                var visitorDataValue = ""
+                var dataSyncIdValue = ""
+                var accountNameValue = ""
+                var accountEmailValue = ""
+                var accountChannelHandleValue = ""
                 data.split("\n").forEach {
                     when {
                         it.startsWith("***INNERTUBE COOKIE*** =") -> cookie = it.substringAfter("=")
-                        it.startsWith("***VISITOR DATA*** =") -> visitorDataValue = it.substringAfter("=")
-                        it.startsWith("***DATASYNC ID*** =") -> dataSyncIdValue = it.substringAfter("=")
-                        it.startsWith("***ACCOUNT NAME*** =") -> accountNameValue = it.substringAfter("=")
-                        it.startsWith("***ACCOUNT EMAIL*** =") -> accountEmailValue = it.substringAfter("=")
-                        it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") -> accountChannelHandleValue = it.substringAfter("=")
+                        it.startsWith("***VISITOR DATA*** =") ->
+                            visitorDataValue = it.substringAfter("=")
+                        it.startsWith("***DATASYNC ID*** =") ->
+                            dataSyncIdValue = it.substringAfter("=")
+                        it.startsWith("***ACCOUNT NAME*** =") ->
+                            accountNameValue = it.substringAfter("=")
+                        it.startsWith("***ACCOUNT EMAIL*** =") ->
+                            accountEmailValue = it.substringAfter("=")
+                        it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") ->
+                            accountChannelHandleValue = it.substringAfter("=")
                     }
                 }
                 accountSettingsViewModel.saveTokenAndRestart(
-                    context = context, cookie = cookie, visitorData = visitorDataValue,
-                    dataSyncId = dataSyncIdValue, accountName = accountNameValue,
-                    accountEmail = accountEmailValue, accountChannelHandle = accountChannelHandleValue,
+                    context = context,
+                    cookie = cookie,
+                    visitorData = visitorDataValue,
+                    dataSyncId = dataSyncIdValue,
+                    accountName = accountNameValue,
+                    accountEmail = accountEmailValue,
+                    accountChannelHandle = accountChannelHandleValue,
                 )
             },
             onDismiss = { showTokenEditor = false },
-            singleLine = false, maxLines = 20,
+            singleLine = false,
+            maxLines = 20,
             isInputValid = { fullText ->
                 val cookieLine = fullText.lines().find { it.startsWith("***INNERTUBE COOKIE*** =") }
-                val cookieValue = cookieLine?.substringAfter("***INNERTUBE COOKIE*** =")?.trim() ?: ""
+                val cookieValue =
+                    cookieLine?.substringAfter("***INNERTUBE COOKIE*** =")?.trim() ?: ""
                 cookieValue.isNotEmpty() && "SAPISID" in parseCookieString(cookieValue)
             },
             extraContent = {
                 Spacer(Modifier.height(8.dp))
                 InfoLabel(text = stringResource(R.string.token_adv_login_description))
-            }
+            },
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal
-                )
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
+    val scrollState = rememberScrollState()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
-        // Main settings card — unified style like Appearance/Playback/Content sections
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(Modifier.fillMaxWidth()) {
-
-                // Other Content (advanced only)
-                if (advancedMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = isLoggedIn) {
-                                YouTube.useLoginForBrowse = !useLoginForBrowse
-                                onUseLoginForBrowseChange(!useLoginForBrowse)
-                            }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.library_music),
-                            contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(R.string.other_content),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            enabled = isLoggedIn,
-                            checked = useLoginForBrowse,
-                            onCheckedChange = {
-                                YouTube.useLoginForBrowse = it
-                                onUseLoginForBrowseChange(it)
-                            },
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (useLoginForBrowse) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+    IridePageFrame(
+        title = stringResource(R.string.my_account),
+        scrollState = scrollState,
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        modifier = Modifier.fillMaxSize().background(Color.Transparent),
+        background = {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
+                    )
+                    .padding(horizontal = 20.dp)
+            ) {
+                val rowIconTint: @Composable (Boolean) -> Color = { enabled ->
+                    if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 }
+                val rowTextColor: @Composable (Boolean) -> Color = { enabled ->
+                    if (enabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                }
+                val rowTextStyle =
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = IBMPlexMonoFontFamily,
+                        fontSize = 15.sp,
+                        letterSpacing = (-0.1).sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                val rowDividerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
 
-                // Auto sync
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = isLoggedIn) { onYtmSyncChange(!ytmSync) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                if (advancedMode) Text(
+                    text = stringResource(R.string.settings_section_sync_data),
+                    style =
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = IBMPlexMonoFontFamily,
+                            letterSpacing = (-0.1).sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    modifier = Modifier.padding(bottom = 6.dp, top = 4.dp),
+                )
+
+                if (advancedMode) Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = FolioShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.sync),
-                        contentDescription = null,
-                        tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        text = stringResource(R.string.auto_sync),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        enabled = isLoggedIn,
-                        checked = ytmSync,
-                        onCheckedChange = onYtmSyncChange,
-                        thumbContent = {
-                            Icon(
-                                painter = painterResource(
-                                    if (ytmSync) R.drawable.check else R.drawable.close
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize)
-                            )
-                        }
-                    )
-                }
-
-                // Show token (advanced only, expands inline)
-                if (advancedMode) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = isLoggedIn) { showToken = !showToken }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.token),
-                            contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.show_token),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                            if (isLoggedIn) {
-                                Text(
-                                    text = if (showToken) stringResource(R.string.token_shown)
-                                           else stringResource(R.string.token_hidden),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        Icon(
-                            painter = painterResource(
-                                if (showToken) R.drawable.expand_less else R.drawable.expand_more
-                            ),
-                            contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.onSurfaceVariant
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = showToken && isLoggedIn,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        Column(Modifier.fillMaxWidth()) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { showTokenEditor = true }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    Column(Modifier.fillMaxWidth()) {
+                        Row(
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .clickable(enabled = isLoggedIn) {
+                                            YouTube.useLoginForBrowse = !useLoginForBrowse
+                                            onUseLoginForBrowseChange(!useLoginForBrowse)
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.edit),
+                                    painter = painterResource(R.drawable.library_music),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = rowIconTint(isLoggedIn),
+                                    modifier = Modifier.size(20.dp),
                                 )
                                 Spacer(Modifier.width(16.dp))
                                 Text(
-                                    text = stringResource(R.string.advanced_login),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
+                                    text = stringResource(R.string.other_content),
+                                    style = rowTextStyle,
+                                    color = rowTextColor(isLoggedIn),
+                                    modifier = Modifier.weight(1f),
                                 )
-                                Icon(
-                                    painter = painterResource(R.drawable.arrow_forward),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
+                                IrideSwitch(
+                                    enabled = isLoggedIn,
+                                    checked = useLoginForBrowse,
+                                    onCheckedChange = {
+                                        YouTube.useLoginForBrowse = it
+                                        onUseLoginForBrowseChange(it)
+                                    },
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    if (useLoginForBrowse) R.drawable.check
+                                                    else R.drawable.close
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
                                 )
                             }
+                        HorizontalDivider(
+                            color = rowDividerColor,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+
+                        if (advancedMode) {
+                            HorizontalDivider(
+                                color = rowDividerColor,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .clickable(enabled = isLoggedIn) { showToken = !showToken }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.token),
+                                    contentDescription = null,
+                                    tint = rowIconTint(isLoggedIn),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.show_token),
+                                        style = rowTextStyle,
+                                        color = rowTextColor(isLoggedIn),
+                                    )
+                                    if (isLoggedIn) {
+                                        Text(
+                                            text =
+                                                if (showToken) stringResource(R.string.token_shown)
+                                                else stringResource(R.string.token_hidden),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color =
+                                                MaterialTheme.colorScheme.onSurface.copy(
+                                                    alpha = 0.4f
+                                                ),
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    painter =
+                                        painterResource(
+                                            if (showToken) R.drawable.expand_less
+                                            else R.drawable.expand_more
+                                        ),
+                                    contentDescription = null,
+                                    tint =
+                                        if (!isLoggedIn) rowIconTint(false)
+                                        else
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = showToken && isLoggedIn,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut(),
+                            ) {
+                                Column(Modifier.fillMaxWidth()) {
+                                    HorizontalDivider(
+                                        color = rowDividerColor,
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                    )
+                                    Row(
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .clickable { showTokenEditor = true }
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.edit),
+                                            contentDescription = null,
+                                            tint = rowIconTint(true),
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                        Spacer(Modifier.width(16.dp))
+                                        Text(
+                                            text = stringResource(R.string.advanced_login),
+                                            style = rowTextStyle,
+                                            color = rowTextColor(true),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Icon(
+                                            painter = painterResource(R.drawable.navigate_next),
+                                            contentDescription = null,
+                                            tint =
+                                                MaterialTheme.colorScheme.onSurface.copy(
+                                                    alpha = 0.35f
+                                                ),
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
+
+                        Spacer(Modifier.height(4.dp))
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-            }
-        }
+                Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.stats),
-                    title = { Text(stringResource(R.string.stats)) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("stats") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.integration),
-                    title = { Text(stringResource(R.string.integrations)) },
-                    description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/integrations") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.security),
-                    title = { Text(stringResource(R.string.privacy)) },
-                    description = { Text(stringResource(R.string.settings_privacy_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/privacy") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.download),
-                    title = { Text("Import Music Library") },
-                    description = { Text("Import playlists and tracks from Spotify", style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("spotify_import") }
+                Material3SettingsGroup(
+                    items =
+                        listOfNotNull(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.stats),
+                                title = { Text(stringResource(R.string.stats)) },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("stats") },
+                            ),
+                            (if (advancedMode) Material3SettingsItem(
+                                icon = painterResource(R.drawable.integration),
+                                title = { Text(stringResource(R.string.integrations)) },
+                                description = {
+                                    Text(
+                                        stringResource(R.string.settings_integrations_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/integrations") },
+                            ) else null),
+                            (if (advancedMode) Material3SettingsItem(
+                                icon = painterResource(R.drawable.security),
+                                title = { Text(stringResource(R.string.privacy)) },
+                                description = {
+                                    Text(
+                                        stringResource(R.string.settings_privacy_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/privacy") },
+                            ) else null),
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.download),
+                                title = { Text(stringResource(R.string.music_import_title)) },
+                                description = {
+                                    Text(
+                                        stringResource(R.string.music_import_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("music_import") },
+                            ),
+                        ),
+                    useLowContrast = true,
                 )
-            ),
-            useLowContrast = true
-        )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-        // Login / Logout button
-        if (isLoggedIn) {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.logout),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(24.dp)
+                if (isLoggedIn) {
+                    Material3SettingsGroup(
+                        items =
+                            listOf(
+                                Material3SettingsItem(
+                                    leadingContent = {
+                                        Box(
+                                            modifier =
+                                                Modifier.size(40.dp)
+                                                    .clip(FolioShape(12.dp))
+                                                    .background(
+                                                        MaterialTheme.colorScheme.error.copy(
+                                                            alpha = 0.1f
+                                                        )
+                                                    ),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.logout),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                    },
+                                    title = {
+                                        Text(
+                                            text = stringResource(R.string.action_logout),
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    },
+                                    onClick = { showLogoutDialog = true },
                                 )
-                            }
-                        },
-                        title = {
-                            Text(
-                                text = stringResource(R.string.action_logout),
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        onClick = { showLogoutDialog = true }
+                            ),
+                        useLowContrast = true,
                     )
-                ),
-                useLowContrast = true
-            )
-        } else {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.person),
-                        title = { Text(stringResource(R.string.action_login)) },
-                        onClick = { navController.navigate("login") }
-                    )
-                ),
-                useLowContrast = true
-            )
-        }
+                }
 
-        Spacer(modifier = Modifier.height(32.dp))
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.my_account)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
+                Spacer(modifier = Modifier.height(32.dp))
             }
-        },
-    )
-    } // Box
+        }
+    }
 }

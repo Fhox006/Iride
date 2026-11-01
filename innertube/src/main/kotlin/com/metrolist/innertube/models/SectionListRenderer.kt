@@ -27,7 +27,6 @@ data class SectionListRenderer(
                     val isSelected: Boolean = false,
                     val navigationEndpoint: NavigationEndpoint? = null,
                     val onDeselectedCommand: NavigationEndpoint? = null,
-                    // The close button doesn't have the following two fields
                     val text: Runs?,
                     val uniqueId: String?,
                 )

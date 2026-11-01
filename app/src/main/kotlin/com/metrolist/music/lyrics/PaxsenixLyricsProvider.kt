@@ -47,13 +47,11 @@ object PaxsenixLyricsProvider : LyricsProvider {
         try {
             ensureInit(context)
             val result = Paxsenix.getLyrics(title, artist, duration, album)
-            
             result.onSuccess { lyrics ->
                 Timber.tag(TAG).i("Success! Got ${lyrics.length} chars of lyrics")
             }.onFailure { e ->
                 Timber.tag(TAG).e(e, "Failed to get lyrics")
             }
-            
             return result
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Exception in getLyrics")

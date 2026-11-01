@@ -86,14 +86,12 @@ internal fun IntervalIndicator(
             .graphicsLayer { this.alpha = alpha.value },
         contentAlignment = Alignment.Center
     ) {
-        // Dim base icon (outline)
         Icon(
             painter = painterResource(R.drawable.music_note),
             contentDescription = null,
             tint = color.copy(alpha = 0.25f),
             modifier = Modifier.size(36.dp)
         )
-        // Filled icon cropped from bottom based on progress
         Icon(
             painter = painterResource(R.drawable.music_note),
             contentDescription = null,

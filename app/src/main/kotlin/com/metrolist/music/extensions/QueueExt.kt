@@ -21,7 +21,7 @@ fun Queue.toPersistQueue(
     mediaItemIndex: Int,
     position: Long
 ): PersistQueue {
-    return when (this) {
+    val persisted = when (this) {
         is ListQueue -> PersistQueue(
             title = title,
             items = items,
@@ -30,7 +30,6 @@ fun Queue.toPersistQueue(
             queueType = QueueType.LIST
         )
         is YouTubeQueue -> {
-            // Since endpoint is private, we'll store a simplified version
             val endpoint = "youtube_queue"
             PersistQueue(
                 title = title,
@@ -42,7 +41,6 @@ fun Queue.toPersistQueue(
             )
         }
         is YouTubeAlbumRadio -> {
-            // Since playlistId is private, we'll store a simplified version
             PersistQueue(
                 title = title,
                 items = items,
@@ -55,7 +53,6 @@ fun Queue.toPersistQueue(
             )
         }
         is LocalAlbumRadio -> {
-            // Since albumWithSongs and startIndex are private, we'll store a simplified version
             PersistQueue(
                 title = title,
                 items = items,
@@ -76,6 +73,9 @@ fun Queue.toPersistQueue(
             queueType = QueueType.LIST
         )
     }
+    return sourceRoute?.let {
+        persisted.copy(queueData = QueueData.SourceData(it, persisted.queueData))
+    } ?: persisted
 }
 
 fun PersistQueue.toQueue(): Queue {
@@ -84,33 +84,34 @@ fun PersistQueue.toQueue(): Queue {
             title = title,
             items = items.map { it.toMediaItem() },
             startIndex = mediaItemIndex,
-            position = position
+            position = position,
+            sourceRoute = (queueData as? QueueData.SourceData)?.sourceRoute,
         )
         is QueueType.YOUTUBE -> {
-            // For now, fallback to ListQueue since we can't reconstruct YouTubeQueue properly
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },
                 startIndex = mediaItemIndex,
-                position = position
+                position = position,
+                sourceRoute = (queueData as? QueueData.SourceData)?.sourceRoute,
             )
         }
         is QueueType.YOUTUBE_ALBUM_RADIO -> {
-            // For now, fallback to ListQueue since we can't reconstruct YouTubeAlbumRadio properly
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },
                 startIndex = mediaItemIndex,
-                position = position
+                position = position,
+                sourceRoute = (queueData as? QueueData.SourceData)?.sourceRoute,
             )
         }
         is QueueType.LOCAL_ALBUM_RADIO -> {
-            // For now, fallback to ListQueue since we can't reconstruct LocalAlbumRadio properly
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },
                 startIndex = mediaItemIndex,
-                position = position
+                position = position,
+                sourceRoute = (queueData as? QueueData.SourceData)?.sourceRoute,
             )
         }
     }

@@ -71,7 +71,6 @@ data class ArtistPage(
         }
 
         private fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-            // Split the secondary line by bullet separator to separate artists from other metadata (like views)
             val secondaryLineRuns = renderer.flexColumns
                 .getOrNull(1)
                 ?.musicResponsiveListItemFlexColumnRenderer
@@ -79,7 +78,6 @@ data class ArtistPage(
                 ?.runs
                 ?.splitBySeparator()
 
-            // Extract artists from the first segment after splitting
             val artists = secondaryLineRuns?.firstOrNull()?.oddElements()?.map {
                 Artist(
                     name = it.text,
@@ -87,7 +85,6 @@ data class ArtistPage(
                 )
             }
 
-            // Extract album from last flexColumn (like SimpMusic)
             val album = renderer.flexColumns.lastOrNull()
                 ?.musicResponsiveListItemFlexColumnRenderer?.text?.runs
                 ?.firstOrNull()?.let {
@@ -99,7 +96,6 @@ data class ArtistPage(
                     } else null
                 }
 
-            // Extract library tokens using the new method that properly handles multiple toggle items
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return SongItem(
@@ -122,7 +118,7 @@ data class ArtistPage(
             )
         }
 
-        private fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
+        internal fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
             return when {
                 renderer.isSong -> {
                     val subtitleRuns = renderer.subtitle?.runs?.oddElements() ?: return null
@@ -152,7 +148,7 @@ data class ArtistPage(
                     )
                 }
 
-                renderer.isAlbum -> {
+                renderer.isAlbum || renderer.navigationEndpoint.browseEndpoint?.browseId?.startsWith("MPRE") == true -> {
                     AlbumItem(
                         browseId = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                         playlistId = renderer.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content
@@ -164,12 +160,12 @@ data class ArtistPage(
                         thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                         explicit = renderer.subtitleBadges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                        } != null
+                        } != null,
+                        albumType = renderer.subtitle?.runs?.firstOrNull()?.text,
                     )
                 }
 
                 renderer.isPlaylist -> {
-                    // Playlist from YouTube Music
                     PlaylistItem(
                         id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,
                         title = renderer.title.runs?.firstOrNull()?.text ?: return null,

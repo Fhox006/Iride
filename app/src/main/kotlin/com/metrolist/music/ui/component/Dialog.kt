@@ -5,9 +5,7 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,19 +21,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -44,18 +39,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.music.R
@@ -69,67 +67,34 @@ fun DefaultDialog(
     title: (@Composable () -> Unit)? = null,
     buttons: (@Composable RowScope.() -> Unit)? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
+    properties: DialogProperties = DialogProperties(usePlatformDefaultWidth = false),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+    IrideFolioDialog(onDismissRequest = onDismiss, properties = properties) {
+        Column(
+            horizontalAlignment = horizontalAlignment,
+            modifier = modifier.padding(IrideFolio.DialogContentPadding),
         ) {
-            Column(
-                horizontalAlignment = horizontalAlignment,
-                modifier =
-                    modifier
-                        .padding(24.dp),
-            ) {
-                if (icon != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.iconContentColor) {
-                        Box(
-                            Modifier.align(Alignment.CenterHorizontally),
-                        ) {
-                            icon()
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-                }
-                if (title != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.titleContentColor) {
-                        ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
-                            Box(
-                                // Align the title to the center when an icon is present.
-                                Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally),
-                            ) {
-                                title()
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                content()
-
-                if (buttons != null) {
-                    Spacer(Modifier.height(24.dp))
-
-                    FlowRow(
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
-                            ProvideTextStyle(
-                                value = MaterialTheme.typography.labelLarge,
-                            ) {
-                                buttons()
-                            }
-                        }
+            if (icon != null) {
+                Box(Modifier.align(Alignment.CenterHorizontally)) { icon() }
+                Spacer(Modifier.height(IrideFolio.DialogSectionSpacing))
+            }
+            if (title != null) {
+                ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
+                    Box(Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally)) {
+                        title()
                     }
                 }
+                Spacer(Modifier.height(IrideFolio.DialogSectionSpacing))
+            }
+            content()
+            if (buttons != null) {
+                Spacer(Modifier.height(IrideFolio.DialogActionsTopSpacing))
+                FlowRow(
+                    modifier = Modifier.align(Alignment.End),
+                    horizontalArrangement = Arrangement.spacedBy(IrideFolio.DialogActionSpacing),
+                    verticalArrangement = Arrangement.spacedBy(IrideFolio.DialogActionSpacing),
+                ) { buttons() }
             }
         }
     }
@@ -157,7 +122,6 @@ fun ActionPromptDialog(
                         text = title,
                         overflow = TextOverflow.Ellipsis,
                         maxLines = 1,
-                        style = MaterialTheme.typography.headlineSmall,
                     )
                 }
             } else {
@@ -166,7 +130,7 @@ fun ActionPromptDialog(
         buttons = {
             if (onReset != null) {
                 Row(modifier = Modifier.weight(1f)) {
-                    TextButton(
+                    IrideFolioSecondaryButton(
                         onClick = { onReset() },
                     ) {
                         Text(stringResource(R.string.reset))
@@ -175,14 +139,14 @@ fun ActionPromptDialog(
             }
 
             if (onCancel != null) {
-                TextButton(
+                IrideFolioSecondaryButton(
                     onClick = { onCancel() },
                 ) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }
 
-            TextButton(
+            IrideFolioPrimaryButton(
                 onClick = { onConfirm() },
             ) {
                 Text(stringResource(android.R.string.ok))
@@ -199,25 +163,14 @@ fun ListDialog(
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+    IrideFolioDialog(onDismissRequest = onDismiss) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .padding(vertical = IrideFolio.DialogContentPadding)
+                .imePadding(),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier =
-                    modifier
-                        .padding(vertical = 24.dp)
-                        .imePadding(),
-            ) {
-                LazyColumn(content = content)
-            }
+            LazyColumn(content = content)
         }
     }
 }
@@ -254,7 +207,6 @@ fun TextFieldDialog(
     isInputValid: (String) -> Boolean = { it.isNotEmpty() },
     keyboardType: KeyboardType = KeyboardType.Text,
     onDone: (String) -> Unit = {},
-    // new multi-field support
     textFields: List<Pair<String, TextFieldValue>>? = null,
     onTextFieldsChange: ((Int, TextFieldValue) -> Unit)? = null,
     onDoneMultiple: ((List<String>) -> Unit)? = null,
@@ -265,6 +217,18 @@ fun TextFieldDialog(
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
 
     val focusRequester = remember { FocusRequester() }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.textPrimary,
+        unfocusedTextColor = MaterialTheme.colorScheme.textPrimary,
+        cursorColor = MaterialTheme.colorScheme.textPrimary,
+        focusedBorderColor = MaterialTheme.colorScheme.textPrimary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.strokeCard,
+        focusedPlaceholderColor = MaterialTheme.colorScheme.textSecondary,
+        unfocusedPlaceholderColor = MaterialTheme.colorScheme.textSecondary,
+        focusedLabelColor = MaterialTheme.colorScheme.textSecondary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.textSecondary,
+    )
+    val fieldTextStyle = LocalTextStyle.current.copy(fontFamily = IBMPlexMonoFontFamily)
 
     LaunchedEffect(Unit) {
         if (autoFocus) {
@@ -279,7 +243,7 @@ fun TextFieldDialog(
         icon = icon,
         title = title,
         buttons = {
-            TextButton(onClick = onDismiss) {
+            IrideFolioSecondaryButton(onClick = onDismiss) {
                 Text(text = stringResource(android.R.string.cancel))
             }
 
@@ -287,7 +251,7 @@ fun TextFieldDialog(
                 textFields?.all { isInputValid(it.second.text) }
                     ?: isInputValid(legacyFieldState.value.text)
 
-            TextButton(
+            IrideFolioPrimaryButton(
                 enabled = isValid,
                 onClick = {
                     if (autoDismiss) onDismiss()
@@ -313,7 +277,8 @@ fun TextFieldDialog(
                         placeholder = { Text(label) },
                         singleLine = singleLine,
                         maxLines = maxLines,
-                        colors = OutlinedTextFieldDefaults.colors(),
+                        colors = fieldColors,
+                        textStyle = fieldTextStyle,
                         keyboardOptions =
                             KeyboardOptions(
                                 imeAction = if (singleLine) ImeAction.Done else ImeAction.None,
@@ -336,14 +301,13 @@ fun TextFieldDialog(
                     )
                 }
             } else {
-                // Wrap in Box with pointerInput to prevent double-click crashes in TextClassifier
                 Box(
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .pointerInput(Unit) {
                                 detectTapGestures(
-                                    onDoubleTap = { /* Consume double-tap to prevent TextClassifier crash */ },
+                                    onDoubleTap = {  },
                                 )
                             },
                 ) {
@@ -353,7 +317,8 @@ fun TextFieldDialog(
                         placeholder = placeholder,
                         singleLine = singleLine,
                         maxLines = maxLines,
-                        colors = OutlinedTextFieldDefaults.colors(),
+                        colors = fieldColors,
+                        textStyle = fieldTextStyle,
                         keyboardOptions =
                             KeyboardOptions(
                                 imeAction = if (singleLine) ImeAction.Done else ImeAction.None,

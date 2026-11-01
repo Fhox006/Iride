@@ -11,4 +11,5 @@ import com.metrolist.music.db.entities.LocalItem
 data class SimilarRecommendation(
     val title: LocalItem,
     val items: List<YTItem>,
+    val thumbnailUrl: String? = title.thumbnailUrl,
 )

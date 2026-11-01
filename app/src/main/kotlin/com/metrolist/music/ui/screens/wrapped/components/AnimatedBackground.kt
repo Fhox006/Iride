@@ -26,7 +26,7 @@ private data class AnimatedElement(
     val initialY: Float,
     val targetX: Float,
     val targetY: Float,
-    val size: Float, // radius for circle, width/height for rect, length multiplier for line
+    val size: Float,
     val alpha: Float,
     val duration: Int
 )

@@ -5,12 +5,16 @@
 
 package com.metrolist.music.utils
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.ui.screens.CrashActivity
 import timber.log.Timber
+import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import kotlin.system.exitProcess
@@ -26,21 +30,39 @@ class CrashHandler private constructor(
         try {
             val crashLog = buildCrashLog(throwable)
             Timber.e(throwable, "App crashed")
-            
-            // Launch crash activity
+            saveCrashReportToFile(crashLog)
             val intent = Intent(applicationContext, CrashActivity::class.java).apply {
                 putExtra(EXTRA_CRASH_LOG, crashLog)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
             applicationContext.startActivity(intent)
-            
-            // Kill the current process
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(1)
         } catch (e: Exception) {
-            // If we fail to handle the crash, fall back to default handler
             Timber.e(e, "Error handling crash")
             defaultHandler?.uncaughtException(thread, throwable)
+        }
+    }
+
+    private fun saveCrashReportToFile(report: String) {
+        try {
+            val fileName = "iride-crash-${System.currentTimeMillis()}.txt"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                }
+                val uri =
+                    applicationContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                        ?: return
+                applicationContext.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(report.toByteArray())
+                }
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                File(dir, fileName).writeText(report)
+            }
+        } catch (_: Exception) {
         }
     }
 
@@ -57,6 +79,12 @@ class CrashHandler private constructor(
             appendLine("Device: ${Build.MODEL}")
             appendLine("Android version: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
             appendLine("App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            appendLine()
+            appendLine("=".repeat(50))
+            appendLine("Events before crash:")
+            appendLine("=".repeat(50))
+            appendLine()
+            appendLine(DiagnosticLog.snapshot())
             appendLine()
             appendLine("=".repeat(50))
             appendLine("Stacktrace:")

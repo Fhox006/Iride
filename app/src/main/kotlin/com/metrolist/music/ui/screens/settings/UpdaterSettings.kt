@@ -1,69 +1,78 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CheckForUpdatesKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.OptionalNotificationsEnabled
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.utils.UpdateDownloadState
+import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdaterScreen(
-    navController: NavController
-) {
+fun UpdaterScreen(navController: NavController) {
     val (checkForUpdates, onCheckForUpdatesChange) = rememberPreference(CheckForUpdatesKey, true)
-    val (updateNotifications, onUpdateNotificationsChange) = rememberPreference(UpdateNotificationsEnabledKey, true)
+    val (updateNotifications, onUpdateNotificationsChange) =
+        rememberPreference(UpdateNotificationsEnabledKey, true)
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -83,172 +92,323 @@ fun UpdaterScreen(
             isChecking = true
             checkError = null
             withContext(Dispatchers.IO) {
-                Updater
-                    .checkForAnyUpdate(forceRefresh = true)
+                Updater.checkForAnyUpdate(forceRefresh = true)
                     .onSuccess { (releaseInfo, hasUpdate) ->
                         if (releaseInfo != null) {
                             latestVersion = releaseInfo.versionName
                             updateAvailable = hasUpdate
                             changelogContent = releaseInfo.description
-                            downloadUrl = if (hasUpdate) Updater.getDownloadUrlForCurrentVariant(releaseInfo) else null
+                            downloadUrl =
+                                if (hasUpdate) Updater.getDownloadUrlForCurrentVariant(releaseInfo)
+                                else null
                         }
-                    }.onFailure {
-                        checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
+                    }
+                    .onFailure {
+                        checkError =
+                            String.format(
+                                failedToCheckUpdatesTemplate,
+                                it.message ?: "Unknown error",
+                            )
                     }
             }
             isChecking = false
         }
     }
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal,
-                    ),
-                ).verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
+    val settingsScrollState = rememberScrollState()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
-
-        Spacer(Modifier.height(4.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.current_version),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        title = {
-                            Text(stringResource(R.string.version_format, BuildConfig.VERSION_NAME))
-                        },
-                        description = {
-                            val arch = BuildConfig.ARCHITECTURE
-                            val variant = if (BuildConfig.CAST_AVAILABLE) "GMS" else "FOSS"
-                            Text("$arch - $variant")
-                        },
-                    ),
-                ),
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.update_settings),
-            items =
-                buildList {
-                    if (checkForUpdates) {
-                        add(
-                            Material3SettingsItem(
-                                title = { Text(stringResource(R.string.update_notifications)) },
-                                icon = painterResource(R.drawable.notification),
-                                trailingContent = {
-                                    Switch(
-                                        checked = updateNotifications,
-                                        onCheckedChange = onUpdateNotificationsChange,
-                                    )
-                                },
-                                onClick = { onUpdateNotificationsChange(!updateNotifications) },
-                            ),
-                        )
-                    }
-                },
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.check_for_updates_title),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.refresh),
-                        title = {
-                            if (isChecking) {
-                                Text(stringResource(R.string.checking_for_updates))
-                            } else if (latestVersion != null) {
-                                Text(stringResource(R.string.latest_version_format, latestVersion!!))
-                            } else {
-                                Text(stringResource(R.string.check_for_updates_button))
-                            }
-                        },
-                        trailingContent = {
-                            if (isChecking) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(end = 16.dp),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else if (updateAvailable) {
-                                Icon(
-                                    painter = painterResource(R.drawable.download),
-                                    contentDescription = stringResource(R.string.update_available_title),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                        onClick = { if (!isChecking) performManualCheck() },
-                    ),
-                ),
-        )
-
-        checkError?.let {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
-
-        if (updateAvailable && latestVersion != null) {
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { showChangelog = !showChangelog },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-            ) {
-                Text(if (showChangelog) stringResource(R.string.hide_changelog) else stringResource(R.string.view_changelog))
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
             }
+            .collectAsStateWithLifecycle()
 
-            if (showChangelog && changelogContent != null) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = changelogContent!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+    IridePageFrame(
+        title = stringResource(R.string.updater),
+        scrollState = settingsScrollState,
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        modifier = Modifier.fillMaxSize(),
+        background = {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
                 )
-            }
-        }
-
-        Spacer(Modifier.height(32.dp))
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.updater)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
         },
-    )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current
+                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                                .only(WindowInsetsSides.Horizontal)
+                        )
+                        .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Top)
+                    )
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.current_version),
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                title = {
+                                    Text(
+                                        stringResource(
+                                            R.string.version_format,
+                                            BuildConfig.VERSION_NAME,
+                                        )
+                                    )
+                                },
+                                description = {
+                                    val arch = BuildConfig.ARCHITECTURE
+                                    val variant = if (BuildConfig.CAST_AVAILABLE) "GMS" else "FOSS"
+                                    Text("$arch - $variant")
+                                },
+                            )
+                        ),
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                if (OptionalNotificationsEnabled) {
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.update_settings),
+                        items =
+                            buildList {
+                                if (checkForUpdates) {
+                                    add(
+                                        Material3SettingsItem(
+                                            title = {
+                                                Text(stringResource(R.string.update_notifications))
+                                            },
+                                            icon = painterResource(R.drawable.notification),
+                                            trailingContent = {
+                                                IrideSwitch(
+                                                    checked = updateNotifications,
+                                                    onCheckedChange = onUpdateNotificationsChange,
+                                                )
+                                            },
+                                            onClick = {
+                                                onUpdateNotificationsChange(!updateNotifications)
+                                            },
+                                        )
+                                    )
+                                }
+                            },
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.check_for_updates_title),
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.refresh),
+                                title = {
+                                    if (isChecking) {
+                                        Text(stringResource(R.string.checking_for_updates))
+                                    } else if (latestVersion != null) {
+                                        Text(
+                                            stringResource(
+                                                R.string.latest_version_format,
+                                                latestVersion!!,
+                                            )
+                                        )
+                                    } else {
+                                        Text(stringResource(R.string.check_for_updates_button))
+                                    }
+                                },
+                                trailingContent = {
+                                    if (isChecking) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.padding(end = 16.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else if (updateAvailable) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.download),
+                                            contentDescription =
+                                                stringResource(R.string.update_available_title),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                },
+                                onClick = { if (!isChecking) performManualCheck() },
+                            )
+                        ),
+                )
+
+                checkError?.let {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+
+                if (updateAvailable) {
+                    val downloadState by
+                        produceState<UpdateDownloadState>(
+                            UpdateDownloadState.Idle,
+                            updateAvailable,
+                        ) {
+                            while (isActive) {
+                                value = UpdateDownloader.queryDownloadState(context)
+                                delay(1_000)
+                            }
+                        }
+                    var canInstallPackages by remember {
+                        mutableStateOf(UpdateDownloader.canInstallPackages(context))
+                    }
+                    LaunchedEffect(updateAvailable) {
+                        while (isActive) {
+                            canInstallPackages = UpdateDownloader.canInstallPackages(context)
+                            delay(1_000)
+                        }
+                    }
+
+                    when (val state = downloadState) {
+                        is UpdateDownloadState.Downloading ->
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.update_state_downloading_percent,
+                                        state.progressPercent,
+                                    ),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        is UpdateDownloadState.Failed ->
+                            Text(
+                                text =
+                                    state.reason ?: stringResource(R.string.update_download_failed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        is UpdateDownloadState.ReadyToInstall -> {
+                            Text(
+                                text = stringResource(R.string.update_state_ready_to_install),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                            if (!canInstallPackages) {
+                                Text(
+                                    text = stringResource(R.string.update_permission_explanation),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                        }
+                        is UpdateDownloadState.Idle -> Unit
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    IrideFolioPrimaryButton(
+                        onClick = {
+                            when {
+                                downloadState is UpdateDownloadState.ReadyToInstall &&
+                                    canInstallPackages -> UpdateDownloader.promptInstall(context)
+                                downloadState is UpdateDownloadState.ReadyToInstall ->
+                                    UpdateDownloader.openInstallPermissionSettings(context)
+                                else ->
+                                    downloadUrl?.let { url ->
+                                        val version = latestVersion
+                                        if (version != null) {
+                                            coroutineScope.launch {
+                                                runCatching {
+                                                    UpdateDownloader.enqueueUpdate(
+                                                        context,
+                                                        url,
+                                                        version,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                            }
+                        },
+                        enabled =
+                            when (downloadState) {
+                                is UpdateDownloadState.ReadyToInstall -> true
+                                is UpdateDownloadState.Downloading -> false
+                                else -> downloadUrl != null
+                            },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    ) {
+                        Text(
+                            when (val state = downloadState) {
+                                is UpdateDownloadState.ReadyToInstall ->
+                                    if (canInstallPackages) {
+                                        stringResource(R.string.update_action_install)
+                                    } else {
+                                        stringResource(R.string.update_action_allow)
+                                    }
+                                is UpdateDownloadState.Downloading ->
+                                    stringResource(
+                                        R.string.update_state_downloading_percent,
+                                        state.progressPercent,
+                                    )
+                                is UpdateDownloadState.Failed ->
+                                    stringResource(R.string.update_action_retry)
+                                is UpdateDownloadState.Idle ->
+                                    stringResource(R.string.update_action_download)
+                            }
+                        )
+                    }
+                }
+
+                if (updateAvailable && latestVersion != null) {
+                    Spacer(Modifier.height(16.dp))
+                    IrideFolioPrimaryButton(
+                        onClick = { showChangelog = !showChangelog },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    ) {
+                        Text(
+                            if (showChangelog) stringResource(R.string.hide_changelog)
+                            else stringResource(R.string.view_changelog)
+                        )
+                    }
+
+                    if (showChangelog && changelogContent != null) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = changelogContent!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
 }

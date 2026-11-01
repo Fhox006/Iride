@@ -1,154 +1,244 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.search
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.FocusState
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.fillSubtle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.WatchEndpoint
+import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.YouTubeUrlParser
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.HideOnScrollFAB
+import com.metrolist.music.ui.component.LibraryPageMenuAction
+import com.metrolist.music.ui.component.irideTypewriterStepMillis
+import com.metrolist.music.ui.utils.rememberReducedMotion
+import com.metrolist.music.ui.component.IrideArtworkSurface
+import com.metrolist.music.ui.component.rememberIrideArtistArtwork
+import com.metrolist.music.ui.component.rememberGenreArtwork
+import com.metrolist.music.ui.component.rememberGenreArtworkLoader
+import com.metrolist.music.ui.component.rememberArtistArtworkLoader
+import com.metrolist.music.ui.component.ArtistArtworkRequest
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.viewmodels.OnlineSearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.net.URLEncoder
-import androidx.compose.ui.util.lerp as lerpFloat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
-private val LargeTitleHeightDp = 80.dp
-private val SmallTitleBarHeightDp = 56.dp
-private val SearchBoxHeightDp = 52.dp
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun SearchScreen(
     navController: NavController,
     pureBlack: Boolean,
     savedStateHandle: SavedStateHandle,
+    initialQuery: String = "",
+    onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel(),
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val lazyListState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val density = LocalDensity.current
+    val ime = WindowInsets.ime
+    var keyboardClosing by remember { mutableStateOf(false) }
+    var keyboardRequestRevision by remember { mutableIntStateOf(-1) }
     val playerConnection = LocalPlayerConnection.current
     val isPlayerExpanded = LocalIsPlayerExpanded.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val lazyListState = rememberLazyListState()
     var isHandlingScrollToTop by remember { mutableStateOf(false) }
-
-    val scrollToTopCount by savedStateHandle.getStateFlow("scrollToTopCount", 0).collectAsState(initial = 0)
+    var searchSession by rememberSaveable(
+        stateSaver = Saver<SearchSessionState, String>(save = { it.restoredQuery }, restore = { SearchSessionState(it) }),
+    ) {
+        mutableStateOf(SearchSessionState(initialQuery))
+    }
+    val submittedQuery = searchSession.submittedQuery
+    val motionEvent = searchSession.event
+    val isFocused = motionEvent.mode == SearchSceneMode.Editing
+    var completionJob by remember { mutableStateOf<Job?>(null) }
+    var expectedCompletionText by remember { mutableStateOf<String?>(null) }
+    val reducedMotion = rememberReducedMotion()
+    val scrollToTopCount by
+        savedStateHandle.getStateFlow("scrollToTopCount", 0).collectAsState(initial = 0)
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(scrollToTopCount) {
-        if (scrollToTopCount > lastHandledCount) {
-            lastHandledCount = scrollToTopCount
-            isHandlingScrollToTop = true
-            kotlinx.coroutines.delay(100)
-            if (!isPlayerExpanded) {
-                focusManager.clearFocus(force = true)
+
+    var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
+    var savedQuery by
+        rememberSaveable(stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(TextFieldValue(initialQuery, TextRange(initialQuery.length)))
+        }
+    val textState = remember { TextFieldState(savedQuery.text, savedQuery.selection) }
+    val query = TextFieldValue(textState.text.toString(), textState.selection)
+    fun setQuery(value: TextFieldValue) {
+        textState.edit {
+            if (toString() != value.text) replace(0, length, value.text)
+            selection = value.selection
+        }
+    }
+    fun cancelCompletion() {
+        completionJob?.cancel()
+        completionJob = null
+        expectedCompletionText = null
+    }
+    LaunchedEffect(textState) {
+        snapshotFlow { TextFieldValue(textState.text.toString(), textState.selection) }.collect { value ->
+            savedQuery = value
+            // Native input and machine completion share this one text state. A real edit cancels
+            // completion; programmatic keystrokes never feed back through a second editor state.
+            if (completionJob?.isActive == true && value.text != expectedCompletionText &&
+                value.text == textState.text.toString()) cancelCompletion()
+        }
+    }
+    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank()) searchSource = SearchSource.ONLINE
+        if (!isFocused) setQuery(TextFieldValue(submittedQuery))
+    }
+
+    LaunchedEffect(isFocused, motionEvent.revision, isPlayerExpanded) {
+        keyboardRequestRevision = -1
+        if (isFocused && !isPlayerExpanded) {
+            val requestRevision = motionEvent.revision
+            // A new show must not race the previous hide. The visual lift starts immediately;
+            // focus waits for the old IME session, rather than interpreting its close as Back.
+            if (keyboardClosing) {
+                snapshotFlow { ime.getBottom(density) }.first { it == 0 }
+                keyboardClosing = false
             }
-            kotlinx.coroutines.delay(500)
+            if (searchSession.event.revision != requestRevision ||
+                searchSession.event.mode != SearchSceneMode.Editing) return@LaunchedEffect
+            keyboardRequestRevision = requestRevision
+            withFrameNanos {}
+            if (searchSession.event.revision != requestRevision ||
+                searchSession.event.mode != SearchSceneMode.Editing) return@LaunchedEffect
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    fun hideKeyboard() {
+        keyboardRequestRevision = -1
+        keyboardClosing = ime.getBottom(density) > 0
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
+
+    fun dismissEditor() {
+        if (searchSession.event.mode != SearchSceneMode.Editing) return
+        cancelCompletion()
+        searchSession = searchSession.dismiss()
+        setQuery(TextFieldValue(searchSession.submittedQuery))
+        hideKeyboard()
+    }
+
+    fun openEditor() {
+        if (isPlayerExpanded || searchSession.event.mode == SearchSceneMode.Editing) return
+        cancelCompletion()
+        if (searchSession.event.returnsToRoot) {
+            setQuery(TextFieldValue())
+            onlineSearchResultViewModel.search("")
+        }
+        val currentText = textState.text.toString()
+        setQuery(TextFieldValue(currentText, TextRange(currentText.length)))
+        searchSession = searchSession.open()
+    }
+
+    val latestOpenEditor by rememberUpdatedState(::openEditor)
+    LaunchedEffect(scrollToTopCount) {
+        if (scrollToTopCount <= lastHandledCount) return@LaunchedEffect
+        lastHandledCount = scrollToTopCount
+        isHandlingScrollToTop = true
+        try {
+            lazyListState.scrollToItem(0)
+            withFrameNanos {}
+            latestOpenEditor()
+        } finally {
             isHandlingScrollToTop = false
         }
     }
 
-    var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
-    var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue())
-    }
-    var isFocused by remember { mutableStateOf(false) }
-    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-
-    fun handleSearch(searchQuery: String) {
-        if (searchQuery.isEmpty()) return
-        focusManager.clearFocus()
-        when (val parsedUrl = YouTubeUrlParser.parse(searchQuery)) {
+    fun handleSearch(rawQuery: String) {
+        cancelCompletion()
+        val searchQuery = rawQuery.trim()
+        if (searchQuery.isEmpty()) {
+            if (searchSession.event.returnsToRoot) return
+            hideKeyboard()
+            searchSession = searchSession.reset()
+            // Keep the outgoing result and cached artwork alive until the reverse motion ends.
+            coroutineScope.launch { lazyListState.scrollToItem(0) }
+            return
+        }
+        val parsedUrl = YouTubeUrlParser.parse(searchQuery)
+        if (parsedUrl == null) {
+            searchSession = searchSession.submit(searchQuery)
+            hideKeyboard()
+        } else {
+            dismissEditor()
+        }
+        when (parsedUrl) {
             is YouTubeUrlParser.ParsedUrl.Video -> {
                 playerConnection?.playQueue(YouTubeQueue(WatchEndpoint(videoId = parsedUrl.id)))
             }
@@ -162,7 +252,12 @@ fun SearchScreen(
                 navController.navigate("artist/${parsedUrl.id}")
             }
             null -> {
-                navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
+                setQuery(TextFieldValue(searchQuery, TextRange(searchQuery.length)))
+                if (searchSource == SearchSource.ONLINE) {
+                    onlineSearchResultViewModel.search(searchQuery, resetCarousels = true)
+                    onlineSearchResultViewModel.loadSmartSearch()
+                }
+                coroutineScope.launch { lazyListState.scrollToItem(0) }
             }
         }
         if (!pauseSearchHistory) {
@@ -172,298 +267,228 @@ fun SearchScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
-
-    Scaffold(
-        topBar = {
-            SearchCollapsingHeader(
-                scrollBehavior = scrollBehavior,
-                query = query,
-                onQueryChange = { query = it },
-                searchSource = searchSource,
-                onSearchSourceToggle = {
-                    searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
-                },
-                focusRequester = focusRequester,
-                onFocusChanged = { isFocused = it.isFocused },
-                onSearch = { handleSearch(query.text) },
-                onClear = { query = TextFieldValue("") },
-                pureBlack = pureBlack,
-            )
-        },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
-        ) {
-            when (searchSource) {
-                SearchSource.LOCAL -> {
-                    LocalSearchScreen(
-                        query = query.text,
-                        navController = navController,
-                        onDismiss = { navController.navigateUp() },
-                        pureBlack = pureBlack,
-                    )
-                }
-                SearchSource.ONLINE -> {
-                    OnlineSearchScreen(
-                        query = query.text,
-                        onQueryChange = { query = it },
-                        navController = navController,
-                        onSearch = { handleSearch(it) },
-                        onDismiss = { /* stay on page */ },
-                        pureBlack = pureBlack,
-                        isFocused = isFocused,
-                    )
-                }
-            }
-
-            HideOnScrollFAB(
-                lazyListState = lazyListState,
-                icon = R.drawable.mic,
-                onClick = { navController.navigate("recognition") },
-            )
+    val playerSearchQuery by savedStateHandle.getStateFlow<String?>("playerSearchQuery", null).collectAsState()
+    LaunchedEffect(playerSearchQuery) {
+        playerSearchQuery?.takeIf { it.isNotBlank() }?.let { requestedQuery ->
+            searchSource = SearchSource.ONLINE
+            handleSearch(requestedQuery)
+            lazyListState.scrollToItem(0)
+            savedStateHandle["playerSearchQuery"] = null
         }
     }
 
+    PredictiveBackHandler(enabled = !isPlayerExpanded && (isFocused || submittedQuery.isNotBlank())) { progress ->
+        val start = searchSession.event
+        // Commit only after the gesture completes. Cancellation leaves the draft, artwork and
+        // active motion intact; an IME close or a new submission invalidates this gesture.
+        progress.collect {}
+        when (searchBackAction(start, searchSession.event)) {
+            SearchBackAction.DismissEditor -> dismissEditor()
+            SearchBackAction.ReturnToRoot -> handleSearch("")
+            SearchBackAction.None -> Unit
+        }
+    }
+
+    fun acceptCompletion(suggested: String, submit: Boolean) {
+        cancelCompletion()
+        if (!isFocused) openEditor()
+        val typed = textState.text.toString()
+        val completed = searchCompletionText(typed, suggested)
+        val prefixLength = searchCompletionPrefixLength(typed, completed)
+        if (reducedMotion || prefixLength == completed.length) {
+            setQuery(TextFieldValue(completed, TextRange(completed.length)))
+            if (submit) handleSearch(completed)
+            return
+        }
+        val prefix = completed.take(prefixLength)
+        expectedCompletionText = prefix
+        setQuery(TextFieldValue(prefix, TextRange(prefix.length)))
+        completionJob = coroutineScope.launch {
+            val step = irideTypewriterStepMillis(completed.length)
+            for (length in prefixLength + 1..completed.length) {
+                delay(step)
+                val next = completed.take(length)
+                expectedCompletionText = next
+                setQuery(TextFieldValue(next, TextRange(next.length)))
+            }
+            completionJob = null
+            expectedCompletionText = null
+            if (submit) handleSearch(completed)
+        }
+    }
+
+    val pageMenuSections =
+        listOf(
+            listOf(
+                LibraryPageMenuAction(
+                    label = stringResource(R.string.online),
+                    icon = R.drawable.language,
+                    selected = searchSource == SearchSource.ONLINE,
+                    onClick = {
+                        searchSource = SearchSource.ONLINE
+                    },
+                ),
+                LibraryPageMenuAction(
+                    label = stringResource(R.string.filter_library),
+                    icon = if (searchSource == SearchSource.LOCAL) R.drawable.bookmark_filled else R.drawable.bookmark_outlined,
+                    selected = searchSource == SearchSource.LOCAL,
+                    onClick = {
+                        searchSource = SearchSource.LOCAL
+                    },
+                ),
+            )
+        )
+    val genreArtworkLoader = rememberGenreArtworkLoader()
+    val draftGenre = remember(query.text, isFocused, searchSource) {
+        if (isFocused && searchSource == SearchSource.ONLINE) searchGenreArtworkName(query.text) else null
+    }
+    LaunchedEffect(draftGenre, genreArtworkLoader) {
+        draftGenre?.let(genreArtworkLoader::prefetch)
+    }
+    val searchedGenre = remember(submittedQuery, searchSource) {
+        if (searchSource == SearchSource.ONLINE) searchGenreArtworkName(submittedQuery) else null
+    }
+    val artworkLoader = rememberArtistArtworkLoader()
+    val pendingArtist = (onlineSearchResultViewModel.summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull() as? ArtistItem)
+        ?.takeIf { searchedGenre == null && searchSource == SearchSource.ONLINE && submittedQuery.isNotBlank() && onlineSearchResultViewModel.query == submittedQuery }
+    // Decode during result classification so the confirmed backdrop is already warm.
+    LaunchedEffect(pendingArtist, submittedQuery) {
+        pendingArtist?.let {
+            artworkLoader.prefetch(ArtistArtworkRequest(it.id, it.title, null, it.channelId,
+                !it.isProfile))
+        }
+    }
+    // Song results can promote an exact song above an initially returned artist. Wait for that
+    // classification before mounting artwork; suggestions only prefetch, never choose a backdrop.
+    val classificationReady = onlineSearchResultViewModel.summaryPage != null &&
+        onlineSearchResultViewModel.viewStateMap[YouTube.SearchFilter.FILTER_SONG.value] != null
+    val firstArtist = (onlineSearchResultViewModel.topResult?.items?.firstOrNull() as? ArtistItem)
+        ?.takeIf { searchedGenre == null && classificationReady && searchSource == SearchSource.ONLINE && submittedQuery.isNotBlank() && onlineSearchResultViewModel.query == submittedQuery }
+    val artistArtwork = if (searchedGenre != null) {
+        val loaded by rememberGenreArtwork(searchedGenre)
+        loaded
+    } else if (firstArtist != null) {
+        val loaded by rememberIrideArtistArtwork(
+            artistId = firstArtist.id,
+            // Keep search artwork stable: let Apple Music supply the first displayed image.
+            url = null,
+            artistName = firstArtist.title,
+            channelId = firstArtist.channelId,
+            externalEnabled = !firstArtist.isProfile,
+        )
+        loaded
+    } else null
+    val landingColor = when {
+        mainTopGradient -> Color.Transparent
+        else -> MaterialTheme.colorScheme.background
+    }
+    val landingInk = MaterialTheme.colorScheme.textPrimary
+    val landingSecondary = MaterialTheme.colorScheme.textSecondary
+    val landingFieldColor = MaterialTheme.colorScheme.fillSubtle
+    val pageColor = artistArtwork?.tint ?: landingColor
+    // The scene paints its pigment on the same clock as the returning photo. The surface still
+    // supplies matching ink and navigation colors, including when the base page is transparent.
+    IrideArtworkSurface(backgroundColor = pageColor, modifier = Modifier.fillMaxSize(), paintBackground = false) {
+        val searchBack: (@Composable () -> Unit)? = if (submittedQuery.isBlank() || gestureNavigationEnabled()) null else ({
+            Box(
+                Modifier.size(48.dp).clickable(
+                    interactionSource = remember { MutableInteractionSource() }, indication = null,
+                    role = Role.Button, onClick = { cancelCompletion(); handleSearch("") },
+                ), contentAlignment = Alignment.Center,
+            ) {
+                Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back),
+                    tint = Color.White)
+            }
+        })
+        SearchScene(
+            query = query,
+            submittedQuery = submittedQuery,
+            event = motionEvent,
+            keyboardRequestRevision = keyboardRequestRevision,
+            onMotionComplete = { completedRevision ->
+                val completed = searchSession.finish(completedRevision)
+                if (completed != searchSession) {
+                    searchSession = completed
+                    setQuery(TextFieldValue())
+                    onlineSearchResultViewModel.search("")
+                }
+            },
+            landingColor = landingColor,
+            landingInk = landingInk,
+            landingSecondary = landingSecondary,
+            landingFieldColor = landingFieldColor,
+            resultsReady = searchSource != SearchSource.ONLINE ||
+                (onlineSearchResultViewModel.query == submittedQuery &&
+                    (onlineSearchResultViewModel.summaryPage != null || onlineSearchResultViewModel.viewStateMap.values.any { it != null })),
+            textState = textState,
+            searchSource = searchSource,
+            focusRequester = focusRequester,
+            listState = lazyListState,
+            onOpen = ::openEditor,
+            onDismiss = ::dismissEditor,
+            onSubmit = { cancelCompletion(); handleSearch(it) },
+            onComplete = ::acceptCompletion,
+            onOpenArtist = { artistId ->
+                dismissEditor()
+                navController.navigate("artist/$artistId")
+            },
+            artistArtwork = artistArtwork,
+            navigationIcon = searchBack,
+        ) { irideHeader ->
+            if (searchSource == SearchSource.ONLINE) {
+                OnlineSearchResultsBody(
+                    modifier = Modifier.fillMaxSize(),
+                    navController = navController,
+                    viewModel = onlineSearchResultViewModel,
+                    pureBlack = pureBlack,
+                    useIrideStyle = true,
+                    isSearchFocused = false,
+                    queryText = query.text,
+                    submittedQuery = submittedQuery,
+                    onQueryChange = { cancelCompletion(); setQuery(it) },
+                    onSearch = { handleSearch(it) },
+                    onDismissSuggestions = {
+                        dismissEditor()
+                    },
+                    header = irideHeader,
+                    pageMenuSections = pageMenuSections,
+                    lazyListState = lazyListState,
+                )
+            } else {
+                LocalSearchScreen(
+                    query = submittedQuery,
+                    navController = navController,
+                    onDismiss = { navController.navigateUp() },
+                    pureBlack = pureBlack,
+                    header = irideHeader,
+                    pageMenuSections = pageMenuSections,
+                    lazyListState = lazyListState,
+                )
+            }
+        }
+    }
+
+    val latestDismissEditor by rememberUpdatedState(::dismissEditor)
     DisposableEffect(lifecycleOwner, isPlayerExpanded) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     if (isHandlingScrollToTop) return@LifecycleEventObserver
                     if (isPlayerExpanded) {
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
+                        latestDismissEditor()
                     }
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     if (isHandlingScrollToTop) return@LifecycleEventObserver
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
+                    latestDismissEditor()
                 }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         if (isPlayerExpanded) {
-            keyboardController?.hide()
-            focusManager.clearFocus()
+            latestDismissEditor()
         }
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchCollapsingHeader(
-    scrollBehavior: TopAppBarScrollBehavior,
-    query: TextFieldValue,
-    onQueryChange: (TextFieldValue) -> Unit,
-    searchSource: SearchSource,
-    onSearchSourceToggle: () -> Unit,
-    focusRequester: FocusRequester,
-    onFocusChanged: (FocusState) -> Unit,
-    onSearch: () -> Unit,
-    onClear: () -> Unit,
-    pureBlack: Boolean,
-) {
-    val density = LocalDensity.current
-    val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
-
-    SideEffect {
-        if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
-            scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
-        }
-    }
-
-    val fraction = scrollBehavior.state.collapsedFraction
-    val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp + SearchBoxHeightDp + 12.dp
-
-    val indicatorOffset by animateDpAsState(
-        targetValue = if (searchSource == SearchSource.ONLINE) 2.dp else 42.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "searchSourceIndicator",
-    )
-
-    Surface(
-        color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
-    ) {
-        Box {
-            // Single Title Transition
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(SmallTitleBarHeightDp)
-                    .padding(horizontal = 12.dp)
-                    .graphicsLayer {
-                        // Move from Large position to Small position
-                        // Expanded: below SmallTitleBar. Collapsed: at 0.
-                        translationY = lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
-                    },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
-                val pillEnabled = fraction < 0.05f
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    val searchStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
-
-                    Text(
-                        text = stringResource(R.string.search),
-                        style = searchStyle,
-                        maxLines = 1,
-                        modifier = Modifier.graphicsLayer {
-                            val targetScale = 0.61f
-                            val scale = lerpFloat(1f, targetScale, fraction)
-                            scaleX = scale
-                            scaleY = scale
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                            },
-
-                    )
-                    Box(
-                        modifier = Modifier
-                            .alpha(pillAlpha)
-                            .padding(bottom = 4.dp)
-                            .width(80.dp)
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .offset(x = indicatorOffset, y = 2.dp)
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer),
-                        )
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (searchSource != SearchSource.ONLINE) onSearchSourceToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.language),
-                                    contentDescription = null,
-                                    tint = if (searchSource == SearchSource.ONLINE)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (searchSource != SearchSource.LOCAL) onSearchSourceToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.bookmark_outlined),
-                                    contentDescription = null,
-                                    tint = if (searchSource == SearchSource.LOCAL)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Search Box Layer
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer { 
-                        val startOffset = with(density) { (SmallTitleBarHeightDp + LargeTitleHeightDp).toPx() }
-                        translationY = startOffset + scrollBehavior.state.heightOffset
-                    }
-                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
-                    .height(SearchBoxHeightDp)
-                    .clip(RoundedCornerShape(26.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainer),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(focusRequester)
-                            .onFocusChanged(onFocusChanged),
-                        textStyle = TextStyle(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 16.sp,
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (query.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(
-                                        when (searchSource) {
-                                            SearchSource.LOCAL -> R.string.search_library
-                                            SearchSource.ONLINE -> R.string.search_yt_music
-                                        },
-                                    ),
-                                    style = TextStyle(
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        fontSize = 16.sp,
-                                    ),
-                                )
-                            }
-                            innerTextField()
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                    )
-
-                    if (query.text.isNotEmpty()) {
-                        IconButton(onClick = onClear) {
-                            Icon(
-                                painter = painterResource(R.drawable.close),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }

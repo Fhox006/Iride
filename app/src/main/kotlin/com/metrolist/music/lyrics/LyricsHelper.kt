@@ -15,7 +15,6 @@ import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.utils.resize
-import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
 import coil3.imageLoader
@@ -70,13 +69,14 @@ class LyricsHelper
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
-    private val networkConnectivity: NetworkConnectivityObserver,
 ) {
     private var lyricsProviders =
         listOf(
+            LrcLibLyricsProvider,
+            BetterLyricsUnisonProvider,
+            BetterLyricsSillabaProvider,
             BetterLyricsProvider,
             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
-            LrcLibLyricsProvider,
             KuGouLyricsProvider,
             LyricsPlusProvider,
             // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
@@ -97,6 +97,8 @@ constructor(
                     when (preferredProvider) {
                         PreferredLyricsProvider.LRCLIB -> listOf(
                             LrcLibLyricsProvider,
+                            BetterLyricsUnisonProvider,
+                            BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
                             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             KuGouLyricsProvider,
@@ -106,6 +108,8 @@ constructor(
                         )
                         PreferredLyricsProvider.KUGOU -> listOf(
                             KuGouLyricsProvider,
+                            BetterLyricsUnisonProvider,
+                            BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
                             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
@@ -114,6 +118,8 @@ constructor(
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.BETTER_LYRICS -> listOf(
+                            BetterLyricsUnisonProvider,
+                            BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
                             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
@@ -124,6 +130,8 @@ constructor(
                         )
                         PreferredLyricsProvider.PAXSENIX -> listOf(
                             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
+                            BetterLyricsUnisonProvider,
+                            BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
                             LrcLibLyricsProvider,
                             KuGouLyricsProvider,
@@ -162,11 +170,15 @@ constructor(
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
         val wordDuration = resolveWordLyricsDuration(mediaMetadata)
-        // STAT MODE: query ALL providers regardless of user settings or isEnabled()
+        // STAT MODE: query ALL providers regardless of user settings or isEnabled().
+        // BetterLyricsSillabaProvider is intentionally absent: it calls the exact same
+        // BetterLyrics endpoint with identical params, so querying both only doubles
+        // traffic (and rate-limit risk) for zero coverage gain.
         val enabledProviders = listOf(
+            LrcLibLyricsProvider,
+            BetterLyricsUnisonProvider,
             BetterLyricsProvider,
             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
-            LrcLibLyricsProvider,
             KuGouLyricsProvider,
             LyricsPlusProvider,
             // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
@@ -176,10 +188,12 @@ constructor(
         val fastSet = setOf(YouTubeLyricsProvider)
         val subtitleSet = setOf(YouTubeSubtitleLyricsProvider)
         val lrcLibSet = setOf(LrcLibLyricsProvider)
-        val wordProviderSet = setOf(BetterLyricsProvider) // Paxsenix has its own timeout below
+        // Word-by-word providers; Paxsenix has its own timeout below
+        val wordProviderSet = setOf(BetterLyricsUnisonProvider, BetterLyricsSillabaProvider, BetterLyricsProvider)
 
         val tierMutex = Mutex()
         var bestTier = LyricsTier.PLAIN
+        var bestPriority = Int.MAX_VALUE
         var anyEmitted = false
 
         LyricsDebugLog.clear()
@@ -219,9 +233,13 @@ constructor(
                             val filtered = LyricsUtils.filterLyricsCreditLines(raw)
                             val tier = LyricsUtils.detectTier(filtered)
                             LyricsDebugLog.log("SUCCESS ${provider.name} | ${elapsed}ms | tier=$tier | lines=${filtered.lines().size}")
+                            val priority = LyricsProviderRegistry.getTierTieBreakPriority(provider.name)
                             val shouldEmit = tierMutex.withLock {
-                                if (tier.ordinal > bestTier.ordinal || (!anyEmitted && tier.ordinal >= LyricsTier.PLAIN.ordinal)) {
-                                    if (tier.ordinal > bestTier.ordinal) bestTier = tier
+                                val isBetterTier = tier.ordinal > bestTier.ordinal
+                                val isTieBreakWin = tier.ordinal == bestTier.ordinal && anyEmitted && priority < bestPriority
+                                if (isBetterTier || isTieBreakWin || (!anyEmitted && tier.ordinal >= LyricsTier.PLAIN.ordinal)) {
+                                    bestTier = tier
+                                    bestPriority = priority
                                     anyEmitted = true
                                     true
                                 } else false
@@ -276,23 +294,18 @@ constructor(
             return LyricsWithProvider(cached.lyrics, cached.providerName)
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
-        val isNetworkAvailable = try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
-            true
-        }
-
-        if (!isNetworkAvailable) {
-            return LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
-        }
+        // No connectivity gate here: a transient false negative during a Wi-Fi↔mobile handover
+        // used to mark the song as "lyrics not found" without even trying. Requests fail fast
+        // on their own now, and each provider below already handles its own failures.
 
         val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
             val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
             val enabledProviders = lyricsProviders.filter { it.isEnabled(context) }
             val perProviderTimeout = MAX_LYRICS_FETCH_MS / enabledProviders.size.coerceAtLeast(1)
+
+            var best: LyricsWithProvider? = null
+            var bestTier = LyricsTier.PLAIN
+            var bestPriority = Int.MAX_VALUE
 
             for (provider in enabledProviders) {
                 try {
@@ -310,9 +323,21 @@ constructor(
                     }
                     when {
                         result?.isSuccess == true -> {
-                            Timber.tag("LyricsHelper").i("Successfully got lyrics from ${provider.name}")
                             val filteredLyrics = LyricsUtils.filterLyricsCreditLines(result.getOrNull()!!)
-                            return@withTimeoutOrNull LyricsWithProvider(filteredLyrics, provider.name)
+                            val tier = LyricsUtils.detectTier(filteredLyrics)
+                            val priority = LyricsProviderRegistry.getTierTieBreakPriority(provider.name)
+                            Timber.tag("LyricsHelper").i("Got lyrics from ${provider.name} (tier=$tier)")
+                            val isBetter = tier.ordinal > bestTier.ordinal ||
+                                (tier.ordinal == bestTier.ordinal && priority < bestPriority)
+                            if (best == null || isBetter) {
+                                best = LyricsWithProvider(filteredLyrics, provider.name)
+                                bestTier = tier
+                                bestPriority = priority
+                            }
+                            // A word-by-word result from the top-priority provider can't be beaten; stop early.
+                            if (bestTier == LyricsTier.SYNCED_WORD && bestPriority == 0) {
+                                return@withTimeoutOrNull best!!
+                            }
                         }
                         result == null -> {
                             Timber.tag("LyricsHelper").w("${provider.name} timed out after ${perProviderTimeout}ms")
@@ -327,8 +352,10 @@ constructor(
                     Timber.tag("LyricsHelper").w("${provider.name} threw exception: ${e.message}")
                 }
             }
-            Timber.tag("LyricsHelper").w("All providers failed for ${mediaMetadata.title}")
-            return@withTimeoutOrNull LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
+            if (best == null) {
+                Timber.tag("LyricsHelper").w("All providers failed for ${mediaMetadata.title}")
+            }
+            return@withTimeoutOrNull best ?: LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
         }
         return result ?: LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
     }
@@ -351,19 +378,8 @@ constructor(
             return
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
-        val isNetworkAvailable = try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
-            true
-        }
-
-        if (!isNetworkAvailable) {
-            // Still try to proceed in case of false negative
-            return
-        }
+        // No connectivity gate here either (same rationale as getLyrics): attempt the
+        // providers regardless and let their own error handling deal with being offline.
 
         val allResult = mutableListOf<LyricsResult>()
         currentLyricsJob = CoroutineScope(SupervisorJob()).launch {

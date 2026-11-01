@@ -24,7 +24,6 @@ fun YouTubeSongMenu(
     navController: NavController,
     onDismiss: () -> Unit,
     onHistoryRemoved: () -> Unit = {},
-    showStarButton: Boolean = true,
 ) {
     val database = LocalDatabase.current
     val librarySong by database.song(song.id).collectAsState(initial = null)
@@ -44,6 +43,5 @@ fun YouTubeSongMenu(
         navController = navController,
         onDismiss = onDismiss,
         onHistoryRemoved = onHistoryRemoved,
-        showStarButton = showStarButton,
     )
 }

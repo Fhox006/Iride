@@ -10,9 +10,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.metrolist.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.time.LocalDateTime
 
 @Immutable
@@ -22,6 +21,7 @@ data class AlbumEntity(
     val playlistId: String? = null,
     val title: String,
     val year: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val albumType: String? = null,
     @ColumnInfo(defaultValue = "NULL") val releaseDate: String? = null,
     val thumbnailUrl: String? = null,
     val themeColor: Int? = null,
@@ -36,7 +36,13 @@ data class AlbumEntity(
     @ColumnInfo(name = "isLocal", defaultValue = false.toString())
     val isLocal: Boolean = false,
     @ColumnInfo(name = "isUploaded", defaultValue = false.toString())
-    val isUploaded: Boolean = false
+    val isUploaded: Boolean = false,
+    @ColumnInfo(name = "noteTitle", defaultValue = "NULL")
+    val noteTitle: String? = null,
+    @ColumnInfo(name = "noteRating", defaultValue = "NULL")
+    val noteRating: Float? = null,
+    @ColumnInfo(name = "noteText", defaultValue = "NULL")
+    val noteText: String? = null,
 ) {
     fun localToggleLike() = copy(
         bookmarkedAt = if (bookmarkedAt != null) null else LocalDateTime.now()
@@ -50,10 +56,14 @@ data class AlbumEntity(
         inLibrary = if (inLibrary != null) null else LocalDateTime.now()
     )
 
-    fun toggleLike() = localToggleLike().also {
-        CoroutineScope(Dispatchers.IO).launch {
-            if (playlistId != null)
-                YouTube.likePlaylist(playlistId, bookmarkedAt == null)
+    // Immediate sync via shared supervised scope (same package: SongEntity.kt).
+    // runCatching: nothing ever reaches the uncaught handler.
+    fun toggleLike(): AlbumEntity = localToggleLike().also {
+        playlistId?.let { id ->
+            EntitySyncScope.launch {
+                runCatching { YouTube.likePlaylist(id, bookmarkedAt == null).getOrThrow() }
+                    .onFailure { error -> Timber.e(error, "Failed to sync album like: %s", id) }
+            }
         }
     }
 }

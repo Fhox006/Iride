@@ -14,5 +14,4 @@ fun CastButton(
     modifier: Modifier = Modifier,
     tintColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
-    // No-op: Cast not available in Izzy build
 }

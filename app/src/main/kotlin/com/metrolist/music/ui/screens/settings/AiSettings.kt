@@ -1,15 +1,17 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IrideFolioAlertDialog
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -17,18 +19,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -41,36 +41,55 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AiProviderKey
 import com.metrolist.music.constants.AiSystemPromptKey
 import com.metrolist.music.constants.DEFAULT_AI_SYSTEM_PROMPT
 import com.metrolist.music.constants.DeeplApiKey
 import com.metrolist.music.constants.DeeplFormalityKey
+import com.metrolist.music.constants.GeniusApiTokenKey
 import com.metrolist.music.constants.LanguageCodeToName
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.OpenRouterApiKey
 import com.metrolist.music.constants.OpenRouterBaseUrlKey
 import com.metrolist.music.constants.OpenRouterModelKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.flow.MutableStateFlow
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiSettings(navController: NavController) {
     var aiProvider by rememberPreference(AiProviderKey, "Gemini")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
-    var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+    var openRouterBaseUrl by
+        rememberPreference(
+            OpenRouterBaseUrlKey,
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        )
     var openRouterModel by rememberPreference(OpenRouterModelKey, "gemini-2.5-flash-lite")
     var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     var translateMode by rememberPreference(TranslateModeKey, "Literal")
     var deeplApiKey by rememberPreference(DeeplApiKey, "")
+    var geniusApiKey by rememberPreference(GeniusApiTokenKey, "")
     var deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     var aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
 
@@ -85,6 +104,7 @@ fun AiSettings(navController: NavController) {
             "Mistral" to "https://api.mistral.ai/v1/chat/completions",
             "DeepL" to "https://api.deepl.com/v2/translate",
             "Custom" to "",
+            "None" to "",
         )
 
     val providerHelpText =
@@ -165,6 +185,7 @@ fun AiSettings(navController: NavController) {
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDeeplApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    var showGeniusApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDeeplFormalityDialog by rememberSaveable { mutableStateOf(false) }
     var showBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
@@ -172,10 +193,10 @@ fun AiSettings(navController: NavController) {
     var showSystemPromptDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showProviderHelpDialog) {
-        AlertDialog(
+        IrideFolioAlertDialog(
             onDismissRequest = { showProviderHelpDialog = false },
             confirmButton = {
-                TextButton(onClick = { showProviderHelpDialog = false }) {
+                IrideFolioPrimaryButton(onClick = { showProviderHelpDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -186,48 +207,47 @@ fun AiSettings(navController: NavController) {
                     providerHelpText.forEach { (provider, help) ->
                         if (help.isNotEmpty()) {
                             val primaryColor = MaterialTheme.colorScheme.primary
-                            val annotatedString =
-                                buildAnnotatedString {
-                                    append("$provider: ")
-                                    // Extract URL from text
-                                    val urlRegex = "https?://[^\\s]+".toRegex()
-                                    val match = urlRegex.find(help)
-                                    if (match != null) {
-                                        val url = match.value
-                                        val beforeUrl = help.substring(0, match.range.first)
-                                        val afterUrl = help.substring(match.range.last + 1)
+                            val annotatedString = buildAnnotatedString {
+                                append("$provider: ")
+                                val urlRegex = "https?://[^\\s]+".toRegex()
+                                val match = urlRegex.find(help)
+                                if (match != null) {
+                                    val url = match.value
+                                    val beforeUrl = help.substring(0, match.range.first)
+                                    val afterUrl = help.substring(match.range.last + 1)
 
-                                        append(beforeUrl)
-                                        val linkStart = length
-                                        append(url)
-                                        val linkEnd = length
-                                        append(afterUrl)
+                                    append(beforeUrl)
+                                    val linkStart = length
+                                    append(url)
+                                    val linkEnd = length
+                                    append(afterUrl)
 
-                                        addLink(
-                                            LinkAnnotation.Url(
-                                                url = url,
-                                                styles =
-                                                    TextLinkStyles(
-                                                        style =
-                                                            SpanStyle(
-                                                                color = primaryColor,
-                                                                textDecoration = TextDecoration.Underline,
-                                                            ),
-                                                    ),
-                                            ),
-                                            start = linkStart,
-                                            end = linkEnd,
-                                        )
-                                    } else {
-                                        append(help)
-                                    }
+                                    addLink(
+                                        LinkAnnotation.Url(
+                                            url = url,
+                                            styles =
+                                                TextLinkStyles(
+                                                    style =
+                                                        SpanStyle(
+                                                            color = primaryColor,
+                                                            textDecoration =
+                                                                TextDecoration.Underline,
+                                                        )
+                                                ),
+                                        ),
+                                        start = linkStart,
+                                        end = linkEnd,
+                                    )
+                                } else {
+                                    append(help)
                                 }
+                            }
 
                             Text(
                                 text = annotatedString,
                                 style =
                                     MaterialTheme.typography.bodyMedium.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     ),
                                 modifier = Modifier.padding(vertical = 4.dp),
                             )
@@ -239,10 +259,10 @@ fun AiSettings(navController: NavController) {
     }
 
     if (showTranslateModeHelpDialog) {
-        AlertDialog(
+        IrideFolioAlertDialog(
             onDismissRequest = { showTranslateModeHelpDialog = false },
             confirmButton = {
-                TextButton(onClick = { showTranslateModeHelpDialog = false }) {
+                IrideFolioPrimaryButton(onClick = { showTranslateModeHelpDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -284,7 +304,6 @@ fun AiSettings(navController: NavController) {
                 } else {
                     openRouterBaseUrl = ""
                 }
-                // Set model to first available model for the selected provider
                 val modelsForProvider = modelsByProvider[it] ?: listOf()
                 openRouterModel =
                     if (modelsForProvider.isNotEmpty()) {
@@ -297,7 +316,7 @@ fun AiSettings(navController: NavController) {
             title = stringResource(R.string.ai_provider),
             current = aiProvider,
             values = aiProviders.keys.toList(),
-            valueText = { it },
+            valueText = { if (it == "None") stringResource(R.string.ai_provider_disabled) else it },
         )
     }
 
@@ -336,12 +355,10 @@ fun AiSettings(navController: NavController) {
     }
 
     if (showApiKeyDialog) {
-        TextFieldDialog(
-            title = { Text(stringResource(R.string.ai_api_key)) },
-            icon = { Icon(painterResource(R.drawable.key), null) },
-            initialTextFieldValue = TextFieldValue(text = openRouterApiKey),
-            onDone = {
-                openRouterApiKey = it
+        AiSecretKeyDialog(
+            initialValue = openRouterApiKey,
+            onSave = {
+                openRouterApiKey = it.trim()
                 showApiKeyDialog = false
             },
             onDismiss = { showApiKeyDialog = false },
@@ -358,6 +375,19 @@ fun AiSettings(navController: NavController) {
                 showDeeplApiKeyDialog = false
             },
             onDismiss = { showDeeplApiKeyDialog = false },
+        )
+    }
+
+    if (showGeniusApiKeyDialog) {
+        TextFieldDialog(
+            title = { Text(stringResource(R.string.genius_api_key)) },
+            icon = { Icon(painterResource(R.drawable.key), null) },
+            initialTextFieldValue = TextFieldValue(text = geniusApiKey),
+            onDone = {
+                geniusApiKey = it
+                showGeniusApiKeyDialog = false
+            },
+            onDismiss = { showGeniusApiKeyDialog = false },
         )
     }
 
@@ -387,11 +417,17 @@ fun AiSettings(navController: NavController) {
             title = { Text(stringResource(R.string.ai_base_url)) },
             icon = { Icon(painterResource(R.drawable.link), null) },
             initialTextFieldValue = TextFieldValue(text = openRouterBaseUrl),
+            isInputValid = { value ->
+                value.trim().toHttpUrlOrNull()?.let {
+                    it.username.isEmpty() && it.password.isEmpty() && it.fragment == null
+                } == true
+            },
             onDone = {
-                openRouterBaseUrl = it
+                openRouterBaseUrl = it.trim()
                 showBaseUrlDialog = false
             },
             onDismiss = { showBaseUrlDialog = false },
+            extraContent = { Text(stringResource(R.string.ai_custom_endpoint_invalid)) },
         )
     }
 
@@ -433,12 +469,12 @@ fun AiSettings(navController: NavController) {
         TextFieldDialog(
             title = { Text(stringResource(R.string.ai_system_prompt)) },
             icon = { Icon(painterResource(R.drawable.edit), null) },
-            initialTextFieldValue = TextFieldValue(text = aiSystemPrompt.ifBlank { DEFAULT_AI_SYSTEM_PROMPT }),
+            initialTextFieldValue =
+                TextFieldValue(text = aiSystemPrompt.ifBlank { DEFAULT_AI_SYSTEM_PROMPT }),
             singleLine = false,
             maxLines = 12,
             isInputValid = { true },
             onDone = {
-                // Treat saving the unmodified default (or blank) as "use default"
                 aiSystemPrompt = if (it.isBlank() || it == DEFAULT_AI_SYSTEM_PROMPT) "" else it
                 showSystemPromptDialog = false
             },
@@ -446,17 +482,14 @@ fun AiSettings(navController: NavController) {
             extraContent = {
                 if (aiSystemPrompt.isNotBlank()) {
                     Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(
                             onClick = {
                                 aiSystemPrompt = ""
                                 showSystemPromptDialog = false
-                            },
+                            }
                         ) {
                             Text(stringResource(R.string.ai_system_prompt_reset))
                         }
@@ -466,198 +499,294 @@ fun AiSettings(navController: NavController) {
         )
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal,
-                ),
-            ).verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
+    val settingsScrollState = rememberScrollState()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
-        Material3SettingsGroup(
-            title = stringResource(R.string.ai_provider),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.explore_outlined),
-                        title = { Text(stringResource(R.string.ai_provider)) },
-                        description = { Text(aiProvider) },
-                        onClick = { showProviderDialog = true },
-                        trailingContent = {
-                            IconButton(onClick = { showProviderHelpDialog = true }) {
-                                Icon(
-                                    painterResource(R.drawable.info),
-                                    contentDescription = stringResource(R.string.ai_provider_help),
-                                    modifier = Modifier.size(20.dp),
+    IridePageFrame(
+        title = stringResource(R.string.ai_integration_settings),
+        scrollState = settingsScrollState,
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        modifier = Modifier.fillMaxSize(),
+        background = {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Horizontal)
+                    )
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Top)
+                    )
+                )
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.ai_provider),
+                    items =
+                        listOf(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.explore_outlined),
+                                    title = { Text(stringResource(R.string.ai_provider)) },
+                                    description = { Text(if (aiProvider == "None") stringResource(R.string.ai_provider_disabled) else aiProvider) },
+                                    onClick = { showProviderDialog = true },
+                                    trailingContent = {
+                                        IconButton(onClick = { showProviderHelpDialog = true }) {
+                                            Icon(
+                                                painterResource(R.drawable.info),
+                                                contentDescription =
+                                                    stringResource(R.string.ai_provider_help),
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    },
+                                ),
+                                if (aiProvider == "Custom") {
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.link),
+                                        title = { Text(stringResource(R.string.ai_base_url)) },
+                                        description = {
+                                            Text(
+                                                openRouterBaseUrl.ifBlank {
+                                                    stringResource(R.string.not_set)
+                                                }
+                                            )
+                                        },
+                                        onClick = { showBaseUrlDialog = true },
+                                    )
+                                } else {
+                                    null
+                                },
+                            )
+                            .filterNotNull(),
+                )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.ai_setup_guide),
+                    items =
+                        buildList {
+                            if (aiProvider == "DeepL") {
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.key),
+                                        title = {
+                                            Text("DeepL ${stringResource(R.string.ai_api_key)}")
+                                        },
+                                        description = {
+                                            Text(
+                                                if (deeplApiKey.isNotEmpty()) {
+                                                    "•".repeat(minOf(deeplApiKey.length, 8))
+                                                } else {
+                                                    stringResource(R.string.not_set)
+                                                }
+                                            )
+                                        },
+                                        onClick = { showDeeplApiKeyDialog = true },
+                                    )
+                                )
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.tune),
+                                        title = {
+                                            Text(stringResource(R.string.ai_deepl_formality))
+                                        },
+                                        description = {
+                                            Text(
+                                                when (deeplFormality) {
+                                                    "default" ->
+                                                        stringResource(
+                                                            R.string.ai_deepl_formality_default
+                                                        )
+                                                    "more" ->
+                                                        stringResource(
+                                                            R.string.ai_deepl_formality_more
+                                                        )
+                                                    "less" ->
+                                                        stringResource(
+                                                            R.string.ai_deepl_formality_less
+                                                        )
+                                                    else -> deeplFormality
+                                                }
+                                            )
+                                        },
+                                        onClick = { showDeeplFormalityDialog = true },
+                                    )
+                                )
+                            } else if (aiProvider != "None") {
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.key),
+                                        title = { Text(stringResource(R.string.ai_api_key)) },
+                                        description = {
+                                            Text(
+                                                if (openRouterApiKey.isNotEmpty()) {
+                                                    "•".repeat(minOf(openRouterApiKey.length, 8))
+                                                } else {
+                                                    stringResource(R.string.not_set)
+                                                }
+                                            )
+                                        },
+                                        onClick = { showApiKeyDialog = true },
+                                    )
+                                )
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.discover_tune),
+                                        title = { Text(stringResource(R.string.ai_model)) },
+                                        description = {
+                                            Text(
+                                                openRouterModel.ifBlank {
+                                                    stringResource(R.string.not_set)
+                                                }
+                                            )
+                                        },
+                                        onClick = { showModelDialog = true },
+                                    )
                                 )
                             }
                         },
-                    ),
-                    if (aiProvider == "Custom") {
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.link),
-                            title = { Text(stringResource(R.string.ai_base_url)) },
-                            description = { Text(openRouterBaseUrl.ifBlank { stringResource(R.string.not_set) }) },
-                            onClick = { showBaseUrlDialog = true },
-                        )
-                    } else {
-                        null
-                    },
-                ).filterNotNull(),
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.ai_setup_guide),
-            items =
-                buildList {
-                    if (aiProvider == "DeepL") {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.key),
-                                title = { Text("DeepL ${stringResource(R.string.ai_api_key)}") },
-                                description = {
-                                    Text(
-                                        if (deeplApiKey.isNotEmpty()) {
-                                            "•".repeat(minOf(deeplApiKey.length, 8))
-                                        } else {
-                                            stringResource(R.string.not_set)
-                                        },
-                                    )
-                                },
-                                onClick = { showDeeplApiKeyDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.tune),
-                                title = { Text(stringResource(R.string.ai_deepl_formality)) },
-                                description = {
-                                    Text(
-                                        when (deeplFormality) {
-                                            "default" -> stringResource(R.string.ai_deepl_formality_default)
-                                            "more" -> stringResource(R.string.ai_deepl_formality_more)
-                                            "less" -> stringResource(R.string.ai_deepl_formality_less)
-                                            else -> deeplFormality
-                                        },
-                                    )
-                                },
-                                onClick = { showDeeplFormalityDialog = true },
-                            ),
-                        )
-                    } else {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.key),
-                                title = { Text(stringResource(R.string.ai_api_key)) },
-                                description = {
-                                    Text(
-                                        if (openRouterApiKey.isNotEmpty()) {
-                                            "•".repeat(minOf(openRouterApiKey.length, 8))
-                                        } else {
-                                            stringResource(R.string.not_set)
-                                        },
-                                    )
-                                },
-                                onClick = { showApiKeyDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.discover_tune),
-                                title = { Text(stringResource(R.string.ai_model)) },
-                                description = { Text(openRouterModel.ifBlank { stringResource(R.string.not_set) }) },
-                                onClick = { showModelDialog = true },
-                            ),
-                        )
-                    }
-                },
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.ai_translation_mode),
-            items =
-                buildList {
-                    if (aiProvider != "DeepL") {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.translate),
-                                title = { Text(stringResource(R.string.ai_translation_mode)) },
-                                description = {
-                                    Text(
-                                        when (translateMode) {
-                                            "Literal" -> stringResource(R.string.ai_translation_literal)
-                                            "Transcribed" -> stringResource(R.string.ai_translation_transcribed)
-                                            else -> translateMode
-                                        },
-                                    )
-                                },
-                                onClick = { showTranslateModeDialog = true },
-                                trailingContent = {
-                                    IconButton(onClick = { showTranslateModeHelpDialog = true }) {
-                                        Icon(
-                                            painterResource(R.drawable.info),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    }
-                                },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.edit),
-                                title = { Text(stringResource(R.string.ai_system_prompt)) },
-                                description = {
-                                    Text(
-                                        if (aiSystemPrompt.isNotBlank()) {
-                                            aiSystemPrompt.take(60).let {
-                                                if (aiSystemPrompt.length > 60) "$it…" else it
-                                            }
-                                        } else {
-                                            stringResource(R.string.ai_system_prompt_default)
-                                        },
-                                    )
-                                },
-                                onClick = { showSystemPromptDialog = true },
-                            ),
-                        )
-                    }
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.language),
-                            title = { Text(stringResource(R.string.ai_target_language)) },
-                            description = { Text(LanguageCodeToName[translateLanguage] ?: translateLanguage) },
-                            onClick = { showLanguageDialog = true },
-                        ),
-                    )
-                },
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.ai_lyrics_translation)) },
-        navigationIcon = {
-            IconButton(onClick = { navController.navigateUp() }) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
                 )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                AiIntegrationControls(
+                    provider = aiProvider,
+                    apiKey = openRouterApiKey,
+                    endpoint = openRouterBaseUrl,
+                    model = openRouterModel,
+                    onSelectModel = { openRouterModel = it },
+                )
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.ai_translation_mode),
+                    items =
+                        buildList {
+                            if (aiProvider != "DeepL") {
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.translate),
+                                        title = {
+                                            Text(stringResource(R.string.ai_translation_mode))
+                                        },
+                                        description = {
+                                            Text(
+                                                when (translateMode) {
+                                                    "Literal" ->
+                                                        stringResource(
+                                                            R.string.ai_translation_literal
+                                                        )
+                                                    "Transcribed" ->
+                                                        stringResource(
+                                                            R.string.ai_translation_transcribed
+                                                        )
+                                                    else -> translateMode
+                                                }
+                                            )
+                                        },
+                                        onClick = { showTranslateModeDialog = true },
+                                        trailingContent = {
+                                            IconButton(
+                                                onClick = { showTranslateModeHelpDialog = true }
+                                            ) {
+                                                Icon(
+                                                    painterResource(R.drawable.info),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                        },
+                                    )
+                                )
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.edit),
+                                        title = { Text(stringResource(R.string.ai_system_prompt)) },
+                                        description = {
+                                            Text(
+                                                if (aiSystemPrompt.isNotBlank()) {
+                                                    aiSystemPrompt.take(60).let {
+                                                        if (aiSystemPrompt.length > 60) "$it…"
+                                                        else it
+                                                    }
+                                                } else {
+                                                    stringResource(
+                                                        R.string.ai_system_prompt_default
+                                                    )
+                                                }
+                                            )
+                                        },
+                                        onClick = { showSystemPromptDialog = true },
+                                    )
+                                )
+                            }
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.language),
+                                    title = { Text(stringResource(R.string.ai_target_language)) },
+                                    description = {
+                                        Text(
+                                            LanguageCodeToName[translateLanguage]
+                                                ?: translateLanguage
+                                        )
+                                    },
+                                    onClick = { showLanguageDialog = true },
+                                )
+                            )
+                        },
+                )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.genius_section_title),
+                    items =
+                        listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.key),
+                                title = { Text(stringResource(R.string.genius_api_key)) },
+                                description = {
+                                    Text(
+                                        if (geniusApiKey.isNotEmpty()) {
+                                            "•".repeat(minOf(geniusApiKey.length, 8))
+                                        } else {
+                                            stringResource(R.string.genius_api_key_description)
+                                        }
+                                    )
+                                },
+                                onClick = { showGeniusApiKeyDialog = true },
+                            )
+                        ),
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        },
-    )
+        }
+    }
 }

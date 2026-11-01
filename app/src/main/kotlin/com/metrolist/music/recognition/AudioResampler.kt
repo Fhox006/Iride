@@ -52,14 +52,12 @@ object AudioResampler {
         if (decodedAudio.sampleRate == outputSampleRate) {
             return@withContext Result.success(decodedAudio)
         }
-        
         var sonicRef: AudioProcessor? = null
         try {
             val sonic: AudioProcessor = SonicAudioProcessor().apply {
                 setOutputSampleRateHz(outputSampleRate)
             }
             sonicRef = sonic
-            
             val inputFormat = AudioProcessor.AudioFormat(
                 decodedAudio.sampleRate,
                 decodedAudio.channelCount,
@@ -97,7 +95,6 @@ object AudioResampler {
                     }
                 }
             }
-            
             Result.success(DecodedAudio(
                 data = resampledData,
                 channelCount = outputFormat.channelCount,

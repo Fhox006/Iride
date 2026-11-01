@@ -77,12 +77,9 @@ class ListenTogetherViewModel @Inject constructor(
     fun forceReconnect() {
         manager.forceReconnect()
     }
-    
     fun reconnect() {
         manager.forceReconnect()
     }
-    
     fun getPersistedRoomCode(): String? = manager.getPersistedRoomCode()
-    
     fun getSessionAge(): Long = manager.getSessionAge()
 }

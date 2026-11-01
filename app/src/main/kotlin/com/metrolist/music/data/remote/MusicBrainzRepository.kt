@@ -5,6 +5,8 @@
 
 package com.metrolist.music.data.remote
 
+import com.metrolist.music.extensions.parseAlbumReleaseDate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -24,31 +26,25 @@ class MusicBrainzRepository @Inject constructor() {
         year: Int?
     ): String? = withContext(Dispatchers.IO) {
         try {
-            // Search with exact phrase quotes.
             val query = buildString {
                 append("release:\"${albumTitle.replace("\"", "\\\"")}\"")
                 if (artistName != null) {
                     append(" AND artist:\"${artistName.replace("\"", "\\\"")}\"")
                 }
             }
-            
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val url = URL("https://musicbrainz.org/ws/2/release-group?query=$encodedQuery&fmt=json")
             val response = makeGetRequest(url) ?: return@withContext null
             val releaseGroups = JSONObject(response).optJSONArray("release-groups") ?: return@withContext null
 
-            // Strict filtering: find the first result that matches title AND artist AND year exactly
             var bestMbid: String? = null
+            var firstReleaseDate: String? = null
             for (i in 0 until releaseGroups.length()) {
                 val rg = releaseGroups.getJSONObject(i)
                 val rgTitle = rg.optString("title")
                 val rgDate = rg.optString("first-release-date")
                 val rgMbid = rg.optString("id")
-                
-                // 1. Verify title matches exactly (ignoring case)
                 if (!rgTitle.equals(albumTitle, ignoreCase = true)) continue
-                
-                // 2. Verify artist matches exactly
                 val artistCredit = rg.optJSONArray("artist-credit")
                 if (artistName != null && artistCredit != null && artistCredit.length() > 0) {
                     val firstArtist = artistCredit.getJSONObject(0).optJSONObject("artist")?.optString("name")
@@ -57,42 +53,46 @@ class MusicBrainzRepository @Inject constructor() {
                     }
                 }
 
-                // 3. Verify year matches
                 if (year == null || rgDate.startsWith(year.toString())) {
                     bestMbid = rgMbid
+                    firstReleaseDate = rgDate.takeIf { parseAlbumReleaseDate(it) != null }
                     break
                 }
             }
-            
             if (bestMbid == null) return@withContext null
+            // The release group's first date avoids choosing an arbitrary regional reissue.
+            if (firstReleaseDate?.length == 10) return@withContext firstReleaseDate
 
-            // Follow-up: get releases for this release-group to find the most complete date
             val releaseUrl = URL("https://musicbrainz.org/ws/2/release?release-group=$bestMbid&fmt=json")
-            val releaseResponse = makeGetRequest(releaseUrl) ?: return@withContext null
+            val releaseResponse = makeGetRequest(releaseUrl) ?: return@withContext firstReleaseDate
             val releasesJson = JSONObject(releaseResponse)
-            val releases = releasesJson.optJSONArray("releases") ?: return@withContext null
+            val releases = releasesJson.optJSONArray("releases") ?: return@withContext firstReleaseDate
 
             var bestDate: String? = null
+            val releaseYear = year ?: parseAlbumReleaseDate(firstReleaseDate)?.year
 
             for (i in 0 until releases.length()) {
                 val release = releases.getJSONObject(i)
                 val date = release.optString("date")
-                if (date.isNotEmpty()) {
+                val parsedDate = parseAlbumReleaseDate(date) ?: continue
+                if (releaseYear == null || parsedDate.year == releaseYear) {
                     if (bestDate == null || isBetterDate(date, bestDate)) {
                         bestDate = date
                     }
-                    if (date.length == 10) break
                 }
             }
 
-            bestDate
+            bestDate ?: firstReleaseDate
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    private fun makeGetRequest(url: URL): String? {
+    private suspend fun makeGetRequest(url: URL): String? {
+        MusicBrainzRequestThrottle.awaitTurn()
         var connection: HttpURLConnection? = null
         return try {
             connection = url.openConnection() as HttpURLConnection
@@ -115,7 +115,6 @@ class MusicBrainzRepository @Inject constructor() {
     }
 
     private fun isBetterDate(newDate: String, oldDate: String): Boolean {
-        // Prefer YYYY-MM-DD > YYYY-MM > YYYY
-        return newDate.length > oldDate.length
+        return newDate.length > oldDate.length || (newDate.length == oldDate.length && newDate < oldDate)
     }
 }

@@ -31,8 +31,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttmlBackground)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
-        // v1 is prioritized, so v1000 becomes v2
         assertTrue("v1000 should be mapped to agent:v2", lrc.contains("{agent:v2}(Group vocal)"))
         assertTrue("v1 should be mapped to agent:v1", lrc.contains("{agent:v1}Main vocal"))
     }
@@ -60,7 +58,6 @@ class TTMLParserTest {
         val parsedLines = TTMLParser.parseTTML(ttmlTimes)
         val lrc = TTMLParser.toLRC(parsedLines)
         val lrcLines = lrc.trim().lines()
-        
         assertTrue("1.5s should be [00:01.50]", lrcLines[0].startsWith("[00:01.50]"))
         assertTrue("2000ms should be [00:02.00]", lrcLines[1].startsWith("[00:02.00]"))
         assertTrue("00:03.50 should be [00:03.50]", lrcLines[2].startsWith("[00:03.50]"))
@@ -82,7 +79,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttmlRoleBg)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
         assertTrue("ttm:role='x-bg' should result in {bg} tag", lrc.contains("{bg}Background role"))
     }
 
@@ -103,7 +99,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttmlWordSync)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
         assertTrue("Should contain word-level sync tags", lrc.contains("<Hello:10.0:10.5|world:10.6:11.0>"))
     }
 
@@ -126,7 +121,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttml)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
         assertTrue("Should contain agent:v1 when background vocals exist to distinguish them", lrc.contains("{agent:v1}"))
         assertTrue("Should contain {bg} for background vocal", lrc.contains("{bg}bg"))
     }
@@ -147,8 +141,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttml)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
-        // v2 should be preserved
         assertTrue("Should contain agent:v2 since it was explicitly named", lrc.contains("{agent:v2}"))
     }
 
@@ -172,9 +164,7 @@ class TTMLParserTest {
         """.trimIndent()
 
         val parsedLines = TTMLParser.parseTTML(ttml)
-        // 1.0 + 10.5 = 11.5 seconds = [00:11.50]
         val lrc = TTMLParser.toLRC(parsedLines)
-        
         assertTrue("Timestamp should include offset: [00:11.50] was expected in $lrc", lrc.contains("[00:11.50]"))
         assertTrue("Word data should include offset: 11.5:12.5 was expected", lrc.contains("Hello:11.5:12.5"))
     }
@@ -247,8 +237,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttml)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
-        // Should be merged into one {bg} line
         assertTrue("Should contain merged background line", lrc.contains("{bg}Bg1 Bg2"))
         assertTrue("Should contain combined word data", lrc.contains("<Bg1:1.2:1.5|Bg2:1.6:1.9>"))
     }
@@ -278,8 +266,6 @@ class TTMLParserTest {
 
         val parsedLines = TTMLParser.parseTTML(ttml)
         val lrc = TTMLParser.toLRC(parsedLines)
-        
-        // v1 remains v1, v2000 becomes v2
         assertTrue("v1 should be mapped to agent:v1", lrc.contains("{agent:v1}Main vocal"))
         assertTrue("v2000 should be mapped to agent:v2", lrc.contains("{agent:v2}Outro vocal"))
     }
@@ -322,7 +308,6 @@ class TTMLParserTest {
         val parsedLines = TTMLParser.parseTTML(ttml)
         val lrc = TTMLParser.toLRC(parsedLines)
         val lines = lrc.trim().lines().filter { it.startsWith("[") }
-        
         assertTrue("First background line should have {bg}", lines[0].contains("{bg}Line 1"))
         assertFalse("Second background line should NOT have {bg}", lines[1].contains("{bg}"))
         assertTrue("Main line should have {agent:v1}", lines[2].contains("{agent:v1}Main Line"))

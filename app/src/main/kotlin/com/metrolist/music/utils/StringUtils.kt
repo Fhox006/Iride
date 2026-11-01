@@ -24,6 +24,20 @@ fun makeTimeString(duration: Long?): String {
     }
 }
 
+/** Human-readable duration like "1h 20min" / "45min" / "30sec", English format. */
+fun makeReadableTimeString(durationMs: Long): String {
+    val totalSec = durationMs / 1000
+    val hours = totalSec / 3600
+    val minutes = (totalSec % 3600) / 60
+    val seconds = totalSec % 60
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}min"
+        hours > 0 -> "${hours}h"
+        minutes > 0 -> "${minutes}min"
+        else -> "${seconds}sec"
+    }
+}
+
 fun md5(str: String): String {
     val md = MessageDigest.getInstance("MD5")
     return BigInteger(1, md.digest(str.toByteArray())).toString(16).padStart(32, '0')

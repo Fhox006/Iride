@@ -9,11 +9,12 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.metrolist.music.constants.AutoPlaylistSongSortDescendingKey
+import com.metrolist.music.constants.AutoPlaylistSongSortType
+import com.metrolist.music.constants.AutoPlaylistSongSortTypeKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
-import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
-import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterVideoSongs
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -53,7 +55,7 @@ constructor(
         context.dataStore.data
             .map {
                 Triple(
-                    it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE) to (it[SongSortDescendingKey]
+                    it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (it[AutoPlaylistSongSortDescendingKey]
                         ?: true),
                     it[HideExplicitKey] ?: false,
                     it[HideVideoSongsKey] ?: false
@@ -62,21 +64,20 @@ constructor(
             .distinctUntilChanged()
             .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
                 val (sortType, descending) = sortDesc
-                when (playlist) {
-                    "liked" -> database.likedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    "downloaded" -> database.downloadedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    "uploaded" -> database.uploadedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    "starred" -> database.starredSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    else -> kotlinx.coroutines.flow.flowOf(emptyList())
+                val sortTypeMapped = when (sortType) {
+                    AutoPlaylistSongSortType.CREATE_DATE -> SongSortType.CREATE_DATE
+                    AutoPlaylistSongSortType.NAME -> SongSortType.NAME
+                    AutoPlaylistSongSortType.ARTIST -> SongSortType.ARTIST
+                    AutoPlaylistSongSortType.PLAY_TIME -> SongSortType.PLAY_TIME
                 }
+
+                when (playlist) {
+                    "liked" -> database.likedSongs(sortTypeMapped, descending)
+                    "downloaded" -> database.downloadedSongs(sortTypeMapped, descending)
+                    "uploaded" -> database.uploadedSongs(sortTypeMapped, descending)
+                    "starred" -> database.starredSongs(sortTypeMapped, descending)
+                    else -> flowOf(emptyList())
+                }.map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
             }
             .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, emptyList())
 
@@ -98,4 +99,15 @@ constructor(
             _isRefreshing.value = false
         }
     }
+
+    val categoryController = PlaylistCategoryController(database, playlist, viewModelScope)
+    val categories get() = categoryController.categories
+    val songCategoryIds get() = categoryController.songCategoryIds
+
+    fun createCategory(name: String, colorHex: String? = null) = categoryController.createCategory(name, colorHex)
+    fun removeCategory(category: com.metrolist.music.db.entities.PlaylistCategoryEntity) = categoryController.removeCategory(category)
+    fun addSongsToCategories(songIds: List<String>, categoryIds: List<String>) =
+        categoryController.addSongsToCategories(songIds, categoryIds)
+    fun reorderCategories(orderedCategoryIds: List<String>) = categoryController.reorderCategories(orderedCategoryIds)
+    fun syncAutoCategories(genreBySongId: Map<String, List<String>>) = categoryController.syncAutoCategories(genreBySongId)
 }

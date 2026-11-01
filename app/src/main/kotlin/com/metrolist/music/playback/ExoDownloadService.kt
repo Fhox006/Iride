@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.PlatformScheduler
 import androidx.media3.exoplayer.scheduler.Scheduler
 import com.metrolist.music.R
+import com.metrolist.music.constants.OptionalNotificationsEnabled
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -90,7 +91,7 @@ class ExoDownloadService : DownloadService(
             download: Download,
             finalException: Exception?,
         ) {
-            if (download.state == Download.STATE_FAILED) {
+            if (OptionalNotificationsEnabled && download.state == Download.STATE_FAILED) {
                 val notification = notificationHelper.buildDownloadFailedNotification(
                     context,
                     R.drawable.error,

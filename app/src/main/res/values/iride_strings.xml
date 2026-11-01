@@ -22,13 +22,15 @@
     <string name="my_top">My Top</string>
     <string name="weekly_most_playlist_name">Weekly Most</string>
     <string name="monthly_most_playlist_name">Monthly Most</string>
-    <string name="cached_playlist">Cached</string>
+    <string name="cached_playlist">Temporary Downloads</string>
     <string name="uploaded_playlist">Uploaded</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="recently_downloaded">Recently Downloaded</string>
     <string name="filter_uploaded">Uploaded</string>
     <string name="sync_playlist">Sync playlist</string>
     <string name="sync_disabled">Sync disabled</string>
     <string name="allows_for_sync_witch_youtube">NOTE: This option enables syncing with YouTube Music and CANNOT be changed later</string>
-    <string name="generating_image">Generating imageâ€¦</string>
+    <string name="generating_image">Generating image…</string>
     <string name="please_wait">Please wait</string>
     <string name="cancel">Cancel</string>
     <string name="enable">Enable</string>
@@ -42,6 +44,15 @@
     <string name="background_color">Background color</string>
 
     <string name="remove_from_cache">Remove from cache</string>
+
+    <!-- Artist discography -->
+    <string name="view_discography">View Discography</string>
+    <string name="discography">Discography</string>
+    <string name="discography_from_artist">From Artist</string>
+    <string name="discography_appears_on">Appears On</string>
+    <string name="discography_singles">Singles</string>
+    <string name="discography_eps">EPs</string>
+    <string name="discography_empty">Nothing more to show</string>
 
     <!-- Artist about section -->
     <string name="about_artist">About</string>
@@ -59,13 +70,16 @@
     <string name="share_playlist_desc">Share this playlist with others</string>
     <string name="delete_playlist_desc">Remove this playlist permanently</string>
     <string name="sync_playlist_desc">Sync this playlist with YouTube Music</string>
+    <string name="reorder">Reorder</string>
+    <string name="reorder_desc">Drag songs to set a custom order</string>
+    <string name="menu">Menu</string>
     <string name="copy_link">Copy link</string>
     <string name="select">Select all</string>
     <string name="like_all">Like all</string>
     <string name="dislike_all">Dislike all</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
-    <string name="starting_radio">Starting radioâ€¦</string>
+    <string name="starting_radio">Starting radio…</string>
     <string name="now_playing">Now Playing</string>
 
     <string name="lyrics">Lyrics</string>
@@ -99,8 +113,6 @@
     <string name="better_animated_gradient">Better Animated Gradient</string>
     <string name="better_gradient_smooth_transition">Smooth background transition</string>
     <string name="better_gradient_smooth_transition_desc">Crossfade between album colors on track skip</string>
-    <string name="new_player_design">New player design</string>
-    <string name="new_mini_player_design">New mini-player design</string>
     <string name="player_background_blur">Blur</string>
     <string name="player_buttons_style">Player button colors</string>
     <string name="default_style">Default</string>
@@ -114,8 +126,10 @@
     <string name="enable_swipe_thumbnail">Enable swipe to change song</string>
     <string name="thumbnail_carousel_mode">Carousel thumbnail mode</string>
     <string name="thumbnail_carousel_mode_desc">Show prev/next covers peeking from sides with swipe animation</string>
+    <string name="swipe_song_to_add_title">Swipe to queue</string>
     <string name="swipe_song_to_add">Swipe left to add the song to the queue, or right to play it next</string>
-    <string name="swipe_song_to_remove">Swipe to remove the song from the playlist</string>
+    <string name="swipe_song_to_remove_title">Swipe to remove</string>
+    <string name="swipe_song_to_remove">Swipe a song to remove it from the playlist</string>
     <string name="lyrics_click_change">Change lyrics on tap</string>
     <string name="lyrics_from_provider">Lyrics from %s</string>
     <string name="lyrics_auto_scroll">Auto-scroll lyrics</string>
@@ -141,6 +155,10 @@
     <string name="youtube_music_lyrics_note">NOTE: YouTube Music lyrics will be shown automatically when no other source is available. They are usually not synchronized</string>
     <string name="enable_better_lyrics">Enable Better Lyrics</string>
     <string name="enable_better_lyrics_desc">Syllable-synced lyrics for any song, perfect for karaoke</string>
+    <string name="enable_better_lyrics_unison">Enable Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">Word-by-word synced lyrics, Unison engine</string>
+    <string name="enable_better_lyrics_sillaba">Enable Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">Word-by-word synced lyrics, Sillaba engine</string>
     <string name="enable_paxsenix">Enable Paxsenix</string>
     <string name="enable_paxsenix_desc">High-quality synchronized lyrics from Paxsenix API</string>
     <string name="enable_lyricsplus">Enable LyricsPlus</string>
@@ -154,7 +172,7 @@
     <string name="show_liked_playlist">Show Liked Songs playlist</string>
     <string name="show_downloaded_playlist">Show Downloaded playlist</string>
     <string name="show_top_playlist">Show Top playlist</string>
-    <string name="show_cached_playlist">Show Cached playlist</string>
+    <string name="show_cached_playlist">Show temporary downloads playlist</string>
     <string name="enable_song_cache">Enable song cache</string>
     <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
     <string name="show_uploaded_playlist">Show Uploaded playlist</string>
@@ -172,6 +190,7 @@
     <string name="token_shown">Tap again to copy or edit</string>
     <string name="token_adv_login_description">This is an ADVANCED login method. Instead of using the web portal, you can enter or update your login token directly. This can be useful for signing in across multiple devices quickly. Tokens in an unrecognized format will be rejected</string>
     <string name="yt_sync">Auto-sync with account</string>
+    <string name="settings_section_sync_data">Sync &amp; data</string>
     <string name="auto_sync">Auto sync</string>
     <string name="more_content">More content</string>
     <string name="other_content">Other content</string>
@@ -244,18 +263,35 @@
     <string name="open_app_settings_error">Couldn\'t open the app settings</string>
     <string name="changelog_empty">No changelogs available</string>
     <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
-    <string name="list_bullet">â€¢</string>
+    <string name="list_bullet">•</string>
     <string name="view_on_github">View on GitHub</string>
     <string name="current_version">Current version</string>
     <string name="version_format">Version: %s</string>
     <string name="update_settings">Update settings</string>
     <string name="check_for_updates_title">Check for updates</string>
-    <string name="checking_for_updates">Checking for updatesâ€¦</string>
+    <string name="checking_for_updates">Checking for updates…</string>
     <string name="latest_version_format">Latest: %s</string>
     <string name="check_for_updates_button">Check for updates</string>
     <string name="hide_changelog">Hide changelog</string>
     <string name="view_changelog">View changelog</string>
     <string name="failed_to_check_updates">Failed to check for updates: %s</string>
+    <string name="update_dialog_title_new_version">New version available</string>
+    <string name="update_dialog_version_available">Iride %s is available.</string>
+    <string name="update_dialog_experimental_build">This build may be experimental.</string>
+    <string name="update_dialog_no_compatible_package">No compatible package found for this build.</string>
+    <string name="update_dialog_back">Back</string>
+    <string name="update_action_download">Download</string>
+    <string name="update_action_install">Install</string>
+    <string name="update_action_retry">Retry</string>
+    <string name="update_state_downloading_percent">Downloading… %d%%</string>
+    <string name="update_state_ready_to_install">Update downloaded — tap to install</string>
+    <string name="update_permission_explanation">To install the update, allow Iride to install apps on the next screen.</string>
+    <string name="update_action_allow">Allow</string>
+    <string name="update_download_started">Update download started</string>
+    <string name="update_download_failed">Could not download the update</string>
+    <string name="update_download_error_no_space">Not enough free space</string>
+    <string name="update_download_error_connection">Connection error</string>
+    <string name="update_download_notification_description">Downloading the new version…</string>
 
     <string name="all_time">All time</string>
     <string name="past_24_hours">Past 24 hours</string>
@@ -266,6 +302,8 @@
     <string name="history_duration">History duration</string>
     <string name="information">Information</string>
     <string name="description">Description</string>
+    <string name="album">Album</string>
+    <string name="duration">Duration</string>
     <string name="views">Views</string>
     <string name="likes">Likes</string>
     <string name="dislikes">Dislikes</string>
@@ -346,15 +384,15 @@
     <string name="keep_screen_on_when_player_is_expanded">Keep screen on when player is expanded</string>
 
     <string name="crossfade">Crossfade</string>
-    <string name="crossfade_desc">Fades out the current song as the next one fades in</string>
-    <string name="crossfade_duration">Crossfade duration</string>
+    <string name="crossfade_desc">Fades between songs and briefly when skipping</string>
+    <string name="crossfade_duration">Between songs</string>
     <string name="crossfade_gapless">Disable for gapless albums</string>
     <string name="crossfade_gapless_desc">Skip crossfade for albums designed to play without gaps</string>
     <string name="crossfade_beta_title">Beta feature!</string>
     <string name="crossfade_beta_message">Crossfade is a new feature and may have bugs. If you experience any issues, please report them.\n\nNOTE: This feature disables audio offload due to technical limitations</string>
     <string name="skip_fade">Fade on skip</string>
     <string name="skip_fade_desc">Next song starts immediately; previous song fades out briefly in background</string>
-    <string name="skip_fade_duration">Skip fade duration</string>
+    <string name="skip_fade_duration">On skip</string>
 
     <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">Cyrillic</string>
@@ -377,6 +415,13 @@
     <string name="line_by_line_dialog_desc">This is a hit-or-miss experimental feature.\n\nBy default, the language is detected from the entire song. With this option on, it will be detected line-by-line instead. This allows multi-language songs to work, BUT the detected language may not always be correct. For example, a Ukrainian line without any Ukrainian-specific characters might be romanized as Russian.\n\nIf you are not experiencing any issues, it is recommended to keep this option off</string>
     <string name="romanize_current_track">Romanize current track</string>
 
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">Download Japanese dictionary?</string>
+    <string name="lyrics_romanize_japanese_dict_message">Romanizing Japanese lyrics requires a Japanese dictionary (~13 MB), downloaded once over your internet connection.</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">Downloading Japanese dictionary… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">Download failed. Check your connection and try again.</string>
+    <string name="lyrics_romanize_japanese_dict_download">Download</string>
+
     <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">Lyrics offset</string>
 
@@ -386,15 +431,18 @@
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_section_storage">Storage &amp; Data</string>
     <string name="app_data_storage">App Data &amp; Storage</string>
-    <string name="app_management_backup">App Management &amp; Backup</string>
+    <string name="app_management_backup">Data &amp; Storage</string>
     <string name="settings_section_system">System &amp; About</string>
     <string name="settings_section_player">Playback</string>
     <string name="settings_section_content">Content</string>
     <string name="settings_section_ai">Artificial Intelligence</string>
     <string name="settings_section_integrations">Integrations</string>
-    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_audio">Audio &amp; playback</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_display">Display</string>
+    <string name="settings_section_lab">Lab</string>
     <string name="settings_section_system_short">System</string>
 
     <!-- Updater -->
@@ -432,7 +480,7 @@
     <string name="lastfm_now_playing">Send Now Playing status</string>
     <string name="last_fm_send_likes">Sync Loved and Unloved</string>
     <string name="last_fm_send_likes_description">Love or unlove songs in Last.fm when you like or unlike them in Iride</string>
-    <string name="logging_in">Logging inâ€¦</string>
+    <string name="logging_in">Logging in…</string>
 
     <string name="scrobbling_configuration">Scrobbling configuration</string>
     <string name="scrobble_min_track_duration">Scrobble songs longer than (seconds)</string>
@@ -459,6 +507,9 @@
     <string name="lyrics_search_desc">Search for lyrics by title and artist</string>
     <string name="lyrics_copy_desc">Copy all lyrics to clipboard</string>
     <string name="advanced_desc">Adjust the song\'s tempo and pitch</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="repeat_one_desc">Restart this song forever, never play another</string>
+    <string name="night_mode">Night mode</string>
     <string name="equalizer_desc">Open the audio equalizer</string>
     <string name="enable_dynamic_icon">Enable dynamic icon</string>
     <string name="mini_player">Mini-player</string>
@@ -500,12 +551,12 @@
     <string name="wrapped_total_songs_title">You\'ve listened to</string>
     <string name="wrapped_total_songs_subtitle">unique songs!</string>
     <string name="wrapped_intro_title">IRIDE</string>
-    <string name="wrapped_intro_subtitle">it\'s time to see what you\'ve been listening to all this yearâ€¦</string>
+    <string name="wrapped_intro_subtitle">it\'s time to see what you\'ve been listening to all this year…</string>
     <string name="wrapped_intro_button">let\'s go!</string>
     <string name="wrapped_logo_content_description">Iride Logo</string>
     <string name="wrapped_year">2025</string>
     <string name="wrapped_ready_title">YOUR WRAPPED IS READY!</string>
-    <string name="wrapped_ready_subtitle">Time to see what you loved all this yearâ€¦</string>
+    <string name="wrapped_ready_subtitle">Time to see what you loved all this year…</string>
     <string name="wrapped_thank_you">Thank you for listening!</string>
     <string name="wrapped_special_thanks">Special thanks to MO Agamy for creating Iride</string>
     <string name="wrapped_close">Close Wrapped</string>
@@ -534,6 +585,53 @@
     <string name="import_error_title">Import error</string>
     <string name="error_title">Error</string>
     <string name="error_eq_apply_failed">Failed to apply equalizer profile: %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Drag the sliders to shape your sound.</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_standard">Flat</string>
+    <string name="eq_preset_custom">Custom</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_desc_standard">Neutral sound, no coloration</string>
+    <string name="eq_desc_balanced">Fuller lows and brighter highs, kept gentle</string>
+    <string name="eq_desc_more_bass">Strong low end, extra punch</string>
+    <string name="eq_desc_more_treble">Brighter highs, cleaner details</string>
+    <string name="eq_desc_voice">Voices up front, clear</string>
+    <string name="eq_desc_custom">Your own curve</string>
+    <string name="eq_preset_modified">modified</string>
+    <string name="eq_help_title">How it works</string>
+    <string name="eq_help_drag">Drag a slider up or down to raise or lower that part of the sound. Tap the number above a slider to type an exact value.</string>
+    <string name="eq_help_exact">\"Reset band\" returns the selected band to zero: original frequency, Q and gain.</string>
+    <string name="eq_help_q">Q sets how wide a band is: wide also affects nearby frequencies, narrow targets precisely.</string>
+    <string name="eq_help_reset_style">Tap the selected style again to restore everything to its base values.</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Adds weight around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass on hits only: sustained lows stay controlled.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
 
     <!-- Hardcoded strings -->
     <string name="found_in_settings_content">Found in Settings &gt; Content</string>
@@ -576,8 +674,8 @@
     <string name="widget_recognizer_name">Music Recognizer</string>
     <string name="widget_recognizer_description">Identify songs playing around you directly from your home screen</string>
     <string name="widget_recognizer_tap_to_search">Tap to identify a song</string>
-    <string name="widget_recognizer_listening">Listeningâ€¦</string>
-    <string name="widget_recognizer_processing">Identifyingâ€¦</string>
+    <string name="widget_recognizer_listening">Listening…</string>
+    <string name="widget_recognizer_processing">Identifying…</string>
     <string name="widget_recognizer_no_match">No match found. Try again</string>
     <string name="widget_recognizer_error">Recognition failed</string>
     <string name="widget_recognizer_error_generic">Something went wrong. Please try again</string>
@@ -586,7 +684,7 @@
     <string name="widget_recognizer_mic_desc">Identify a song</string>
     <string name="widget_recognizer_channel_name">Music Recognition</string>
     <string name="widget_recognizer_channel_desc">Shows a notification while identifying a song from the widget</string>
-    <string name="widget_recognizer_notification_text">Recording audio to identify the songâ€¦</string>
+    <string name="widget_recognizer_notification_text">Recording audio to identify the song…</string>
 
     <!-- Player Client Settings -->
 
@@ -601,9 +699,9 @@
     <string name="listen_together_use_custom_server">Use custom server</string>
     <string name="listen_together_username">Username</string>
     <string name="listen_together_connected">Connected</string>
-    <string name="listen_together_reconnecting">Reconnectingâ€¦</string>
+    <string name="listen_together_reconnecting">Reconnecting…</string>
     <string name="listen_together_disconnected">Disconnected</string>
-    <string name="listen_together_connecting">Connectingâ€¦</string>
+    <string name="listen_together_connecting">Connecting…</string>
     <string name="listen_together_error">Connection error</string>
     <string name="listen_together_create_room">Create room</string>
     <string name="listen_together_create_room_desc">Create a room and share the code with your friends</string>
@@ -636,7 +734,7 @@
     <string name="listen_together_notification_channel_desc">Notifications for Listen Together events</string>
     <string name="listen_together_room_created">Room created: %s</string>
     <string name="listen_together_cannot_edit_username_in_room">The username cannot be changed while in a room</string>
-    <string name="waiting_for_approval">Waiting for host approvalâ€¦</string>
+    <string name="waiting_for_approval">Waiting for host approval…</string>
     <string name="invalid_room_code">Invalid room code</string>
     <string name="join_request_denied">Join request denied</string>
     <string name="join_existing_room">Join existing room</string>
@@ -644,8 +742,8 @@
     <string name="leave_room">Leave room</string>
     <string name="join_room">Join</string>
     <string name="create_room">Create</string>
-    <string name="joining_room">Joining room %sâ€¦</string>
-    <string name="creating_room">Creating roomâ€¦</string>
+    <string name="joining_room">Joining room %s…</string>
+    <string name="creating_room">Creating room…</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
     <string name="create">Create</string>
@@ -657,6 +755,7 @@
     <string name="copy_all_lyrics">Copy all lyrics</string>
     <string name="change">Change</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="diagnostic_copy_log">Copy diagnostic log</string>
     <string name="not_set">Not set</string>
     <string name="hosting_room">Hosting room</string>
     <string name="in_room">In room</string>
@@ -687,7 +786,7 @@
 
     <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">AI lyrics translation</string>
-    <string name="ai_translating_lyrics">Translating lyricsâ€¦</string>
+    <string name="ai_translating_lyrics">Translating lyrics…</string>
     <string name="ai_lyrics_translated">Lyrics translated</string>
     <string name="ai_provider">Provider</string>
     <string name="ai_base_url">Base URL</string>
@@ -758,6 +857,11 @@
     <string name="palette_grey">Grey</string>
     <string name="palette_blue_grey">Blue Grey</string>
 
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_system">System</string>
+
     <!-- Theme Content Descriptions -->
     <string name="cd_back">Back</string>
     <string name="cd_pure_black_mode">Pure black mode</string>
@@ -766,17 +870,27 @@
     <string name="cd_system_mode">System mode</string>
     <string name="cd_palette_item">%1$s palette</string>
     <string name="play_all">Play all</string>
+    <string name="mp3_panel_lyrics">LYRICS</string>
+    <string name="mp3_panel_up_next">UP NEXT</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">Continue Listening</string>
+    <string name="remove_from_continue_listening">Remove from Continue Listening</string>
+    <string name="favorite_albums">Favorites</string>
+    <string name="remove_suggested_follow_artist">Remove suggestion</string>
+
     <string name="enable_high_refresh_rate">Enable high refresh rate</string>
     <string name="enable_high_refresh_rate_desc">Forces the display to run at its highest supported refresh rate (e.g. 120Hz)</string>
 
     <!-- Music Recognition -->
     <string name="recognize_music">Recognize music</string>
     <string name="tap_to_recognize">Tap to recognize</string>
-    <string name="listening">Listeningâ€¦</string>
-    <string name="processing">Processingâ€¦</string>
+    <string name="listening">Listening…</string>
+    <string name="processing">Processing…</string>
     <string name="no_match_found">No match found</string>
     <string name="recognition_error">Recognition error</string>
     <string name="try_again">Try again</string>
+    <string name="refresh">Refresh</string>
     <string name="recognition_history">Recognition history</string>
     <string name="clear_recognition_history">Clear recognition history</string>
     <string name="clear_recognition_history_confirm">Are you sure you want to clear all recognition history?</string>
@@ -786,8 +900,8 @@
     <string name="qs_tile_music_recognizer">Recognize music</string>
     <string name="recognition_notification_channel_name">Music recognition</string>
     <string name="recognition_notification_channel_desc">Shows a notification while identifying a song from quick settings</string>
-    <string name="recognition_notification_listening">Listening for musicâ€¦</string>
-    <string name="recognition_notification_processing">Identifyingâ€¦</string>
+    <string name="recognition_notification_listening">Listening for music…</string>
+    <string name="recognition_notification_processing">Identifying…</string>
     <string name="recognition_notification_no_match">No match found</string>
     <string name="recognition_notification_failed">Recognition failed</string>
     <string name="listen_on_metrolist">Listen on Iride</string>
@@ -799,8 +913,8 @@
     <string name="song_title_column">Song title column</string>
     <string name="youtube_url_column">YouTube URL column (optional)</string>
     <string name="continue_action">Continue</string>
-    <string name="importing_csv">Importing CSVâ€¦</string>
-    <string name="importing_playlist">Importing playlistâ€¦</string>
+    <string name="importing_csv">Importing CSV…</string>
+    <string name="importing_playlist">Importing playlist…</string>
 
     <string name="recently_converted">Recently converted</string>
     <string name="column_label">Column %d</string>
@@ -838,6 +952,12 @@
     <string name="unpin_from_speed_dial">Unpin from speed dial</string>
     <string name="randomize_home_order">Randomize home screen order</string>
     <string name="randomize_home_order_desc">Randomly reorder home screen sections using weighted priorities</string>
+    <string name="hero_carousel_title">Hero carousel</string>
+    <string name="hero_carousel_desc">A rotating banner with new releases and picks for you</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">Smart boot</string>
+    <string name="smart_boot_desc">Faster startup: Featured loads instantly, sections keep their place while loading, fewer duplicate downloads. Turn off to restore the original behavior (restart to apply fully)</string>
 
     <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">Sounds like %1$s</string>
@@ -855,25 +975,29 @@
 
     <!-- Credits / About Screen -->
     <string name="credits_lead_developer">Lead developer</string>
+    <string name="about_creator_role">Creator of Iride</string>
+    <string name="about_release_badge">First release soon</string>
     <string name="credits_special_thanks">Special thanks</string>
     <string name="credits_collaborator">Collaborator</string>
     <string name="credits_collaborators_section">Collaborators</string>
     <string name="credits_license_name">GNU General Public License v3.0</string>
     <string name="credits_license_desc">Free, open-source software. You may use, study, share, and improve it</string>
+    <string name="credits_donations">Donations</string>
+    <string name="credits_donations_desc">Support the project on Ko-fi</string>
     <string name="credits_discord">Discord server</string>
     <string name="credits_telegram">Telegram channel</string>
     <string name="credits_website">Website</string>
     <string name="credits_instagram">Instagram</string>
     <string name="credits_github">GitHub</string>
     <string name="credits_view_repo">View repository</string>
-    <string name="app_version_info">%1$s â€¢ %2$s</string>
+    <string name="app_version_info">%1$s • %2$s</string>
     <string name="like_what_i_do">Like what I do?</string>
     <string name="buy_mo_a_coffee">Buy me a coffee!</string>
     <string name="community_and_info">Community &amp; Info</string>
     <string name="metrolist">IRIDE</string>
     <string name="wanna_play_favorite_song">Want to play their favorite song?</string>
     <string name="yeah">Yeah!</string>
-    <string name="stands_with_palestine">This project stands with Palestine ðŸ‡µðŸ‡¸</string>
+    <string name="stands_with_palestine">This project stands with Palestine 🇵🇸</string>
 
     <!-- Podcasts -->
     <string name="filter_podcasts">Podcasts</string>
@@ -893,6 +1017,7 @@
     </plurals>
     <string name="filter_episodes">Episodes</string>
     <string name="filter_profiles">Profiles</string>
+    <string name="filter_smart_search">Smart Search</string>
     <string name="filter_channels">Channels</string>
     <string name="auto_playlist">Auto playlist</string>
     <string name="downloaded_episodes">Downloaded episodes</string>
@@ -908,14 +1033,14 @@
     <string name="restore_confirm_message">This will restore your app data from the selected backup</string>
     <string name="restore_account_warning">You will need to log in again after restoring. The following account will be signed out:</string>
     <string name="restore">Restore</string>
-    <string name="checking_previous_account">Checking for previous accountâ€¦</string>
+    <string name="checking_previous_account">Checking for previous account…</string>
     <string name="no_account_found">No account found</string>
 
     <!-- Cache settings -->
 
     <!-- Upload songs -->
     <string name="upload_songs">Upload songs</string>
-    <string name="uploading">Uploadingâ€¦</string>
+    <string name="uploading">Uploading…</string>
     <string name="upload_progress">%1$d of %2$d</string>
     <string name="upload_complete">Upload complete</string>
     <string name="upload_failed">Upload failed</string>
@@ -928,7 +1053,7 @@
     <string name="delete_uploaded_songs">Delete uploaded songs</string>
     <string name="delete_uploaded_songs_confirm">Are you sure you want to delete %1$d uploaded songs? This action cannot be undone</string>
     <string name="deleted_n_songs">Deleted %1$d songs</string>
-    <string name="deleting">Deletingâ€¦</string>
+    <string name="deleting">Deleting…</string>
 
     <!-- Android Auto settings -->
     <string name="android_auto">Android Auto</string>
@@ -963,27 +1088,46 @@
     <!-- Settings hub descriptions -->
     <string name="music_settings">Music Settings</string>
     <string name="music_settings_desc">Appearance, playback and content</string>
-    <string name="settings_appearance_desc">Theme, interface, player and lyrics</string>
+    <string name="settings_appearance_desc">Theme, home screen, player and lyrics</string>
     <string name="settings_appearance_theme_desc">Colors, dark mode and accents</string>
-    <string name="settings_appearance_interface_desc">Navigation, layout and playlists</string>
+    <string name="settings_appearance_interface_desc">Tabs, home screen and library defaults</string>
     <string name="settings_appearance_player_desc">Player, mini-player and slider</string>
     <string name="settings_appearance_lyrics_desc">Display, animations and scrolling</string>
-    <string name="settings_playback_desc">Audio quality, crossfade and behavior</string>
+    <string name="settings_playback_desc">Audio quality, crossfade &amp; playback</string>
     <string name="settings_content_desc">Language, filters and discovery</string>
     <string name="settings_ai_desc">Lyrics translation and AI providers</string>
     <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>
     <string name="settings_privacy_desc">Listening history and security</string>
     <string name="settings_storage_desc">Downloads, cache and backup</string>
-    <string name="settings_system_desc">Updates, changelog and about</string>
+    <string name="settings_system_desc">Credits, license and version</string>
+    <string name="settings_account_desc">Sign-in, sync, stats and privacy</string>
+    <string name="android_auto_settings_desc">Visible sections and playlists</string>
     <string name="manage_account">Manage account</string>
+    <string name="spotify_import_title">Import Music Library</string>
+    <string name="spotify_import_desc">Playlists and songs from Spotify</string>
     <string name="sign_in_desc">Connect your account to access playlists and recommendations</string>
     <string name="settings_theme">Theme</string>
     <string name="player_appearance">Player</string>
-    <string name="interface_settings">Interface</string>
+    <string name="interface_settings">Home &amp; Navigation</string>
     <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
-    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
-    <string name="fast_loader_beta">Fast Song Loader (BETA)</string>
-    <string name="fast_loader_beta_desc">Reduces load time when manually changing tracks. Skips URL validation for faster stream resolution. May occasionally cause playback errors on the first try.</string>
+    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
+    <string name="auto_link_featured_artists">Auto-detect featured artists</string>
+    <string name="auto_link_featured_artists_desc">Strips "feat./ft." credits out of song titles and links the collaborator as a real artist.</string>
+    <string name="show_featured_artists_in_top_songs">Show featured artists in Top Songs</string>
+    <string name="show_featured_artists_in_top_songs_desc">Shows collaborators credited on a track alongside the main artist in Top Songs.</string>
+    <string name="resume_album">Resume Album</string>
+    <string name="resume">Resume</string>
+    <string name="resume_album_track_progress">Track %1$d of %2$d</string>
+    <string name="muzza_player_logic">Fast Playback Engine</string>
+    <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
+
+    <!-- News screen -->
+    <string name="compact_top_navigation_bar">Compact top bar</string>
+    <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
+    <string name="iride_animations">Iride animations</string>
+    <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
+    <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
+    <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
@@ -991,4 +1135,96 @@
     <string name="new_playlist">New playlist</string>
     <string name="toggle_view_type">Toggle view type</string>
     <string name="navigate_back">Go back</string>
-</resources>
+
+    <!-- Comments -->
+    <string name="comments">Comments</string>
+    <string name="comments_count">%s comments</string>
+    <string name="comments_empty">No comments yet</string>
+    <string name="comments_error">Couldn\'t load comments</string>
+    <string name="comments_sign_in_to_comment">Sign in to comment</string>
+    <string name="comments_write_hint">Add a comment…</string>
+    <string name="comments_post">Post</string>
+    <string name="comments_post_failed">Couldn\'t post your comment</string>
+    <string name="comments_sort_top">Top comments</string>
+    <string name="comments_sort_newest">Newest first</string>
+    <string name="comments_reply_count">%d replies</string>
+    <string name="enable_comments">Enable comments</string>
+    <string name="enable_comments_desc">Show YouTube comments for songs in the player (experimental, may not always load)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Add notes, ratings or thoughts…</string>
+    <string name="note_title_placeholder">Title</string>
+    <string name="note_description_placeholder">Add a description…</string>
+    <string name="view_ep">View EP</string>
+    <string name="view_single">View single</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Notes</string>
+    <string name="notes_screen_desc">Your album and track reviews</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Track</string>
+    <string name="notes_empty_albums">No album notes yet</string>
+    <string name="notes_empty_tracks">No track notes yet</string>
+    <string name="notes_delete_title">Delete note?</string>
+    <string name="notes_delete_message">This removes the title, rating and text you wrote for this.</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">Download all favorite albums</string>
+    <string name="download_all_favorite_albums_started">Downloading all favorite albums…</string>
+    <string name="all_favorite_albums_downloaded">All favorite albums downloaded</string>
+    <string name="remove_all_favorite_albums_confirm">Do you really want to remove all favorite albums from downloads?</string>
+    <string name="no_favorite_albums_to_download">No favorite albums to download</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_whats_new">What\'s new</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
+
+    <!-- Advanced home -->
+    <string name="adv_home_settings_title">Advanced home</string>
+    <string name="adv_home_settings_desc">A calmer, simpler home with a mood trigger and a daily pick. Turn it off to go back to the classic home.</string>
+    <string name="adv_feelings_question">How\'s it going?</string>
+    <string name="adv_feeling_energy">Energy</string>
+    <string name="adv_feeling_chill">Chill</string>
+    <string name="adv_feeling_focus">Focus</string>
+    <string name="adv_feeling_nostalgia">Nostalgia</string>
+    <string name="adv_feeling_party">Party</string>
+    <string name="adv_feeling_surprise">Surprise me</string>
+    <string name="adv_thread_section">Keep going</string>
+    <string name="adv_daily_pick">Daily pick</string>
+    <string name="adv_all_news">All new releases</string>
+    <string name="adv_badge_new">New</string>
+    <string name="adv_badge_rotation">On repeat</string>
+    <string name="adv_badge_foryou">For you</string>
+    <string name="adv_badge_trending">Trending</string>
+    <string name="adv_badge_radio">Radio</string>
+    <string name="featured_for_you">Featured for you</string>
+    <string name="trending_artist_subtitle">Rising on your feed</string>
+    <string name="artist_radio_subtitle">Endless mix inspired by this artist</string>
+    <string name="artist_radio_title">%1$s Radio</string>
+    <string name="mood_and_playlists_for_you">Mood &amp; Playlists for You</string>
+    <string name="syncing_library">Syncing library</string>
+    <string name="network_sync_warning">Network features may not work until sync completes.</string>
+    <string name="syncing_your_library">Syncing your library…</string>
+    <string name="collapse_section">Collapse section</string>
+    <string name="expand_section">Expand section</string>
+    </resources>

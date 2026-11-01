@@ -42,14 +42,9 @@ class CastManager(
         try {
             castContext = CastContext.getSharedInstance(context)
             castContext?.addCastStateListener(this)
-            
-            // Using deprecated constructor and setSessionAvailabilityListener as the new
-            // CastPlayer.Builder API requires a local player which we don't use in this architecture
             castPlayer = CastPlayer(castContext!!)
             castPlayer?.setSessionAvailabilityListener(this)
-            
             _castState.value = castContext?.castState ?: CastState.NO_DEVICES_AVAILABLE
-            
             Timber.d("CastManager initialized successfully")
         } catch (e: Exception) {
             Timber.e(e, "Failed to initialize CastManager - Cast may not be available on this device")

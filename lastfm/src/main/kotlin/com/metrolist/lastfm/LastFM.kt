@@ -3,6 +3,7 @@ package com.metrolist.lastfm
 import com.metrolist.lastfm.models.Authentication
 import com.metrolist.lastfm.models.LastFmError
 import com.metrolist.lastfm.models.TokenResponse
+import com.metrolist.lastfm.models.TopTagsResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -66,7 +67,6 @@ object LastFM {
         }))
     }
 
-    // OAuth methods (kept for backward compatibility)
     suspend fun getToken() = runCatching {
         client.post {
             lastfmParams(
@@ -92,7 +92,6 @@ object LastFM {
         return "https://www.last.fm/api/auth/?api_key=$API_KEY&token=$token"
     }
 
-    // Mobile session authentication
     suspend fun getMobileSession(username: String, password: String) = runCatching {
         val response = client.post {
             lastfmParams(
@@ -125,7 +124,7 @@ object LastFM {
                 method = "track.updateNowPlaying",
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist", artist)
                     put("track", track)
@@ -147,7 +146,7 @@ object LastFM {
                 method = "track.scrobble",
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist[0]", artist)
                     put("track[0]", track)
@@ -171,7 +170,7 @@ object LastFM {
                 method = method,
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist", artist)
                     put("track", track)
@@ -181,7 +180,22 @@ object LastFM {
         }
     }
 
-    // API keys passed from the app module (loaded from BuildConfig/GitHub Secrets)
+    suspend fun getTopTags(artist: String, track: String) = runCatching {
+        val response = client.get {
+            parameter("method", "track.gettoptags")
+            parameter("artist", artist)
+            parameter("track", track)
+            parameter("api_key", API_KEY)
+            parameter("format", "json")
+        }
+        val text = response.bodyAsText()
+        if (text.contains("\"error\"")) {
+            val error = json.decodeFromString<LastFmError>(text)
+            throw LastFmException(error.error, error.message)
+        }
+        json.decodeFromString<TopTagsResponse>(text)
+    }
+
     private var API_KEY = ""
     private var SECRET = ""
 

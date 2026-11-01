@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,7 +73,6 @@ fun TimeTransfer(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-
                 SongSelectDropdown(
                     titleT = stringResource(R.string.time_transfer_target_song),
                     songs = mostPlayedSongsStats,
@@ -95,7 +93,7 @@ fun TimeTransfer(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Button(
+                IrideFolioPrimaryButton(
                     onClick = {
                         val from = sourceSong.value?.id
                         val to = targetSong.value?.id
@@ -114,7 +112,6 @@ fun TimeTransfer(
                 ) {
                     Text(
                         text = stringResource(R.string.time_transfer_convert),
-                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
             }

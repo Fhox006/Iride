@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -20,17 +21,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
-import com.metrolist.music.constants.IrideStyleKey
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 val DefaultThemeColor = Color(0xFFED5564)
+
+/**
+ * Kill-switch for the light theme: implementation is complete but hidden from
+ * settings until polished. While true, every theme resolver locks to dark
+ * regardless of the stored DarkMode preference.
+ */
+const val ForceDarkTheme = true
 
 @Composable
 fun IrideTheme(
@@ -40,59 +48,83 @@ fun IrideTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    // Determine if system dynamic colors should be used (Android S+ and default theme color)
+    val dark = darkTheme || ForceDarkTheme
     val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
 
-    // Select the appropriate color scheme generation method
     val baseColorScheme = if (useSystemDynamicColor) {
-        // Use standard Material 3 dynamic color functions for system wallpaper colors
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
-        // Use materialKolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
-            isDark = darkTheme,
+            seedColor = themeColor,
+            isDark = dark,
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
-            style = PaletteStyle.TonalSpot // Keep existing style
+            style = PaletteStyle.TonalSpot
         )
     }
 
-    val (irideStyle, _) = rememberPreference(IrideStyleKey, defaultValue = false)
-
-    val colorScheme = remember(irideStyle, baseColorScheme, pureBlack, darkTheme) {
-        when {
-            irideStyle -> baseColorScheme.copy(
-                background             = Color(0xFF25221B),
-                onBackground           = Color(0xFFE8E1D8),
-                surface                = Color(0xFF25221B),
-                onSurface              = Color(0xFFE8E1D8),
-                surfaceVariant         = Color(0xFF33302A),
-                onSurfaceVariant       = Color(0xFFCEC4B8),
-                surfaceContainerLowest = Color(0xFF1C1A14),
-                surfaceContainerLow    = Color(0xFF2D2A23),
-                surfaceContainer       = Color(0xFF322F27),
-                surfaceContainerHigh   = Color(0xFF3D392F),
-                surfaceContainerHighest= Color(0xFF48443A),
-                inverseSurface         = Color(0xFFE8E1D8),
-                inverseOnSurface       = Color(0xFF32302A),
-                outline                = Color(0xFF998F84),
-                outlineVariant         = Color(0xFF4D4840),
-                scrim                  = Color(0xFF000000),
-                surfaceBright          = Color(0xFF4A463C),
-                surfaceDim             = Color(0xFF25221B),
+    // Neutral surfaces mirror the app's monochrome identity; accent roles
+    // (primary/secondary/tertiary) are kept from the generated base scheme.
+    val colorScheme = remember(baseColorScheme, dark) {
+        if (dark) {
+            baseColorScheme.copy(
+                background = Color.Black,
+                onBackground = Color.White,
+                surface = Color.Black,
+                onSurface = Color.White,
+                surfaceVariant = Color(0xFF1A1A1A),
+                onSurfaceVariant = Color(0xFFCCCCCC),
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow = Color(0xFF0D0D0D),
+                surfaceContainer = Color(0xFF121212),
+                surfaceContainerHigh = Color(0xFF1E1E1E),
+                surfaceContainerHighest = Color(0xFF282828),
+                inverseSurface = Color.White,
+                inverseOnSurface = Color.Black,
+                outline = Color(0xFF8A8A8A),
+                outlineVariant = Color(0xFF3A3A3A),
+                scrim = Color.Black,
+                surfaceBright = Color(0xFF2C2C2C),
+                surfaceDim = Color.Black,
             )
-            darkTheme && pureBlack -> baseColorScheme.pureBlack(true)
-            else -> baseColorScheme
+        } else {
+            baseColorScheme.copy(
+                background = Color.White,
+                onBackground = Color(0xFF1A1A1A),
+                surface = Color.White,
+                onSurface = Color(0xFF1A1A1A),
+                surfaceVariant = Color(0xFFF0F0F0),
+                onSurfaceVariant = Color(0xFF444444),
+                surfaceContainerLowest = Color.White,
+                surfaceContainerLow = Color(0xFFFAFAFA),
+                surfaceContainer = Color(0xFFF5F5F5),
+                surfaceContainerHigh = Color(0xFFEFEFEF),
+                surfaceContainerHighest = Color(0xFFE5E5E5),
+                inverseSurface = Color(0xFF1A1A1A),
+                inverseOnSurface = Color.White,
+                outline = Color(0xFF757575),
+                outlineVariant = Color(0xFFDDDDDD),
+                scrim = Color.Black,
+                surfaceBright = Color.White,
+                surfaceDim = Color(0xFFE8E8E8),
+            )
         }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // Use the defined AppTypography
+        shapes = FolioShapes,
+        typography = AppTypography,
         content = content
     )
 }
+
+private val FolioShapes = Shapes(
+    extraSmall = FolioShape(4.dp),
+    small = FolioShape(8.dp),
+    medium = FolioShape(12.dp),
+    large = FolioShape(16.dp),
+    extraLarge = FolioShape(28.dp),
+)
 
 suspend fun Bitmap.extractThemeColor(): Color = withContext(Dispatchers.Default) {
     val colorsToPopulation = Palette.from(this@extractThemeColor)

@@ -1,9 +1,11 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
+/** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.settings
+
+import androidx.compose.foundation.shape.CircleShape
+
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -20,16 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,31 +47,41 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.db.entities.Song
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.db.entities.Song
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.menu.AddToPlaylistDialogOnline
 import com.metrolist.music.ui.menu.CsvColumnMappingDialog
 import com.metrolist.music.ui.menu.CsvImportProgressDialog
 import com.metrolist.music.ui.menu.LoadingScreen
-import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.BackupPreviewInfo
 import com.metrolist.music.viewmodels.BackupRestoreViewModel
 import com.metrolist.music.viewmodels.ConvertedSongLog
 import com.metrolist.music.viewmodels.CsvImportState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +105,6 @@ fun BackupAndRestore(
         mutableIntStateOf(0)
     }
 
-    // CSV column mapping state
     var csvImportState by remember { mutableStateOf<CsvImportState?>(null) }
     var showCsvColumnMapping by rememberSaveable { mutableStateOf(false) }
     var showCsvImportProgress by rememberSaveable { mutableStateOf(false) }
@@ -104,7 +112,6 @@ fun BackupAndRestore(
     val csvRecentLogs = remember { mutableStateListOf<ConvertedSongLog>() }
     var pendingCsvUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
-    // Restore confirmation dialog state
     var showRestoreConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var backupPreviewInfo by remember { mutableStateOf<BackupPreviewInfo?>(null) }
@@ -115,7 +122,9 @@ fun BackupAndRestore(
     val coroutineScope = rememberCoroutineScope()
 
     val backupLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/octet-stream")
+        ) { uri ->
             if (uri != null) {
                 viewModel.backup(context, uri)
             }
@@ -128,7 +137,6 @@ fun BackupAndRestore(
                 backupPreviewInfo = preview
                 showRestoreConfirmDialog = true
 
-                // Fetch account info asynchronously if backup has auth data
                 accountCheckFailed = false
                 if (preview.hasAuthData && preview.cookie != null) {
                     isLoadingAccountInfo = true
@@ -164,340 +172,361 @@ fun BackupAndRestore(
             }
         }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
+    val settingsScrollState = rememberScrollState()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by
+        rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by
+        remember(playerConnection) {
+                playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+            }
+            .collectAsStateWithLifecycle()
 
-        val appName = stringResource(R.string.app_name)
-        val arrowIcon = painterResource(R.drawable.arrow_forward)
-
-        Material3SettingsGroup(
-            items =
-                listOfNotNull(
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.action_backup)) },
-                        icon = painterResource(R.drawable.backup),
-                        onClick = {
-                            val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-                            backupLauncher.launch(
-                                "${appName}_${
-                                    LocalDateTime.now().format(formatter)
-                                }.backup",
-                            )
-                        },
-                    ),
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.action_restore)) },
-                        icon = painterResource(R.drawable.restore),
-                        onClick = {
-                            restoreLauncher.launch(arrayOf("application/octet-stream"))
-                        },
-                    ),
-                    if (advancedMode) Material3SettingsItem(
-                        title = { Text(stringResource(R.string.import_online)) },
-                        icon = painterResource(R.drawable.playlist_add),
-                        onClick = {
-                            importM3uLauncherOnline.launch(arrayOf("audio/*"))
-                        },
-                    ) else null,
-                    if (advancedMode) Material3SettingsItem(
-                        title = { Text(stringResource(R.string.import_csv)) },
-                        icon = painterResource(R.drawable.playlist_add),
-                        onClick = {
-                            importPlaylistFromCsv.launch(
-                                arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
-                            )
-                        },
-                    ) else null,
-                    if (BuildConfig.UPDATER_AVAILABLE) {
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.update),
-                            title = { Text(stringResource(R.string.updater)) },
-                            trailingContent = {
-                                Icon(
-                                    painter = arrowIcon,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            onClick = { navController.navigate("settings/updater") }
-                        )
-                    } else null,
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.storage),
-                        title = { Text(stringResource(R.string.storage)) },
-                        description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
-                        trailingContent = {
-                            Icon(
-                                painter = arrowIcon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        onClick = { navController.navigate("settings/storage") }
-                    )
-                ),
-        )
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.app_management_backup)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
+    IridePageFrame(
+        title = stringResource(R.string.app_management_backup),
+        scrollState = settingsScrollState,
+        navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        modifier = Modifier.fillMaxSize(),
+        background = {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
                 )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
         },
-    )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                    )
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                            .only(WindowInsetsSides.Top)
+                    )
+                )
 
-    AddToPlaylistDialogOnline(
-        isVisible = showChoosePlaylistDialogOnline,
-        allowSyncing = false,
-        initialTextFieldValue = importedTitle,
-        songs = importedSongs,
-        onDismiss = { showChoosePlaylistDialogOnline = false },
-        onProgressStart = { newVal -> isProgressStarted = newVal },
-        onPercentageChange = { newPercentage -> progressPercentage = newPercentage },
-        onSongChange = { currentImportSong = it },
-    )
+                val appName = stringResource(R.string.app_name)
+                val arrowIcon = painterResource(R.drawable.navigate_next)
 
-    LoadingScreen(
-        isVisible = isProgressStarted,
-        value = progressPercentage,
-        songTitle = currentImportSong,
-    )
-
-    // CSV column mapping dialog
-    csvImportState?.let { state ->
-        CsvColumnMappingDialog(
-            isVisible = showCsvColumnMapping,
-            csvState = state,
-            onDismiss = {
-                showCsvColumnMapping = false
-                csvImportState = null
-            },
-            onConfirm = { mappingState ->
-                showCsvColumnMapping = false
-                csvImportState = mappingState
-                pendingCsvUri?.let { uri ->
-                    showCsvImportProgress = true
-                    coroutineScope.launch(Dispatchers.Default) {
-                        val result =
-                            viewModel.importPlaylistFromCsv(
-                                context,
-                                uri,
-                                mappingState,
-                                onProgress = { progress ->
-                                    csvImportProgress = progress
+                Material3SettingsGroup(
+                    items =
+                        listOfNotNull(
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.action_backup)) },
+                                icon = painterResource(R.drawable.backup),
+                                onClick = {
+                                    val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                                    backupLauncher.launch(
+                                        "${appName}_${
+                                            LocalDateTime.now().format(formatter)
+                                        }.backup"
+                                    )
                                 },
-                                onLogUpdate = { logs ->
-                                    csvRecentLogs.clear()
-                                    csvRecentLogs.addAll(logs)
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.action_restore)) },
+                                icon = painterResource(R.drawable.restore),
+                                onClick = {
+                                    restoreLauncher.launch(arrayOf("application/octet-stream"))
                                 },
-                            )
-                        importedSongs.clear()
-                        importedSongs.addAll(result)
-                        if (result.isNotEmpty()) {
-                            showCsvImportProgress = false
-                            csvImportProgress = 0
-                            csvRecentLogs.clear()
-                            showChoosePlaylistDialogOnline = true
+                            ),
+                            if (advancedMode)
+                                Material3SettingsItem(
+                                    title = { Text(stringResource(R.string.import_online)) },
+                                    icon = painterResource(R.drawable.playlist_add),
+                                    onClick = {
+                                        importM3uLauncherOnline.launch(arrayOf("audio/*"))
+                                    },
+                                )
+                            else null,
+                            if (advancedMode)
+                                Material3SettingsItem(
+                                    title = { Text(stringResource(R.string.import_csv)) },
+                                    icon = painterResource(R.drawable.playlist_add),
+                                    onClick = {
+                                        importPlaylistFromCsv.launch(
+                                            arrayOf(
+                                                "text/csv",
+                                                "text/comma-separated-values",
+                                                "application/csv",
+                                                "text/plain",
+                                            )
+                                        )
+                                    },
+                                )
+                            else null,
+                            if (BuildConfig.UPDATER_AVAILABLE) {
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.update),
+                                    title = { Text(stringResource(R.string.updater)) },
+                                    trailingContent = {
+                                        Icon(
+                                            painter = arrowIcon,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    },
+                                    onClick = { navController.navigate("settings/updater") },
+                                )
+                            } else null,
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.storage),
+                                title = { Text(stringResource(R.string.storage)) },
+                                description = {
+                                    Text(
+                                        stringResource(R.string.settings_storage_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = arrowIcon,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/storage") },
+                            ),
+                        )
+                )
+            }
+        }
+
+        AddToPlaylistDialogOnline(
+            isVisible = showChoosePlaylistDialogOnline,
+            allowSyncing = false,
+            initialTextFieldValue = importedTitle,
+            songs = importedSongs,
+            onDismiss = { showChoosePlaylistDialogOnline = false },
+            onProgressStart = { newVal -> isProgressStarted = newVal },
+            onPercentageChange = { newPercentage -> progressPercentage = newPercentage },
+            onSongChange = { currentImportSong = it },
+        )
+
+        LoadingScreen(
+            isVisible = isProgressStarted,
+            value = progressPercentage,
+            songTitle = currentImportSong,
+        )
+
+        csvImportState?.let { state ->
+            CsvColumnMappingDialog(
+                isVisible = showCsvColumnMapping,
+                csvState = state,
+                onDismiss = {
+                    showCsvColumnMapping = false
+                    csvImportState = null
+                },
+                onConfirm = { mappingState ->
+                    showCsvColumnMapping = false
+                    csvImportState = mappingState
+                    pendingCsvUri?.let { uri ->
+                        showCsvImportProgress = true
+                        coroutineScope.launch(Dispatchers.Default) {
+                            val result =
+                                viewModel.importPlaylistFromCsv(
+                                    context,
+                                    uri,
+                                    mappingState,
+                                    onProgress = { progress ->
+                                        csvImportProgress = progress
+                                    },
+                                    onLogUpdate = { logs ->
+                                        csvRecentLogs.clear()
+                                        csvRecentLogs.addAll(logs)
+                                    },
+                                )
+                            importedSongs.clear()
+                            importedSongs.addAll(result)
+                            if (result.isNotEmpty()) {
+                                showCsvImportProgress = false
+                                csvImportProgress = 0
+                                csvRecentLogs.clear()
+                                showChoosePlaylistDialogOnline = true
+                            }
                         }
                     }
-                }
-            },
-        )
-    }
-
-    // CSV import progress dialog
-    CsvImportProgressDialog(
-        isVisible = showCsvImportProgress,
-        progress = csvImportProgress,
-        recentLogs = csvRecentLogs.toList(),
-        onDismiss = {
-            // Cannot dismiss while importing
-        },
-    )
-
-    // Restore confirmation dialog
-    if (showRestoreConfirmDialog) {
-        DefaultDialog(
-            onDismiss = {
-                showRestoreConfirmDialog = false
-                pendingRestoreUri = null
-                backupPreviewInfo = null
-                accountCheckFailed = false
-            },
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.restore),
-                    contentDescription = null,
-                )
-            },
-            title = { Text(stringResource(R.string.restore_confirm_title)) },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        showRestoreConfirmDialog = false
-                        pendingRestoreUri = null
-                        backupPreviewInfo = null
-                        accountCheckFailed = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(
-                    onClick = {
-                        showRestoreConfirmDialog = false
-                        pendingRestoreUri?.let { uri ->
-                            viewModel.restore(context, uri, clearAuthData = true)
-                        }
-                        pendingRestoreUri = null
-                        backupPreviewInfo = null
-                        accountCheckFailed = false
-                    },
-                ) {
-                    Text(stringResource(R.string.restore))
-                }
-            },
-        ) {
-            // Supporting text
-            Text(
-                text = stringResource(R.string.restore_confirm_message),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
+                },
             )
+        }
 
-            // Show warning about account sign out if account found
-            if (backupPreviewInfo?.accountName != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.restore_account_warning),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-            }
+        CsvImportProgressDialog(
+            isVisible = showCsvImportProgress,
+            progress = csvImportProgress,
+            recentLogs = csvRecentLogs.toList(),
+            onDismiss = {},
+        )
 
-            // Show loading or account info
-            if (isLoadingAccountInfo) {
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
+        if (showRestoreConfirmDialog) {
+            DefaultDialog(
+                onDismiss = {
+                    showRestoreConfirmDialog = false
+                    pendingRestoreUri = null
+                    backupPreviewInfo = null
+                    accountCheckFailed = false
+                },
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.restore),
+                        contentDescription = null,
                     )
-                    Spacer(modifier = Modifier.size(16.dp))
+                },
+                title = { Text(stringResource(R.string.restore_confirm_title)) },
+                buttons = {
+                    IrideFolioSecondaryButton(
+                        onClick = {
+                            showRestoreConfirmDialog = false
+                            pendingRestoreUri = null
+                            backupPreviewInfo = null
+                            accountCheckFailed = false
+                        }
+                    ) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                    IrideFolioPrimaryButton(
+                        onClick = {
+                            showRestoreConfirmDialog = false
+                            pendingRestoreUri?.let { uri ->
+                                viewModel.restore(context, uri, clearAuthData = true)
+                            }
+                            pendingRestoreUri = null
+                            backupPreviewInfo = null
+                            accountCheckFailed = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.restore))
+                    }
+                },
+            ) {
+                Text(
+                    text = stringResource(R.string.restore_confirm_message),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                if (backupPreviewInfo?.accountName != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = stringResource(R.string.checking_previous_account),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = stringResource(R.string.restore_account_warning),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
-
-            // Show "No account found" if check failed OR backup has no auth data
-            val hasNoAccount =
-                backupPreviewInfo?.let {
-                    !it.hasAuthData || (it.hasAuthData && it.accountName == null && !isLoadingAccountInfo)
-                } ?: false
-            if (!isLoadingAccountInfo && (accountCheckFailed || hasNoAccount)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(R.string.no_account_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
-
-            // Show account info if backup contains auth data and we have account details
-            backupPreviewInfo?.let { preview ->
-                if (!isLoadingAccountInfo && preview.hasAuthData && preview.accountName != null) {
+                if (isLoadingAccountInfo) {
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
-
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        if (preview.accountImageUrl != null) {
-                            AsyncImage(
-                                model = preview.accountImageUrl,
-                                contentDescription = null,
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                                contentScale = ContentScale.Crop,
-                            )
-                        } else {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.person),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(24.dp),
-                                )
-                            }
-                        }
-
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
                         Spacer(modifier = Modifier.size(16.dp))
-
                         Text(
-                            text = preview.accountEmail ?: preview.accountName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            text = stringResource(R.string.checking_previous_account),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
 
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
+                val hasNoAccount =
+                    backupPreviewInfo?.let {
+                        !it.hasAuthData ||
+                            (it.hasAuthData && it.accountName == null && !isLoadingAccountInfo)
+                    } ?: false
+                if (!isLoadingAccountInfo && (accountCheckFailed || hasNoAccount)) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = stringResource(R.string.no_account_found),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+
+                backupPreviewInfo?.let { preview ->
+                    if (
+                        !isLoadingAccountInfo && preview.hasAuthData && preview.accountName != null
+                    ) {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (preview.accountImageUrl != null) {
+                                AsyncImage(
+                                    model = preview.accountImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            } else {
+                                Box(
+                                    modifier =
+                                        Modifier.size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                            ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.person),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.size(16.dp))
+
+                            Text(
+                                text = preview.accountEmail ?: preview.accountName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                 }
             }
         }

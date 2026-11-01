@@ -5,11 +5,19 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
+
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,14 +36,70 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
+import com.metrolist.music.ui.utils.pressScale
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+
+/**
+ * New Iride UI: flat, monochrome, borderless-fill replacement for the default Material
+ * [FloatingActionButton] — white-alpha ring on a near-black disc, no elevation/color, matching
+ * the flat design language used elsewhere in New Iride UI (see [IrideSwitch], [GridMenuItem]).
+ * Opt-in per call site via `useIrideStyle` so unrelated FAB usages (library/history/stats
+ * screens) keep their normal Material styling.
+ */
+@Composable
+private fun IrideFlatFAB(
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val description = if (icon == R.drawable.add) stringResource(R.string.new_playlist) else null
+    Box(
+        modifier = modifier
+            .size(56.dp)
+            .pressScale(interactionSource, pressedScale = 0.92f)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.85f))
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
+            .semantics { description?.let { contentDescription = it } }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (icon == R.drawable.add) {
+            Text(
+                text = "+",
+                fontFamily = IBMPlexMonoFontFamily,
+                fontSize = 32.sp,
+                color = Color.White.copy(alpha = 0.9f),
+            )
+        } else {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.9f),
+            )
+        }
+    }
+}
 
 @Composable
 fun BoxScope.HideOnScrollFAB(
@@ -45,6 +109,7 @@ fun BoxScope.HideOnScrollFAB(
     label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
+    useIrideStyle: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
@@ -89,6 +154,8 @@ fun BoxScope.HideOnScrollFAB(
                     onClick = onClick,
                     expanded = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0,
                 )
+            } else if (useIrideStyle) {
+                IrideFlatFAB(icon = icon, onClick = onClick)
             } else {
                 FloatingActionButton(
                     onClick = onClick,
@@ -111,6 +178,7 @@ fun BoxScope.HideOnScrollFAB(
     label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
+    useIrideStyle: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
@@ -155,6 +223,8 @@ fun BoxScope.HideOnScrollFAB(
                     onClick = onClick,
                     expanded = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0,
                 )
+            } else if (useIrideStyle) {
+                IrideFlatFAB(icon = icon, onClick = onClick)
             } else {
                 FloatingActionButton(
                     onClick = onClick,

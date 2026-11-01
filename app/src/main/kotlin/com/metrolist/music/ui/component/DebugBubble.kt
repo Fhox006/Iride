@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -17,8 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.db.entities.LyricsEntity
@@ -105,7 +106,7 @@ fun DebugBubble(
                         Icon(
                             painter = painterResource(R.drawable.bug_report),
                             contentDescription = "Debug",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.textPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -117,7 +118,7 @@ fun DebugBubble(
                     exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = FolioShape(16.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shadowElevation = 8.dp,
                         modifier = Modifier

@@ -23,10 +23,35 @@ import java.time.LocalDateTime
             onDelete = ForeignKey.CASCADE,
         ),
     ],
+    indices = [
+        androidx.room.Index(value = ["songId"]),
+        androidx.room.Index(value = ["timestamp"]),
+        androidx.room.Index(value = ["songId", "timestamp"]),
+    ],
 )
 data class Event(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    @ColumnInfo(index = true) val songId: String,
+    @ColumnInfo val songId: String,
     @ColumnInfo(defaultValue = "0") val timestamp: LocalDateTime,
     val playTime: Long,
+)
+
+@Immutable
+data class RotationSongStats(
+    val songId: String,
+    val playTime: Long,
+)
+
+@Immutable
+data class AlbumPlayEvent(
+    val songId: String,
+    val songIndex: Int,
+    val timestamp: LocalDateTime,
+)
+
+@Immutable
+data class GlobalAlbumPlayEvent(
+    val songId: String,
+    val albumId: String,
+    val timestamp: LocalDateTime,
 )

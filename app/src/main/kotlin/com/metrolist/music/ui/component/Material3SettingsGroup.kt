@@ -6,7 +6,6 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,8 +13,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,11 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -39,12 +38,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 
 /**
@@ -59,158 +66,160 @@ fun Material3SettingsGroup(
     useLowContrast: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    IrideSettingsGroup(title = title, items = items, modifier = modifier)
+}
+
+/** Joined destination rows share one borderless container per group in the settings index. */
+@Composable
+fun IrideFolioSettingsNavigationGroup(
+    items: List<Material3SettingsItem>,
+    modifier: Modifier = Modifier,
+) {
+    IrideSettingsGroup(title = null, items = items, modifier = modifier)
+}
+
+/** Settings share the library shuffle action's fill, including custom option layouts. */
+@Composable
+fun IrideFolioSettingsPanel(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val shape = FolioShape(IrideFolio.SettingsCornerRadius)
     Column(
         modifier = modifier
             .fillMaxWidth()
-    ) {
-        // Section title
+            .clip(shape)
+            .background(colors.fillSubtle),
+        content = content,
+    )
+}
+
+/** Section labels stay outside the shared panel; joined rows retain individual touch targets. */
+@Composable
+private fun IrideSettingsGroup(
+    title: String?,
+    items: List<Material3SettingsItem>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
         title?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = IBMPlexMonoFontFamily,
+                    letterSpacing = (-0.1).sp,
+                ),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.textSecondary,
+                modifier = Modifier.padding(bottom = IrideFolio.SettingsTitleBottomSpacing, top = 4.dp)
             )
         }
 
-        // Settings items
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+        if (items.isEmpty()) return@Column
+        IrideFolioSettingsPanel {
             items.forEachIndexed { index, item ->
-                val shape = when {
-                    items.size == 1 -> RoundedCornerShape(24.dp)
-                    index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                    index == items.size - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                    else -> RoundedCornerShape(6.dp)
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = shape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (!useLowContrast) {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        }
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Material3SettingsItemRow(item = item)
+                IrideSettingsItemRow(item = item)
+                if (index != items.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = IrideFolio.SettingsRowHorizontalPadding),
+                        color = MaterialTheme.colorScheme.strokeHairline,
+                        thickness = IrideFolio.SettingsBorderWidth,
+                    )
                 }
             }
         }
     }
 }
 
-/**
- * Individual settings item row with Material 3 styling
- */
 @Composable
-private fun Material3SettingsItemRow(
-    item: Material3SettingsItem
+private fun IrideSettingsItemRow(
+    item: Material3SettingsItem,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(
+        horizontal = IrideFolio.SettingsRowHorizontalPadding,
+        vertical = IrideFolio.SettingsRowVerticalPadding,
+    ),
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(
                 enabled = item.enabled && item.onClick != null,
                 onClick = { item.onClick?.invoke() }
             )
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .alpha(if (item.enabled) 1f else 0.4f)
+            .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Custom leading content or Icon with background
         if (item.leadingContent != null) {
             item.leadingContent.invoke()
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(
-                            alpha = if (item.isHighlighted) 0.15f else 0.1f
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (item.showBadge) {
-                    BadgedBox(
-                        badge = {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
+            val iconTint = MaterialTheme.colorScheme.textPrimary.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
+            val icon: @Composable () -> Unit = {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = null,
+                    tint = if (item.iconContainerColor != null) Color.White else iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            if (item.iconContainerColor != null) {
+                IrideIconTile(color = item.iconContainerColor) {
+                    if (item.showBadge) {
+                        BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.textPrimary) }) {
+                            icon()
                         }
-                    ) {
-                        Icon(
-                            painter = item.icon,
-                            contentDescription = null,
-                            tint = if (!item.enabled)
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else if (item.isHighlighted)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(24.dp)
-                        )
+                    } else {
+                        icon()
                     }
-                } else {
+                }
+            } else if (item.showBadge) {
+                BadgedBox(
+                    badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
+                ) {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = if (!item.enabled)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        else if (item.isHighlighted)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                        modifier = Modifier.size(24.dp)
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
+            } else {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
             }
-
             Spacer(modifier = Modifier.width(16.dp))
         }
 
-        // Title and description
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Title content
+        Column(modifier = Modifier.weight(1f)) {
             ProvideTextStyle(
-                MaterialTheme.typography.titleMedium.copy(
-                    color = if (!item.enabled) 
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    else
-                        MaterialTheme.colorScheme.onSurface
+                MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = IBMPlexMonoFontFamily,
+                    fontSize = 15.sp,
+                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.textPrimary,
                 )
             ) {
                 item.title()
             }
 
-            // Description if provided
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = if (!item.enabled)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.textSecondary)
                 ) {
                     desc()
                 }
             }
         }
 
-        // Trailing content
         item.trailingContent?.let { trailing ->
             Spacer(modifier = Modifier.width(8.dp))
             trailing()
@@ -237,86 +246,49 @@ fun ExpandableSettingsSection(
     var expanded by remember { mutableStateOf(defaultExpanded) }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Card(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                .clickable { expanded = !expanded }
+                .padding(vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (icon != null) {
-                val tint = iconTint ?: MaterialTheme.colorScheme.primary
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(tint.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = icon,
-                            contentDescription = null,
-                            tint = tint,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (description.isNotEmpty()) {
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Icon(
-                        painter = painterResource(
-                            if (expanded) R.drawable.expand_less else R.drawable.expand_more
-                        ),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Icon(
+                    painter = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = IBMPlexMonoFontFamily,
+                        fontSize = 15.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.textPrimary
+                )
+                if (description.isNotEmpty()) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        painter = painterResource(
-                            if (expanded) R.drawable.expand_less else R.drawable.expand_more
-                        ),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.textSecondary
                     )
                 }
             }
+            Icon(
+                painter = painterResource(
+                    if (expanded) R.drawable.expand_less else R.drawable.expand_more
+                ),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.textTertiary,
+                modifier = Modifier.size(18.dp)
+            )
         }
 
         AnimatedVisibility(
@@ -348,5 +320,6 @@ data class Material3SettingsItem(
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,
     val enabled: Boolean = true,
-    val onClick: (() -> Unit)? = null
+    val onClick: (() -> Unit)? = null,
+    val iconContainerColor: Color? = null,
 )

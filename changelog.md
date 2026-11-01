@@ -1,3 +1,175 @@
+## 0.1.0-alpha27
+
+### Fixes
+
+- **Synced lyrics are back**: all lyrics providers now run on the OkHttp engine, fixing the TLS failure that left only plain (unsynced) lyrics — line-by-line and word-by-word (karaoke) sync work again
+- Word-level search falls back to the primary artist when the track lists featured artists, so more songs find their karaoke lyrics
+
+## 0.1.0-alpha26
+
+### Fixes
+
+- **In-app updates work again**: the update checker, song-link sharing and genre lookup now run on the OkHttp engine, fixing the TLS failure (`hostname aware checkServerTrusted`) introduced by the new per-domain network security rules — the "New version available" popup and background downloads are back
+- Genre pills and song.link sharing no longer fail silently for the same reason
+
+## 0.1.0-alpha25
+
+### New look
+
+- **Frosted glass across the app**: the album-style frosted top bar now runs on Home, Settings, Account and player screens, with a per-screen backdrop that costs nothing at rest
+- **MP3 player skin**: redesigned full player with fluid title/artist text morph from the mini player, matching the New Iride UI
+
+### Improvements
+
+- Auto-Mix / radio lifecycle fixes: new queues cleanly take over, suggestions no longer leak across restarts
+- News tab removed along with other obsolete screens for a leaner app
+- Startup crash isolation: risky backdrop recording and nav-motion paths reverted to safe behavior
+- Uniform artwork borders and fullscreen bleed fixes, EQ device-card ergonomics
+- Queue rows and hero carousel startup refinements carried over from alpha24 work
+
+## 0.1.0-alpha24
+
+### New features
+
+- **Update inside the app**: the "New version available" popup now downloads the APK itself with a live progress percentage, then walks you through installing — including the "allow installing apps" permission step, a Retry action, and clear errors when storage is full or the connection drops. Downloads run through the system download manager with a progress notification and resume safely if the app closes.
+- **Smart Boot** (Settings > Interface, on by default): noticeably faster startup — Featured loads instantly from a saved snapshot, shelves hold their place with shimmer placeholders instead of popping in and shifting content, no artificial stagger delays, and the chip row is fetched once per cold start. Turn it off to restore the original launch behavior (takes effect after restart).
+
+### Improvements
+
+- Cold start in light mode no longer flashes black/white before the real theme appears
+- Queue rows keep a fully transparent background at rest and mid-drag: no leftover translucent rectangle behind equalizer bars or queue numbers on the page background
+- Hero carousel restores instantly from its snapshot at startup
+- Auto-Mix suggestions no longer survive app restarts, and any new queue (playlist, album, search) cleanly disarms an active radio
+- Mini player to full player morph: title/artist lines converge smoothly instead of drifting apart in the mini state, with no ellipsis jump mid-animation
+
+## 0.1.0-alpha23
+
+### New features
+
+- **Real audio-reactive equalizer bars**: the now-playing bars pulse to the track's actual bass/mid/treble instead of a looping fake animation
+- **Notes overview screen**: My Account > Notes lists every album and track you've reviewed in one place, with long-press to delete
+- Add Note is now available from the full-screen player menu, not just the song three-dot menu
+
+### Improvements
+
+- Artist screen's album long-press menu now opens the in-app album menu (with note support) instead of the plain YouTube one
+- Curtain player: backgrounding the app no longer force-closes a deliberately open player, only an accidental tap during a home-gesture swipe
+- Home screen's Quick Picks / For You shelves reserve their space while loading instead of popping in and shifting rows below them
+- Settings shows a banner while Advanced Mode is on
+
+## 0.1.0-alpha22
+
+### New features
+
+- **Notes on songs and albums**: attach a title, star rating (half-star precision) and free-text thoughts to any song or album, from the redesigned song/album menu
+- **Playlist categories**: replaced the old genre filter pills with real, persisted, user-created categories you can assign playlists to
+- **Turntable needle-drop sound**: pressing PLAY on an album now plays a small procedural "needle drop" sound effect (thunk + crackle-pops), matching the New Iride UI vinyl look
+- **Discover Weekly-style mix**: new generated discovery playlist pulling from your library and listening history
+- **In-app video playback**: watch the official YouTube video for a track directly in the app instead of leaving to YouTube
+- **Ko-fi / donations**: donations entry in Settings now has a small heart bounce animation to draw the eye — support the project if you'd like
+
+### Improvements
+
+- Player Appearance settings decluttered: removed dead/duplicate mini-player and slider style options, keeping one clear background style control
+- Consistent entrance motion (IrideMotion) extended to Library Artists, Playlists, Songs and the Cached Playlist screen, matching Artist/Album/Home
+- Cached Playlist screen visual rework to match the rest of the New Iride UI
+- Auto-playlist custom manual-order feature removed after sync issues; manual playlist reordering is unaffected
+- Various search, stats and library screen refinements
+
+## 0.1.0-alpha21
+
+### Improvements
+
+- Update popup now matches the New Iride UI monospace look (Space Mono, flat monochrome, when the toggle is on)
+- Cold start: fixed a black/white flash before the app's real theme takes over, and a re-layout jump caused by the nav bar insets landing after the first frame
+- Fixed a crash on some playlist screens when the frosted top bar's glass effect turned on
+- Feed thumbnails now request only the resolution they actually draw, cutting network and memory use
+- Network requests time out faster after a lost connection so browse/library/lyrics don't look stuck for minutes
+- Player: click-wheel center button simplified to match the surrounding wheel; lyrics background animation now only runs while lyrics are visible, cutting player battery/CPU use
+
+## 0.1.0-alpha20
+
+### New features
+
+- **Playlist reorder**: drag to reorder songs in playlists, with a dedicated reorder mode (menu entry + morphing button) and instant response (fixed a per-row blocking read that caused stutter); auto playlists (favorites, most played, etc.) now support a custom manual order too
+- **Artist discography screen**: browse an artist's full catalog beyond the top shelves
+- **New release notifications**: Library Artists shows "+N" badges for new releases (title total + per-artist), auto-clears when you open the artist's profile, subtracts songs you've already played, and suggests artists you listen to but haven't followed
+
+### Improvements
+
+- Consistent entrance motion (fade + reveal) now applied across Artist, Album, Home and Library screens for the New Iride UI
+- Playlist screen (New Iride UI) unified with the Album/Artist top bar style, with a new play/pause control panel and gradient background
+- Player: rebalanced cover and control wheel sizing for better fit and spacing
+- Fixed a rare cold-start glitch where the mini player briefly showed placeholder text before the real song info loaded
+- Fixed the app getting stuck showing "offline" until force-closed even after the network came back; added a manual refresh button to Library
+- Fixed taps being swallowed by the player sheet in some cases, and the guess-the-song game round switch occasionally showing the wrong round
+
+## 0.1.0-alpha19
+
+### New look
+
+- **New graphic style**: a fresh monospace typographic identity (Space Mono) now runs across the New Iride UI — song, album, artist and playlist titles and subtitles all adopt the new typeface for a cleaner, more distinctive feel
+- Player redesigned: larger, better-spaced album title, refined circular controls with subtle borders, reworked background gradient blend, and corrected touch zones so every control reacts where you tap
+
+### Improvements
+
+- **Guess the song**: rounds now start instantly — the next song's audio is preloaded the moment you answer, so there is no buffering between rounds; songs are loaded in full upfront (a short one-time wait, explained on the loading screen)
+- Guess the song scoreboard shows a clearer "correct / total" result, and the songs-left counter now reads naturally in singular and plural
+- Continued monochrome/flat styling pass across menus, bottom sheets, and lyrics for the New Iride UI
+
+## 0.1.0-alpha18
+
+### New features
+
+- **Guess the song**: new artist-page quiz game (New Iride UI) — guess songs from a random full-catalog pool of that artist, wrong guesses cost a 3s penalty, best score tracked per artist
+- **Library Albums sections**: new Favorites and Continue Listening rows on the Library Albums screen
+
+### Improvements
+
+- New "Top gradient on albums" setting, mirroring the existing home top gradient, subtly blended behind Album/Single/EP screens
+- New glass-style playlist cover component
+- Further monochrome/flat styling pass across menus, dialogs, settings screens, search, and the player for New Iride UI
+
+## 0.1.0-alpha17
+
+### New features
+
+- **Comments**: view and post YouTube comments for the current song from the player (Settings → Player Appearance, opt-in and off by default) — sort by top/newest, reply counts, sign-in prompt when logged out
+- **News tab**: new opt-in bottom navigation tab (Settings → Interface, between Home and Library) surfacing new albums and songs from your followed/frequently-played artists plus YouTube's curated new-release feed, with each release's year verified before it's shown
+- **Genre filter pills**: playlist screens (auto, cached, local, online, top) now show genre filter chips resolved via Last.fm's tag data with an iTunes Search fallback, cached on disk
+- **Smart Search**: search results can show full per-category carousels ordered by inferred query intent, each backed by its own dedicated search instead of YouTube's truncated summary shelves
+
+### Improvements
+
+- Consolidated the three separate player-logic toggles (Fast Song Loader BETA, Metrolist Player Logic, Faster Loader) into a single "Muzza Player Logic" setting — a faithful, fully isolated port of Muzza's own stream-resolution path
+- More compact song/album list rows with subtle dividers between plain rows and softer squircle thumbnail corners
+- Redesigned the playback-error UI: a small transient banner over the album art with a copy-debug-info button, instead of replacing the whole screen
+- Refined word-synced lyrics animation with an Apple-Music-style micro letter lift and glow
+- Artist page header now anchors the name/controls to the bottom of the artwork regardless of content, and recent releases are picked by newest year across all Albums/Singles/EP shelves instead of the first shelf match
+- Artist song/album list screens now support sorting by name or artist
+
+## 0.1.0-alpha16
+
+### New features
+
+- **Hero Carousel**: new opt-in home screen carousel (Settings → Interface) surfacing new releases, mood picks, personalized mixes, and artist radio — replaces the old Discovery Carousel
+- **BetterLyrics Unison & Sillaba providers**: two new word-synced lyrics sources, each individually toggleable in Settings → Content, with tier-based tie-break priority against existing providers
+- **Share to platform**: sharing a song now lets you pick YouTube Music, Spotify, Apple Music, or SoundCloud, resolving a matching link instead of only sharing the YouTube Music URL
+- **Faster Loader / Metrolist Player Logic**: two new player settings for faster stream resolution when changing tracks
+
+### Bug fixes
+
+- Fixed "Start radio" silently doing nothing in some cases by always forcing a full queue replace instead of an incremental insert that could swallow exceptions
+- Fixed network status reporting a stale "offline" state on signal degradation (walking, cellular handover, in-call) by dropping the strict `NET_CAPABILITY_VALIDATED` requirement
+- Fixed search results always following YouTube's fixed Songs/Videos/Albums/Artists order regardless of query intent — results are now reordered based on the inferred top-result category (artist, album, playlist, podcast)
+
+### Improvements
+
+- Search result grid now uses per-type thumbnail sizing and aspect ratio (16:9 for videos, larger tiles for albums)
+- Queue drag-to-reorder auto-scroll near screen edges slowed to ~25% of its previous speed
+- Search results are enriched in the background with additional items per category beyond the initial truncated summary
+- Small hidden bias added to lyrics word-timing offset to correct for perceptibly-early animation
+
 ## 0.1.0-alpha15
 
 ### New features

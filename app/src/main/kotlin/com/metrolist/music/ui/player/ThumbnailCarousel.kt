@@ -5,10 +5,15 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +31,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -75,6 +80,9 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
+import com.metrolist.music.constants.irideArtworkBorderWidth
+import com.metrolist.music.ui.theme.strokeOverArtwork
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
@@ -116,6 +124,13 @@ fun ThumbnailCarousel(
         else -> Color.White
     }
 
+    // Light outline around the artwork: theme-based on plain surfaces, translucent
+    // white over a media background. Stronger than list tokens — it sits on image pixels.
+    val artworkBorderColor = when (playerBackground) {
+        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.strokeOverArtwork
+        else -> Color.White.copy(alpha = 0.4f)
+    }
+
     val mediaItemsData = remember(mediaMetadata, swipeThumbnail) {
         val player = playerConnection.player
         val timeline = player.currentTimeline
@@ -134,8 +149,6 @@ fun ThumbnailCarousel(
         MediaItemsData(items, items.indexOf(current))
     }
 
-    // Lags behind mediaItemsData: holds the old list during skip animation so the
-    // correct artwork slides in rather than the page snapping instantly with a reload.
     var displayedMediaItemsData by remember { mutableStateOf(mediaItemsData) }
     val displayedItems = displayedMediaItemsData.items
     val displayedCurrentIndex = displayedMediaItemsData.currentIndex
@@ -146,6 +159,8 @@ fun ThumbnailCarousel(
         val url = prevItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
         context.imageLoader.enqueue(
             ImageRequest.Builder(context).data(url)
+                .size(Size.ORIGINAL)
+                .memoryCacheKey(MemoryCache.Key(url))
                 .memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
         )
     }
@@ -153,6 +168,8 @@ fun ThumbnailCarousel(
         val url = nextItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
         context.imageLoader.enqueue(
             ImageRequest.Builder(context).data(url)
+                .size(Size.ORIGINAL)
+                .memoryCacheKey(MemoryCache.Key(url))
                 .memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
         )
     }
@@ -193,8 +210,6 @@ fun ThumbnailCarousel(
             return@LaunchedEffect
         }
 
-        // Animate on OLD list in the correct direction.
-        // For swipe: pager already at target page, animateScrollToPage is a no-op.
         val oldItems = oldData.items
         val oldIdx = oldData.currentIndex
         when (newCurrentId) {
@@ -219,18 +234,7 @@ fun ThumbnailCarousel(
         }
     ) {
         AnimatedVisibility(
-            visible = error != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .padding(32.dp)
-                .align(Alignment.Center),
-        ) {
-            error?.let { PlaybackError(error = it, retry = playerConnection.player::prepare) }
-        }
-
-        AnimatedVisibility(
-            visible = error == null,
+            visible = true,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
@@ -253,7 +257,7 @@ fun ThumbnailCarousel(
                             modifier = Modifier
                                 .width(36.dp)
                                 .height(5.dp)
-                                .clip(RoundedCornerShape(50))
+                                .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.35f))
                         )
                     }
@@ -350,6 +354,14 @@ fun ThumbnailCarousel(
                                             -(pageOffset / absOffset) * shrinkPx
                                         } else 0f
                                     }
+                                    .irideArtworkOverlayBorder(
+                                        width = irideArtworkBorderWidth(pageWidth),
+                                        color = artworkBorderColor,
+                                        shape = SquircleShape(
+                                            radius = thumbCornerRadius,
+                                            cornerSmoothing = 0.48f
+                                        )
+                                    )
                                     .clip(
                                         SquircleShape(
                                             radius = thumbCornerRadius,
@@ -373,6 +385,7 @@ fun ThumbnailCarousel(
                                     }
                                 } else {
                                     val artworkUri = item.mediaMetadata.artworkUri?.toString()
+                                    val resizedArtworkUri = artworkUri?.resize(1080, 1080) ?: artworkUri
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -380,8 +393,9 @@ fun ThumbnailCarousel(
                                     ) {
                                         AsyncImage(
                                             model = ImageRequest.Builder(context)
-                                                .data(artworkUri?.resize(1080, 1080) ?: artworkUri)
+                                                .data(resizedArtworkUri)
                                                 .size(Size.ORIGINAL)
+                                                .memoryCacheKey(resizedArtworkUri?.let { MemoryCache.Key(it) })
                                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .networkCachePolicy(CachePolicy.ENABLED)
@@ -422,6 +436,17 @@ fun ThumbnailCarousel(
         ) {
             CarouselSeekEffectOverlay(seekDirection = seekDirection)
         }
+
+        AnimatedVisibility(
+            visible = error != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding(),
+        ) {
+            error?.let { PlaybackErrorBanner(error = it, retry = playerConnection.player::prepare) }
+        }
     }
 }
 
@@ -437,7 +462,7 @@ private fun CarouselSeekEffectOverlay(
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.7f), FolioShape(8.dp))
             .padding(8.dp)
     )
 }

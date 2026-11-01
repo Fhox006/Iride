@@ -5,19 +5,30 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.shape.CircleShape
+
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -25,22 +36,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,16 +54,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import kotlinx.coroutines.delay
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -72,83 +89,16 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.Material3SettingsGroup
+import com.metrolist.music.ui.component.IrideFolioMenuAction
+import com.metrolist.music.ui.component.IrideFolioSettingsNavigationGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.IrideIconTile
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
-
-// ── Internal composables ───────────────────────────────────────────────────────
-
-@Composable
-private fun SettingsNavCard(
-    icon: Painter,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
-    title: String,
-    description: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    badge: Boolean = false
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconTint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (description.isNotEmpty()) {
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,6 +109,7 @@ fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val hasAndroidAuto = remember {
         try {
@@ -168,8 +119,6 @@ fun SettingsScreen(
     }
 
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
-    var showAdvancedMenu by remember { mutableStateOf(false) }
-
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
     val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
     val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
@@ -184,120 +133,77 @@ fun SettingsScreen(
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
-    // ── Screen ────────────────────────────────────────────────────────────
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal
-                )
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
+    val settingsListState = rememberLazyListState()
+    IridePageLayout(
+        titleRes = R.string.account,
+        state = settingsListState,
+        modifier = Modifier.fillMaxSize(),
+        bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+        menuSections = listOf(
+            listOf(
+                IrideFolioMenuAction(
+                    label = stringResource(
+                        if (advancedMode) R.string.disable_advanced_settings
+                        else R.string.enable_advanced_settings,
+                    ),
+                    onClick = { onAdvancedModeChange(!advancedMode) },
+                ),
+            ),
+        ),
     ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
+        item(key = "settings_content") {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)),
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        AccountProfileHeader(
+            isLoggedIn = isLoggedIn,
+            accountImageUrl = accountImageUrl,
+            accountName = accountName,
+            accountHandle = accountChannelHandle.takeIf { it.isNotEmpty() }
+                ?: accountEmail.takeIf { it.isNotEmpty() },
+            onLogin = { navController.navigate("login") },
         )
 
-        // ── Account section ──────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (isLoggedIn) {
-                if (accountImageUrl != null) {
-                    AsyncImage(
-                        model = accountImageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.person),
-                            contentDescription = null,
-                            modifier = Modifier.size(44.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = accountName.ifEmpty { stringResource(R.string.my_account) },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+        Spacer(modifier = Modifier.height(4.dp))
+
+        if (advancedMode) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(FolioShape(16.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                    .padding(12.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.info),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
                 )
-                val handle = accountChannelHandle.takeIf { it.isNotEmpty() }
-                    ?: accountEmail.takeIf { it.isNotEmpty() }
-                if (handle != null) {
-                    Text(
-                        text = handle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.person),
-                        contentDescription = null,
-                        modifier = Modifier.size(44.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = stringResource(R.string.login),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = stringResource(R.string.advanced_mode_banner),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 )
-                Text(
-                    text = stringResource(R.string.sign_in_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { navController.navigate("login") },
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(stringResource(R.string.login))
-                }
             }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // ── My Account ────────────────────────────────────────────────────
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.person),
+                    iconContainerColor = Color(0xFF526A83),
                     title = { Text(stringResource(R.string.my_account)) },
+                    description = { Text(stringResource(R.string.settings_account_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
                         Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
+                            painter = painterResource(R.drawable.navigate_next),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -310,46 +216,67 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Preferenze ────────────────────────────────────────────────────
-        Material3SettingsGroup(
+        val arrowIcon = painterResource(R.drawable.navigate_next)
+
+        IrideFolioSettingsNavigationGroup(
             items = listOf(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.music_note),
-                    title = { Text(stringResource(R.string.music_settings)) },
-                    description = { Text(stringResource(R.string.music_settings_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/music") }
+                    icon = painterResource(R.drawable.play),
+                    iconContainerColor = Color(0xFF80585B),
+                    title = { Text(stringResource(R.string.playback)) },
+                    description = { Text(stringResource(R.string.settings_playback_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/player") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.language),
+                    iconContainerColor = Color(0xFF5E744B),
+                    title = { Text(stringResource(R.string.content)) },
+                    description = { Text(stringResource(R.string.settings_content_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/content") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.translate),
+                    iconContainerColor = Color(0xFF75628C),
+                    title = { Text(stringResource(R.string.ai_integration_settings)) },
+                    description = { Text(stringResource(R.string.ai_integration_settings_description), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/ai") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.grid_view),
+                    iconContainerColor = Color(0xFF47766D),
+                    title = { Text(stringResource(R.string.interface_settings)) },
+                    description = { Text(stringResource(R.string.settings_appearance_interface_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/interface") }
                 ),
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val arrowIcon = painterResource(R.drawable.arrow_forward)
-
-        Material3SettingsGroup(
+        IrideFolioSettingsNavigationGroup(
             items = listOfNotNull(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.restore),
+                    icon = painterResource(R.drawable.storage),
+                    iconContainerColor = Color(0xFF806247),
                     title = { Text(stringResource(R.string.app_management_backup)) },
+                    description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/backup_restore") }
                 ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
+                    description = { Text(stringResource(R.string.android_auto_settings_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/android_auto") }
                 ) else null,
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
+                    iconContainerColor = Color(0xFF62666B),
                     title = { Text(stringResource(R.string.about)) },
                     description = { Text(stringResource(R.string.settings_system_desc), style = MaterialTheme.typography.bodySmall) },
                     showBadge = BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME,
@@ -361,59 +288,143 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
+        IrideFolioSettingsNavigationGroup(
+            items = listOf(
+                Material3SettingsItem(
+                    leadingContent = {
+                        IrideIconTile(color = Color(0xFF79673C)) {
+                            DonationIconBounce()
+                        }
+                    },
+                    title = { Text(stringResource(R.string.credits_donations)) },
+                    description = { Text(stringResource(R.string.credits_donations_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.open_in_new),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { uriHandler.openUri("https://ko-fi.com/fhox006") }
+                )
             )
         )
-    }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.account)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
+        Spacer(Modifier.height(16.dp))
+
+                }
+            }
+        }
+}
+}
+
+/** One-shot on mount: heart pops yellow with a small bounce, then settles back to white/still. */
+@Composable
+private fun DonationIconBounce() {
+    val reducedMotion = rememberReducedMotion()
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        if (reducedMotion) return@LaunchedEffect
+        delay(400)
+        scale.animateTo(1.22f, tween(120, easing = IrideMotion.EaseOutExpo))
+        scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
+    Icon(
+        painter = painterResource(R.drawable.favorite),
+        contentDescription = null,
+        tint = Color.White,
+        modifier = Modifier
+            .size(22.dp)
+            .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+    )
+}
+
+@Composable
+private fun AccountProfileHeader(
+    isLoggedIn: Boolean,
+    accountImageUrl: String?,
+    accountName: String,
+    accountHandle: String?,
+    onLogin: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val avatarShape = CircleShape
+        val avatarModifier = Modifier
+            .size(88.dp)
+            .clip(avatarShape)
+            .background(MaterialTheme.colorScheme.fillSubtle)
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, avatarShape)
+        if (isLoggedIn && accountImageUrl != null) {
+            AsyncImage(
+                model = accountImageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = avatarModifier,
+            )
+        } else {
+            Box(modifier = avatarModifier, contentAlignment = Alignment.Center) {
                 Icon(
-                    painterResource(R.drawable.arrow_back),
+                    painter = painterResource(R.drawable.person),
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.textSecondary,
+                    modifier = Modifier.size(36.dp),
                 )
             }
-        },
-        actions = {
-            Box {
-                IconButton(
-                    onClick = { showAdvancedMenu = true },
-                    onLongClick = {}
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = stringResource(R.string.advanced_mode)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            if (isLoggedIn) {
+                Text(
+                    text = accountName.ifEmpty { stringResource(R.string.my_account) },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = IBMPlexMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.2).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.textPrimary,
+                    textAlign = TextAlign.Start,
+                )
+                if (accountHandle != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = accountHandle,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = IBMPlexMonoFontFamily),
+                        color = MaterialTheme.colorScheme.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Start,
                     )
                 }
-                DropdownMenu(
-                    expanded = showAdvancedMenu,
-                    onDismissRequest = { showAdvancedMenu = false },
-                    shape = RoundedCornerShape(16.dp)
+            } else {
+                Text(
+                    text = stringResource(R.string.sign_in_desc),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = IBMPlexMonoFontFamily,
+                        lineHeight = 22.sp,
+                        letterSpacing = 0.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.textSecondary,
+                    textAlign = TextAlign.Start,
+                )
+                Spacer(Modifier.height(16.dp))
+                IrideFolioPrimaryButton(
+                    onClick = onLogin,
                 ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = stringResource(
-                                    if (advancedMode) R.string.disable_advanced_settings
-                                    else R.string.enable_advanced_settings
-                                ),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        },
-                        onClick = {
-                            onAdvancedModeChange(!advancedMode)
-                            showAdvancedMenu = false
-                        }
+                    Icon(
+                        painter = painterResource(R.drawable.login),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.login),
                     )
                 }
             }
         }
-    )
+    }
 }
