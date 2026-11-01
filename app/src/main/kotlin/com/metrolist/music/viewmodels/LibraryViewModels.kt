@@ -390,7 +390,11 @@ constructor(
                         if (previousDate?.length == 10 && parseAlbumReleaseDate(previousDate) != null) continue
                         val artistName = album.artists.firstOrNull()?.name ?: continue
                         if (!attemptedReleaseDates.add(album.id)) continue
-                        val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
+                        val releaseDate = YouTube.appleMusicAlbumReleaseDate(
+                            title = album.title,
+                            artist = artistName,
+                            year = album.album.year,
+                        ) ?: musicBrainzRepository.getAlbumReleaseDate(
                             albumTitle = album.title,
                             artistName = artistName,
                             year = album.album.year,
