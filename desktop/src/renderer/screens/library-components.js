@@ -115,8 +115,112 @@
   // KT: ui/component/LibrarySectionLabel — STUB
   function LibrarySectionLabel(p) { return p; }
 
-  // KT: ui/utils/IrideMotion.kt:190 rememberEnterProgress — STUB (0->1 con easing, dopo delayMillis)
-  function rememberEnterProgress(p) { return p.durationMillis ? 1 : 1; }
+  // KT: ui/utils/IrideMotion.kt:190 rememberEnterProgress — ok
+  // Curva di Bezier cubica come CubicBezierEasing(x1,y1,x2,y2) di Compose (bisezione sulla x).
+  function cubicBezier(x1, y1, x2, y2) {
+    return (t) => {
+      let lo = 0, hi = 1, u = t;
+      for (let i = 0; i < 28; i++) {
+        u = (lo + hi) / 2;
+        const x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u;
+        if (x < t) lo = u; else hi = u;
+      }
+      return 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+    };
+  }
+  const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Restituisce un handle con .value (0..1). play=false -> 0 finche' non diventa true.
+  // Reduced motion -> 1 subito (come KT: return if (play) 1f else 0f).
+  function rememberEnterProgress(p) {
+    const easing = Array.isArray(p.easing) ? cubicBezier(...p.easing) : (p.easing || cubicBezier(...IrideMotion.EaseOutExpo));
+    const dur = p.durationMillis || IrideMotion.Medium;
+    const delay = p.delayMillis || 0;
+    const handle = { value: 0, onChange: null };
+    const set = (v) => { handle.value = v; if (handle.onChange) handle.onChange(v); };
+    if (!p.play) return handle;
+    if (reducedMotion()) { set(1); return handle; }
+    let t0 = null;
+    const frame = (now) => {
+      if (t0 === null) t0 = now;
+      const elapsed = now - t0 - delay;
+      if (elapsed <= 0) { requestAnimationFrame(frame); return; }
+      const k = Math.min(1, elapsed / dur);
+      set(easing(k));
+      if (k < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    return handle;
+  }
+
+  // KT: ui/component/RubberBandOverscroll.kt:74 Modifier.rubberBandOverscroll — ok (senza NavGate)
+  // Costanti: IrideFolio.RubberBandResistance = 0.55, RubberBandDamping = 1, RubberBandStiffness = StiffnessLow (200).
+  const RB_RESISTANCE = 0.55;
+  const RB_STIFFNESS = 200;
+  // Offset visibile dal tiro: sign(r) * (|r| * d * R) / (d + R * |r|)   [RubberBandPull.offset]
+  function rubberBandOffset(raw, dimension) {
+    if (raw === 0 || dimension <= 0) return 0;
+    const ar = Math.abs(raw);
+    return Math.sign(raw) * (ar * dimension * RB_RESISTANCE) / (dimension + RB_RESISTANCE * ar);
+  }
+  // Molla a smorzamento critico (dampingRatio 1, stiffness StiffnessLow): x(t) = (x0 + (v0 + w*x0) t) e^{-w t}
+  function criticalSpring(x0, v0, k, t) {
+    const w = Math.sqrt(k);
+    return (x0 + (v0 + w * x0) * t) * Math.exp(-w * t);
+  }
+  // Applica il rubber band a un contenitore scrollabile verticale (o orizzontale).
+  // target = elemento da traslare (translateY/translateX). Ritorna { detach(), pull }.
+  function rubberBandOverscroll(scrollEl, target, orientation) {
+    const vertical = orientation !== 'Horizontal';
+    const pull = { raw: 0, dimension: 0 };
+    let settleRaf = 0;
+    const apply = () => {
+      const off = rubberBandOffset(pull.raw, pull.dimension);
+      target.style.transform = off ? (vertical ? `translateY(${off}px)` : `translateX(${off}px)`) : '';
+    };
+    // onPreScroll / onPostScroll: il tiro riduce prima un tiro opposto, poi si accumula ai bordi
+    const onWheel = (e) => {
+      pull.dimension = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
+      const delta = -(vertical ? e.deltaY : e.deltaX);
+      const atTop = vertical ? scrollEl.scrollTop <= 0 : scrollEl.scrollLeft <= 0;
+      const atEnd = vertical
+        ? scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 1
+        : scrollEl.scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 1;
+      const cur = pull.raw;
+      if (cur !== 0 && delta !== 0 && Math.sign(delta) !== Math.sign(cur)) {
+        pull.raw = cur > 0 ? Math.max(0, cur + delta) : Math.min(0, cur + delta);
+      } else if ((delta > 0 && atTop) || (delta < 0 && atEnd)) {
+        pull.raw = cur + delta;
+      } else {
+        return;
+      }
+      e.preventDefault();
+      cancelAnimationFrame(settleRaf);
+      apply();
+      clearTimeout(onWheel._idle);
+      onWheel._idle = setTimeout(() => settle(0), 90); // onPreFling/onPostFling senza velocita' nel wheel
+    };
+    // onPreFling / onPostFling: ritorno a zero con molla
+    const settle = (v0) => {
+      cancelAnimationFrame(settleRaf);
+      if (pull.raw === 0) return;
+      if (reducedMotion()) { pull.raw = 0; apply(); return; }
+      const x0 = pull.raw;
+      const t0 = performance.now();
+      const frame = (now) => {
+        pull.raw = criticalSpring(x0, v0, RB_STIFFNESS, (now - t0) / 1000);
+        if (Math.abs(pull.raw) < 0.01) { pull.raw = 0; apply(); return; }
+        apply();
+        settleRaf = requestAnimationFrame(frame);
+      };
+      settleRaf = requestAnimationFrame(frame);
+    };
+    scrollEl.addEventListener('wheel', onWheel, { passive: false });
+    return {
+      pull,
+      settle,
+      detach() { scrollEl.removeEventListener('wheel', onWheel); cancelAnimationFrame(settleRaf); },
+    };
+  }
 
   // KT: layout Box(fillMaxSize, graphicsLayer alpha) — STUB
   function Box(p) {
@@ -179,7 +283,8 @@
     launchIO, disposableLifecycleEffect, rememberTextFieldValue, rememberFocusRequester,
     normalizeForSearch, matchesNormalizedQuery, distinctBy, downloadStateFor,
     DefaultDialog, rememberLazyGridState, LibraryContinueListeningAlbumItem,
-    ContinueListeningRow, LibrarySectionLabel, rememberEnterProgress, Box, provideLocals,
+    ContinueListeningRow, LibrarySectionLabel, rememberEnterProgress, rubberBandOverscroll,
+    rubberBandOffset, criticalSpring, cubicBezier, Box, provideLocals,
     LibraryGridPage, libraryGridMenuActions, librarySortMenuActions, playerAwareBottomPadding,
     LibrarySearchAndActions, hideKeyboard, LibraryPlaybackActions,
     playRandomAlbumWeighted, playRotationQueue, LibraryEmptyState,
