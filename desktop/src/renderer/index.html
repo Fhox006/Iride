@@ -431,7 +431,7 @@
           <span class="folio-nav-label" data-i18n>Search</span>
         </button>
 
-        <button class="nav-item" id="nav-library" title="Library" type="button">
+        <button class="nav-item" id="nav-library" data-view="library" title="Library" type="button">
           <div class="nav-indicator"></div>
           <span class="folio-nav-label" data-i18n>Library</span>
         </button>
@@ -689,6 +689,26 @@
         </div>
         <div class="tracks-list" id="favorites-tracks-list">
           <div class="empty-hint">No favorite tracks yet. Click the heart icon on any song to save it.</div>
+        </div>
+      </section>
+
+      <section class="content-view" id="view-library">
+        <div class="ir-lib-page">
+          <h1 class="ir-lib-title" data-i18n>Library</h1>
+          <div class="ir-lib-cats" id="ir-lib-cats">
+            <button type="button" class="ir-lib-cat" data-target="btn-toggle-playlists-drawer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/><path d="M18 16V6l4-1v10"/><circle cx="16" cy="17" r="2"/></svg>
+              <span class="ir-lib-cat-label" data-i18n>Playlists</span>
+              <svg class="ir-lib-cat-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            </button>
+            <button type="button" class="ir-lib-cat" data-target="nav-albums">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="ir-lib-cat-label" data-i18n>Albums</span>
+              <svg class="ir-lib-cat-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            </button>
+          </div>
+          <h2 class="ir-lib-section" data-i18n>Recently added</h2>
+          <div class="ir-lib-grid" id="ir-lib-grid"></div>
         </div>
       </section>
 

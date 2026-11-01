@@ -13758,6 +13758,50 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
   window.openSettingsModal = openSettingsModal;
   window.closeSettingsModal = closeSettingsModal;
 
+  // Libreria: porting della LibraryMixScreen Android (categorie + "Aggiunti di recente")
+  function renderLibraryView() {
+    const grid = document.getElementById('ir-lib-grid');
+    if (!grid) return;
+    const esc = (s) => escapeHtml(String(s || ''));
+    const playlists = (state.playlists || []).filter(Boolean).slice(0, 12).map(pl => ({
+      kind: 'playlist', id: pl.id, title: pl.name || 'Untitled',
+      sub: `${(pl.tracks || []).length} tracks`, cover: pl.cover || ''
+    }));
+    const albums = getSavedAlbums().slice(0, Math.max(0, 12 - playlists.length)).map((alb, idx) => ({
+      kind: 'album', idx, title: alb.title || '',
+      sub: [alb.type || 'Album', alb.artist || ''].filter(Boolean).join(' · '), cover: alb.cover || ''
+    }));
+    const items = [...playlists, ...albums];
+    if (items.length === 0) {
+      grid.innerHTML = '<div class="empty-hint ir-lib-empty">Nothing here yet.</div>';
+      return;
+    }
+    grid.innerHTML = items.map(it => `
+      <div class="ir-lib-card" role="button" tabindex="0">
+        <div class="ir-lib-card-cover${it.cover ? '' : ' is-empty'}">${it.cover ? `<img src="${esc(it.cover)}" alt="" loading="lazy" onerror="this.remove()" />` : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'}</div>
+        <div class="ir-lib-card-title" title="${esc(it.title)}">${esc(it.title)}</div>
+        <div class="ir-lib-card-sub" title="${esc(it.sub)}">${esc(it.sub)}</div>
+      </div>`).join('');
+
+    const cards = grid.querySelectorAll('.ir-lib-card');
+    const open = (idx) => {
+      const it = items[idx];
+      if (!it) return;
+      if (it.kind === 'playlist') openPlaylistDetail(it.id);
+      else { const alb = getSavedAlbums()[it.idx]; if (alb) openAlbum(alb); }
+    };
+    cards.forEach((card, idx) => {
+      card.addEventListener('click', () => open(idx));
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); open(idx); } });
+    });
+  }
+
+  document.getElementById('ir-lib-cats')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-target]');
+    if (!b) return;
+    document.getElementById(b.dataset.target)?.click();
+  });
+
   function switchView(viewName) {
     if (typeof resetSettingsSearch === 'function') resetSettingsSearch();
     const btnSbSettings = document.getElementById('btn-sb-settings');
@@ -13775,6 +13819,7 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
 
     requestAnimationFrame(() => {
       document.querySelectorAll('.no-enter-anim').forEach(c => c.classList.remove('no-enter-anim'));
+      document.getElementById('view-library')?.classList.remove('active');
       [el.viewDiscover, el.viewFavorites, el.viewAlbums, el.viewLocal, el.viewHistory, el.viewQueue, el.viewPlaylistDetail, el.viewAlbum, el.viewArtist].forEach(v => {
         if (v) v.classList.remove('active');
       });
@@ -13790,7 +13835,8 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
             albums: el.navAlbums,
             local: el.navLocal,
             history: el.navHistory,
-            queue: el.navQueue
+            queue: el.navQueue,
+            library: document.getElementById('nav-library')
           };
           if (navMap[viewName]) navMap[viewName].classList.add('active');
         }
@@ -13823,6 +13869,10 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
             if (el.viewQueue) el.viewQueue.classList.add('active');
             if (el.navQueue) el.navQueue.classList.add('active');
             renderQueueView();
+          } else if (viewName === 'library') {
+            document.getElementById('view-library')?.classList.add('active');
+            document.getElementById('nav-library')?.classList.add('active');
+            renderLibraryView();
           } else if (viewName === 'playlist-detail') {
             if (el.viewPlaylistDetail) el.viewPlaylistDetail.classList.add('active');
           } else if (viewName === 'album') {
@@ -14156,6 +14206,7 @@ function updateNavIndicator(animate) {
     }
   });
 
+  document.getElementById('nav-library')?.addEventListener('click', () => switchView('library'));
   if (el.navFavorites) el.navFavorites.addEventListener('click', () => switchView('favorites'));
   if (el.navAlbums) el.navAlbums.addEventListener('click', () => switchView('albums'));
   if (el.navLocal) el.navLocal.addEventListener('click', () => switchView('local'));

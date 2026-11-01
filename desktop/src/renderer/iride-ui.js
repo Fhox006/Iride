@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // libreria: raggruppa le viste che prima stavano nella barra laterale
   const libViews = { 'view-favorites': 'favorites', 'view-albums': 'albums', 'view-local': 'local', 'view-history': 'history', 'view-queue': 'queue' };
-  byId('nav-library').addEventListener('click', () => byId('nav-favorites').click());
   byId('ir-lib-bar').addEventListener('click', (e) => {
     const b = e.target.closest('[data-target]');
     if (!b) return;
@@ -233,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const view = document.querySelector('.content-view.active');
     const viewName = view && libViews[view.id];
     body.classList.toggle('ir-lib', !!viewName);
-    byId('nav-library').classList.toggle('active', !!viewName);
+    byId('nav-library').classList.toggle('active', !!viewName || (view && view.id === 'view-library'));
     document.querySelectorAll('.ir-lib-chip').forEach((c) => c.classList.toggle('active', !!viewName && c.dataset.view === viewName));
 
     const selector = view && artworkViews[view.id];
