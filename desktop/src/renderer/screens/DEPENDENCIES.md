@@ -106,3 +106,18 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 | `SharedYouTubePlaylistRow` | ui/component | PARZIALE | LazyRow |
 | `PlaylistGridItem` | ui/component | PARZIALE | niente autoPlaylist |
 | `ReverieHomeCard` | ui/component | PARZIALE | solo mese, nessun grafico |
+
+### Batch 3 (10 dipendenze, home-dom.js)
+
+| Funzione | Kotlin | Stato | Nota |
+|---|---|---|---|
+| `HeroCarouselSection` | ui/component | PARZIALE | card artista con copertina |
+| `ReverieAvailabilityCard` | ui/component | PARZIALE | testo, senza logica date reale |
+| `NewReleaseChartsShelf` | screens/playlist | STUB | nessuna sorgente classifiche nel desktop |
+| `HomeFollowedReleases` | ui/component | STUB | nessuna sorgente dati nel desktop |
+| `rememberArtistThumbnail` | ui/component | PARZIALE | restituisce l'URL, nessuna cache |
+| `rememberIrideArtistArtwork` | ui/component | STUB | ritorna null |
+| `rememberCollectionExpansionTile` | ui/component | STUB | modificatori vuoti |
+| `rememberArtistPortraitTile` | ui/component | STUB | modificatori vuoti |
+| `SongMenu` | ui/menu | PARZIALE | titolo + chiudi, niente azioni |
+| `YouTubeSongMenu` | ui/menu | PARZIALE | titolo + chiudi, niente azioni |

@@ -398,11 +398,68 @@
     return card;
   }
 
+
+  // ---------- BATCH 3 (10 dipendenze) ----------
+  // KT: HeroCarouselSection(items, onCoverError, onArtistClick, onArtistLongClick) -- card artista con copertina
+  function HeroCarouselSection(props) {
+    const row = LazyRow({ contentPadding: 20, horizontalArrangement: { gap: 16 } });
+    (props.items || []).forEach((it) => {
+      const card = document.createElement('div');
+      card.style.width = '280px'; card.style.flex = '0 0 auto'; card.style.cursor = 'pointer';
+      const img = document.createElement('img');
+      img.src = it.coverUrl || ''; img.style.width = '100%'; img.style.aspectRatio = '16 / 9'; img.style.objectFit = 'cover'; img.style.borderRadius = '8px';
+      img.addEventListener('error', () => { if (props.onCoverError) props.onCoverError(it); });
+      card.appendChild(img);
+      const t = document.createElement('div'); t.textContent = it.artistName || ''; t.style.marginTop = '8px'; t.style.fontWeight = '700';
+      card.appendChild(t);
+      card.addEventListener('click', () => { if (props.onArtistClick) props.onArtistClick(it.artistId); });
+      card.addEventListener('contextmenu', (e) => { e.preventDefault(); if (props.onArtistLongClick) props.onArtistLongClick(it); });
+      row.appendChild(card);
+    });
+    return row;
+  }
+  // KT: ReverieAvailabilityCard(currentMonth, firstFullMonth, modifier) -- messaggio di disponibilita' archivio
+  function ReverieAvailabilityCard(current, first, modifier) {
+    const card = document.createElement('div');
+    card.style.padding = '16px'; card.style.border = '1px solid rgba(255,255,255,0.12)'; card.style.borderRadius = '6px'; card.style.opacity = '0.8';
+    card.textContent = first ? `Disponibile da ${String(first)}` : `Disponibile dopo ${String(current)}`;
+    if (modifier) modifier.applyTo(card);
+    return card;
+  }
+  // KT: NewReleaseChartsShelf(navController, chartViewModel, preload) -- classifiche: nessuna sorgente dati desktop ancora
+  function NewReleaseChartsShelf() { return null; }
+  // KT: HomeFollowedReleases(navController, snackbarHostState, isVisible) -- nessuna sorgente dati desktop ancora
+  function HomeFollowedReleases() { return null; }
+  // KT: rememberArtistThumbnail(artistId, name, url) -- restituisce l'URL disponibile (nessuna cache artista)
+  function rememberArtistThumbnail(artistId, name, url) { return url || null; }
+  // KT: rememberIrideArtistArtwork(...).value -- nessun artwork artista esterno: null
+  function rememberIrideArtistArtwork() { return { value: null }; }
+  // KT: rememberCollectionExpansionTile(kind, id, ...) -- nessuna espansione: modificatori vuoti
+  function rememberCollectionExpansionTile() { return { first: Modifier(), second: Modifier() }; }
+  // KT: rememberArtistPortraitTile(...) -- nessun ritratto artista: modificatori vuoti
+  function rememberArtistPortraitTile() { return { first: Modifier(), second: Modifier() }; }
+  // KT: SongMenu / YouTubeSongMenu(song|originalSong, navController, onDismiss) -- menu canzone: titolo + chiusura
+  function songMenuNode(song, onDismiss) {
+    const box = document.createElement('div');
+    box.setAttribute('role', 'menu');
+    const t = document.createElement('div'); t.textContent = (song && song.title) || ''; t.style.fontWeight = '700';
+    box.appendChild(t);
+    const close = document.createElement('button'); close.textContent = '×';
+    close.addEventListener('click', () => { if (onDismiss) onDismiss(); });
+    box.appendChild(close);
+    return box;
+  }
+  function SongMenu(props) { return songMenuNode(props.originalSong, props.onDismiss); }
+  function YouTubeSongMenu(props) { return songMenuNode(props.song, props.onDismiss); }
+
   global.IrideHomeDom = {
     Modifier, MaterialTheme, Box, Column, Row, Spacer, Text, Image, AsyncImage, Icon, Surface, Card,
     Scaffold, BoxWithConstraints, CompositionLocalProvider, item, LazyRow, IridePageLayout,
     IrideFolioSection, IrideFolioShelfHeader, IrideFolioMediaShelf, palette, typo,
     resize, ItemThumbnail, YouTubeGridItem, YouTubeListItem, SongListItem, SharedQuickPicksCarousel,
     SharedHomeSectionTitle, SharedYouTubePlaylistRow, PlaylistGridItem, ReverieHomeCard,
+    HeroCarouselSection, ReverieAvailabilityCard, NewReleaseChartsShelf, HomeFollowedReleases,
+    rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile,
+    rememberArtistPortraitTile, SongMenu, YouTubeSongMenu,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
