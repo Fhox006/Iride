@@ -4430,6 +4430,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   window.closeSbInlinePresets = closeSbInlinePresets;
 
+  // Ponte per la home tradotta (screens/home-data.js): espone il player senza cambiarne il comportamento.
+  window.IrideHomePlayer = {
+    playTrack: (track, queueList, startIndex, context) => playTrack(track, queueList, startIndex, context),
+    togglePlayPause: () => togglePlayPause(),
+  };
+
   async function playTrack(track, queueList = null, startIndex = -1, context = null) {
     if (track && !track._errorRetryStage) track._errorRetryStage = 0;
     if (track && track.artist) track.artist = stripYoutubeTopic(track.artist);

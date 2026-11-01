@@ -68,8 +68,22 @@
   function randomInt(from, until) { return from + Math.floor(Math.random() * (until - from)); }
 
   // KT: LocalPlayerConnection / LocalDatabase / LocalContext / LocalListenTogetherManager -- STUB (null)
-  const LocalPlayerConnection = stub('LocalPlayerConnection', 'LocalPlayerConnection', null);
+
   // KT: LocalDatabase.current -- PARZIALE: nessun DB Room nel desktop; song(id) non emette nulla (il fallback e' il valore iniziale)
+  // KT: LocalPlayerConnection.current -- ponte verso il player del desktop (window.IrideHomePlayer, app.js)
+  const LocalPlayerConnection = () => ({
+    isEffectivelyPlaying: { value: false },
+    mediaMetadata: { value: null },
+    playQueue(queue) {
+      const m = queue && queue.metadata;
+      if (!m || !global.IrideHomePlayer) return;
+      const artist = (m.artists && m.artists[0] && m.artists[0].name) || '';
+      global.IrideHomePlayer.playTrack({ id: m.id, title: m.title, artist, thumbnail: m.thumbnail || '', platform: 'ytmusic' });
+    },
+    togglePlayPause() { if (global.IrideHomePlayer) global.IrideHomePlayer.togglePlayPause(); },
+    startRadioForSong(meta) { this.playQueue({ metadata: meta }); },
+    videoPlayback: null,
+  });
   const LocalDatabase = () => ({ song: () => ({ value: null }), album: () => ({ value: null }), artist: () => ({ value: null }) });
   const LocalContext = stub('LocalContext', 'compose platform', null);
   const LocalListenTogetherManager = stub('LocalListenTogetherManager', 'LocalListenTogetherManager', null);

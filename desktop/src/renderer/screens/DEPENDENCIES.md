@@ -144,3 +144,7 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 - `quickPicks`: PARZIALE. Fonte: `localStorage.devsize_history` (stesso storico di app.js, max 100, piu' recente prima). Kotlin usa `database.quickPicks()` con conteggi: qui manca il conteggio ascolti.
 - Verificato in app: le tracce dello storico appaiono nella sezione "Picked for you".
 - `LocalDatabase`: PARZIALE, nessun DB Room. `song(id)` non emette nulla, quindi resta il valore iniziale.
+
+### Player (home-components.js, app.js)
+
+- `LocalPlayerConnection`: PARZIALE. `playQueue` e `togglePlayPause` passano dal ponte `window.IrideHomePlayer` (app.js) al player del desktop. `isEffectivelyPlaying` e `mediaMetadata` sono fissi (non ancora collegati allo stato reale).
