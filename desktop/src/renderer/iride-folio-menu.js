@@ -8,6 +8,8 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopImmediatePropagation();
   const r = btn.getBoundingClientRect();
+  btn.classList.add('folio-open');
+  window.__irideMenuAnchor = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
   row.dispatchEvent(new MouseEvent('contextmenu', {
     bubbles: true, cancelable: true,
     clientX: Math.max(8, r.right - 224), clientY: r.bottom + 8,

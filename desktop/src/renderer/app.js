@@ -10868,6 +10868,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           showToast(typeof t === 'function' ? t('Play next') : 'Play next', 'success');
         },
         viewArtist: () => openArtistProfile(track.artist, track),
+        viewAlbum: (track.album && track.album.id) ? () => openAlbum(track.album) : null,
       });
     } else {
     ctxMenuEl.innerHTML = '';
@@ -10892,6 +10893,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     }
 
+    if (ctxMenuEl.classList.contains('iride-songmenu') && typeof window.irideSongMenuPlace === 'function') {
+      window.irideSongMenuPlace(ctxMenuEl, e);
+      requestAnimationFrame(() => { if (ctxMenuEl) ctxMenuEl.classList.add('open'); });
+      return;
+    }
     ctxMenuEl.classList.remove('open');
     ctxMenuEl.style.left = '0px';
     ctxMenuEl.style.top = '0px';
