@@ -384,8 +384,8 @@ function runGUI() {
       minWidth: 800,
       minHeight: 540,
                                    backgroundColor: firstRun ? '#8d5ef2' : '#000000',
-                                   title: 'Riff',
-                                   icon: path.join(__dirname, '../../assets', 'icon.png'),
+                                   title: 'Iride',
+                                   icon: path.join(__dirname, '../../assets', 'iride-icon.png'),
                                    frame: IS_MAC,
                                    titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
                                    ...(IS_MAC ? { trafficLightPosition: { x: 14, y: 13 } } : {}),
@@ -2220,7 +2220,7 @@ function runGUI() {
 
       function setupTray() {
         try {
-          const iconPath = path.join(__dirname, '../../assets', 'icon.png');
+          const iconPath = path.join(__dirname, '../../assets', 'iride-icon.png');
           let trayIcon = nativeImage.createFromPath(iconPath);
           trayIcon = trayIcon.resize({ width: 22, height: 22 });
           tray = new Tray(trayIcon);
@@ -2272,7 +2272,7 @@ function runGUI() {
         global.riffSessionFetch = (urlStr, opts) => session.defaultSession.fetch(urlStr, opts);
         if (process.platform === 'darwin' && app.dock) {
           try {
-            const dockIcon = nativeImage.createFromPath(path.join(__dirname, '../../assets', 'icon.png'));
+            const dockIcon = nativeImage.createFromPath(path.join(__dirname, '../../assets', 'iride-icon.png'));
             if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon);
           } catch (_) {}
         }

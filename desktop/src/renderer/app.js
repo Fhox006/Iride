@@ -175,12 +175,12 @@ try { window.electronAPI.storageSaveSync(diskMap); } catch (_) {}
   };
   const safety = setTimeout(finish, 1450);
   try {
-    const res = await fetch('../../assets/riff.svg');
+    const res = await fetch('../../assets/iride-wordmark.svg');
     const svgText = await res.text();
     host.innerHTML = svgText;
     const svg = host.querySelector('svg');
     const paths = svg ? Array.from(svg.querySelectorAll('path, circle, rect, polygon, polyline')) : [];
-    const accent = localStorage.getItem('riff_theme_accent') || '#5247d1';
+    const accent = '#ffffff';
     paths.forEach((p) => {
       const len = typeof p.getTotalLength === 'function' ? Math.ceil(p.getTotalLength()) : 600;
       p.style.fill = accent;

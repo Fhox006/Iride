@@ -9694,7 +9694,7 @@ body:not(.m3-hero-covers-on) #tv-cover {
 
 #splash { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 999999; transition: opacity .45s cubic-bezier(0.2, 0, 0, 1); }
 #splash.hide { opacity: 0; pointer-events: none; }
-#splash-logo { width: 26vmin; height: 26vmin; will-change: transform; }
+#splash-logo { width: min(70vw, 720px); aspect-ratio: 2496 / 548; will-change: transform; }
 #splash-logo svg { width: 100%; height: 100%; overflow: visible; display: block; }
 body.perf #splash { transition: none !important; }
 body.perf #splash-logo { will-change: auto !important; }
