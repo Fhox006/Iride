@@ -164,3 +164,10 @@ html body:not(#_) .btn-row-more::after {
 }
 html body:not(#_) .btn-row-more.folio-open::after { border-color: rgba(255,255,255,.22); }  /* strokeCard */
 html body:not(#_) .track-row-actions .btn-row-more svg { transform: none; width: 24px; height: 24px; }  /* R.drawable.more_vert, 24dp */
+
+/* Playbar: mostra solo il controllo volume (nascosti shuffle, repeat, lyrics, audio, coda). Il DOM resta: il JS continua a funzionare. */
+html body:not(#_) #btn-shuffle,
+html body:not(#_) #btn-repeat,
+html body:not(#_) #btn-toggle-lyrics-panel,
+html body:not(#_) #btn-open-settings,
+html body:not(#_) #btn-toggle-queue-panel { display: none !important; }
