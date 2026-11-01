@@ -121,3 +121,11 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 | `rememberArtistPortraitTile` | ui/component | STUB | modificatori vuoti |
 | `SongMenu` | ui/menu | PARZIALE | titolo + chiudi, niente azioni |
 | `YouTubeSongMenu` | ui/menu | PARZIALE | titolo + chiudi, niente azioni |
+
+### Layer dati HomeScreen (home-data.js)
+
+| Flusso | Fonte | Stato | Nota |
+|---|---|---|---|
+| `homePage` (sezioni + chip umore) | `/api/home-feed` (server.js, Innertube FEmusic_home) | PARZIALE | mappa item kind→tipo Kotlin; niente endpoint di sezione |
+| `quickPicks`, `forYouShelves`, `homeMoodContent`, `dailyDiscover`, `communityPlaylists`, `similarRecommendations`, `accountPlaylists`, `homePersonalMixes`, `heroCarouselItems` | — | STUB | liste vuote: serve una route dedicata nel server |
+| `syncState`, `accountName`, flag di caricamento | — | STUB | valori fissi |
