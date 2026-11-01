@@ -10853,6 +10853,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    ctxMenuEl.classList.remove('iride-songmenu');
+    if (typeof window.irideRenderSongMenu === 'function') {
+      const byId = {};
+      items.forEach((it) => { if (it.id) byId[it.id] = it; });
+      const thumbRaw = (typeof getTrackThumbUrl === 'function' ? getTrackThumbUrl(track) : '') || track.thumbnail || track.cover || '';
+      window.irideRenderSongMenu(ctxMenuEl, track, {
+        byId, isFav, thumb: thumbRaw, close: closeTrackContextMenu,
+        playNext: () => {
+          const c = Object.assign({}, track);
+          if (!state.currentTrack || !state.queue.length) { addTrackToQueue(track); return; }
+          state.queue.splice(state.queueIndex + 1, 0, c);
+          if (el.queueCount) el.queueCount.textContent = String(state.queue.length);
+          showToast(typeof t === 'function' ? t('Play next') : 'Play next', 'success');
+        },
+        viewArtist: () => openArtistProfile(track.artist, track),
+      });
+    } else {
     ctxMenuEl.innerHTML = '';
     items.forEach((it) => {
       if (it.divider) {
@@ -10873,6 +10890,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       ctxMenuEl.appendChild(btn);
     });
+    }
 
     ctxMenuEl.classList.remove('open');
     ctxMenuEl.style.left = '0px';
