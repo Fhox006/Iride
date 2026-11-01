@@ -127,3 +127,30 @@ html body:not(#_) .sidebar .nav-item.active > .nav-item-label { font-weight: 700
 
 html body:not(#_) .sidebar #nav-settings { left: 10px !important; right: auto !important; width: calc(var(--ir-rail-w) - 8px) !important; bottom: 8px !important; }
 html body:not(#_) .sidebar #nav-discover { justify-content: center !important; }
+
+/* ---- v3: proporzioni e animazioni Android ----
+   pannello 24 (FloatingPill), padding 8 uniforme, tile = pannello - inset (concentrici, calcolati in iride-android-shape.js),
+   scorrimento come Android: fadeIn 300ms + slideInVertically 320ms (FastOutSlowIn), cambio tile 280ms FastOutSlowIn.
+   Account fuori dalla riga animata, come in Android. */
+html body:not(#_) { --ir-rail-w: 72px; }
+html body:not(#_) .sidebar, html body:not(#_).sidebar-expanded .sidebar { padding: 8px !important; border-radius: 24px !important; box-sizing: border-box !important; }
+html body:not(#_) .sidebar .sidebar-nav { padding: 0 !important; gap: 4px !important; }
+
+html body:not(#_) .sidebar .nav-item:not(#nav-settings) {
+  width: 100% !important; min-width: 0 !important; height: 56px !important; min-height: 56px !important;
+  padding: 4px 0 !important; gap: 4px !important; border-radius: 16px !important;
+  transition: background-color 280ms cubic-bezier(.4,0,.2,1), color 280ms cubic-bezier(.4,0,.2,1) !important;
+  animation: ir-nav-enter 320ms cubic-bezier(.4,0,.2,1) both !important;
+}
+html body:not(#_) .sidebar .nav-item:not(#nav-settings).active { animation: ir-nav-enter 320ms cubic-bezier(.4,0,.2,1) both !important; }
+@keyframes ir-nav-enter {
+  from { opacity: 0; transform: translateY(56px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+html body:not(#_) .sidebar #nav-settings {
+  left: 14px !important; right: auto !important; bottom: 8px !important; width: 56px !important; height: 56px !important;
+  background: transparent !important; clip-path: none !important; animation: none !important;
+}
+html body:not(#_) .sidebar #nav-settings:hover,
+html body:not(#_) .sidebar #nav-settings.active { background: transparent !important; }

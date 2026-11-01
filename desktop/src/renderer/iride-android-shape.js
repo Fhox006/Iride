@@ -1,7 +1,9 @@
 /* Squircle come SquircleShape di Iride Android (io.github.stoyan-vuchev:squircle-shape-android 3.0.1):
-   stessa geometria di squircleShapePath(), cornerSmoothing clampato a [0.55, 1] come createSquircleShapeOutline(). */
+   geometria di squircleShapePath(), cornerSmoothing clampato a [0.55, 1] come createSquircleShapeOutline().
+   I raggi dei tile sono concentrici: raggio tile = raggio pannello - distanza dal bordo del pannello. */
 (function () {
   const SMOOTHING = 0.48;
+  const PANEL_RADIUS = 24;   // FloatingPill: SquircleShape(radius = 24.dp)
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const f = (n) => +n.toFixed(3);
 
@@ -23,29 +25,37 @@
     ].join(' ');
   }
 
-  function applySquircle(el, radius) {
+  function applyClip(el, radius) {
     const w = el.offsetWidth, h = el.offsetHeight;
     if (!w || !h) return;
     el.style.clipPath = `path('${squircleShapePath(w, h, radius, SMOOTHING)}')`;
   }
 
-  // raggi come in Android: panel 24dp (FloatingPill), tile 14dp (SquircleShape radius 14.dp)
-  const TARGETS = [
-    { sel: '.sidebar', radius: 24 },
-    { sel: '.sidebar .nav-item', radius: 14 },
-  ];
+  // distanza minima tra il bordo del tile e quello del pannello
+  function concentricRadius(panel, el) {
+    const p = panel.getBoundingClientRect(), b = el.getBoundingClientRect();
+    const inset = Math.min(b.left - p.left, b.top - p.top, p.right - b.right, p.bottom - b.bottom);
+    return Math.max(0, PANEL_RADIUS - inset);
+  }
 
   function refresh() {
-    for (const t of TARGETS) document.querySelectorAll(t.sel).forEach((el) => applySquircle(el, t.radius));
+    const panel = document.querySelector('.sidebar');
+    if (!panel) return;
+    applyClip(panel, PANEL_RADIUS);
+    // Account (#nav-settings) è fuori dalla riga animata: nessun tile
+    document.querySelectorAll('.sidebar .nav-item:not(#nav-settings)').forEach((el) => {
+      applyClip(el, concentricRadius(panel, el));
+    });
   }
 
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
-  function observe() {
+  function init() {
+    refresh();
     if (!ro) return;
-    for (const t of TARGETS) document.querySelectorAll(t.sel).forEach((el) => ro.observe(el));
+    const panel = document.querySelector('.sidebar');
+    if (panel) ro.observe(panel);
+    document.querySelectorAll('.sidebar .nav-item').forEach((el) => ro.observe(el));
   }
-
-  function init() { refresh(); observe(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
   window.addEventListener('load', refresh);
