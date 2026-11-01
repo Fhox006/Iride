@@ -10870,8 +10870,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const byId = {};
       items.forEach((it) => { if (it.id) byId[it.id] = it; });
       const thumbRaw = (typeof getTrackThumbUrl === 'function' ? getTrackThumbUrl(track) : '') || track.thumbnail || track.cover || '';
+      const firstArtist = String(track.artist || '').split(/,|&| feat\.? | ft\.? | x /i)[0].trim().toLowerCase();
+      const artistMeta = firstArtist ? safeJson('riff_artist_meta_cache', {})[firstArtist] : null;
+      const artistThumb = (artistMeta && artistMeta.avatar) || thumbRaw;
       window.irideRenderSongMenu(ctxMenuEl, track, {
-        byId, isFav, thumb: thumbRaw, close: closeTrackContextMenu,
+        byId, isFav, thumb: thumbRaw, artistThumb, close: closeTrackContextMenu,
         playNext: () => {
           const c = Object.assign({}, track);
           if (!state.currentTrack || !state.queue.length) { addTrackToQueue(track); return; }
