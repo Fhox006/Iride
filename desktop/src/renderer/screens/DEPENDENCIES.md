@@ -41,3 +41,29 @@ Stati: `STUB` = solo firma, `PARZIALE` = manca qualcosa (nota), `OK` = tradotto 
 | `LibrarySearchEmptyPlaceholder` | ui/component/LibrarySearchHeader.kt:96 | LibraryAlbumsScreen | STUB | |
 | `LibraryAlbumGridItem` | ui/component/Library.kt:155 → Items.kt:1222 | LibraryAlbumsScreen | STUB | |
 | `LibraryFooterCount` | ui/component/LibraryPageTemplate.kt | LibraryAlbumsScreen | STUB | |
+
+## HomeScreen (home-screen.js, parte 1: KT 219-664)
+
+| Funzione (JS) | Kotlin (file:riga) | Usata da | Stato | Nota |
+|---|---|---|---|---|
+| `rememberEnterProgress` | ui/utils/IrideMotion.kt:190 | HomeScreen | STUB | ritorna 1 subito |
+| `IrideTabEntrance` | IrideTabEntrance (oggetto) | HomeScreen | STUB | mai rivelato |
+| `LocalLifecycleOwner` / `disposableLifecycleEffect` / `lifecycleIsAtLeastStarted` | compose lifecycle | HomeScreen | STUB | |
+| `provideLocals` | CompositionLocalProvider | HomeScreen | STUB | esegue solo il body |
+| `LocalMenuState` / `hiltViewModel` / `PreloadHomeCharts` | ui/component, hilt | HomeScreen | STUB | |
+| `rememberSaveable` | compose saveable | HomeScreen | STUB | in memoria, non persiste |
+| `randomInt` | kotlin.random.Random.nextInt | HomeScreen | OK | |
+| `LocalPlayerConnection` / `LocalDatabase` / `LocalContext` / `LocalListenTogetherManager` | Local* | HomeScreen | STUB | ritornano null |
+| `MutableStateFlow` | kotlinx.coroutines.flow | HomeScreen | PARZIALE | solo value |
+| `collectDeferredHomeState` | ui/component (collectDeferredHomeState) | HomeScreen | STUB | passa il valore del flow |
+| `rememberPreference` | utils | HomeScreen | PARZIALE | localStorage, solo boolean/stringa |
+| `parseCookieString` | innertube/utils | HomeScreen | PARZIALE | solo chiavi |
+| `appendLoadedHomeSections` | utils | HomeScreen | STUB | |
+| `isInternetAvailable` | utils | HomeScreen | STUB | true |
+| `delay` | kotlinx.coroutines | HomeScreen | OK | |
+| `currentGridThumbnailHeight` | ui/component | HomeScreen | STUB | 160 fisso |
+| `rememberLazyListState` / `rememberReducedMotion` | compose lazy / ui/utils | HomeScreen | STUB | |
+| `toPx` | Dp -> Px | HomeScreen | STUB | 1 dp = 1 px |
+| `remember` / `useState` / `launchEffect` / `launchRepeatOnLifecycle` / `rememberCoroutineScope` / `LocalViewModelStoreOwner` | compose | HomeScreen | STUB | effetti eseguiti una volta |
+| `MoodMixes.chips` | discovery/MoodMixes | HomeScreen | STUB | passa i chip |
+| `firstPlaylistItem` | HomeScreen.kt:523-532 | HomeScreen | STUB | null |
