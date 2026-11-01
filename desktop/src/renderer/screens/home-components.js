@@ -145,8 +145,18 @@
   const firstPlaylistItem = stub('firstPlaylistItem', 'HomeScreen.kt:523', null);
 
   // KT: HomeScreen.kt:553 -- nessun composable qui
+  // KT: HomeScreen.kt  class HomeShelfOrder -- ordine sezioni (solo conteggio)
+  function HomeShelfOrder() {
+    let count = 0;
+    return {
+      added() { count += 1; },
+      canAdd() { return count < 8; },
+    };
+  }
+
   // Nomi non ancora implementati: STUB generico (vedi DEPENDENCIES.md, sezione HomeScreen parte 2)
   const implemented = {
+    HomeShelfOrder,
     IrideMotion, rememberEnterProgress, IrideTabEntrance, markRevealedWhenDone,
     LocalLifecycleOwner, disposableLifecycleEffect, lifecycleIsAtLeastStarted, provideLocals,
     LocalMenuState, hiltViewModel, PreloadHomeCharts, rememberSaveable, randomInt,

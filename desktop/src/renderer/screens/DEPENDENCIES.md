@@ -71,3 +71,9 @@ Stati: `STUB` = solo firma, `PARZIALE` = manca qualcosa (nota), `OK` = tradotto 
 ### HomeScreen parte 2 (home-screen.js: KT 668-1231 tradotte)
 
 Tutte le altre funzioni `C.*` usate in parte 2 (Box, Column, Row, Text, Image, AsyncImage, LazyRow, item, Scaffold, BoxWithConstraints, YouTubeGridItem, YouTubeListItem, menu Youtube*/Song/Album/Artist/Playlist, IrideFolio*, rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile, resize, Modifier, FolioShape, ecc.) sono STUB generici in `home-components.js`: il Proxy le registra come `DA TRADURRE` e ritorna null. Non sono ancora elencate una per una in questa tabella.
+
+### HomeScreen parte 3 (home-screen.js: KT 1233-2829 tradotte)
+
+Tradotte: IridePageLayout (corpo pagina), hero carousel, picked for you, feed filtrato (addFeedSection), your mood, personal mixes, feed status, daily discover, community, similar, account, followed releases, sezione pending, charts, reverie, features. Helper top-level: IrideMoodChipsRow, HomeSimilarityTitle, HomeFeedLoadingShelf, IrideFeatureCard, SyncBanner, homeTestPlaylistSection (test, disattivato).
+
+Stato: tutte le funzioni Compose (item, Column, Row, LazyRow, IrideFolio*, YouTube*Menu, ecc.) sono STUB generici (`DA TRADURRE`, ritornano null). HomeShelfOrder e' implementato (conteggio). Nessuna verifica a runtime con dati reali: la schermata NON e' collegata a index.html.
