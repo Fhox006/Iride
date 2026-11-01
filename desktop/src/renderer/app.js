@@ -24869,6 +24869,7 @@ function bindCoverHoldZoom(wrapEl) {
       jumpBackCurrentTracks = getJumpBackTracks();
       initHomeHero();
     }
+    renderYtHomeFeed();
     if (availableModes().length === 0) return false;
 
     if (!getAdv('my_wave', true)) {
@@ -25299,6 +25300,76 @@ function bindCoverHoldZoom(wrapEl) {
       card.addEventListener('click', onClick);
     }
     return card;
+  }
+
+  // Feed home di YouTube Music (stessa browse dell'app Android): una riga per sezione, nell'ordine del feed.
+  async function renderYtHomeFeed() {
+    const host = document.getElementById('yt-home-feed');
+    if (!host) return;
+    let data = null;
+    try {
+      const port = state.serverPort || 38472;
+      const res = await fetch(`http://127.0.0.1:${port}/api/home-feed`);
+      data = await res.json();
+    } catch (_) {
+      data = null;
+    }
+    if (!data || !data.success || !Array.isArray(data.sections) || data.sections.length === 0) {
+      return;
+    }
+    host.innerHTML = '';
+    data.sections.forEach((shelf) => {
+      const sec = document.createElement('section');
+      sec.className = 'sp-section';
+      const h2 = document.createElement('h2');
+      const label = document.createElement('span');
+      label.textContent = shelf.title;
+      h2.appendChild(label);
+      const row = document.createElement('div');
+      row.className = 'sp-row';
+      sec.append(h2, row);
+      shelf.items.forEach((item) => {
+        row.appendChild(spCard({
+          cover: item.thumbnail,
+          title: item.title,
+          sub: item.sub,
+          onClick: () => openYtHomeItem(item, shelf.items)
+        }));
+      });
+      host.appendChild(sec);
+      bindHorizontalWheel(row);
+      requestAnimationFrame(() => updateRowFade(row));
+    });
+  }
+
+  function openYtHomeItem(item, siblings) {
+    if (item.kind === 'track') {
+      const tracks = siblings.filter((i) => i.kind === 'track').map((i) => ({
+        id: i.id,
+        title: i.title,
+        artist: String(i.sub || '').split(' • ')[0] || 'Unknown Artist',
+        thumbnail: i.thumbnail,
+        cover: i.thumbnail,
+        platform: 'ytmusic',
+        url: ''
+      }));
+      const idx = tracks.findIndex((t) => t.id === item.id);
+      if (idx < 0) return;
+      state.isRadioQueue = false;
+      playTrack(tracks[idx], tracks, idx);
+    } else if (item.kind === 'artist') {
+      openArtistProfile(item.title);
+    } else if (item.kind === 'album' || item.kind === 'playlist') {
+      openAlbum({
+        id: item.id,
+        name: item.title,
+        title: item.title,
+        artist: item.sub,
+        thumbnail: item.thumbnail,
+        cover: item.thumbnail,
+        type: item.kind === 'playlist' ? 'Playlist' : 'Album'
+      });
+    }
   }
 
   async function renderTrending() {

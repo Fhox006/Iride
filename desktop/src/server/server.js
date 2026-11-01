@@ -2623,6 +2623,116 @@ async function handleVibeRecommendations(req, res, payload) {
   }
 }
 
+// Home feed: stessa browse FEmusic_home che usa l'app Android (innertube/pages/HomePage.kt).
+// Con la sessione Electron (cookie YouTube) il feed e' personalizzato come sull'account.
+const YTM_HOME_CACHE_MS = 10 * 60 * 1000;
+let serverHomeFeedCache = { ts: 0, data: null };
+
+function ytmRunsText(runs) {
+  return Array.isArray(runs) ? runs.map((r) => (r && r.text) || '').join('').trim() : '';
+}
+
+function ytmThumbFrom(renderer) {
+  const thumbs = renderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+  if (!thumbs.length) return '';
+  return String(thumbs[thumbs.length - 1].url || '').replace(/=w\d+-h\d+[^&]*$/, '=w544-h544');
+}
+
+function ytmKindFromPageType(pageType) {
+  if (pageType === 'MUSIC_PAGE_TYPE_ARTIST' || pageType === 'MUSIC_PAGE_TYPE_USER_CHANNEL') return 'artist';
+  if (pageType === 'MUSIC_PAGE_TYPE_ALBUM' || pageType === 'MUSIC_PAGE_TYPE_AUDIOBOOK') return 'album';
+  if (pageType === 'MUSIC_PAGE_TYPE_PLAYLIST' || pageType === 'MUSIC_PAGE_TYPE_EDITORIAL_CARD') return 'playlist';
+  return 'other';
+}
+
+function parseYtmTwoRowItem(r) {
+  const title = ytmRunsText(r.title?.runs);
+  if (!title) return null;
+  const watchId = r.navigationEndpoint?.watchEndpoint?.videoId || r.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId || '';
+  const browse = r.navigationEndpoint?.browseEndpoint;
+  const pageType = browse?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType || '';
+  const sub = ytmRunsText(r.subtitle?.runs);
+  const thumbnail = ytmThumbFrom(r.thumbnailRenderer);
+  if (/^[\w-]{11}$/.test(watchId)) {
+    return { kind: 'track', id: watchId, title, sub, thumbnail };
+  }
+  if (browse?.browseId) {
+    return { kind: ytmKindFromPageType(pageType), id: browse.browseId, title, sub, thumbnail };
+  }
+  return null;
+}
+
+function parseYtmResponsiveItem(r) {
+  const cols = r.flexColumns || [];
+  const runsOf = (i) => cols[i]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+  const overlay = r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer;
+  const videoId = r.playlistItemData?.videoId || overlay?.playNavigationEndpoint?.watchEndpoint?.videoId || '';
+  if (!/^[\w-]{11}$/.test(videoId)) return null;
+  const title = ytmRunsText(runsOf(0));
+  if (!title) return null;
+  const sub = ytmRunsText(runsOf(1));
+  return { kind: 'track', id: videoId, title, sub, thumbnail: ytmThumbFrom(r.thumbnail) || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` };
+}
+
+function parseYtmHomeFeed(json) {
+  const content = json?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer;
+  const chips = (content?.header?.chipCloudRenderer?.chips || [])
+    .map((c) => ({ title: ytmRunsText(c.chipCloudChipRenderer?.text?.runs), params: c.chipCloudChipRenderer?.navigationEndpoint?.browseEndpoint?.params || '' }))
+    .filter((c) => c.title);
+  const sections = [];
+  for (const s of content?.contents || []) {
+    const shelf = s.musicCarouselShelfRenderer;
+    if (!shelf) continue;
+    const title = ytmRunsText(shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs);
+    if (!title) continue;
+    const items = [];
+    for (const c of shelf.contents || []) {
+      const it = c.musicTwoRowItemRenderer ? parseYtmTwoRowItem(c.musicTwoRowItemRenderer)
+        : c.musicResponsiveListItemRenderer ? parseYtmResponsiveItem(c.musicResponsiveListItemRenderer)
+        : null;
+      if (it) items.push(it);
+    }
+    if (items.length) sections.push({ title, items });
+  }
+  return { chips, sections };
+}
+
+async function fetchYtmHomeFeed() {
+  if (serverHomeFeedCache.data && Date.now() - serverHomeFeedCache.ts < YTM_HOME_CACHE_MS) {
+    return serverHomeFeedCache.data;
+  }
+  const body = JSON.stringify({
+    context: { client: { clientName: 'WEB_REMIX', clientVersion: YTM_CLIENT_VERSION, hl: 'en', gl: 'US' } },
+    browseId: 'FEmusic_home'
+  });
+  const headers = {
+    'Content-Type': 'application/json',
+    'Origin': 'https://music.youtube.com',
+    'Referer': 'https://music.youtube.com/',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+  };
+  let json = null;
+  if (typeof global.riffSessionFetch === 'function') {
+    try {
+      const r = await global.riffSessionFetch('https://music.youtube.com/youtubei/v1/browse?prettyPrint=false', {
+        method: 'POST', headers, body, signal: AbortSignal.timeout(10000)
+      });
+      if (r.ok) json = await r.json();
+    } catch (_) { json = null; }
+  }
+  if (!json) {
+    const r = await fetch('https://music.youtube.com/youtubei/v1/browse?prettyPrint=false', {
+      method: 'POST', headers, body, signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) throw new Error(`ytmusic home status ${r.status}`);
+    json = await r.json();
+  }
+  const data = parseYtmHomeFeed(json);
+  if (!data.sections.length) throw new Error('ytmusic home: nessuna sezione');
+  serverHomeFeedCache = { ts: Date.now(), data };
+  return data;
+}
+
 let serverTrendingCache = { ts: 0, tracks: [] };
 
 function fetchItunesTopSongs(limit = 24) {
@@ -8492,6 +8602,18 @@ async function requestHandler(req, res) {
       handleVibeRecommendations(req, res, payload);
     });
     return;
+  }
+
+  if (parsedUrl.pathname === '/api/home-feed') {
+    try {
+      const feed = await fetchYtmHomeFeed();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, ...feed }));
+    } catch (error) {
+      try { logger.log('warn', `home feed: ${error.message}`); } catch (_) {}
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: false, error: error.message }));
+    }
   }
 
   if (parsedUrl.pathname === '/api/trending') {
