@@ -64,7 +64,7 @@ Questo vale anche per `rubberBandOverscroll` dentro una pagina che sta dentro `I
 - [ ] `ExploreScreen` — `ExploreScreen.kt:70`
 - [ ] `GenresScreen` — `GenresScreen.kt:256`
 - [ ] `HistoryScreen` — `HistoryScreen.kt:86`
-- [~] `HomeScreen` — `HomeScreen.kt:365` — parte 1 (KT 219-664) tradotta in `src/renderer/screens/home-screen.js` + stub in `home-components.js`; restano KT 668-2829; NON collegata a index.html (#view-home)
+- [~] `HomeScreen` — `HomeScreen.kt:365` — parte 1-2 (KT 219-1231) tradotta in `src/renderer/screens/home-screen.js` + stub in `home-components.js`; parte 2 (KT 668-1231) tradotta; restano KT 1233-2829; NON collegata a index.html (#view-home)
 - [ ] `IrideScreen` — `IrideScreen.kt:169`
 - [ ] `ListenTogetherScreen` — `ListenTogetherScreen.kt:106`
 - [ ] `LoginScreen` — `LoginScreen.kt:63`

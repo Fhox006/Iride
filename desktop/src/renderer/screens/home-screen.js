@@ -272,12 +272,325 @@
       viewModel.onSectionBecameVisible('similar_recommendation_0');
     });
 
-    // TODO KT:668-716  orderedFeedSections (ordinamento trending/top 100/nuove uscite) -- DA FARE
-    // TODO KT:717-723  pickedSongs -- DA FARE
-    // TODO KT:725-742  homeColorScheme -- DA FARE
-    // TODO KT:743-820+ MaterialTheme / Scaffold / BoxWithConstraints / ytGridItem -- DA FARE (prossima parte)
+    // KT:668-716  orderedFeedSections = remember(homePage?.sections) { ... }
+    const orderedFeedSections = C.remember([homePage && homePage.sections], () => {
+      const sections = (homePage && homePage.sections) || [];                    // KT:670
+      const isItalian = (s) => ['italia', 'italy', 'italiano', 'italian'].some((w) => s.title.toLowerCase().includes(w) || (s.label || '').toLowerCase().includes(w)); // KT:678-680
+      const selectedTrendingIndex = (() => {                                      // KT:671-696
+        const top = sections.map((section, index) => ({ section, index }))
+          .filter(({ section }) => {                                              // KT:674-681
+            const title = section.title.toLowerCase();
+            const label = (section.label || '').toLowerCase();
+            return (title.includes('trending') || title.includes('top 100')) &&
+              !['italia', 'italy', 'italiano', 'italian'].some((w) => w && (title.includes(w) || label.includes(w)));
+          })
+          .find(({ section }) => section.title.toLowerCase().includes('top 100'));  // KT:682-684
+        if (top) return top.index;                                                // KT:685
+        const fb = sections.map((section, index) => ({ section, index })).find(({ section }) => { // KT:686-696
+          const title = section.title.toLowerCase();
+          const label = (section.label || '').toLowerCase();
+          return title.includes('trending') &&
+            !['italia', 'italy', 'italiano', 'italian'].some((w) => title.includes(w) || label.includes(w));
+        });
+        return fb ? fb.index : undefined;                                         // KT:696
+      })();
+      return sections                                                             // KT:698-715
+        .map((section, index) => ({ index, value: section }))                     // KT:699-707
+        .filter(({ index, value }) => {                                           // KT:700-704
+          const title = value.title.toLowerCase();
+          const isTrending = title.includes('trending') || title.includes('top 100');
+          return !isTrending || index === selectedTrendingIndex;
+        })
+        .map((indexed) => ({ index: indexed.index, value: indexed.value }))        // KT:705-707
+        .sort((a, b) => {                                                         // KT:708-715
+          const rank = (v) => {
+            const title = v.value.title.toLowerCase();
+            if (title.includes('trending') || title.includes('top 100')) return 0;
+            if (title.includes('new release') || title.includes('nuove uscite')) return 1;
+            return 2;
+          };
+          return rank(a) - rank(b);                                               // sortedBy stabile
+        });
+    });
+    // KT:717-723  pickedSongs = remember(quickPicks) { quickPicks ... distinctBy id }
+    const pickedSongs = C.remember([quickPicks], () =>
+      (quickPicks || [])
+        .filter((it) => !(it.song.isVideo || it.song.isEpisode))
+        .filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i));
 
-    return null; // placeholder finche' la parte 2 non e' tradotta
+    // KT:725-742  homeColorScheme = MaterialTheme.colorScheme.let { colors -> colors.copy(...) }
+    const colors = C.MaterialTheme.colorScheme();
+    const homeColorScheme = C.copy(colors, {
+      primary: colors.onSurface,                  // KT:728
+      onPrimary: colors.surface,                  // KT:729
+      primaryContainer: colors.surfaceContainerHighest, // KT:730
+      onPrimaryContainer: colors.onSurface,       // KT:731
+      inversePrimary: colors.onSurface,           // KT:732
+      secondary: colors.onSurfaceVariant,         // KT:733
+      onSecondary: colors.surface,                // KT:734
+      secondaryContainer: colors.surfaceContainerHighest, // KT:735
+      onSecondaryContainer: colors.onSurface,     // KT:736
+      tertiary: colors.onSurfaceVariant,          // KT:737
+      onTertiary: colors.surface,                 // KT:738
+      tertiaryContainer: colors.surfaceContainerHighest, // KT:739
+      onTertiaryContainer: colors.onSurface,      // KT:740
+    });
+
+    // KT:743-749  MaterialTheme(colorScheme = homeColorScheme, typography = irideFolioShelfTypography()) { IrideFolioDisplayHeadings { Scaffold { ... } } }
+    return C.MaterialTheme({ colorScheme: homeColorScheme, typography: C.irideFolioShelfTypography() }, () =>
+      C.IrideFolioDisplayHeadings({ menuState }, () =>
+        C.Scaffold({ modifier: {}, containerColor: 'transparent', contentWindowInsets: C.WindowInsets(0) }, (paddingValues) =>
+          C.BoxWithConstraints({ modifier: C.Modifier.fillMaxSize() }, () => {    // KT:750
+
+            // KT:751-862  ytGridItem: YouTubeGridItem + irideFolioCombinedClickable (click + long-click)
+            const ytGridItem = (item) => C.CompositionLocalProvider({ LocalItemHorizontalPadding: false }, () =>
+              C.YouTubeGridItem({                                                  // KT:753
+                item,
+                isActive: [mediaMetadataState.value && mediaMetadataState.value.album && mediaMetadataState.value.album.id,
+                  mediaMetadataState.value && mediaMetadataState.value.id].includes(item.id), // KT:755-760
+                isPlaying: isPlayingState.value,                                  // KT:761
+                coroutineScope: scope,                                            // KT:762
+                thumbnailRatio: (item.type === 'SongItem' && item.isVideoSong) ? 16 / 9 : 1, // KT:763-764
+                forceThumbnailRatio: item.type === 'SongItem' && item.isVideoSong, // KT:765
+                size: currentGridHeight,                                          // KT:766
+                modifier: C.irideFolioCombinedClickable({
+                  onClick: () => {                                                // KT:769-817
+                    switch (item.type) {
+                      case 'SongItem':                                            // KT:771-788
+                        if (!isListenTogetherGuest) {
+                          if (item.isVideoSong) {                                  // KT:773-776
+                            if (playerConnection && playerConnection.videoPlayback) playerConnection.videoPlayback.playVideo(C.toMediaMetadata(item));
+                          } else {                                                // KT:777-786
+                            if (playerConnection) playerConnection.playQueue(C.YouTubeQueue(item.endpoint || C.WatchEndpoint({ videoId: item.id }), C.toMediaMetadata(item)));
+                          }
+                        }
+                        break;
+                      case 'AlbumItem': navController.navigate(`album/${item.id}`); break;   // KT:789-790
+                      case 'ArtistItem': navController.navigate(`artist/${item.id}`); break; // KT:791-792
+                      case 'PlaylistItem': navController.navigate(`online_playlist/${item.id.replace(/^VL/, '')}`); break; // KT:793-796
+                      case 'PodcastItem': navController.navigate(`online_podcast/${item.id}`); break; // KT:797-800
+                      case 'EpisodeItem':                                          // KT:801-815
+                        if (!isListenTogetherGuest && playerConnection) {
+                          playerConnection.playQueue(C.ListQueue({ title: item.title, items: [C.toMediaItem(C.toMediaMetadata(item))] }));
+                        }
+                        break;
+                    }
+                  },
+                  onLongClick: () => {                                            // KT:818-858
+                    menuState.show({ anchored: true }, () => {                    // KT:819
+                      switch (item.type) {                                        // KT:820-856
+                        case 'SongItem': return C.YouTubeSongMenu({ song: item, navController, onDismiss: menuState.dismiss });  // KT:821-826
+                        case 'AlbumItem': return C.YouTubeAlbumMenu({ albumItem: item, navController, onDismiss: menuState.dismiss }); // KT:827-832
+                        case 'ArtistItem': return C.YouTubeArtistMenu({ artist: item, onDismiss: menuState.dismiss }); // KT:833-837
+                        case 'PlaylistItem': return C.YouTubePlaylistMenu({ playlist: item, coroutineScope: scope, onDismiss: menuState.dismiss }); // KT:838-843
+                        case 'PodcastItem': return C.YouTubePlaylistMenu({ playlist: C.asPlaylistItem(item), coroutineScope: scope, onDismiss: menuState.dismiss }); // KT:844-849
+                        case 'EpisodeItem': return C.YouTubeSongMenu({ song: C.asSongItem(item), navController, onDismiss: menuState.dismiss }); // KT:850-855
+                      }
+                    });
+                  },
+                }),
+              }));
+
+            // KT:864-912  ytSongItem(song, itemWidth): YouTubeListItem + menu button + combined clickable
+            const ytSongItem = (song, itemWidth) => {
+              const showSongMenu = () => menuState.show({ anchored: true }, () =>   // KT:865-873
+                C.YouTubeSongMenu({ song, navController, onDismiss: menuState.dismiss }));
+              return C.CompositionLocalProvider({ LocalItemHorizontalPadding: false }, () =>
+                C.YouTubeListItem({                                               // KT:875
+                  item: song,
+                  isActive: song.id === (mediaMetadataState.value && mediaMetadataState.value.id), // KT:877
+                  isPlaying: isPlayingState.value,                                // KT:878
+                  isSwipeable: false,                                             // KT:879
+                  showDivider: false,                                             // KT:880
+                  trailingContent: () => C.SongMenuIconButton({ onClick: showSongMenu }, () =>  // KT:881-887
+                    C.Icon(C.painterResource('more_vert'), C.stringResource('more_options'))),
+                  modifier: C.irideFolioCombinedClickable({                       // KT:889-909
+                    width: itemWidth,
+                    onClick: () => {                                              // KT:892-907
+                      if (!isListenTogetherGuest) {
+                        if (song.id === (mediaMetadataState.value && mediaMetadataState.value.id)) {
+                          if (playerConnection) playerConnection.togglePlayPause();
+                        } else if (playerConnection) {
+                          playerConnection.playQueue(C.YouTubeQueue(song.endpoint || C.WatchEndpoint({ videoId: song.id }), C.toMediaMetadata(song)));
+                        }
+                      }
+                    },
+                    onLongClick: showSongMenu,                                    // KT:908
+                  }),
+                }));
+            };
+
+            // KT:914-917  forYouBoxScale / forYouCellGap / forYouBoxSize / forYouCellSize
+            const forYouBoxScale = 1.35;                                          // KT:914
+            const forYouCellGap = C.IrideFolio.ShelfMosaicGap;                    // KT:915
+            const forYouBoxSize = currentGridHeight * forYouBoxScale;             // KT:916
+            const forYouCellSize = (forYouBoxSize - forYouCellGap) / 2;           // KT:917
+            // KT:918-933  forYouOnClick(cell)
+            const forYouOnClick = (cell) => {
+              switch (cell.type) {
+                case 'Song':                                                      // KT:920-927
+                  if (!isListenTogetherGuest) {
+                    if (cell.id === (mediaMetadataState.value && mediaMetadataState.value.id)) {
+                      if (playerConnection) playerConnection.togglePlayPause();
+                    } else if (playerConnection) {
+                      playerConnection.startRadioForSong(C.toMediaMetadata(cell));
+                    }
+                  }
+                  break;
+                case 'Album': navController.navigate(`album/${cell.id}`); break;  // KT:929
+                case 'Artist': navController.navigate(`artist/${cell.id}`); break; // KT:930
+                case 'Playlist': break;                                           // KT:931
+              }
+            };
+            // KT:934-1067  forYouMiniTile(cell): tile quadrata con portrait artista + menu/click
+            const forYouMiniTile = (cell) => {
+              const tileShape = cell.type === 'Artist' ? C.CircleShape : C.FolioShape(6);   // KT:935
+              const collectionTile = cell.type === 'Album'                           // KT:936-940
+                ? C.rememberCollectionExpansionTile('Album', cell.id, { artworkUrl: cell.thumbnailUrl, title: cell.title })
+                : { first: C.Modifier(), second: C.Modifier() };
+              const thumbnail = cell.type === 'Artist'                               // KT:941-944
+                ? C.rememberArtistThumbnail(cell.id, cell.title, cell.thumbnailUrl)
+                : cell.thumbnailUrl;
+              const portraitNavigation = C.LocalArtistPortraitNavigation();          // KT:945
+              const portraitKey = C.rememberSaveable('portraitKey', () => C.uuid());  // KT:946
+              const portraitBounds = C.useState('portraitBounds', C.Rect.Zero);       // KT:947
+              const portrait = cell.type === 'Artist'                                 // KT:948-962
+                ? C.rememberIrideArtistArtwork({
+                    artistId: cell.id, url: cell.thumbnailUrl, artistName: cell.title,
+                    channelId: cell.artist.channelId,
+                    externalEnabled: !cell.artist.isLocal && !cell.artist.isPodcastChannel && !cell.artist.isPrivatelyOwnedArtist,
+                    highResolution: false,
+                  }).value
+                : null;
+              const portraitScope = C.LocalAnimatedVisibilityScope();                 // KT:963
+              const portraitInFlight = cell.type === 'Artist' && C.LocalArtistPortraitTransitionActive() &&   // KT:964-967
+                portraitScope != null && !homeReducedMotion &&
+                portraitNavigation && portraitNavigation.seed && portraitNavigation.seed.sourceKey === portraitKey;
+              const homePortraitProgress = portraitInFlight                           // KT:968-974
+                ? C.animateFloat(portraitScope, (state) => (state === 'Visible' ? 1 : 0), 'homePortraitVisibility')
+                : 1;
+              // KT:975-976  commento: questi tile sono circa meta' della griglia reale, bordi piu' sottili
+              return C.Box({                                                          // KT:977-1039
+                modifier: C.Modifier.size(forYouCellSize)
+                  .then(collectionTile.first).then(collectionTile.second)
+                  .clip(tileShape)
+                  .irideFolioCombinedClickable({
+                    onClick: () => {                                                   // KT:984-1000
+                      if (cell.type === 'Artist' && portrait != null) {
+                        if (portraitNavigation) portraitNavigation.select(portraitKey, cell.id, cell.title, portrait, thumbnail, portraitBounds.value);
+                        navController.navigate(`artist/${cell.id}?portraitSource=${portraitKey}`);
+                      } else {
+                        forYouOnClick(cell);
+                      }
+                    },
+                    onLongClick: () => menuState.show({ anchored: true }, () => {     // KT:1001-1029
+                      switch (cell.type) {
+                        case 'Song': return C.SongMenu({ originalSong: cell, navController, onDismiss: menuState.dismiss }); // KT:1004-1009
+                        case 'Album': return C.AlbumMenu({ originalAlbum: cell, navController, onDismiss: menuState.dismiss }); // KT:1010-1015
+                        case 'Artist': return C.ArtistMenu({ originalArtist: cell, coroutineScope: scope, onDismiss: menuState.dismiss }); // KT:1016-1021
+                        case 'Playlist': return C.PlaylistMenu({ playlist: cell, coroutineScope: scope, onDismiss: menuState.dismiss }); // KT:1022-1027
+                      }
+                    }),
+                  })
+                  .border({ width: 0.5, color: cell.type === 'Song' ? C.strokeItemSoft() : C.strokeCard(), shape: tileShape }), // KT:1032-1038
+                children: () => {                                                     // KT:1040-1066
+                  if (cell.type === 'Artist' && portrait != null) {
+                    const displayedPortrait = (portraitNavigation && portraitNavigation.seed && portraitNavigation.seed.sourceKey === portraitKey && portraitNavigation.seed.artwork) || portrait; // KT:1041
+                    return C.Image({                                                  // KT:1042-1051
+                      bitmap: displayedPortrait.bitmap, contentDescription: cell.title, contentScale: 'Crop',
+                      modifier: C.Modifier.fillMaxSize().onGloballyPositioned((it) => { portraitBounds.value = it.boundsInWindow(); })
+                        .alpha(portraitInFlight && homePortraitProgress < 1 ? 0 : 1).clip(tileShape),
+                    });
+                  }
+                  return C.AsyncImage({                                               // KT:1053-1064
+                    model: C.ImageRequest({ data: C.resize(thumbnail, 300, 300), memoryCachePolicy: 'ENABLED', diskCachePolicy: 'ENABLED', networkCachePolicy: 'ENABLED' }),
+                    contentDescription: cell.title, contentScale: 'Crop',
+                    modifier: C.Modifier.fillMaxSize().clip(tileShape),
+                  });
+                },
+              });
+            };
+            // KT:1068-1111  forYouRecommendedTile(tile)
+            const forYouRecommendedTile = (tile) => {
+              if (tile.type === 'Local') return forYouMiniTile(tile.item);            // KT:1070
+              const album = tile.item;                                                // KT:1072
+              const collectionTile = C.rememberCollectionExpansionTile('Album', album.id, { artworkUrl: album.thumbnail, title: album.title }); // KT:1073-1075
+              return C.AsyncImage({                                                   // KT:1076-1108
+                model: C.ImageRequest({ data: C.resize(album.thumbnail, 300, 300), memoryCachePolicy: 'ENABLED', diskCachePolicy: 'ENABLED', networkCachePolicy: 'ENABLED' }),
+                contentDescription: album.title, contentScale: 'Crop',
+                modifier: C.Modifier.size(forYouCellSize).then(collectionTile.first).then(collectionTile.second)
+                  .irideArtworkOverlayBorder(C.IrideSoftBorderWidth, C.strokeCard(), C.FolioShape(6))
+                  .clip(C.FolioShape(6))
+                  .irideFolioCombinedClickable({
+                    onClick: () => navController.navigate(`album/${album.id}`),        // KT:1097
+                    onLongClick: () => menuState.show({ anchored: true }, () =>        // KT:1098-1106
+                      C.YouTubeAlbumMenu({ albumItem: album, navController, onDismiss: menuState.dismiss })),
+                  }),
+              });
+            };
+            // KT:1112-1149  forYouBlock(shelf): 2x2 mosaico (artista + 3 tile casuali) + nome artista
+            const forYouBlock = (shelf) => {
+              const cells = C.remember([shelf], () =>                                 // KT:1113-1119
+                [shelf.artist].concat(C.shuffled(shelf.tiles, C.Random(C.hashCode(shelf.artist.id))).slice(0, 3)));
+              return C.Column({ modifier: C.Modifier.width(forYouBoxSize) }, () => [  // KT:1120
+                C.Column({ verticalArrangement: C.spacedBy(forYouCellGap) }, () =>   // KT:1121-1134
+                  C.chunked(cells, 2).map((rowCells) =>                              // KT:1122
+                    C.Row({ horizontalArrangement: C.spacedBy(forYouCellGap) }, () =>
+                      rowCells.map((cell) => (cell.type === 'Artist' ? forYouMiniTile(cell) : forYouRecommendedTile(cell)))))), // KT:1126-1131
+                C.Spacer({ modifier: C.Modifier.height(6) }),                        // KT:1135
+                C.Text({                                                              // KT:1136-1147
+                  text: shelf.artist.artist.name,
+                  style: { ...C.typography('bodyLarge'), fontFamily: C.folioTypewriterFontFamily() },
+                  fontWeight: 'Bold', maxLines: 1, overflow: 'Ellipsis', textAlign: 'Center',
+                  modifier: C.Modifier.fillMaxWidth(),
+                }),
+              ]);
+            };
+            // KT:1150  forYouLoading = isForYouLoading && forYouShelves.isEmpty()
+            const forYouLoading = isForYouLoading && forYouShelves.length === 0;
+            // KT:1151-1231  forYouSection(shelfOrder): IrideFolioSection + LazyRow di forYouBlock
+            const forYouSection = (shelfOrder) => {
+              if (!(forYouLoading || forYouShelves.length > 0)) return null;        // KT:1152
+              shelfOrder.added({ hasFourRows: false });                              // KT:1153
+              return C.item({ key: 'for_you_section' }, () =>                       // KT:1154
+                C.IrideFolioSection({                                                // KT:1155-1181
+                  modifier: C.Modifier.animateItem({
+                    fadeInSpec: null,
+                    placementSpec: homeReducedMotion ? null : C.IrideMotion.PlacementSpec,
+                    fadeOutSpec: null,
+                  }),
+                  sectionKey: 'for_you_section',
+                  ready: !forYouLoading,
+                  artwork: forYouShelves.slice(0, 2).flatMap((shelf) =>               // KT:1167-1177
+                    [C.resize(shelf.artist.thumbnailUrl, 300, 300)].concat(
+                      shelf.tiles.map((tile) => (tile.type === 'Local' ? C.resize(tile.item.thumbnailUrl, 300, 300) : C.resize(tile.item.thumbnail, 300, 300))))),
+                  placeholder: () => C.IrideFolioSectionSkeleton(forYouBoxSize, { mosaic: true }), // KT:1178-1180
+                }, () => {
+                  C.IrideFolioShelfHeader({ title: C.stringResource('for_you_artists_title'), showNavigationArrow: false }); // KT:1182-1185
+                  const shelves = forYouShelves;                                      // KT:1187
+                  const forYouState = C.rememberLazyListState();                      // KT:1188
+                  C.LaunchedEffect([forYouState, shelves.length, isForYouLoading], () => { // KT:1189-1205
+                    C.snapshotFlow(() => C.lastVisibleIndex(forYouState)).collect((lastVisible) => {
+                      if (lastVisible != null && lastVisible >= shelves.length - 3 && viewModel.forYouShelves.value.length <= shelves.length) {
+                        viewModel.loadMoreForYouShelves();                            // KT:1202
+                      }
+                    });
+                  });
+                  return C.LazyRow({                                                  // KT:1206-1227
+                    state: forYouState,
+                    contentPadding: { horizontal: irideGridItemStart },              // KT:1208-1209
+                    horizontalArrangement: C.spacedBy(C.IrideFolio.ShelfItemSpacing), // KT:1210-1211
+                    overscrollEffect: null,                                           // KT:1212
+                    modifier: C.rubberBandOverscroll('Horizontal', forYouState),     // KT:1213-1217
+                    itemsIndexed: shelves.map((shelf, index) => ({ key: `for_you_${index}_${shelf.artist.id}`, content: () => forYouBlock(shelf) })), // KT:1219-1226
+                  });
+                }));
+            };
+
+            // TODO KT:1233-2829  IridePageLayout(title = homePageTitle(), ...) e tutto il resto della pagina -- PARTE 3
+
+            return null;                                                          // placeholder fino alla parte 3
+          }))));
   }
 
   global.IrideHomeScreen = { HomeScreen, HomeScreenContent, SHOW_HOME_TEST_PLAYLIST };

@@ -145,7 +145,8 @@
   const firstPlaylistItem = stub('firstPlaylistItem', 'HomeScreen.kt:523', null);
 
   // KT: HomeScreen.kt:553 -- nessun composable qui
-  global.IrideHomeComponents = {
+  // Nomi non ancora implementati: STUB generico (vedi DEPENDENCIES.md, sezione HomeScreen parte 2)
+  const implemented = {
     IrideMotion, rememberEnterProgress, IrideTabEntrance, markRevealedWhenDone,
     LocalLifecycleOwner, disposableLifecycleEffect, lifecycleIsAtLeastStarted, provideLocals,
     LocalMenuState, hiltViewModel, PreloadHomeCharts, rememberSaveable, randomInt,
@@ -156,4 +157,11 @@
     remember, useState, launchEffect, launchRepeatOnLifecycle, rememberCoroutineScope,
     LocalViewModelStoreOwner, MoodMixes, firstPlaylistItem,
   };
+  global.IrideHomeComponents = new Proxy(implemented, {
+    get(target, name) {
+      if (name in target) return target[name];
+      if (typeof name !== 'string') return undefined;
+      return stub(name, 'DA DA TRADURRE', () => null);
+    },
+  });
 })(typeof window !== 'undefined' ? window : globalThis);

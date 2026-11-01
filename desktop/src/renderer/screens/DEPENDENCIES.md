@@ -67,3 +67,7 @@ Stati: `STUB` = solo firma, `PARZIALE` = manca qualcosa (nota), `OK` = tradotto 
 | `remember` / `useState` / `launchEffect` / `launchRepeatOnLifecycle` / `rememberCoroutineScope` / `LocalViewModelStoreOwner` | compose | HomeScreen | STUB | effetti eseguiti una volta |
 | `MoodMixes.chips` | discovery/MoodMixes | HomeScreen | STUB | passa i chip |
 | `firstPlaylistItem` | HomeScreen.kt:523-532 | HomeScreen | STUB | null |
+
+### HomeScreen parte 2 (home-screen.js: KT 668-1231 tradotte)
+
+Tutte le altre funzioni `C.*` usate in parte 2 (Box, Column, Row, Text, Image, AsyncImage, LazyRow, item, Scaffold, BoxWithConstraints, YouTubeGridItem, YouTubeListItem, menu Youtube*/Song/Album/Artist/Playlist, IrideFolio*, rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile, resize, Modifier, FolioShape, ecc.) sono STUB generici in `home-components.js`: il Proxy le registra come `DA TRADURRE` e ritorna null. Non sono ancora elencate una per una in questa tabella.
