@@ -35,6 +35,13 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 
 Regola: una schermata alla volta. Segna `[x]` solo dopo conversione 1:1 e screenshot verificato. Se parziale scrivi `[~]` con il motivo. Fonte: `git show v0.1.0-alpha33:<file>`.
 
+Tipo di lavoro: TRADUZIONE RIGA PER RIGA, NON interpretazione.
+- Ogni riga Kotlin corrisponde a una riga JS, nello stesso ordine. Un blocco Kotlin (`if`, `when`, `LaunchedEffect`, `item {}`) diventa un blocco JS equivalente con lo stesso comportamento.
+- Non semplificare, non ottimizzare, non cambiare la struttura, non sostituire con soluzioni proprie. Se una riga non è traducibile così com'è, scrivi uno stub con il riferimento Kotlin e segnalalo.
+- Ogni blocco porta il numero di riga Kotlin in un commento `KT:`.
+- Non "ispirarsi" al design: i valori (dp, colori, durate, curve) si copiano dal Kotlin così come sono.
+- Le dipendenze non pronte restano stub marcati con file e riga Kotlin, da collegare in un passo successivo.
+
 - [ ] `UpdateInterstitialScreen` — `UpdateInterstitial.kt:77`
 - [ ] `LoadingScreen` — `LoadingScreen.kt:39`
 - [ ] `AccountScreen` — `AccountScreen.kt:110`
