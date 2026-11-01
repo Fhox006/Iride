@@ -90,6 +90,7 @@
   const Modifier = function () { return new ModifierBuilder(); };
   METHODS.forEach((name) => { Modifier[name] = (...args) => new ModifierBuilder()[name](...args); });
   Modifier.style = {};
+  Modifier.applyTo = (el) => el; // C.Modifier usato direttamente come valore vuoto
   Modifier.then = (other) => new ModifierBuilder().then(other);
 
   // ---------- tema ----------

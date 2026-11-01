@@ -55,6 +55,32 @@
     }
   }
 
+
+  // Storico locale del desktop (app.js: localStorage 'devsize_history', max 100, piu' recente prima).
+  // KT: HomeViewModel.quickPicks -> database.quickPicks() (Room). Qui: stesso ordine, senza conteggi.
+  function readLocalHistory() {
+    try {
+      const raw = global.localStorage ? global.localStorage.getItem('devsize_history') : null;
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter((t) => t && t.id) : [];
+    } catch (_) { return []; }
+  }
+  // Mappa una traccia dello storico nel Song usato da quickPicks (campi letti da HomeScreen: id, title, song.*).
+  function mapHistoryToSong(t) {
+    const artist = t.artist || t.artistName || '';
+    return {
+      id: String(t.id),
+      title: t.title || '',
+      artists: artist ? [{ name: artist, id: null }] : [],
+      thumbnail: t.thumbnail || t.cover || '',
+      song: { id: String(t.id), title: t.title || '', thumbnailUrl: t.thumbnail || t.cover || '', isVideo: false, isEpisode: false },
+    };
+  }
+  // KT: quickPicks = database.quickPicks() -- PARZIALE: ultime tracce uniche dello storico locale.
+  function quickPicksFromHistory() {
+    return readLocalHistory().map(mapHistoryToSong);
+  }
+
   // ViewModel minimo: stessi nomi dei flussi di HomeViewModel.kt usati da HomeScreen.
   // I flussi non ancora alimentati restano null / vuoti (nessun dato inventato).
   async function createHomeViewModel() {
@@ -75,7 +101,7 @@
       homePersonalMixes: flow([]),
       starredPlaylistThumbnails: flow([]),
       similarRecommendations: flow([]),
-      quickPicks: flow([]),
+      quickPicks: flow(quickPicksFromHistory()),
       forYouShelves: flow([]),
       isHeroCarouselEnabled: flow(false),
       isHeroCarouselLoading: flow(false),
@@ -111,5 +137,5 @@
     return node;
   }
 
-  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen };
+  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen, quickPicksFromHistory };
 })(typeof window !== 'undefined' ? window : globalThis);

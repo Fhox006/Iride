@@ -138,3 +138,9 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 - Menu (`AlbumMenu`, `ArtistMenu`, `PlaylistMenu`, `YouTube*Menu`): PARZIALE, solo titolo e chiudi.
 - `TextButton`, `SongMenuIconButton`, progress, skeleton, `MixPosterPlaceholder`: PARZIALE.
 - `MixMood`: PARZIALE, nessun mood ricavato dal titolo.
+
+### Quick picks dallo storico locale (home-data.js)
+
+- `quickPicks`: PARZIALE. Fonte: `localStorage.devsize_history` (stesso storico di app.js, max 100, piu' recente prima). Kotlin usa `database.quickPicks()` con conteggi: qui manca il conteggio ascolti.
+- Verificato in app: le tracce dello storico appaiono nella sezione "Picked for you".
+- `LocalDatabase`: PARZIALE, nessun DB Room. `song(id)` non emette nulla, quindi resta il valore iniziale.

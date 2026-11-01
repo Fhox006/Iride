@@ -69,7 +69,8 @@
 
   // KT: LocalPlayerConnection / LocalDatabase / LocalContext / LocalListenTogetherManager -- STUB (null)
   const LocalPlayerConnection = stub('LocalPlayerConnection', 'LocalPlayerConnection', null);
-  const LocalDatabase = stub('LocalDatabase', 'LocalDatabase', null);
+  // KT: LocalDatabase.current -- PARZIALE: nessun DB Room nel desktop; song(id) non emette nulla (il fallback e' il valore iniziale)
+  const LocalDatabase = () => ({ song: () => ({ value: null }), album: () => ({ value: null }), artist: () => ({ value: null }) });
   const LocalContext = stub('LocalContext', 'compose platform', null);
   const LocalListenTogetherManager = stub('LocalListenTogetherManager', 'LocalListenTogetherManager', null);
 
