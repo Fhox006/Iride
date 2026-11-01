@@ -354,14 +354,16 @@ html body:not(#_).folio-mp3-open .playbar { right: var(--mp3-w) !important; }
 .ir-lib-card-round { border-radius: 50% !important; }
 .ir-lib-grid-artists .ir-lib-card-cover { border-radius: 50%; }
 
-/* Libreria > Album (LibraryAlbumsScreen.kt): titolo Albums, niente chip di navigazione, griglia 12dp */
-html body:not(#_).ir-lib-albums .ir-lib-row { display: none !important; }
-html body:not(#_) .ir-lib-albums-title { display: none; }
-html body:not(#_).ir-lib-albums .ir-lib-albums-title { display: block; }
-html body:not(#_).ir-lib-albums .ir-lib-bar h1:not(.ir-lib-albums-title) { display: none; }
-html body:not(#_).ir-lib-albums #saved-albums-grid {
-  display: grid !important; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
-  padding: 0 12px; flex-wrap: initial;
-}
-html body:not(#_).ir-lib-albums #saved-albums-grid .search-album-card { width: auto !important; min-width: 0; }
-html body:not(#_).ir-lib-albums #saved-albums-grid .search-album-cover { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; }
+/* Libreria > Album: LibraryGridPage + LibrarySearchAndActions + LibraryPlaybackActions (alpha33) */
+html body:not(#_).ir-lib-albums .ir-lib-bar { display: none; }
+.lib-albums-page { padding: 8px 12px 0; }
+.lib-albums-title { font-size: 34px; font-weight: 700; color: #fff; margin: 0 0 12px; }
+.lib-albums-search { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 18px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.6); }
+.lib-albums-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font: 400 15px 'DM Sans', sans-serif; }
+.lib-albums-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 16px; }
+.lib-albums-action { height: 48px; border: 0; border-radius: 18px; background: rgba(255,255,255,.06); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font: 400 14px 'DM Sans', sans-serif; cursor: pointer; }
+.lib-albums-action:hover { background: rgba(255,255,255,.10); }
+html body:not(#_) #view-albums #saved-albums-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px 12px !important; padding: 0 !important; }
+html body:not(#_) #view-albums #saved-albums-grid .search-album-card { width: auto !important; flex: none !important; min-width: 0; }
+html body:not(#_) #view-albums #saved-albums-grid .search-album-cover { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; border-radius: 12px; }
+.lib-albums-footer { text-align: center; padding: 16px 0 24px; font-size: 12px; color: rgba(255,255,255,.6); }

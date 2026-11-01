@@ -9482,13 +9482,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderSavedAlbums() {
     const container = document.getElementById('saved-albums-grid');
     if (!container) return;
-    const albums = getSavedAlbums();
+    const albumsAll = getSavedAlbums();
+    const qAlb = (document.getElementById('albums-search-input')?.value || '').trim().toLowerCase();
+    const albums = qAlb ? albumsAll.filter(a => `${a.title || ''} ${a.artist || ''}`.toLowerCase().includes(qAlb)) : albumsAll;
+    const footerEl = document.getElementById('albums-footer-count');
+    if (footerEl) footerEl.textContent = albums.length === 1 ? '1 album' : `${albums.length} album`;
     if (albums.length === 0) {
       container.innerHTML = '<div class="empty-hint" style="padding: 48px 0; text-align: center; width: 100%;">No saved albums yet. Save albums from the album view.</div>';
       return;
     }
     container.innerHTML = albums.map(album => {
-      const sub = [album.type || 'Album', album.artist || ''].filter(Boolean).join(' · ');
+      const sub = album.artist || '';
       return `
         <div class="search-album-card" role="button" tabindex="0">
           ${album.cover ? `<img class="search-album-cover" src="${escapeHtml(album.cover)}" alt="${escapeHtml(album.title || '')}" loading="lazy" onerror="this.style.display='none'" />` : '<div class="search-album-cover" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high);"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--md-sys-color-outline);"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div>'}
@@ -9513,6 +9517,41 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   }
+
+  const albumsSearchInput = document.getElementById('albums-search-input');
+  if (albumsSearchInput) albumsSearchInput.addEventListener('input', () => renderSavedAlbums());
+
+  function playRandomSavedAlbum(weightByHistory) {
+    const list = getSavedAlbums();
+    if (!list.length) { showToast('No saved albums yet', 'info'); return; }
+    let album = null;
+    if (weightByHistory) {
+      const hist = safeArray('devsize_history');
+      const plays = new Map();
+      hist.forEach((h) => {
+        const key = h && h.album && (h.album.id || h.album.name);
+        if (key) plays.set(key, (plays.get(key) || 0) + 1);
+      });
+      const weighted = list.filter((a) => plays.has(a.id) || plays.has(a.title));
+      if (weighted.length) {
+        const total = weighted.reduce((n, a) => n + (plays.get(a.id) || plays.get(a.title) || 0), 0);
+        let r = Math.random() * total;
+        for (const a of weighted) {
+          r -= (plays.get(a.id) || plays.get(a.title) || 0);
+          if (r <= 0) { album = a; break; }
+        }
+        album = album || weighted[weighted.length - 1];
+      }
+    }
+    if (!album) album = list[Math.floor(Math.random() * list.length)];
+    openAlbum(album);
+    setTimeout(() => {
+      const btn = document.getElementById(weightByHistory ? 'ir-album-play' : 'ir-album-shuffle');
+      if (btn) btn.click();
+    }, 1500);
+  }
+  document.getElementById('btn-albums-shuffle')?.addEventListener('click', () => playRandomSavedAlbum(false));
+  document.getElementById('btn-albums-rotation')?.addEventListener('click', () => playRandomSavedAlbum(true));
 
   let currentAlbumRunId = 0;
 
