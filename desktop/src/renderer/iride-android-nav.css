@@ -93,13 +93,13 @@ html body:not(#_) .sidebar .nav-item > .nav-item-label {
 }
 
 /* ---- v2: barra come Android (bottom bar): tile a squircle che copre la larghezza, etichette sempre visibili ---- */
-html body:not(#_) .sidebar { padding: 8px 0 !important; }
+html body:not(#_) .sidebar { padding: 8px 0 !important; border-radius: 24px !important; }
 html body:not(#_) .sidebar .sidebar-nav { padding: 0 4px !important; gap: 6px !important; }
 
 html body:not(#_) .sidebar .nav-item {
   width: 100% !important; min-width: 0 !important; height: 60px !important; min-height: 60px !important;
   margin: 0 !important; padding: 8px 0 !important; gap: 4px !important;
-  border-radius: 22px !important; corner-shape: squircle !important;
+  border-radius: 14px !important;
   justify-content: center !important; background: transparent !important;
   transition: background-color 240ms cubic-bezier(.2,0,0,1) !important;
 }
