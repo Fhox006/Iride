@@ -447,7 +447,7 @@ fun IrideMp3PlayerContent(
         // Release the mask and dock together only in the gap before the wheel.
         val clipRelease = ((dividerInSheet - screenBottom) /
             (wheelTop - screenBottom).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
-        val miniPlayerAlpha = 1f - clipRelease
+        val miniPlayerAlpha = if (clipRelease > 0f) 0f else 1f
         SideEffect { bridgeState?.miniPlayerAlpha = miniPlayerAlpha }
         Column(
             Modifier.fillMaxSize()
@@ -816,6 +816,14 @@ fun IrideMp3PlayerContent(
                 contentAlignment = Alignment.Center,
             ) {
                 IrideClickWheel(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = clipRelease
+                        scaleY = clipRelease
+                        val finalBottom = wheelTop + wheelSize * scale
+                        val revealBottom = dividerInSheet + (finalBottom - dividerInSheet) * clipRelease
+                        val finalCenter = wheelTop + wheelSize * scale / 2
+                        translationY = ((revealBottom - wheelSize * scale * clipRelease / 2 - finalCenter) / scale).toPx()
+                    },
                     isPlaying = isPlaying,
                     isShuffleActive = isShuffleActive,
                     isMenuOpen = menuOpen,
