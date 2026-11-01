@@ -1,0 +1,166 @@
+/* Iride Folio -> desktop. Valori presi 1:1 da IrideFolio.kt (dp = px CSS).
+   Superficie sfocata: blur 64, tinta nera 25%, bordo strokeCard, grana nera (vedi iride-folio.js). */
+:root {
+  --folio-blur: 64px;
+  --folio-surface: rgba(0, 0, 0, 0.25);          /* FrostedSurfaceOpacity */
+  --folio-surface-fallback: rgba(0, 0, 0, 0.45); /* FrostedFallbackOpacity (senza blur / body.perf) */
+  --folio-stroke: rgba(255, 255, 255, 0.14);     /* strokeCard (CollectionPanelBorderOpacity) */
+  --folio-ink: #fff;
+  --folio-controls-radius: 18px;                 /* ControlsCornerRadius */
+  --folio-border: 1px;                           /* MenuBorderWidth */
+  --folio-menu-w: 224px;                         /* MenuWidth */
+  --folio-menu-item-h: 42px;                     /* MenuItemHeight */
+  --folio-fade: 440ms;                           /* FadeDurationMillis */
+  --folio-grain-surface: none;                   /* riempita da iride-folio.js */
+  --folio-grain-button: none;
+  --folio-grain-size: 256px;
+}
+
+/* ---- superficie condivisa (frostedNavigationSurface + bordo + grana) ---- */
+html body:not(#_) .titlebar .titlebar-controls,
+html body:not(#_) .top-nav .search-box,
+html body:not(#_) .top-nav .platform-pill-switch,
+html body:not(#_) .riff-ctx-menu,
+html body:not(#_) .m3-dropdown-menu {
+  background-color: var(--folio-surface) !important;
+  -webkit-backdrop-filter: blur(var(--folio-blur)) !important;
+  backdrop-filter: blur(var(--folio-blur)) !important;
+  border: var(--folio-border) solid var(--folio-stroke) !important;
+  border-radius: var(--folio-controls-radius) !important;
+  box-shadow: none !important;
+  isolation: isolate;
+}
+body.perf:not(#_) .titlebar .titlebar-controls,
+body.perf:not(#_) .top-nav .search-box,
+body.perf:not(#_) .top-nav .platform-pill-switch,
+body.perf:not(#_) .riff-ctx-menu,
+body.perf:not(#_) .m3-dropdown-menu {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  background-color: var(--folio-surface-fallback) !important;
+}
+/* grana: SurfaceGrainOpacity, resta dentro il clip del pannello e sotto il contenuto */
+html body:not(#_) .titlebar .titlebar-controls::before,
+html body:not(#_) .top-nav .search-box::before,
+html body:not(#_) .top-nav .platform-pill-switch::before,
+html body:not(#_) .riff-ctx-menu::before,
+html body:not(#_) .m3-dropdown-menu::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background-image: var(--folio-grain-surface); background-size: var(--folio-grain-size) var(--folio-grain-size);
+  background-repeat: repeat; opacity: 1;
+}
+
+/* ---- bottoni finestra: gruppo con box Folio, 3 slot separati da divisori 1x20 ---- */
+html body:not(#_) .titlebar .titlebar-controls {
+  top: 8px; right: 8px; height: 40px; width: auto !important; gap: 0 !important;
+  padding: 2px !important; justify-content: flex-start; align-items: center; overflow: hidden;
+  border-radius: var(--folio-controls-radius) !important;
+}
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn {
+  position: relative; width: 36px !important; min-width: 36px !important; height: 36px !important;
+  border-radius: 14px !important; background: transparent !important; color: var(--folio-ink) !important;
+  display: flex; align-items: center; justify-content: center; opacity: .92;
+  transition: background-color 160ms ease, transform 100ms ease, opacity 160ms ease;
+}
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn:hover { background: rgba(255,255,255,.08) !important; opacity: 1; }
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn.close-btn:hover { background: rgba(255,84,73,.28) !important; color: #fff !important; }
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn:active { transform: scale(.92); } /* ButtonPressedScale */
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn::after { display: none !important; }
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn + .titlebar-btn:not([style*="display: none"]):not(#btn-mini-lyrics):not(#btn-mini-player)::before {
+  content: ''; position: absolute; left: -1px; top: 8px; width: 1px; height: 20px; background: var(--folio-stroke);
+}
+html body:not(#_) .titlebar .titlebar-controls .titlebar-btn svg { width: 14px; height: 14px; }
+
+/* barra alta: solo superficie, le misure restano quelle di iride-folio.css */
+html body:not(#_) .top-nav .search-box > *, html body:not(#_) .top-nav .platform-pill-switch > * { position: relative; z-index: 1; }
+
+/* ---- menu dei tre puntini: IrideFolioMenu ---- */
+html body:not(#_) .riff-ctx-menu {
+  width: var(--folio-menu-w); min-width: var(--folio-menu-w); box-sizing: border-box;
+  padding: 8px 0 !important;                 /* MenuVerticalPadding */
+  gap: 0 !important; overflow: hidden auto; scrollbar-width: none;
+  transition: opacity var(--folio-fade) ease !important;
+  color: var(--folio-ink);
+}
+html body:not(#_) .riff-ctx-menu::-webkit-scrollbar { display: none; }
+html body:not(#_) .riff-ctx-menu .riff-ctx-item,
+html body:not(#_) .m3-dropdown-menu .m3-dropdown-option {
+  position: relative; z-index: 1;
+  height: var(--folio-menu-item-h); min-height: var(--folio-menu-item-h); box-sizing: border-box;
+  padding: 0 16px !important; gap: 12px; border-radius: 0 !important;
+  color: var(--folio-ink) !important; background: transparent !important; font-weight: 400; font-size: 14px;
+}
+html body:not(#_) .riff-ctx-menu .riff-ctx-item:hover,
+html body:not(#_) .m3-dropdown-menu .m3-dropdown-option:hover { background: rgba(255,255,255,.08) !important; }
+html body:not(#_) .riff-ctx-menu .riff-ctx-item:active { transform: none; background: rgba(255,255,255,.12) !important; }
+html body:not(#_) .riff-ctx-menu .riff-ctx-item svg,
+html body:not(#_) .riff-ctx-menu .riff-ctx-item:hover svg,
+html body:not(#_) .riff-ctx-menu .riff-ctx-item.is-active svg { color: var(--folio-ink); width: 20px; height: 20px; }
+html body:not(#_) .riff-ctx-menu .riff-ctx-item.danger:hover { background: rgba(255,84,73,.16) !important; color: #ffb4ab !important; }
+html body:not(#_) .riff-ctx-menu .riff-ctx-divider {
+  height: var(--folio-border); margin: 2px 14px;       /* MenuSectionVertical/HorizontalPadding */
+  background: var(--folio-stroke);
+}
+
+/* dropdown di impostazioni: stesso pannello, selezione con spunta a destra */
+html body:not(#_) .m3-dropdown-menu { padding: 8px 0 !important; border-radius: var(--folio-controls-radius) !important; overflow: hidden auto; }
+html body:not(#_) .m3-dropdown-menu .m3-dropdown-option.selected { background: transparent !important; color: var(--folio-ink) !important; font-weight: 400; }
+html body:not(#_) .m3-dropdown-menu .m3-dropdown-option.selected::after {
+  content: ''; margin-left: auto; width: 20px; height: 20px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .m3-dropdown-menu .m3-dropdown-search-wrap { position: relative; z-index: 1; padding: 0 12px 6px; }
+
+/* tooltip: stesso vetro, senza bordo largo */
+html body:not(#_) .riff-tg-tip {
+  background: var(--folio-surface) !important; -webkit-backdrop-filter: blur(var(--folio-blur)) !important; backdrop-filter: blur(var(--folio-blur)) !important;
+  border: var(--folio-border) solid var(--folio-stroke) !important; border-radius: 12px !important; color: var(--folio-ink) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body:not(#_) .riff-ctx-menu, html body:not(#_) .titlebar .titlebar-controls .titlebar-btn { transition: none !important; }
+}
+
+/* ---- IrideFolioMenu: irideFolioMenuSurface + IrideFolioMenuItem (DropdownMenuItem M3, labelLarge DM Sans) ---- */
+html body:not(#_) .riff-ctx-menu.iride-songmenu {
+  position: fixed; width: 224px; min-width: 224px; box-sizing: border-box;         /* MenuWidth, bordo incluso */
+  padding: 0 !important; border: 0 !important; overflow: hidden !important;        /* bordo e clip sono squircle, vedi iride-folio-songmenu.js */
+  font-family: 'DM Sans', sans-serif; transition: none !important; will-change: transform, filter, opacity;
+}
+.iride-songmenu .sm-stroke { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; overflow: visible; }
+.iride-songmenu .sm-clip { position: absolute; inset: 1px; overflow: hidden; z-index: 1; }   /* Surface.padding(MenuBorderWidth) */
+.iride-songmenu .sm-vp {
+  box-sizing: border-box; height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; touch-action: none;
+  padding: 8px 2px;                                                                /* MenuVerticalPadding, MenuContentPadding */
+  will-change: transform;
+}
+.iride-songmenu .sm-vp::-webkit-scrollbar { display: none; }
+html body:not(#_) .iride-songmenu .riff-ctx-divider {
+  height: 1px; margin: 2px 14px; background: rgba(255,255,255,.22);                /* MenuSection*Padding, strokeCard */
+}
+.iride-songmenu .sm-row {
+  position: relative; display: flex; align-items: center; width: 100%; height: 42px; min-height: 42px; box-sizing: border-box;
+  padding: 0 12px; margin: 0; border: 0; border-radius: 0; background: transparent; color: #fff; cursor: pointer; text-align: left;
+  font: 400 14px/20px 'DM Sans', sans-serif; letter-spacing: .1px;                  /* labelLarge (dm_sans_variable senza variazione peso: 400) */
+  transition: background-color 120ms ease;
+}
+.iride-songmenu .sm-row:hover, .iride-songmenu .sm-row:focus-visible { background: rgba(255,255,255,.08); outline: 0; }
+.iride-songmenu .sm-row:active { background: rgba(255,255,255,.10); }
+.iride-songmenu .sm-lead { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.iride-songmenu .sm-ic { width: 24px; height: 24px; display: block; }
+.iride-songmenu .sm-av { width: 24px; height: 24px; flex: none; object-fit: cover; border-radius: 4px; }
+.iride-songmenu .sm-av-round { border-radius: 50%; }
+.iride-songmenu .sm-t { flex: 1 1 0; min-width: 0; margin-left: 12px; }
+/* IrideFolioScrollbar: 20 touch, track 3 a 6 dal bordo, padding 10, alfa .12 / .65 */
+.iride-songmenu .sm-bar { position: absolute; right: 1px; top: 19px; bottom: 9px; width: 20px; z-index: 2; cursor: pointer; touch-action: none; }
+.iride-songmenu .sm-track { position: absolute; right: 6px; top: 10px; bottom: 10px; width: 3px; border-radius: 1.5px; background: rgba(255,255,255,.12); }
+.iride-songmenu .sm-thumb { position: absolute; left: 0; top: 0; width: 3px; border-radius: 1.5px; background: rgba(255,255,255,.65); }
+
+/* IrideFolioMenuButton: bordo 1px che appare in 440 ms mentre il menu è aperto */
+html body:not(#_) .btn-row-more { position: relative; }
+html body:not(#_) .btn-row-more::after {
+  content: ''; position: absolute; inset: 50% auto auto 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; box-sizing: border-box;
+  border-radius: 18px; border: 1px solid transparent; pointer-events: none; transition: border-color var(--folio-fade) ease;
+}
+html body:not(#_) .btn-row-more.folio-open::after { border-color: rgba(255,255,255,.22); }  /* strokeCard */
+html body:not(#_) .track-row-actions .btn-row-more svg { transform: none; width: 24px; height: 24px; }  /* R.drawable.more_vert, 24dp */
