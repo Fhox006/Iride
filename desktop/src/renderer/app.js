@@ -9482,7 +9482,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderSavedAlbums() {
     const container = document.getElementById('saved-albums-grid');
     if (!container) return;
-    const albumsAll = getSavedAlbums();
+    const albumsAll = sortSavedAlbums(getSavedAlbums());
     const qAlb = (document.getElementById('albums-search-input')?.value || '').trim().toLowerCase();
     const albums = qAlb ? albumsAll.filter(a => `${a.title || ''} ${a.artist || ''}`.toLowerCase().includes(qAlb)) : albumsAll;
     const footerEl = document.getElementById('albums-footer-count');
@@ -9517,6 +9517,66 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   }
+
+  // Libreria > Album: sort e vista (LibraryGridPage menuSections, alpha33)
+  const ALBUM_SORT_KEY = 'riff_albums_sort';
+  const ALBUM_VIEW_KEY = 'riff_albums_view';
+  const ALBUM_SORT_OPTIONS = [['created', 'Date created'], ['name', 'Name'], ['artist', 'Artist']];
+  const readPref = (k, d) => { try { return localStorage.getItem(k) || d; } catch (_) { return d; } };
+  const writePref = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  function sortSavedAlbums(list) {
+    const mode = readPref(ALBUM_SORT_KEY, 'created');
+    const arr = list.slice();
+    if (mode === 'name') arr.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    else if (mode === 'artist') arr.sort((a, b) => String(a.artist || '').localeCompare(String(b.artist || '')));
+    return arr;
+  }
+  function renderAlbumsMenu() {
+    const menuEl = document.getElementById('albums-menu');
+    if (!menuEl) return;
+    const sort = readPref(ALBUM_SORT_KEY, 'created');
+    const view = readPref(ALBUM_VIEW_KEY, 'grid');
+    const row = (label, selected, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'riff-ctx-item' + (selected ? ' is-active' : '');
+      b.setAttribute('role', 'menuitemradio');
+      b.setAttribute('aria-checked', String(selected));
+      b.innerHTML = `<span>${escapeHtml(label)}</span>`;
+      b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+      return b;
+    };
+    menuEl.innerHTML = '';
+    ALBUM_SORT_OPTIONS.forEach(([key, label]) => menuEl.appendChild(row(label, sort === key, () => {
+      writePref(ALBUM_SORT_KEY, key); renderAlbumsMenu(); renderSavedAlbums();
+    })));
+    const div = document.createElement('div'); div.className = 'riff-ctx-divider'; menuEl.appendChild(div);
+    menuEl.appendChild(row('Grid', view === 'grid', () => {
+      writePref(ALBUM_VIEW_KEY, 'grid'); renderAlbumsMenu(); renderSavedAlbums();
+    }));
+    menuEl.appendChild(row('Dense grid', view === 'dense', () => {
+      writePref(ALBUM_VIEW_KEY, 'dense'); renderAlbumsMenu(); renderSavedAlbums();
+    }));
+  }
+  const btnAlbumsMore = document.getElementById('btn-albums-more');
+  const albumsMenuEl = document.getElementById('albums-menu');
+  if (btnAlbumsMore && albumsMenuEl) {
+    btnAlbumsMore.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderAlbumsMenu();
+      const open = !albumsMenuEl.classList.contains('open');
+      albumsMenuEl.classList.toggle('open', open);
+      if (open) {
+        const r = btnAlbumsMore.getBoundingClientRect();
+        albumsMenuEl.style.left = Math.max(8, r.right - 216) + 'px';
+        albumsMenuEl.style.top = (r.bottom + 8) + 'px';
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!albumsMenuEl.contains(e.target)) albumsMenuEl.classList.remove('open');
+    });
+  }
+  renderAlbumsMenu();
 
   const albumsSearchInput = document.getElementById('albums-search-input');
   if (albumsSearchInput) albumsSearchInput.addEventListener('input', () => renderSavedAlbums());

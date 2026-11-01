@@ -233,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewName = view && libViews[view.id];
     body.classList.toggle('ir-lib', !!viewName);
     body.classList.toggle('ir-lib-albums', !!view && view.id === 'view-albums');
+    body.classList.toggle('ir-lib-albums-dense', localStorage.getItem('riff_albums_view') === 'dense');
     byId('nav-library').classList.toggle('active', !!viewName || (view && view.id.startsWith('view-library')));
     document.querySelectorAll('.ir-lib-chip').forEach((c) => c.classList.toggle('active', !!viewName && c.dataset.view === viewName));
 
