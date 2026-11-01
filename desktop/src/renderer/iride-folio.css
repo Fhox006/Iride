@@ -1,0 +1,324 @@
+/* Iride Folio: traduzione di ui/theme (Theme, IrideColors, Type, FolioShape) e ui/component/IrideFolio */
+@font-face { font-family: 'Satoshi'; src: url('../../assets/fonts/satoshi_variable.ttf') format('truetype'); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('../../assets/fonts/dm_sans_variable.ttf') format('truetype'); font-weight: 100 1000; font-display: swap; }
+
+html:root {
+  /* Theme.kt, tema scuro */
+  --md-sys-color-background: #000 !important;
+  --md-sys-color-on-background: #fff !important;
+  --md-sys-color-surface: #000 !important;
+  --md-sys-color-on-surface: #fff !important;
+  --md-sys-color-surface-variant: #1a1a1a !important;
+  --md-sys-color-on-surface-variant: #ccc !important;
+  --md-sys-color-surface-container-lowest: #000 !important;
+  --md-sys-color-surface-container-low: #0d0d0d !important;
+  --md-sys-color-surface-container: #121212 !important;
+  --md-sys-color-surface-container-high: #1e1e1e !important;
+  --md-sys-color-surface-container-highest: #282828 !important;
+  --md-sys-color-outline: #8a8a8a !important;
+  --md-sys-color-outline-variant: #3a3a3a !important;
+  /* identita' monocromatica */
+  --md-sys-color-primary: #fff !important;
+  --md-sys-color-on-primary: #000 !important;
+  --md-sys-color-primary-container: #282828 !important;
+  --md-sys-color-on-primary-container: #fff !important;
+  --md-sys-color-secondary-container: rgba(255,255,255,.14) !important;
+  --md-sys-color-on-secondary-container: #fff !important;
+  /* IrideColors.kt */
+  --folio-text: #fff;
+  --folio-text-2: #ccc;
+  --folio-text-3: rgba(255,255,255,.45);
+  --folio-hairline: rgba(255,255,255,.10);
+  --folio-stroke-soft: rgba(255,255,255,.14);
+  --folio-stroke-card: rgba(255,255,255,.22);
+  --folio-stroke-art: rgba(255,255,255,.38);
+  --folio-fill: rgba(255,255,255,.06);
+  --folio-selected: rgba(255,255,255,.14);
+  /* IrideMotion.kt */
+  --folio-expo: cubic-bezier(.16,1,.3,1);
+  --folio-quart: cubic-bezier(.25,1,.5,1);
+  /* barra di navigazione con etichette */
+  --ir-rail-w: 62px;
+  --ir-content-l: 80px;
+}
+html body:not(#_) { --font-family: 'DM Sans', sans-serif !important; font-family: 'DM Sans', sans-serif; background: #000; color: #fff; }
+
+/* FolioShape: angoli continui, tranne cerchi e capsule */
+.sp-card-cover, .folio-hero-card, .track-row, .track-row-thumb-wrap, .track-row-thumb, .sidebar, .sidebar .nav-item,
+.playbar::before, .playbar-right, .titlebar-controls, .top-nav .search-box, .top-nav .platform-pill-switch, .rail-drawer,
+.ir-lib-chip, .ir-lib-create, .search-chip, .search-album-card img, .album-cover-wrapper, .album-cover-wrapper img,
+.folio-mp3-frame, .folio-mp3-art, .folio-mp3-menu button, .sp-tile { corner-shape: superellipse(1.5); }
+
+/* intestazioni: IrideFolioDisplayHeadings (Satoshi Bold, scala 0.9; scaffali con scaleX 1.1) */
+html body:not(#_) .folio-page-title, html body:not(#_) .ir-lib-bar h1 {
+  font-family: 'Satoshi', sans-serif !important; font-weight: 700; font-size: 30.6px; line-height: 42px; letter-spacing: -.3px; color: #fff; margin: 0;
+}
+html body:not(#_) .sp-section h2, html body:not(#_) .sp-section h2 * {
+  font-family: 'Satoshi', sans-serif !important; font-weight: 700 !important; font-size: 18px; line-height: 27px; letter-spacing: 0;
+}
+html body:not(#_) .sp-section h2 { height: auto; margin: 0 0 12px; color: #fff; transform: scaleX(1.1); transform-origin: left center; }
+html body:not(#_) .sp-section h2 button { transform: scaleX(.91); }
+html body:not(#_) .sp-section h2 .sp-ico, html body:not(#_) .sp-section h2 > svg { display: none; }
+
+/* layout home */
+html body:not(#_) .app-layout, html body:not(#_).sidebar-expanded:not(.classic-sidebar):not(.mini) .app-layout { top: 10px !important; }
+/* topScrimBrush: il contenuto sfuma prima di passare sotto la barra del titolo */
+html body:not(#_) .main-content { padding: 0 20px 0 0 !important; -webkit-mask-image: linear-gradient(transparent 6px, #000 34px); mask-image: linear-gradient(transparent 6px, #000 34px); }
+html body:not(#_) .sp-home { gap: 24px; padding: 34px 0 24px !important; }
+html body:not(#_) .folio-page-title { order: 0; margin-bottom: -12px; }
+html body:not(#_) #ir-hero-sec { order: 1; } html body:not(#_) #ir-now-sec { order: 2; } html body:not(#_) #ir-mood-sec { order: 3; }
+html body:not(#_) #sp-trend-sec { order: 4; } html body:not(#_) #sp-made-sec { order: 5; } html body:not(#_) #sp-quick-sec { order: 6; } html body:not(#_) #sp-artists-sec { order: 7; }
+html body:not(#_) .spotify-promo { order: 8; }
+
+/* titolo del logo: la home inizia sotto la barra del titolo solo a sinistra */
+html body:not(#_) .titlebar .app-logo { left: 14px !important; top: 18px !important; }
+html body:not(#_) .titlebar-riff-icon { width: 58px; height: 14px; }
+
+/* HeroCarouselSection: pagine alte 148, raggio 12, bordo .14, velo #1C1C1E .78 dal 55% */
+.folio-hero-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.folio-hero-track::-webkit-scrollbar { display: none; }
+.folio-hero-card {
+  position: relative; flex: 0 0 min(560px, 64%); height: 148px; padding: 0; overflow: hidden; scroll-snap-align: start; cursor: pointer; text-align: left;
+  border: 1px solid var(--folio-stroke-soft); border-radius: 12px; background: linear-gradient(135deg, #1e1e1e, #282828); transition: transform 160ms var(--folio-quart);
+}
+.folio-hero-card:active { transform: scale(.98); }
+.folio-hero-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+.folio-hero-card img:not([src]) { display: none; }
+.folio-hero-scrim { position: absolute; inset: 0; background: linear-gradient(transparent 55%, rgba(28,28,30,.78)); }
+.folio-hero-text { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; flex-direction: column; }
+.folio-hero-text strong { font-size: 14px; line-height: 19.6px; font-weight: 700; letter-spacing: -.1px; color: #fff; }
+.folio-hero-text small { font-size: 12px; line-height: 16.8px; letter-spacing: .02em; color: rgba(255,255,255,.85); }
+
+/* CarouselPageIndicator: finestra di 5 punti da 10 px, attivo a pillola da 9 */
+.folio-dots { display: flex; justify-content: center; align-items: center; height: 18px; padding-top: 6px; box-sizing: border-box; }
+.folio-dots:empty { display: none; }
+.folio-dots i { width: 10px; height: 7px; display: flex; align-items: center; justify-content: center; }
+.folio-dots i::after { content: ''; width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.52); transition: width 240ms var(--folio-expo), background 240ms; }
+.folio-dots i.on::after { width: 9px; border-radius: 2px; background: #fff; }
+.folio-dots i.edge::after { width: 1.5px; height: 1.5px; background: rgba(255,255,255,.18); }
+
+/* scaffale a 4 righe a pagine */
+html body:not(#_) .ir-now-list {
+  display: grid; grid-auto-flow: column; grid-template-columns: none; grid-template-rows: repeat(4, 55px); grid-auto-columns: calc(50% - 6px); column-gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+}
+html body:not(#_) .ir-now-list::-webkit-scrollbar { display: none; }
+html body:not(#_) .ir-now-list .track-row { scroll-snap-align: start; }
+html body:not(#_) .ir-now-list .track-row-duration { display: none; }
+html body:not(#_) .ir-now-list .track-row:nth-child(8n+5) { scroll-snap-align: none; }
+
+/* righe brano */
+html body:not(#_) .track-row { padding: 0 4px 0 0 !important; gap: 12px !important; border-radius: 8px !important; }
+html body:not(#_) .track-row:hover { background-color: var(--folio-fill) !important; }
+html body:not(#_) .track-row.playing { background-color: transparent !important; }
+html body:not(#_) .track-row.playing .track-row-title { color: #fff !important; }
+html body:not(#_) .track-row-thumb-wrap, html body:not(#_) .track-row-thumb { width: 46px !important; height: 46px !important; min-width: 46px; border-radius: 6px !important; }
+html body:not(#_) .track-row-thumb-wrap { box-shadow: inset 0 0 0 1px var(--folio-stroke-soft); background: var(--folio-fill) !important; }
+html body:not(#_) .track-row-title { font-size: 14px !important; font-weight: 500 !important; line-height: 19.6px !important; }
+html body:not(#_) .track-row-artist, html body:not(#_) .track-row-artist-wrap { font-size: 12px !important; line-height: 16.8px !important; color: var(--folio-text-2) !important; }
+html body:not(#_) .track-row-duration { font-size: 12px !important; color: var(--folio-text-3) !important; }
+html body:not(#_) .track-row-duration:empty { display: none; }
+
+/* IrideMoodChipsRow: testo, attivo SemiBold con sottolineatura da 2 */
+.folio-mood-chips { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; min-height: 40px; margin-bottom: 8px; align-items: flex-start; }
+.folio-mood-chips button { flex: none; padding: 6px 0 3px; background: none; border: 0; border-bottom: 2px solid transparent; font: 400 14px 'DM Sans', sans-serif; color: var(--folio-text-3); cursor: pointer; transition: color 160ms; }
+.folio-mood-chips button:hover { color: var(--folio-text-2); }
+.folio-mood-chips button.active { color: #fff; font-weight: 600; border-bottom-color: #fff; }
+
+/* copertine */
+html body:not(#_) .sp-row { gap: 12px !important; }
+html body:not(#_) .sp-card, html body:not(#_) .sp-card:hover { flex: 0 0 148px !important; width: 148px !important; }
+html body:not(#_) .sp-card-cover { width: 148px !important; height: 148px !important; border-radius: 12px !important; box-shadow: inset 0 0 0 1px var(--folio-stroke-soft) !important; margin-bottom: 8px !important; }
+html body:not(#_) .sp-card-title { font-size: 14px !important; font-weight: 500 !important; line-height: 19.6px !important; }
+html body:not(#_) .sp-card-sub { font-size: 12px !important; line-height: 16.8px !important; color: var(--folio-text-2) !important; margin: 0 !important; }
+
+/* navigazione: traduzione del dock (Home, Libreria, Cerca, Account), riga verticale */
+html body:not(#_) .sidebar, html body:not(#_).sidebar-expanded .sidebar {
+  left: 6px !important; top: 46px !important; bottom: 6px !important; width: var(--ir-rail-w) !important; padding: 5px 0 !important; border-radius: 18px !important;
+  background: rgba(0,0,0,.84) !important; box-shadow: inset 0 0 0 1px rgba(138,138,138,.3);
+}
+html body:not(#_) .sidebar .nav-item, html body:not(#_) .sidebar .rail-icon-btn {
+  width: 52px !important; height: 52px !important; min-height: 52px !important; margin: 0 0 2px !important; border-radius: 14px !important;
+  flex-direction: column; gap: 2px; color: rgba(255,255,255,.72) !important; transition: background 240ms var(--folio-expo);
+}
+html body:not(#_) .sidebar .nav-item:hover { background: var(--folio-fill) !important; }
+html body:not(#_) .sidebar .nav-item.active { background: var(--folio-selected) !important; color: #fff !important; }
+.folio-nav-label { font-size: 10px; line-height: 12px; font-weight: 500; }
+html body:not(#_) .sidebar .nav-indicator { width: 22px !important; height: 22px !important; }
+html body:not(#_) .sidebar #nav-discover .nav-indicator { width: 22px !important; height: 22px !important; }
+html body:not(#_) .sidebar #nav-discover { justify-content: center !important; }
+html body:not(#_) .sidebar .nav-indicator::before { width: 22px !important; height: 22px !important; }
+html body:not(#_) .sidebar #nav-discover .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'><path d='M4 10.5 12 4l8 6.5V20h-5v-5.5H9V20H4z'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-discover.active .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M4 10.5 12 4l8 6.5V20h-5v-5.5H9V20H4z'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-search-rail .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><circle cx='10.5' cy='10.5' r='6.5'/><line x1='15.5' y1='15.5' x2='20.5' y2='20.5'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-library .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'><path d='M6 4h12v16.5l-6-4-6 4z'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-library.active .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 4h12v16.5l-6-4-6 4z'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-settings { left: 11px !important; bottom: 11px !important; width: 52px !important; height: 52px !important; }
+html body:not(#_) .sidebar #nav-settings .nav-indicator::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='9.5' r='3'/><path d='M6.5 18.5c1-2.8 3-4 5.5-4s4.500 1.200 5.500 4'/></svg>") center / contain no-repeat;
+}
+html body:not(#_) .sidebar #nav-settings .nav-item-label { display: none !important; }
+
+/* barra del titolo */
+html body:not(#_) .titlebar-controls { top: 8px; right: 8px; height: 30px; border-radius: 18px; background: rgba(0,0,0,.6); box-shadow: inset 0 0 0 1px rgba(138,138,138,.3); -webkit-backdrop-filter: blur(36px); backdrop-filter: blur(36px); }
+
+/* MiniPlayer: capsula con bordo .3, anello di avanzamento attorno alla copertina */
+:root { --ir-bar-l: 76px; }
+html body:not(#_) .playbar { pointer-events: none; }
+html body:not(#_) .playbar::before { left: var(--ir-bar-l); right: 8px; border-radius: 20px; background: rgba(0,0,0,.84); box-shadow: inset 0 0 0 1px rgba(138,138,138,.3); -webkit-backdrop-filter: blur(36px); backdrop-filter: blur(36px); }
+html body:not(#_) #ir-progress { display: none; }
+html body:not(#_) .scrubber-bar-wrapper { visibility: hidden; pointer-events: none !important; }
+html body:not(#_) .playbar-left { left: calc(var(--ir-bar-l) + 8px); gap: 12px !important; cursor: pointer; }
+html body:not(#_) .playbar-left .artwork-wrapper { width: 44px !important; height: 44px !important; overflow: visible; display: flex; align-items: center; justify-content: center; flex: none; background: none !important; }
+html body:not(#_) .playbar-left .m3c-wrap, html body:not(#_) .playbar-left .track-artwork, html body:not(#_) .playbar-left .artwork-fallback { width: 36px !important; height: 36px !important; border-radius: 8px !important; }
+html body:not(#_) .playbar-left .artwork-fallback { position: absolute; }
+.folio-ring { position: absolute; inset: 0; width: 44px; height: 44px; pointer-events: none; overflow: visible; }
+.folio-ring rect { fill: none; stroke-width: 1.5; }
+.folio-ring .track { stroke: rgba(138,138,138,.2); }
+.folio-ring .value { stroke: #fff; stroke-linecap: round; stroke-dasharray: var(--ir-ring, 0) 100; }
+html body:not(#_) .playbar-left .track-title { font-size: 14px !important; font-weight: 500 !important; line-height: 18px; }
+html body:not(#_) .playbar-left .track-artist { font-size: 10px !important; line-height: 14px; opacity: 1; color: var(--folio-text-2); letter-spacing: .02em; }
+html body:not(#_) .btn-play-pause { background: transparent !important; color: #fff !important; }
+html body:not(#_) .btn-play-pause svg { width: 26px !important; height: 26px !important; }
+html body:not(#_) #btn-prev svg, html body:not(#_) #btn-next svg { width: 20px; height: 20px; }
+html body:not(#_) .playbar-right { right: 16px; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html body:not(#_) #btn-repeat { right: calc(16px + 2px + 27px + 8px + 3 * var(--ir-slot)) !important; }
+html body:not(#_) #btn-shuffle { right: calc(16px + 2px + 27px + 8px + 4 * var(--ir-slot)) !important; }
+html body:not(#_) #btn-shuffle.active, html body:not(#_) #btn-repeat.active { color: #fff !important; background: var(--folio-selected) !important; border-radius: 8px; }
+
+/* ArtworkHeaderGradientBackground: velo del pigmento (.85 -> .45 -> 0) sfumato nel nero, con grana */
+@property --ir-tint { syntax: '<color>'; inherits: true; initial-value: #30323b; }
+#ir-ambient { left: 0; right: 0; top: 0; height: 380px; opacity: 0; transition: opacity 420ms var(--folio-quart), --ir-tint 700ms ease;
+  background: var(--ir-halos, linear-gradient(transparent, transparent)), linear-gradient(to bottom, color-mix(in srgb, var(--ir-tint) 85%, transparent) 0, color-mix(in srgb, var(--ir-tint) 45%, transparent) 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(#000 0, #000 45%, rgba(0,0,0,.15) 85%, transparent 100%); mask-image: linear-gradient(#000 0, #000 45%, rgba(0,0,0,.15) 85%, transparent 100%); }
+#ir-ambient::after { content: ''; position: absolute; inset: 0; opacity: .065; background-size: 160px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.4 -.2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+  -webkit-mask-image: linear-gradient(#000, transparent); mask-image: linear-gradient(#000, transparent); }
+body.folio-artwork-page #ir-ambient { opacity: 1; }
+
+/* ALBUM (AlbumScreen): colonna centrata, copertina 240 con VinylPeekDisc che esce a destra */
+html body:not(#_) #view-album { padding-top: 56px; position: relative; }
+html body:not(#_) .album-layout { display: grid !important; grid-template-columns: 340px 1fr; column-gap: 28px; align-items: start; }
+html body:not(#_) .album-side { display: flex !important; flex-direction: column; align-items: center; text-align: center !important; position: sticky !important; top: 0; padding: 0 !important; row-gap: 0; width: 340px !important; }
+.folio-album-art { position: relative; width: 240px; height: 240px; margin: 0 auto 20px; flex: none; }
+html body:not(#_) .folio-album-art .album-cover-wrapper { position: relative; z-index: 1; width: 240px !important; height: 240px !important; border-radius: 12px !important; corner-shape: superellipse(1.5);
+  box-shadow: 0 0 0 1px var(--folio-stroke-card), 0 8px 20px rgba(0,0,0,.5); opacity: 0; animation: folioCoverIn 420ms var(--folio-quart) forwards; transition: translate 900ms var(--folio-expo); }
+html body:not(#_) .folio-album-art .album-cover-wrapper img { border-radius: inherit !important; }
+@keyframes folioCoverIn { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.folio-disc { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: transform 900ms var(--folio-expo), opacity 900ms var(--folio-expo); touch-action: none; cursor: grab;
+  background: radial-gradient(circle at center, transparent 40%, var(--folio-fill) 40.1%, var(--folio-fill) calc(40% + 15px), transparent calc(40% + 15.1px)),
+    repeating-radial-gradient(circle at center, transparent 0 15px, var(--folio-fill) 15px 15.6px), #060607; box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 0 0 1px var(--folio-stroke-card); }
+.folio-disc.scratching { cursor: grabbing; }
+.folio-disc-spin { position: absolute; inset: 30%; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 .5px var(--folio-stroke-card), 0 1px 3px rgba(0,0,0,.5); transform: rotate(var(--disc-rot, 0deg)); }
+.folio-disc-spin::after { content: ''; position: absolute; inset: 0; margin: auto; width: 8.75%; aspect-ratio: 1; border-radius: 50%; background: #060607; box-shadow: 0 0 0 .5px rgba(0,0,0,.6); }
+.folio-disc-spin img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+body.folio-album-playing .folio-album-art .album-cover-wrapper { translate: -28.8px 0; }
+body.folio-album-playing .folio-disc, .folio-disc.scratching { transform: translateX(72px); opacity: 1; }
+html body:not(#_) #album-detail-title, html body:not(#_) #album-detail-title * { font-family: 'DM Sans', sans-serif !important; }
+html body:not(#_) #album-detail-title { font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -.2px; margin: 0 0 8px; text-align: center; width: 100%; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ir-album-artist-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; max-width: 100%; }
+.ir-album-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex: none; }
+html body:not(#_) #album-detail-artist { font-size: 13px; font-weight: 400; color: rgba(255,255,255,.75); margin: 0; }
+html body:not(#_) .album-meta-line { padding: 0; margin: 0 0 20px; background: none; font-size: 13px; font-weight: 400; color: rgba(255,255,255,.55); }
+/* IridePlaylistControlPanel */
+html body:not(#_) .ir-album-actions { width: auto; margin: 0; gap: 10px; padding: 8px 12px; border: 1px solid var(--folio-stroke-card); border-radius: 999px; }
+html body:not(#_) #ir-album-play { width: 64px; height: 64px; padding: 0; justify-content: center; border-radius: 50%; order: 2; }
+html body:not(#_) #ir-album-play span { display: none; }
+html body:not(#_) #ir-album-play svg { width: 26px; height: 26px; margin-left: 2px; }
+body.folio-album-playing #ir-album-play svg polygon { display: none; }
+body.folio-album-playing #ir-album-play svg { background: linear-gradient(90deg, #000 0 32%, transparent 32% 68%, #000 68%); margin: 0; width: 22px; height: 24px; }
+html body:not(#_) #ir-album-shuffle, html body:not(#_) #ir-album-download { width: 44px; height: 44px; border-radius: 50%; background: transparent; border: 1px solid var(--folio-stroke-card); display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
+html body:not(#_) #ir-album-shuffle { order: 1; } html body:not(#_) #ir-album-download { order: 3; }
+html body:not(#_) #ir-album-search, html body:not(#_) #ir-album-save, html body:not(#_) #btn-save-album { display: none !important; }
+/* barra in alto: indietro a sinistra, stella (preferiti) a destra, 40dp outline */
+html body:not(#_) #btn-back-album, html body:not(#_) #ir-album-like { position: absolute; top: 8px; width: 40px; height: 40px; border-radius: 18px; background: rgba(0,0,0,.35) !important; box-shadow: inset 0 0 0 1px var(--folio-stroke-card); display: flex; align-items: center; justify-content: center; z-index: 3; margin: 0 !important; }
+html body:not(#_) #btn-back-album { left: 0; }
+html body:not(#_) #ir-album-like { right: 112px; color: #fff; border: 0; cursor: pointer; }
+/* righe: numero a sinistra, "feat." e durata solo se serve (SongListItem con albumIndex) */
+html body:not(#_) #album-tracks-list .track-row { height: 60px; padding: 0 12px 0 0 !important; border-radius: 0 !important; box-shadow: 0 1px 0 var(--folio-hairline); }
+html body:not(#_) #album-tracks-list .track-row-num { width: 36px; color: #fff; text-align: center; }
+html body:not(#_) #album-tracks-list .track-row-thumb-wrap, html body:not(#_) #album-tracks-list .track-row-artist-wrap, html body:not(#_) #album-tracks-list .track-row-duration { display: none !important; }
+html body:not(#_) #album-tracks-list .ir-sub { font-size: 12px; line-height: 16.8px; color: var(--folio-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html body:not(#_) .album-tracks-col { min-width: 0; padding-top: 8px; }
+
+/* LIBRERIA E RICERCA */
+html body:not(#_).ir-lib .ir-lib-bar { padding: 34px 0 12px; }
+html body:not(#_) .ir-lib-bar h1 { margin-bottom: 10px; }
+html body:not(#_) .ir-lib-row { gap: 8px; flex-wrap: wrap; }
+html body:not(#_) .ir-lib-chip, html body:not(#_) .ir-lib-create { height: 36px; padding: 0 14px; border-radius: 12px; font: 500 13px 'DM Sans', sans-serif; }
+html body:not(#_) .ir-lib-chip { background: #0d0d0d; box-shadow: inset 0 0 0 1px var(--folio-hairline); color: var(--folio-text-2); }
+html body:not(#_) .ir-lib-chip:hover { background: #121212; }
+html body:not(#_) .ir-lib-chip.active { background: var(--folio-selected); color: #fff; box-shadow: none; }
+html body:not(#_) .ir-lib-create { background: transparent; color: #fff; box-shadow: inset 0 0 0 1px var(--folio-stroke-card); border-radius: 999px; }
+html body:not(#_) .search-chip { height: 32px !important; background: transparent !important; box-shadow: inset 0 0 0 1px var(--folio-hairline); color: var(--folio-text-3) !important; }
+html body:not(#_) .search-chip.active { background: var(--folio-selected) !important; color: #fff !important; box-shadow: none; }
+html body:not(#_) #search-results-container { padding-top: 34px; }
+html body:not(#_).ir-search-open .top-nav { left: 96px; top: 44px; width: 640px !important; }
+html body:not(#_).ir-search-open .top-nav .search-box { border-radius: 16px !important; background: #0d0d0d !important; box-shadow: inset 0 0 0 1px var(--folio-hairline); }
+html body:not(#_).ir-search-open .top-nav .platform-pill-switch { border-radius: 16px !important; background: #0d0d0d !important; }
+html body:not(#_) .search-box input { font-family: 'DM Sans', sans-serif !important; }
+html body:not(#_) .search-album-card { flex: 0 0 148px !important; width: 148px !important; }
+html body:not(#_) .search-album-card img { width: 148px !important; height: 148px !important; border-radius: 12px !important; }
+html body:not(#_) .rail-drawer { left: 74px !important; top: 46px !important; bottom: 6px !important; background: #121212 !important; box-shadow: inset 0 0 0 1px var(--folio-hairline); border-radius: 18px !important; }
+
+/* IrideMp3Player come pannello laterale: stessa geometria del telefono su una colonna da 360
+   (screenHeight, wheelTopSpacing e wheelSize sono le formule di IrideMp3Player.kt) */
+:root {
+  --mp3-w: 360px;
+  --mp3-top: 44px; /* sotto i pulsanti finestra; sul telefono min(32, 5%) */
+  --mp3-bottom: 20px;
+  --mp3-avail: calc(100vh - var(--mp3-top) - var(--mp3-bottom));
+  --mp3-screen: min(calc(var(--mp3-w) * 1.12 + 8px), calc(var(--mp3-avail) * .68));
+  --mp3-gap: min(28px, calc(var(--mp3-avail) * .045));
+  --mp3-wheel: min(216px, calc(var(--mp3-w) * .56), calc((var(--mp3-avail) - var(--mp3-screen) - var(--mp3-gap)) * .94));
+}
+#folio-mp3 {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--mp3-w); z-index: 10000; box-sizing: border-box; padding: var(--mp3-top) 14px var(--mp3-bottom);
+  display: flex; flex-direction: column; background: #080809; box-shadow: -1px 0 0 var(--folio-hairline);
+  visibility: hidden; transform: translateX(100%); transition: transform 420ms var(--folio-expo), visibility 0s 420ms;
+}
+#folio-mp3.open { visibility: visible; transform: none; transition: transform 420ms var(--folio-expo); }
+/* il resto dell'app resta usabile accanto al pannello */
+html body:not(#_).folio-mp3-open .app-layout { right: var(--mp3-w) !important; }
+html body:not(#_).folio-mp3-open .playbar { right: var(--mp3-w) !important; }
+.folio-mp3-close { position: absolute; top: 8px; left: 14px; width: 40px; height: 30px; border-radius: 18px; border: 1px solid rgba(255,255,255,.12); background: #0c0c0c; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.folio-mp3-frame { flex: none; height: var(--mp3-screen); box-sizing: border-box; padding: 8px; border-radius: 18px; border: 1px solid #414141; display: flex; flex-direction: column; min-height: 0; background: #000; }
+.folio-mp3-screen { position: relative; flex: 1 1 0; min-height: 0; }
+.folio-mp3-art { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; background: #121212; corner-shape: superellipse(1.5); }
+.folio-mp3-menu { position: absolute; inset: 0; display: none; flex-direction: column; gap: 4px; padding: 12px; border-radius: 12px; background: rgba(8,8,9,.92); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-sizing: border-box; overflow: hidden; }
+#folio-mp3.menu .folio-mp3-menu { display: flex; }
+.folio-mp3-menu button { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: rgba(255,255,255,.75); font: 500 15px 'DM Sans', sans-serif; text-align: left; cursor: pointer; }
+.folio-mp3-menu button.on { background: var(--folio-selected); color: #fff; }
+.folio-mp3-times { display: flex; justify-content: space-between; padding: 10px 2px 6px; font-size: 12px; color: rgba(255,255,255,.55); }
+.folio-mp3-bar { height: 13px; display: flex; align-items: center; cursor: pointer; margin: 0 2px; }
+.folio-mp3-bar i { display: block; width: 100%; height: 3px; border-radius: 2px; background: linear-gradient(90deg, #e5e5e5 var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+.folio-mp3-info { display: flex; align-items: center; gap: 10px; padding: 6px 2px 4px; }
+.folio-mp3-text { flex: 1; min-width: 0; }
+.folio-mp3-title { font: 700 18px/24px 'Satoshi', sans-serif !important; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folio-mp3-artist { font-size: 13px; line-height: 18px; color: #b8b8b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folio-mp3-actions { flex: none; margin-left: 10px; display: flex; align-items: center; border-radius: 18px; background: #0c0c0c; border: 1px solid rgba(255,255,255,.12); corner-shape: superellipse(1.5); }
+.folio-mp3-actions button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: rgba(255,255,255,.9); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 160ms var(--folio-quart); }
+.folio-mp3-actions button:active { transform: scale(.92); }
+.folio-mp3-star.on svg { fill: currentColor; }
+.folio-wheel { position: relative; flex: none; width: var(--mp3-wheel); height: var(--mp3-wheel); margin: auto; border-radius: 50%; background: #1c1c1c; border: 1px solid #454545; box-sizing: border-box; box-shadow: inset 0 0 8px 1px rgba(0,0,0,.65); }
+.folio-wheel button { position: absolute; background: none; border: 0; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 50%; }
+.folio-wheel .z { width: 30%; height: 30%; }
+.folio-wheel .z:active { background: rgba(255,255,255,.06); }
+.folio-wheel .up { top: 0; left: 35%; } .folio-wheel .down { bottom: 0; left: 35%; } .folio-wheel .prev { left: 0; top: 35%; } .folio-wheel .next { right: 0; top: 35%; }
+.folio-wheel .up span { font: 500 calc(var(--mp3-wheel) / 233 * 12) 'DM Sans', sans-serif; letter-spacing: .8px; }
+/* IrideMp3WheelGeometry: icona .13 del diametro, tra 20 e 28 */
+.folio-wheel svg { width: clamp(20px, calc(var(--mp3-wheel) * .13), 28px); height: auto; fill: #fff; }
+.folio-wheel .z svg { width: clamp(20px, calc(var(--mp3-wheel) * .13), 28px); }
+.folio-wheel .prev svg { transform: scaleX(-1); }
+.folio-wheel .down.on { background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); transform: scale(.72); }
+.folio-wheel .center { left: 30%; top: 30%; width: 40%; height: 40%; background: #0c0c0c; border: 1px solid #666; box-shadow: inset 0 0 4px rgba(0,0,0,.5); transition: transform 160ms var(--folio-quart); }
+.folio-wheel .center:active { transform: scale(.96); }

@@ -25222,6 +25222,194 @@ function bindCoverHoldZoom(wrapEl) {
     requestAnimationFrame(() => updateRowFade(row));
   }
 
+  // Traduzione di HeroCarouselGenerator + selectArtistRadios: solo artisti ascoltati o seguiti,
+  // mai artisti casuali dal feed. Resta fermo nella sessione finche' non si forza un refresh.
+  const HERO_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  let heroArtists = [];
+
+  function heroCandidates() {
+    const firstArtist = (name) => String(name || '').split(/,|&|\bfeat\b\.?|\bft\b\.?/i)[0].trim();
+    const counts = new Map();
+    const since = Date.now() - HERO_YEAR_MS;
+    (state.history || []).forEach((t) => {
+      if (Number(t.playedAt) && Number(t.playedAt) < since) return;
+      const name = firstArtist(t.artist);
+      if (name) counts.set(name, (counts.get(name) || 0) + 1);
+    });
+    const played = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 120).map(([name]) => ({ name }));
+    const followed = getFavoriteArtistsList() || [];
+    const library = (state.favorites || []).map((t) => ({ name: firstArtist(t.artist) }));
+    const unique = new Map();
+    [...played, ...followed, ...library].forEach((a) => {
+      const key = normalizeArtistName(a.name || '');
+      if (!key || isArtistBlocked(a.name)) return;
+      if (!unique.has(key) || (a.avatar && !unique.get(key).avatar)) unique.set(key, { ...a, key });
+    });
+    return [...unique.values()];
+  }
+
+  function selectHeroArtists(candidates, previous) {
+    const shuffled = candidates.map((a) => [Math.random(), a]).sort((x, y) => x[0] - y[0]).map((p) => p[1]);
+    const previousKeys = new Set(previous.map((a) => a.key));
+    const fresh = shuffled.filter((a) => !previousKeys.has(a.key));
+    const repeated = shuffled.filter((a) => previousKeys.has(a.key));
+    const selected = [...fresh, ...repeated].slice(0, 10);
+    if (selected.length > 1 && previous[0] && selected[0].key === previous[0].key) {
+      [selected[0], selected[1]] = [selected[1], selected[0]];
+    }
+    return selected;
+  }
+
+  function renderHeroCarousel() {
+    const sec = document.getElementById('ir-hero-sec');
+    const track = document.getElementById('ir-hero');
+    if (!sec || !track) return;
+    if (heroArtists.length === 0) heroArtists = selectHeroArtists(heroCandidates(), []);
+    sec.hidden = heroArtists.length === 0;
+    track.innerHTML = '';
+    const meta = safeJson('riff_artist_meta_cache', {});
+    heroArtists.forEach((artist) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'folio-hero-card';
+      card.innerHTML = '<img alt="" draggable="false"><span class="folio-hero-scrim"></span><span class="folio-hero-text"><strong></strong><small data-i18n>Explore artist</small></span>';
+      card.querySelector('strong').textContent = artist.name;
+      const img = card.querySelector('img');
+      artist.avatar = artist.avatar || meta[artist.key]?.avatar || meta[(artist.name || '').toLowerCase()]?.avatar || '';
+      if (artist.avatar) img.src = artist.avatar;
+      else fetchFavArtistMeta(artist).then(() => { if (artist.avatar) img.src = artist.avatar; });
+      card.addEventListener('click', () => openArtistProfile(artist.name));
+      track.appendChild(card);
+    });
+    bindHorizontalWheel(track);
+    window.dispatchEvent(new CustomEvent('folio-pager-changed'));
+  }
+
+  // "Picked for you": gli stessi suggerimenti personali di /api/vibe, con la cache come partenza.
+  function renderPickedRows(tracks) {
+    const sec = document.getElementById('ir-now-sec');
+    const list = document.getElementById('ir-now');
+    if (!sec || !list) return;
+    list.innerHTML = '';
+    sec.hidden = tracks.length === 0;
+    const currentId = state.currentTrack ? getTrackCanonicalId(state.currentTrack) : null;
+    const missing = [];
+    tracks.forEach((track, idx) => {
+      if (!getTrackThumbUrl(track)) track.thumbnail = coverCandidates(track)[0] || '';
+      const row = createTrackRow(track, idx, currentId, 'search', tracks, list);
+      if (!track.thumbnail && !getTrackThumbUrl(track)) missing.push([track, row]);
+      list.appendChild(row);
+    });
+    resolveMissingRowCovers(missing);
+    bindHorizontalWheel(list);
+    window.dispatchEvent(new CustomEvent('folio-pager-changed'));
+  }
+
+  // resolveMissingCovers: al massimo 3 richieste insieme, ogni copertina appare quando arriva
+  async function resolveMissingRowCovers(pending) {
+    const queue = [...pending];
+    const worker = async () => {
+      while (queue.length > 0) {
+        const [track, row] = queue.shift();
+        try {
+          const q = encodeURIComponent(`${track.artist || ''} ${track.title || ''}`.trim());
+          const res = await fetch(`http://127.0.0.1:${state.serverPort}/api/search?q=${q}&platform=ytmusic&limit=1`);
+          const data = await res.json();
+          const cover = getTrackThumbUrl((data.tracks || data.results || [])[0]);
+          if (!cover) continue;
+          track.thumbnail = cover;
+          const wrap = row.querySelector('.track-row-thumb-wrap');
+          if (wrap && !wrap.querySelector('img')) {
+            const img = document.createElement('img');
+            img.className = 'track-row-thumb';
+            img.alt = '';
+            img.src = cover;
+            wrap.appendChild(img);
+          }
+        } catch (_) {}
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+  }
+
+  let pickedLoaded = false;
+  async function renderPickedForYou() {
+    const usable = (tracks) => (tracks || []).filter((t) => !isTrackBlocked(t) && !isArtistBlocked(t.artist));
+    const cached = usable(safeJson('riff_my_wave_cache', null)?.tracks);
+    if (cached.length > 0) renderPickedRows(cached);
+    if (pickedLoaded) return;
+    pickedLoaded = true;
+    try {
+      const profile = await computeTasteProfile();
+      const res = await fetch(`http://127.0.0.1:${state.serverPort}/api/vibe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: (state.history || []).slice(0, 30),
+          favorites: (state.favorites || []).slice(0, 25),
+          platform: 'youtube',
+          limit: 24,
+          clientProfile: profile,
+          seeds: profile.seeds,
+          avoid: getWaveAvoid()
+        })
+      });
+      const data = await res.json();
+      const tracks = usable(data && data.success ? data.tracks : []);
+      if (tracks.length > 0) {
+        localStorage.setItem('riff_my_wave_cache', JSON.stringify({ ts: Date.now(), tracks }));
+        renderPickedRows(tracks);
+        return;
+      }
+    } catch (_) {}
+    if (cached.length > 0) return;
+    pickedLoaded = false;
+    renderPickedRows(usable(safeJson('riff_trending_cache', null)?.tracks).slice(0, 24));
+  }
+
+  // "Mixes for your mood": etichette di MixMood. Il desktop non ha il feed YouTube con i chip,
+  // quindi ogni mood interroga la ricerca.
+  const FOLIO_MOODS = ['Sad', 'Sleep', 'Romantic', 'Focus', 'Workout', 'Party'];
+  let moodRunId = 0;
+
+  async function selectMood(mood) {
+    localStorage.setItem('riff_folio_mood', mood);
+    document.querySelectorAll('#ir-mood-chips button').forEach((b) => b.classList.toggle('active', b.dataset.mood === mood));
+    const row = document.getElementById('ir-mood-row');
+    const runId = ++moodRunId;
+    try {
+      const res = await fetch(`http://127.0.0.1:${state.serverPort}/api/search?q=${encodeURIComponent(mood + ' mix')}&platform=ytmusic&limit=12`);
+      const data = await res.json();
+      if (runId !== moodRunId) return;
+      const tracks = (data.tracks || data.results || []).filter((t) => !isTrackBlocked(t) && !isArtistBlocked(t.artist));
+      row.innerHTML = '';
+      tracks.forEach((track, idx) => {
+        row.appendChild(spCard({
+          cover: getTrackThumbUrl(track) || track.thumbnail || '',
+          title: track.title || 'Untitled',
+          sub: track.artist || '',
+          isExplicit: isTrackExplicit(track),
+          onClick: () => { state.isRadioQueue = false; playTrack(track, [...tracks], idx); }
+        }));
+      });
+      bindHorizontalWheel(row);
+    } catch (_) {}
+  }
+
+  function renderMoodChips() {
+    const chips = document.getElementById('ir-mood-chips');
+    if (!chips || chips.childElementCount > 0) return;
+    FOLIO_MOODS.forEach((mood) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.mood = mood;
+      b.textContent = mood;
+      b.addEventListener('click', () => selectMood(mood));
+      chips.appendChild(b);
+    });
+    selectMood(localStorage.getItem('riff_folio_mood') || FOLIO_MOODS[0]);
+  }
+
   const MIX_KEY = 'riff_daily_mixes';
 
   function getLocalDateString() {
@@ -25585,6 +25773,9 @@ function bindCoverHoldZoom(wrapEl) {
     renderTrending();
     renderMadeForYou();
     renderFavArtistsHome();
+    renderHeroCarousel();
+    renderPickedForYou();
+    renderMoodChips();
   }
 
   function applyHomeLayout() {
