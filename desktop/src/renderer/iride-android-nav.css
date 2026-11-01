@@ -132,13 +132,12 @@ html body:not(#_) .sidebar #nav-discover { justify-content: center !important; }
    pannello 24 (FloatingPill), padding 8 uniforme, tile = pannello - inset (concentrici, calcolati in iride-android-shape.js),
    scorrimento come Android: fadeIn 300ms + slideInVertically 320ms (FastOutSlowIn), cambio tile 280ms FastOutSlowIn.
    Account fuori dalla riga animata, come in Android. */
-html body:not(#_) { --ir-rail-w: 72px; }
-html body:not(#_) .sidebar, html body:not(#_).sidebar-expanded .sidebar { padding: 8px !important; border-radius: 24px !important; box-sizing: border-box !important; }
-html body:not(#_) .sidebar .sidebar-nav { padding: 0 !important; gap: 4px !important; }
+html body:not(#_) .sidebar, html body:not(#_).sidebar-expanded .sidebar { padding: var(--ir-nav-padding, 8px) !important; border-radius: var(--ir-nav-radius, 24px) !important; box-sizing: border-box !important; left: var(--ir-window-inset, 6px) !important; bottom: var(--ir-window-inset, 6px) !important; }
+html body:not(#_) .sidebar .sidebar-nav { padding: 0 !important; gap: 4px !important; position: relative !important; }
 
 html body:not(#_) .sidebar .nav-item:not(#nav-settings) {
   width: 100% !important; min-width: 0 !important; height: 56px !important; min-height: 56px !important;
-  padding: 4px 0 !important; gap: 4px !important; border-radius: 16px !important;
+  padding: 4px 0 !important; gap: 4px !important; border-radius: var(--ir-tile-radius, 16px) !important;
   transition: background-color 280ms cubic-bezier(.4,0,.2,1), color 280ms cubic-bezier(.4,0,.2,1) !important;
   animation: ir-nav-enter 320ms cubic-bezier(.4,0,.2,1) both !important;
 }
@@ -154,3 +153,19 @@ html body:not(#_) .sidebar #nav-settings {
 }
 html body:not(#_) .sidebar #nav-settings:hover,
 html body:not(#_) .sidebar #nav-settings.active { background: transparent !important; }
+
+/* ---- v4: indicatore scorrevole (molla) + tile trasparente: il bg lo porta .nav-slider ---- */
+html body:not(#_) .sidebar .nav-item:not(#nav-settings).active,
+html body:not(#_) .sidebar .nav-item:not(#nav-settings):hover { background: transparent !important; }
+html body:not(#_) .sidebar .nav-item:not(#nav-settings):hover:not(.active) { background: rgba(255,255,255,.06) !important; }
+html body:not(#_) .sidebar .nav-item:not(#nav-settings).active .nav-indicator { animation: none !important; }
+
+html body:not(#_) .sidebar .nav-slider {
+  position: absolute !important; left: 0 !important; right: 0 !important; top: 0 !important;
+  height: 56px; border-radius: var(--ir-tile-radius, 16px);
+  background: rgba(255,255,255,.14); z-index: 1; pointer-events: none; will-change: transform;
+  transition: opacity 200ms cubic-bezier(.4,0,.2,1);
+}
+html body:not(#_) .sidebar .nav-slider.is-hidden { opacity: 0; }
+html body:not(#_) .sidebar .nav-item { z-index: 2 !important; }
+html body:not(#_) .sidebar #nav-settings { z-index: 2 !important; }

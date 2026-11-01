@@ -1,52 +1,30 @@
-/* Squircle come SquircleShape di Iride Android (io.github.stoyan-vuchev:squircle-shape-android 3.0.1):
-   geometria di squircleShapePath(), cornerSmoothing clampato a [0.55, 1] come createSquircleShapeOutline().
-   I raggi dei tile sono concentrici: raggio tile = raggio pannello - distanza dal bordo del pannello. */
+/* Forma squircle della navigazione: tokens e geometria da src/shared/squircle.js (stessi valori dei bordi finestra). */
 (function () {
-  const SMOOTHING = 0.48;
-  const PANEL_RADIUS = 24;   // FloatingPill: SquircleShape(radius = 24.dp)
-  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const f = (n) => +n.toFixed(3);
+  const S = window.IRIDE_SQUIRCLE;
+  const T = S.TOKENS;
 
-  function squircleShapePath(w, h, radius, cornerSmoothing) {
-    const r = clamp(radius, 0, Math.min(w, h) / 2);
-    const s = clamp(cornerSmoothing, 0.55, 1);
-    const k = 1 - s;
-    return [
-      `M${f(r)} 0`,
-      `L${f(w - r)} 0`,
-      `C${f(w - r * k)} 0 ${f(w)} ${f(r * k)} ${f(w)} ${f(r)}`,
-      `L${f(w)} ${f(h - r)}`,
-      `C${f(w)} ${f(h - r * k)} ${f(w - r * k)} ${f(h)} ${f(w - r)} ${f(h)}`,
-      `L${f(r)} ${f(h)}`,
-      `C${f(r * k)} ${f(h)} 0 ${f(h - r * k)} 0 ${f(h - r)}`,
-      `L0 ${f(r)}`,
-      `C0 ${f(r * k)} ${f(r * k)} 0 ${f(r)} 0`,
-      'Z',
-    ].join(' ');
-  }
+  // token -> variabili CSS, così iride-android-nav.css usa la stessa sorgente
+  const root = document.documentElement.style;
+  root.setProperty('--ir-nav-radius', T.navRadius + 'px');
+  root.setProperty('--ir-nav-padding', T.navPadding + 'px');
+  root.setProperty('--ir-tile-radius', T.tileRadius + 'px');
+  root.setProperty('--ir-window-inset', T.windowInset + 'px');
+  root.setProperty('--ir-rail-w', T.railWidth + 'px');
 
-  function applyClip(el, radius) {
+  function clip(el, radius) {
     const w = el.offsetWidth, h = el.offsetHeight;
     if (!w || !h) return;
-    el.style.clipPath = `path('${squircleShapePath(w, h, radius, SMOOTHING)}')`;
-  }
-
-  // distanza minima tra il bordo del tile e quello del pannello
-  function concentricRadius(panel, el) {
-    const p = panel.getBoundingClientRect(), b = el.getBoundingClientRect();
-    const inset = Math.min(b.left - p.left, b.top - p.top, p.right - b.right, p.bottom - b.bottom);
-    return Math.max(0, PANEL_RADIUS - inset);
+    el.style.clipPath = S.clipPolygonCss(w, h, radius, T.smoothing);
   }
 
   function refresh() {
     const panel = document.querySelector('.sidebar');
-    if (!panel) return;
-    applyClip(panel, PANEL_RADIUS);
+    if (panel) clip(panel, T.navRadius);
     // Account (#nav-settings) è fuori dalla riga animata: nessun tile
-    document.querySelectorAll('.sidebar .nav-item:not(#nav-settings)').forEach((el) => {
-      applyClip(el, concentricRadius(panel, el));
-    });
+    document.querySelectorAll('.sidebar .nav-item:not(#nav-settings)').forEach((el) => clip(el, T.tileRadius));
   }
+
+  window.IRIDE_NAV_SHAPE = { refresh, clip };
 
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
   function init() {
