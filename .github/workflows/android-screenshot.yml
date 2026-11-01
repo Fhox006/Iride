@@ -55,7 +55,8 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/iride-capture.sh" <<'BASH'
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'echo "::error::Capture command failed at line $LINENO: $BASH_COMMAND"' ERR
           trap 'adb logcat -d > artifacts/diagnostics/logcat.txt 2>&1 || true' EXIT
           aapt_path="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           "$aapt_path" dump badging artifacts/Iride.apk > artifacts/diagnostics/apk-badging.txt
