@@ -1,0 +1,88 @@
+name: Bug report
+description: Report an issue or unexpected behavior in the desktop app
+title: "[BUG]: <Short summary of the bug>"
+labels: ["Bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > ### BEFORE SUBMITTING:
+        > 1. **DO NOT REPORT MOBILE BUGS!** iOS / Android builds are third-party ports and unsupported here. Issues will be instantly closed.
+        > 2. **SEARCH EXISTING ISSUES FIRST!** Check both **open and closed** issues before posting duplicates.
+        > 3. **CHANGE THE TITLE!** Do not leave just `[BUG]: `. Provide a clear, short summary.
+        > 4. **ATTACH LOGS!** Reports without terminal/console logs will be rejected. If the issue doesn't contain logs or any errors in it, please do not provide them and replace with a placeholder 'no'
+
+  - type: checkboxes
+    id: pre-check
+    attributes:
+      label: Pre-flight Checklist
+      description: Confirm each point before submitting. You cannot submit without ticking all boxes.
+      options:
+        - label: I searched existing open and closed issues and confirmed this is not a duplicate.
+          required: true
+        - label: I confirm this issue is NOT related to mobile builds (iOS / Android).
+          required: true
+        - label: I replaced the issue title with a concise summary instead of leaving it blank or default.
+          required: true
+        - label: I have included relevant logs below (or terminal output).
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what went wrong.
+      placeholder: Tell us what you see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: To Reproduce
+      description: Exact steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: desktop-env
+    attributes:
+      label: Desktop Environment
+      description: Your OS and environment details.
+      value: |
+        - OS: [e.g. Linux (Arch / Ubuntu / Fedora) / Windows 10/11]
+        - Display Server: [e.g. Wayland / X11] (if Linux)
+        - Package / Install type: [e.g. AppImage / DEB / AUR / source]
+        - App Version:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs
+      description: Paste logs copied from Settings > About or from `riff.log` in your logs folder. Mandatory.
+      placeholder: Paste your logs or terminal output here...
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Media (Optional)
+      description: Drag & drop images, recordings, or additional files here.

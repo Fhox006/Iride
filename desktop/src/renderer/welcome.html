@@ -1,0 +1,2434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Riff - Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #8d5ef2;
+      --container-fill: #d8ceed;
+      --container-fill-hover: #e3d9f4;
+      --card-bg: #c8bddd;
+      --card-bg-hover: #bfb2d8;
+      --text-color: #211f24;
+      --hero-text: #ffffff;
+
+      --btn-bg: #ffffff;
+      --btn-text: #211f24;
+      --btn-bg-hover: #f5effe;
+      --btn-secondary-bg: #c4b8dc;
+      --btn-secondary-hover: #baaecd;
+
+      --slider-track: #b8abd0;
+      --ripple-color: rgba(33, 31, 36, 0.24);
+      --font-google-sans: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-google-sans);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body {
+      -webkit-app-region: drag;
+    }
+
+    .setup-viewport,
+    .win-controls {
+      -webkit-app-region: no-drag;
+    }
+
+    .win-controls {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .win-controls.no-api .win-icon {
+      display: none;
+    }
+
+    .btn.win-icon {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .btn.win-icon:hover {
+      border-radius: 14px;
+    }
+
+    body.no-hand-cursor * {
+      cursor: default !important;
+    }
+
+    body.no-hand-cursor .field {
+      cursor: text !important;
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    .setup-viewport {
+      width: 100%;
+      max-width: 520px;
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      transition: max-width 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
+    }
+
+    .setup-viewport::-webkit-scrollbar {
+      display: none;
+    }
+
+    .setup-viewport[data-step="2"],
+    .setup-viewport[data-step="3"],
+    .setup-viewport[data-step="4"],
+    .setup-viewport[data-step="5"] {
+      max-width: 620px;
+    }
+
+    .setup-viewport.closing {
+      opacity: 0;
+      filter: blur(12px);
+      transform: scale(0.97);
+      pointer-events: none;
+    }
+
+    .step-pane {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition:
+        opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        filter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      filter: blur(0px);
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .step-pane.anim-out-left {
+      opacity: 0;
+      filter: blur(10px);
+      transform: scale(0.96) translateX(-35px);
+      pointer-events: none;
+    }
+
+    .step-pane.anim-out-right {
+      opacity: 0;
+      filter: blur(10px);
+      transform: scale(0.96) translateX(35px);
+      pointer-events: none;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 24px;
+      user-select: none;
+    }
+
+    .hero-stage {
+      position: relative;
+      width: 230px;
+      height: 230px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 6px;
+    }
+
+    .hero-stage > * {
+      grid-area: 1 / 1;
+    }
+
+    .shape {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      opacity: 0;
+    }
+
+    body.intro .shape {
+      animation: heroIconAnim 1.9s cubic-bezier(0.1, 0.8, 0.15, 1) forwards;
+    }
+
+    .shape-spin {
+      animation: shapeSpin 36s linear infinite;
+    }
+
+    .shape-path {
+      fill: var(--container-fill);
+      transition: fill 0.3s ease;
+    }
+
+    @keyframes shapeSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .icon-tint {
+      display: grid;
+      place-items: center;
+      filter: url(#iconTint);
+    }
+
+    .riff-icon {
+      width: 118px;
+      height: 118px;
+      display: block;
+      opacity: 0;
+    }
+
+    body.intro .riff-icon {
+      animation: heroIconAnim 1.9s cubic-bezier(0.1, 0.8, 0.15, 1) forwards;
+    }
+
+    .riff-title {
+      font-size: 68px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--hero-text);
+      display: flex;
+      line-height: 1;
+      transition: color 0.3s ease;
+    }
+
+    .riff-title span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(48px) scale(1.4);
+      filter: blur(20px);
+    }
+
+    body.intro .riff-title span {
+      animation: heroLetterAnim 1.9s cubic-bezier(0.1, 0.8, 0.15, 1) forwards;
+    }
+
+    .riff-title span:nth-child(1) { animation-delay: 0.9s; }
+    .riff-title span:nth-child(2) { animation-delay: 1.05s; }
+    .riff-title span:nth-child(3) { animation-delay: 1.2s; }
+    .riff-title span:nth-child(4) { animation-delay: 1.35s; }
+
+    body:not(.intro) #step1 .stacked-group {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.intro:not(.intro-done) #step1 .stacked-container {
+      animation: containerIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+
+    body.intro:not(.intro-done) #step1 .stacked-container.top { animation-delay: 2.3s; }
+    body.intro:not(.intro-done) #step1 .stacked-container.bottom { animation-delay: 2.45s; }
+
+    @keyframes containerIn {
+      0% { opacity: 0; transform: translateY(30px) scale(0.97); filter: blur(10px); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+    }
+
+    @keyframes heroIconAnim {
+      0% { opacity: 0; filter: blur(26px); transform: scale(1.45); }
+      100% { opacity: 1; filter: blur(0px); transform: scale(1); }
+    }
+
+    @keyframes heroLetterAnim {
+      0% { opacity: 0; transform: translateY(48px) scale(1.4); filter: blur(20px); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+    }
+
+    .stacked-group {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .stacked-container {
+      background-color: var(--container-fill);
+      color: var(--text-color);
+      cursor: default;
+      user-select: none;
+      transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-radius 0.3s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .stacked-container.top {
+      border-radius: 32px 32px 8px 8px;
+      padding: 28px 26px;
+    }
+    .stacked-container.top:hover {
+      background-color: var(--container-fill-hover);
+      border-radius: 24px 24px 5px 5px;
+    }
+
+    .stacked-container.bottom {
+      border-radius: 8px 8px 32px 32px;
+      padding: 16px 22px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .stacked-container.bottom:hover {
+      background-color: var(--container-fill-hover);
+      border-radius: 5px 5px 24px 24px;
+    }
+
+    .stacked-container.stacked-3-top {
+      border-radius: 32px 32px 8px 8px;
+      padding: 22px 26px;
+    }
+    .stacked-container.stacked-3-top:hover {
+      background-color: var(--container-fill-hover);
+      border-radius: 24px 24px 5px 5px;
+    }
+
+    .stacked-container.stacked-3-middle {
+      border-radius: 8px;
+      padding: 18px 26px;
+    }
+    .stacked-container.stacked-3-middle:hover {
+      background-color: var(--container-fill-hover);
+      border-radius: 5px;
+    }
+
+    .stacked-container.stacked-3-bottom {
+      border-radius: 8px 8px 32px 32px;
+      padding: 14px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stacked-container.stacked-3-bottom:hover {
+      background-color: var(--container-fill-hover);
+      border-radius: 5px 5px 24px 24px;
+    }
+
+    .stacked-container.row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 22px 13px 18px;
+    }
+
+    .step-header-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .step-header-subtitle {
+      font-size: 15px;
+      font-weight: 500;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .themes-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 168px));
+      justify-content: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .theme-card {
+      background-color: var(--card-bg);
+      border-radius: 18px;
+      padding: 8px;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      position: relative;
+      transition: background-color 0.2s ease, color 0.2s ease, border-radius 0.2s ease, transform 0.15s ease;
+    }
+
+    .theme-card:hover {
+      background-color: var(--card-bg-hover);
+      border-radius: 14px;
+    }
+
+    .theme-card:active {
+      transform: scale(0.97);
+    }
+
+    .theme-card.active {
+      background-color: var(--text-color);
+      color: var(--container-fill);
+    }
+
+    .theme-card-name {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .mockup-window {
+      width: 100%;
+      height: 78px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .mockup-window.mock-dark {
+      background-color: #141218;
+      --m-surface: #211f26;
+      --m-subtle: #2d2a33;
+      --m-accent: #d0bcff;
+    }
+    .mockup-window.mock-light {
+      background-color: #fbf8fd;
+      --m-surface: #ece5ee;
+      --m-subtle: #ded5e1;
+      --m-accent: #6750a4;
+    }
+    .mockup-window.mock-discord {
+      background-color: #1e1f22;
+      --m-surface: #2b2d31;
+      --m-subtle: #383a40;
+      --m-accent: #5865f2;
+    }
+    .mockup-window.mock-light-purple-vibrant {
+      background-color: #7943ea;
+      --m-surface: #c7b6e9;
+      --m-subtle: #b19ddc;
+      --m-accent: #ffffff;
+    }
+
+    .mock-topbar {
+      height: 13px;
+      background-color: var(--m-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mock-search {
+      width: 48%;
+      height: 5px;
+      background-color: var(--m-subtle);
+      border-radius: 3px;
+    }
+
+    .mock-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .mock-sidebar {
+      width: 22%;
+      background-color: var(--m-surface);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 4px 3px;
+    }
+
+    .mock-item {
+      height: 4px;
+      border-radius: 2px;
+      background-color: var(--m-subtle);
+    }
+    .mock-item.accent {
+      background-color: var(--m-accent);
+      width: 75%;
+    }
+
+    .mock-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 5px;
+    }
+
+    .mock-banner {
+      height: 11px;
+      border-radius: 3px;
+      background-color: var(--m-subtle);
+    }
+
+    .mock-row {
+      height: 4px;
+      border-radius: 2px;
+      background-color: var(--m-subtle);
+      width: 85%;
+    }
+
+    .mock-right {
+      width: 26%;
+      background-color: var(--m-surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 4px;
+    }
+
+    .mock-cover {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background-color: var(--m-accent);
+    }
+
+    .mock-bottombar {
+      height: 12px;
+      background-color: var(--m-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px;
+    }
+
+    .mock-controls {
+      width: 28px;
+      height: 4px;
+      border-radius: 2px;
+      background-color: var(--m-accent);
+    }
+
+    .sliders-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .slider-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-color);
+      pointer-events: none;
+    }
+
+    .sl {
+      --v: 0.5;
+      position: relative;
+      width: 100%;
+      height: 28px;
+    }
+
+    .sl-active,
+    .sl-inactive {
+      position: absolute;
+      top: 6px;
+      height: 16px;
+      pointer-events: none;
+      transition: background-color 0.3s ease;
+    }
+
+    .sl-active {
+      left: 0;
+      width: max(0px, calc((100% - 6px) * var(--v) + 3px - 8px));
+      background-color: var(--text-color);
+      border-radius: 8px 3px 3px 8px;
+    }
+
+    .sl-inactive {
+      right: 0;
+      width: max(0px, calc(100% - ((100% - 6px) * var(--v) + 3px) - 8px));
+      background-color: var(--slider-track);
+      border-radius: 3px 8px 8px 3px;
+    }
+
+    .sl input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 28px;
+      margin: 0;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      touch-action: none;
+    }
+
+    .sl input::-webkit-slider-runnable-track {
+      height: 28px;
+      background: transparent;
+    }
+
+    .sl input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 6px;
+      height: 28px;
+      border-radius: 3px;
+      background-color: var(--text-color);
+      cursor: pointer;
+      transition: width 0.15s ease, background-color 0.3s ease;
+    }
+
+    .sl input:active::-webkit-slider-thumb {
+      width: 4px;
+    }
+
+    .sl input::-moz-range-track {
+      height: 28px;
+      background: transparent;
+    }
+
+    .sl input::-moz-range-thumb {
+      width: 6px;
+      height: 28px;
+      border-radius: 3px;
+      background-color: var(--text-color);
+      border: none;
+      cursor: pointer;
+    }
+
+    .sl.hue::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 6px;
+      height: 16px;
+      border-radius: 8px;
+      background: linear-gradient(to right, #ff4d4d, #ffa64d, #ffff4d, #4dff4d, #4dffff, #4d4dff, #ff4dff, #ff4d4d);
+      pointer-events: none;
+    }
+
+    .sl.hue .sl-active,
+    .sl.hue .sl-inactive {
+      display: none;
+    }
+
+    .sl.hue input::-webkit-slider-thumb {
+      box-sizing: border-box;
+      width: 10px;
+      border-radius: 5px;
+      background-color: #ffffff;
+      border: 3px solid var(--text-color);
+    }
+
+    .sl.hue input:active::-webkit-slider-thumb {
+      width: 8px;
+    }
+
+    .sl.hue input::-moz-range-thumb {
+      box-sizing: border-box;
+      width: 10px;
+      border-radius: 5px;
+      background-color: #ffffff;
+      border: 3px solid var(--text-color);
+    }
+
+    .row-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background-color: var(--card-bg);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: background-color 0.25s ease, border-radius 0.25s ease;
+    }
+
+    .stacked-container.row:hover .row-icon {
+      border-radius: 21px;
+    }
+
+    .row-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+    }
+
+    .row-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .row-sub {
+      font-size: 12.5px;
+      font-weight: 500;
+      opacity: 0.8;
+      margin-top: 2px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sw {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      border-radius: 16px;
+      background-color: var(--slider-track);
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      flex-shrink: 0;
+      transition: background-color 0.25s ease;
+    }
+
+    .sw.on {
+      background-color: var(--text-color);
+    }
+
+    .sw-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background-color: color-mix(in srgb, var(--text-color) 55%, var(--container-fill));
+      color: var(--container-fill);
+      transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .sw.on .sw-thumb {
+      transform: translateX(20px);
+      background-color: var(--container-fill);
+      color: var(--text-color);
+    }
+
+    .sw:active .sw-thumb {
+      transform: scale(1.12);
+    }
+
+    .sw.on:active .sw-thumb {
+      transform: translateX(20px) scale(1.12);
+    }
+
+    .sw-thumb svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .sw-icon {
+      d: path("M8 8 L16 16 M16 8 L8 16");
+      transition: d 0.18s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .sw.on .sw-icon {
+      d: path("M7.5 12.5 L10.5 15.5 M10.5 15.5 L16.5 8.5");
+    }
+
+    .sw:active .sw-icon,
+    .sw.on:active .sw-icon {
+      d: path("M7 12 L17 12 M12 12 L12 12");
+    }
+
+    .sw.disabled {
+      opacity: 0.45;
+      pointer-events: none !important;
+    }
+
+    .launcher-preview {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+    }
+
+    .launcher-tile {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .launcher-tile svg {
+      width: 26px;
+      height: 26px;
+      fill: currentColor;
+    }
+
+    .launcher-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .launcher-desc {
+      font-size: 12.5px;
+      font-weight: 500;
+      opacity: 0.8;
+      margin-top: 1px;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .field {
+      flex: 1;
+      min-width: 0;
+      font-family: var(--font-google-sans);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-color);
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 12px 16px;
+      cursor: text !important;
+      user-select: text;
+      transition: background-color 0.2s ease, border-radius 0.2s ease;
+    }
+
+    .field:hover,
+    .field:focus {
+      background-color: var(--card-bg-hover);
+      border-radius: 12px;
+    }
+
+    .field::placeholder {
+      color: var(--text-color);
+      opacity: 0.55;
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      font-weight: 600;
+      min-height: 18px;
+      margin-top: 8px;
+      opacity: 0.85;
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dots i {
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 3px;
+      background-color: var(--text-color);
+      opacity: 0.3;
+      transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.3s ease;
+    }
+
+    .dots i.active {
+      width: 18px;
+      opacity: 0.9;
+    }
+
+    .btn {
+      position: relative;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-google-sans);
+      font-size: 15.5px;
+      font-weight: 600;
+      padding: 14px 26px;
+      border-radius: 20px;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      overflow: hidden;
+      user-select: none;
+      flex-shrink: 0;
+      transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        transform 0.12s ease,
+        border-radius 0.25s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn.small {
+      font-size: 13.5px;
+      padding: 10px 18px;
+      border-radius: 16px;
+    }
+
+    .btn.primary {
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
+    }
+    .btn.primary:hover {
+      background-color: var(--btn-bg-hover);
+      border-radius: 16px;
+    }
+
+    .btn.secondary {
+      background-color: var(--btn-secondary-bg);
+      color: var(--text-color);
+    }
+    .btn.secondary:hover {
+      background-color: var(--btn-secondary-hover);
+      border-radius: 16px;
+    }
+
+    .btn.small.primary:hover,
+    .btn.small.secondary:hover {
+      border-radius: 12px;
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
+
+    .btn:hover svg.arrow-right {
+      transform: translateX(3px);
+    }
+    .btn:hover svg.arrow-left {
+      transform: translateX(-3px);
+    }
+
+    .ripple-wave {
+      position: absolute;
+      border-radius: 50%;
+      background-color: var(--ripple-color);
+      transform: scale(0);
+      pointer-events: none !important;
+      animation: rippleAnim 0.6s cubic-bezier(0.1, 0.4, 0.2, 1) forwards;
+      filter: blur(4px);
+    }
+
+    @keyframes rippleAnim {
+      to { transform: scale(3.5); opacity: 0; }
+    }
+
+    .lang-selector-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    #langMenu {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: var(--container-fill);
+      border-radius: 16px;
+      padding: 10px;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 220px;
+    }
+
+    #langMenu.is-hidden {
+      display: none !important;
+    }
+
+    #langSearch {
+      width: 100%;
+      background: var(--card-bg);
+      color: var(--text-color);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: var(--font-google-sans);
+      font-size: 13.5px;
+    }
+
+    #langList {
+      overflow-y: auto;
+      max-height: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .lang-option {
+      background: transparent;
+      color: var(--text-color);
+      padding: 8px 12px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 13.5px;
+      font-family: var(--font-google-sans);
+      font-weight: 500;
+      cursor: pointer !important;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-option:hover,
+    .lang-option.selected {
+      background: var(--card-bg-hover);
+    }
+
+    body.perf #langMenu {
+      transition: none !important;
+      animation: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="win-controls" id="winControls">
+    <button class="btn small secondary" id="skipBtn" data-i18n>Skip</button>
+    <button class="btn secondary win-icon" id="winMinBtn" title="Minimize">
+      <svg viewBox="0 0 24 24"><path d="M6 19h12v2H6z"/></svg>
+    </button>
+    <button class="btn secondary win-icon" id="winCloseBtn" title="Close">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+
+  <div class="setup-viewport" id="setupViewport" data-step="1">
+
+    <div class="step-pane" id="step1">
+      <div class="hero">
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+          <filter id="iconTint" color-interpolation-filters="sRGB">
+            <feColorMatrix id="tintMatrix" type="matrix" values="0 0 0 0 0.2  0 0 0 0 0.153  0 0 0 0 0.286  0 0 0 1 0"/>
+          </filter>
+        </svg>
+        <div class="hero-stage">
+          <svg class="shape" viewBox="-180 -180 360 360" aria-hidden="true">
+            <g class="shape-spin"><path class="shape-path" id="shapePath" d=""/></g>
+          </svg>
+          <div class="icon-tint">
+            <img class="riff-icon" src="../../assets/icon.png" alt="Riff" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ffffff\'><path d=\'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\'/></svg>';" >
+          </div>
+        </div>
+        <h1 class="riff-title">
+          <span>R</span><span>i</span><span>f</span><span>f</span>
+        </h1>
+      </div>
+
+      <div class="stacked-group">
+        <div class="stacked-container top">
+          <h2 class="step-header-title" data-i18n>Welcome to Riff.</h2>
+          <p class="step-header-subtitle" data-i18n>Let's get started.</p>
+        </div>
+
+        <div class="stacked-container bottom" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="lang-selector-wrap">
+            <button class="btn secondary" id="langBtn" type="button" style="width: 100%; justify-content: space-between; font-size: 14px; padding: 10px 18px;">
+              <span id="langBtnLabel">🇺🇸 English (en)</span>
+              <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div id="langMenu" class="is-hidden">
+              <input type="text" id="langSearch" placeholder="Search language..." data-i18n-attr="placeholder" autocomplete="off">
+              <div id="langList"></div>
+            </div>
+          </div>
+
+          <button class="btn primary" data-nav="next">
+            <span data-i18n>Continue</span>
+            <svg class="arrow-right" viewBox="0 0 24 24">
+              <path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-pane is-hidden" id="step2">
+      <div class="stacked-group">
+
+        <div class="stacked-container stacked-3-top">
+          <h2 class="step-header-title" data-i18n>Choose your look</h2>
+          <p class="step-header-subtitle" data-i18n>Select a preset or fine-tune color and intensity to your liking.</p>
+
+          <div class="themes-grid">
+            <div class="theme-card" data-preset="dark">
+              <div class="mockup-window mock-dark">
+                <div class="mock-topbar"><div class="mock-search"></div></div>
+                <div class="mock-body">
+                  <div class="mock-sidebar"><div class="mock-item accent"></div><div class="mock-item"></div><div class="mock-item"></div></div>
+                  <div class="mock-center"><div class="mock-banner"></div><div class="mock-row"></div><div class="mock-row"></div></div>
+                  <div class="mock-right"><div class="mock-cover"></div></div>
+                </div>
+                <div class="mock-bottombar"><div class="mock-controls"></div></div>
+              </div>
+              <span class="theme-card-name" data-i18n>Dark</span>
+            </div>
+
+            <div class="theme-card" data-preset="light">
+              <div class="mockup-window mock-light">
+                <div class="mock-topbar"><div class="mock-search"></div></div>
+                <div class="mock-body">
+                  <div class="mock-sidebar"><div class="mock-item accent"></div><div class="mock-item"></div><div class="mock-item"></div></div>
+                  <div class="mock-center"><div class="mock-banner"></div><div class="mock-row"></div><div class="mock-row"></div></div>
+                  <div class="mock-right"><div class="mock-cover"></div></div>
+                </div>
+                <div class="mock-bottombar"><div class="mock-controls"></div></div>
+              </div>
+              <span class="theme-card-name" data-i18n>Light</span>
+            </div>
+
+            <div class="theme-card" data-preset="discord">
+              <div class="mockup-window mock-discord">
+                <div class="mock-topbar"><div class="mock-search"></div></div>
+                <div class="mock-body">
+                  <div class="mock-sidebar"><div class="mock-item accent"></div><div class="mock-item"></div><div class="mock-item"></div></div>
+                  <div class="mock-center"><div class="mock-banner"></div><div class="mock-row"></div><div class="mock-row"></div></div>
+                  <div class="mock-right"><div class="mock-cover"></div></div>
+                </div>
+                <div class="mock-bottombar"><div class="mock-controls"></div></div>
+              </div>
+              <span class="theme-card-name" data-i18n>Discord</span>
+            </div>
+
+            <div class="theme-card active" data-preset="light-purple-vibrant">
+              <div class="mockup-window mock-light-purple-vibrant">
+                <div class="mock-topbar"><div class="mock-search"></div></div>
+                <div class="mock-body">
+                  <div class="mock-sidebar"><div class="mock-item accent"></div><div class="mock-item"></div><div class="mock-item"></div></div>
+                  <div class="mock-center"><div class="mock-banner"></div><div class="mock-row"></div><div class="mock-row"></div></div>
+                  <div class="mock-right"><div class="mock-cover"></div></div>
+                </div>
+                <div class="mock-bottombar"><div class="mock-controls"></div></div>
+              </div>
+              <span class="theme-card-name" data-i18n>Light Purple</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stacked-container stacked-3-middle">
+          <div class="sliders-layout">
+            <div class="slider-block">
+              <div class="slider-header">
+                <span data-i18n>Color Accent</span>
+                <span id="hueVal">Purple (260°)</span>
+              </div>
+              <div class="sl hue">
+                <div class="sl-active"></div><div class="sl-inactive"></div>
+                <input type="range" id="hueSlider" min="0" max="360" value="260">
+              </div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-header">
+                <span data-i18n>Theme Brightness</span>
+                <span id="brightnessVal">66%</span>
+              </div>
+              <div class="sl">
+                <div class="sl-active"></div><div class="sl-inactive"></div>
+                <input type="range" id="brightnessSlider" min="12" max="96" value="66">
+              </div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-header">
+                <span data-i18n>Color Intensity</span>
+                <span id="satVal">85%</span>
+              </div>
+              <div class="sl">
+                <div class="sl-active"></div><div class="sl-inactive"></div>
+                <input type="range" id="satSlider" min="0" max="100" value="85">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stacked-container stacked-3-bottom">
+          <button class="btn secondary" data-nav="back">
+            <svg class="arrow-left" viewBox="0 0 24 24">
+              <path d="M19 11H7.14l5.43-5.43L11.14 4.14 2.86 12.43l8.29 8.29 1.42-1.42L7.14 13H19v-2z"/>
+            </svg>
+            <span data-i18n>Back</span>
+          </button>
+          <div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="btn primary" data-nav="next">
+            <span data-i18n>Continue</span>
+            <svg class="arrow-right" viewBox="0 0 24 24">
+              <path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="step-pane is-hidden" id="step3">
+      <div class="stacked-group">
+
+        <div class="stacked-container stacked-3-top">
+          <h2 class="step-header-title" data-i18n>Make it yours</h2>
+          <p class="step-header-subtitle" data-i18n>Everything here can be changed later in Settings.</p>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" data-i18n>Local library</div>
+            <div class="row-sub" data-i18n>Show the My files tab for music stored on your computer</div>
+          </div>
+          <button class="sw on" role="switch" aria-checked="true" data-key="riff_show_local"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" data-i18n>Custom background</div>
+            <div class="row-sub" id="bgSub" data-i18n>Use your own image or video behind the app</div>
+          </div>
+          <button class="btn small secondary is-hidden" id="bgPickBtn" data-i18n>Choose file</button>
+          <button class="sw" role="switch" aria-checked="false" data-key="riff_custom_bg_enabled"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 3L3 10.53v.98l6.84 2.65L12.49 21h.98L21 3z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" data-i18n>No-Hand cursor</div>
+            <div class="row-sub" data-i18n>Keep the normal arrow instead of the hand on buttons</div>
+          </div>
+          <button class="sw" role="switch" aria-checked="false" data-key="riff_no_hand_cursor"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" data-i18n>Performance mode</div>
+            <div class="row-sub" data-i18n>Turn off blur and heavy animations on slower computers</div>
+          </div>
+          <button class="sw" role="switch" aria-checked="false" data-key="riff_perf_mode"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-bottom">
+          <button class="btn secondary" data-nav="back">
+            <svg class="arrow-left" viewBox="0 0 24 24">
+              <path d="M19 11H7.14l5.43-5.43L11.14 4.14 2.86 12.43l8.29 8.29 1.42-1.42L7.14 13H19v-2z"/>
+            </svg>
+            <span data-i18n>Back</span>
+          </button>
+          <div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="btn primary" data-nav="next">
+            <span data-i18n>Continue</span>
+            <svg class="arrow-right" viewBox="0 0 24 24">
+              <path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="step-pane is-hidden" id="step4">
+      <div class="stacked-group">
+
+        <div class="stacked-container stacked-3-top">
+          <h2 class="step-header-title" data-i18n>Add Riff to your launcher</h2>
+          <p class="step-header-subtitle" id="launcherSub" data-i18n>Open Riff in one click from your Start menu or applications menu.</p>
+        </div>
+
+        <div class="stacked-container stacked-3-middle launcher-preview">
+          <div class="launcher-tile">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div>
+            <div class="launcher-name">Riff</div>
+            <div class="launcher-desc" data-i18n>Music player</div>
+          </div>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" id="launcherTitle" data-i18n>Start menu shortcut</div>
+            <div class="row-sub" id="launcherRowSub" data-i18n>Add Riff with its icon so you can find it by searching</div>
+          </div>
+          <button class="sw on" role="switch" aria-checked="true" id="launcherSwitch"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-bottom">
+          <button class="btn secondary" data-nav="back">
+            <svg class="arrow-left" viewBox="0 0 24 24">
+              <path d="M19 11H7.14l5.43-5.43L11.14 4.14 2.86 12.43l8.29 8.29 1.42-1.42L7.14 13H19v-2z"/>
+            </svg>
+            <span data-i18n>Back</span>
+          </button>
+          <div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="btn primary" data-nav="next">
+            <span data-i18n>Continue</span>
+            <svg class="arrow-right" viewBox="0 0 24 24">
+              <path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="step-pane is-hidden" id="step5">
+      <div class="stacked-group">
+
+        <div class="stacked-container stacked-3-top">
+          <h2 class="step-header-title" data-i18n>Connect your world</h2>
+          <p class="step-header-subtitle" data-i18n>Optional. You can skip this and set it up whenever you like.</p>
+        </div>
+
+        <div class="stacked-container stacked-3-middle row">
+          <div class="row-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+          </div>
+          <div class="row-text">
+            <div class="row-title" data-i18n>Discord Rich Presence</div>
+            <div class="row-sub" id="discordSub" data-i18n>Show what you're listening to on your Discord profile</div>
+          </div>
+          <button class="sw" role="switch" aria-checked="false" id="discordSwitch"></button>
+        </div>
+
+        <div class="stacked-container stacked-3-middle">
+          <div class="row">
+            <div class="row-icon">
+              <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+            </div>
+            <div class="row-text">
+              <div class="row-title" data-i18n>Import a Spotify playlist</div>
+              <div class="row-sub" data-i18n>Paste a public playlist link and it becomes a Riff playlist</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <input class="field" id="spotifyUrl" type="text" placeholder="https://open.spotify.com/playlist/..." spellcheck="false" autocomplete="off">
+            <button class="btn small primary" id="spotifyImportBtn" data-i18n>Import</button>
+          </div>
+          <div class="status-line" id="spotifyStatus"></div>
+        </div>
+
+        <div class="stacked-container stacked-3-bottom">
+          <button class="btn secondary" data-nav="back">
+            <svg class="arrow-left" viewBox="0 0 24 24">
+              <path d="M19 11H7.14l5.43-5.43L11.14 4.14 2.86 12.43l8.29 8.29 1.42-1.42L7.14 13H19v-2z"/>
+            </svg>
+            <span data-i18n>Back</span>
+          </button>
+          <div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="btn primary" id="finishBtn">
+            <span id="finishBtnText" data-i18n>Let's go</span>
+            <svg class="arrow-right" id="finishBtnIcon" viewBox="0 0 24 24">
+              <path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const bridge = {
+      api: window.electronAPI || null,
+
+      get(key, fallback) {
+        try {
+          const v = localStorage.getItem(key);
+          return v === null ? fallback : v;
+        } catch (e) {
+          return fallback;
+        }
+      },
+
+      set(key, value) {
+        try {
+          localStorage.setItem(key, String(value));
+        } catch (e) {}
+      },
+
+      async serverPort() {
+        if (this.api && this.api.getServerPort) {
+          try {
+            return await this.api.getServerPort();
+          } catch (e) {}
+        }
+        return null;
+      },
+
+      async pickMedia() {
+        if (this.api && this.api.pickMedia) {
+          try {
+            return (await this.api.pickMedia()) || null;
+          } catch (e) {
+            return null;
+          }
+        }
+        return new Promise((resolve) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*,video/*';
+          input.onchange = () => resolve(input.files[0] ? URL.createObjectURL(input.files[0]) + '#' + encodeURIComponent(input.files[0].name) : null);
+          input.click();
+        });
+      },
+
+      finish(detail) {
+        if (this.api && this.api.welcomeFinish) this.api.welcomeFinish(detail);
+      },
+
+      async launcherInfo() {
+        if (this.api && this.api.getLauncherInfo) {
+          try {
+            return await this.api.getLauncherInfo();
+          } catch (e) {}
+        }
+        return null;
+      },
+
+      discordSetEnabled(on) {
+        if (this.api && this.api.discordRpcSetEnabled) this.api.discordRpcSetEnabled(on);
+      },
+
+      async discordConnected() {
+        if (this.api && this.api.discordRpcGetConnected) {
+          try {
+            return !!(await this.api.discordRpcGetConnected());
+          } catch (e) {}
+        }
+        return false;
+      },
+
+      async spotifyLookup(url) {
+        const port = await this.serverPort();
+        if (!port) return { success: false, error: 'Riff server is not available here' };
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/api/spotify-import?url=${encodeURIComponent(url)}`, {
+            headers: { 'X-Riff-Token': this.api?.serverToken || '' }
+          });
+          return await res.json();
+        } catch (e) {
+          return { success: false, error: 'Could not reach the Riff server' };
+        }
+      }
+    };
+
+    const viewport = document.getElementById('setupViewport');
+    const TOTAL_STEPS = 5;
+    let current = 1;
+    let busy = false;
+
+    function triggerRipple(e, el) {
+      const rect = el.getBoundingClientRect();
+      const circle = document.createElement('span');
+      const diameter = Math.max(rect.width, rect.height);
+      const radius = diameter / 2;
+
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+
+      if (!clientX && !clientY) {
+        clientX = rect.left + radius;
+        clientY = rect.top + radius;
+      }
+
+      circle.style.width = circle.style.height = `${diameter}px`;
+      circle.style.left = `${clientX - rect.left - radius}px`;
+      circle.style.top = `${clientY - rect.top - radius}px`;
+      circle.classList.add('ripple-wave');
+
+      const oldRipple = el.querySelector('.ripple-wave');
+      if (oldRipple) oldRipple.remove();
+
+      el.appendChild(circle);
+      circle.addEventListener('animationend', () => circle.remove());
+    }
+
+    document.querySelectorAll('.btn, .theme-card').forEach((item) => {
+      item.addEventListener('click', (e) => triggerRipple(e, item));
+    });
+
+    function updateDots() {
+      document.querySelectorAll('.dots').forEach((dots) => {
+        [...dots.children].forEach((dot, i) => dot.classList.toggle('active', i + 1 === current));
+      });
+    }
+
+    function go(to) {
+      if (busy || to === current || to < 1 || to > TOTAL_STEPS) return;
+      busy = true;
+
+      const forward = to > current;
+      const from = document.getElementById('step' + current);
+      const next = document.getElementById('step' + to);
+
+      from.classList.add(forward ? 'anim-out-left' : 'anim-out-right');
+      viewport.dataset.step = to;
+
+      setTimeout(() => {
+        from.classList.add('is-hidden');
+        from.classList.remove('anim-out-left', 'anim-out-right');
+
+        next.classList.remove('is-hidden');
+        next.classList.add(forward ? 'anim-out-right' : 'anim-out-left');
+        void next.offsetWidth;
+        next.classList.remove('anim-out-left', 'anim-out-right');
+
+        current = to;
+        updateDots();
+        if (to === 1) startShapeLoop();
+        viewport.scrollTop = 0;
+        setTimeout(() => { busy = false; }, 250);
+      }, 200);
+    }
+
+    document.querySelectorAll('[data-nav]').forEach((btn) => {
+      btn.addEventListener('click', () => go(current + (btn.dataset.nav === 'next' ? 1 : -1)));
+    });
+
+    updateDots();
+
+    const hueSlider = document.getElementById('hueSlider');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const satSlider = document.getElementById('satSlider');
+
+    const hueVal = document.getElementById('hueVal');
+    const brightnessVal = document.getElementById('brightnessVal');
+    const satVal = document.getElementById('satVal');
+    const themeCards = document.querySelectorAll('.theme-card');
+
+    const themeState = { preset: 'light-purple-vibrant', h: 260, b: 66, s: 85 };
+
+    function syncSlider(input) {
+      const v = (input.value - input.min) / (input.max - input.min);
+      input.closest('.sl').style.setProperty('--v', v);
+    }
+
+    function hueName(h) {
+      if (h < 25 || h >= 335) return 'Red';
+      if (h < 65) return 'Amber';
+      if (h < 150) return 'Green';
+      if (h < 200) return 'Cyan';
+      if (h < 250) return 'Blue';
+      if (h < 290) return 'Purple';
+      return 'Pink';
+    }
+
+    function syncLabels(h, b, s) {
+      brightnessVal.textContent = `${b}%`;
+      satVal.textContent = `${s}%`;
+      hueVal.textContent = `${hueName(h)} (${h}°)`;
+    }
+
+    function applyDynamicColors() {
+      const h = parseInt(hueSlider.value, 10);
+      const b = parseInt(brightnessSlider.value, 10);
+      const s = parseInt(satSlider.value, 10);
+
+      themeState.preset = 'custom';
+      themeState.h = h;
+      themeState.b = b;
+      themeState.s = s;
+
+      syncLabels(h, b, s);
+      updateIconTint();
+
+      const bg = `hsl(${h}, ${s}%, ${b}%)`;
+      const isDark = b < 50;
+
+      const contL = isDark ? Math.min(80, b + 14) : Math.max(20, b - 14);
+      const contS = Math.max(12, Math.round(s * 0.4));
+      const containerFill = `hsl(${h}, ${contS}%, ${contL}%)`;
+      const containerFillHover = isDark
+        ? `hsl(${h}, ${contS}%, ${contL + 5}%)`
+        : `hsl(${h}, ${contS}%, ${contL + 4}%)`;
+
+      const cardL = isDark ? Math.min(85, contL + 6) : Math.max(15, contL - 6);
+      const cardBg = `hsl(${h}, ${contS}%, ${cardL}%)`;
+      const cardBgHover = `hsl(${h}, ${contS}%, ${isDark ? cardL + 5 : cardL - 4}%)`;
+
+      const sliderTrack = `hsl(${h}, ${contS}%, ${isDark ? contL + 12 : contL - 10}%)`;
+
+      const textColor = isDark ? '#f4effa' : '#211f24';
+      const heroText = isDark ? `hsl(${h}, ${Math.min(95, s)}%, 84%)` : '#ffffff';
+      const btnBg = isDark ? `hsl(${h}, ${s}%, 84%)` : '#ffffff';
+      const btnText = '#211f24';
+      const btnBgHover = isDark ? '#ffffff' : `hsl(${h}, 25%, 96%)`;
+
+      const secondaryBg = `hsl(${h}, ${contS}%, ${isDark ? contL + 10 : contL - 8}%)`;
+      const secondaryHover = `hsl(${h}, ${contS}%, ${isDark ? contL + 16 : contL - 12}%)`;
+      const rippleColor = isDark ? 'rgba(28, 25, 33, 0.28)' : 'rgba(33, 31, 36, 0.22)';
+
+      const rootStyle = document.body.style;
+      rootStyle.setProperty('--bg-color', bg);
+      rootStyle.setProperty('--container-fill', containerFill);
+      rootStyle.setProperty('--container-fill-hover', containerFillHover);
+      rootStyle.setProperty('--card-bg', cardBg);
+      rootStyle.setProperty('--card-bg-hover', cardBgHover);
+      rootStyle.setProperty('--slider-track', sliderTrack);
+      rootStyle.setProperty('--text-color', textColor);
+      rootStyle.setProperty('--hero-text', heroText);
+      rootStyle.setProperty('--btn-bg', btnBg);
+      rootStyle.setProperty('--btn-text', btnText);
+      rootStyle.setProperty('--btn-bg-hover', btnBgHover);
+      rootStyle.setProperty('--btn-secondary-bg', secondaryBg);
+      rootStyle.setProperty('--btn-secondary-hover', secondaryHover);
+      rootStyle.setProperty('--ripple-color', rippleColor);
+    }
+
+    [hueSlider, brightnessSlider, satSlider].forEach((slider) => {
+      slider.addEventListener('input', () => {
+        themeCards.forEach((c) => c.classList.remove('active'));
+        syncSlider(slider);
+        applyDynamicColors();
+      });
+    });
+
+    const presets = {
+      'dark': {
+        h: 265, b: 10, s: 20,
+        vars: {
+          '--bg-color': '#141218', '--container-fill': '#211f26', '--container-fill-hover': '#2b2930',
+          '--card-bg': '#2b2930', '--card-bg-hover': '#36343b', '--slider-track': '#36343b',
+          '--text-color': '#e6e0e9', '--hero-text': '#d0bcff', '--btn-bg': '#d0bcff',
+          '--btn-text': '#381e72', '--btn-bg-hover': '#dfcfff', '--btn-secondary-bg': '#36343b',
+          '--btn-secondary-hover': '#413f46', '--ripple-color': 'rgba(20, 18, 24, 0.3)'
+        }
+      },
+      'light': {
+        h: 265, b: 96, s: 25,
+        vars: {
+          '--bg-color': '#fbf8fd', '--container-fill': '#ece5ee', '--container-fill-hover': '#f2edf4',
+          '--card-bg': '#ded5e1', '--card-bg-hover': '#d5cbd8', '--slider-track': '#d5cbd8',
+          '--text-color': '#1d1b20', '--hero-text': '#6750a4', '--btn-bg': '#6750a4',
+          '--btn-text': '#ffffff', '--btn-bg-hover': '#755eb1', '--btn-secondary-bg': '#ded5e1',
+          '--btn-secondary-hover': '#d5cbd8', '--ripple-color': 'rgba(255, 255, 255, 0.25)'
+        }
+      },
+      'discord': {
+        h: 235, b: 21, s: 7,
+        vars: {
+          '--bg-color': '#313338', '--container-fill': '#2b2d31', '--container-fill-hover': '#35373c',
+          '--card-bg': '#383a40', '--card-bg-hover': '#404249', '--slider-track': '#404249',
+          '--text-color': '#f2f3f5', '--hero-text': '#949cf7', '--btn-bg': '#5865f2',
+          '--btn-text': '#ffffff', '--btn-bg-hover': '#4752c4', '--btn-secondary-bg': '#404249',
+          '--btn-secondary-hover': '#4a4d55', '--ripple-color': 'rgba(255, 255, 255, 0.18)'
+        }
+      },
+      'light-purple-vibrant': {
+        h: 260, b: 66, s: 85,
+        vars: {
+          '--bg-color': '#8d5ef2', '--container-fill': '#d8ceed', '--container-fill-hover': '#e3d9f4',
+          '--card-bg': '#c8bddd', '--card-bg-hover': '#bfb2d8', '--slider-track': '#b8abd0',
+          '--text-color': '#211f24', '--hero-text': '#ffffff', '--btn-bg': '#ffffff',
+          '--btn-text': '#211f24', '--btn-bg-hover': '#f5effe', '--btn-secondary-bg': '#c4b8dc',
+          '--btn-secondary-hover': '#baaecd', '--ripple-color': 'rgba(33, 31, 36, 0.24)'
+        }
+      }
+    };
+
+    function applyPreset(key) {
+      const config = presets[key];
+      if (!config) return;
+
+      themeState.preset = key;
+      themeState.h = config.h;
+      themeState.b = config.b;
+      themeState.s = config.s;
+
+      hueSlider.value = config.h;
+      brightnessSlider.value = config.b;
+      satSlider.value = config.s;
+      [hueSlider, brightnessSlider, satSlider].forEach(syncSlider);
+      syncLabels(config.h, config.b, config.s);
+
+      Object.entries(config.vars).forEach(([name, value]) => document.body.style.setProperty(name, value));
+      updateIconTint();
+    }
+
+    themeCards.forEach((card) => {
+      card.addEventListener('click', () => {
+        themeCards.forEach((c) => c.classList.remove('active'));
+        card.classList.add('active');
+        applyPreset(card.getAttribute('data-preset'));
+      });
+    });
+
+
+    const SHAPE_PATHS = ["M112.67 465.782C116.243 462.642 118.029 461.072 119.671 459.802C143.425 441.402 176.575 441.402 200.329 459.802C201.971 461.072 203.757 462.642 207.33 465.782C208.526 466.842 209.124 467.362 209.724 467.872C218.136 474.922 228.171 479.772 238.92 481.962C239.688 482.122 240.471 482.262 242.038 482.542C246.719 483.382 249.059 483.792 251.075 484.292C280.234 491.432 300.902 517.412 301.364 547.492C301.396 549.572 301.283 551.952 301.057 556.712C300.982 558.312 300.944 559.102 300.925 559.892C300.665 570.882 303.143 581.762 308.136 591.552C308.493 592.252 308.872 592.952 309.63 594.362C311.894 598.552 313.026 600.642 313.897 602.532C326.503 629.832 319.127 662.232 295.949 681.342C294.347 682.672 292.42 684.062 288.566 686.852C287.276 687.792 286.63 688.252 286.007 688.732C277.27 695.382 270.326 704.112 265.803 714.122C265.48 714.842 265.169 715.572 264.547 717.042C262.69 721.432 261.761 723.622 260.832 725.482C247.393 752.382 217.526 766.802 188.162 760.562C186.132 760.122 183.842 759.482 179.262 758.202C177.728 757.782 176.962 757.562 176.203 757.372C165.569 754.672 154.431 754.672 143.797 757.372C143.038 757.562 142.272 757.782 140.738 758.202C136.158 759.482 133.868 760.122 131.838 760.562C102.474 766.802 72.6071 752.382 59.168 725.482C58.2388 723.622 57.3102 721.432 55.453 717.042C54.8311 715.572 54.5202 714.842 54.1975 714.122C49.6741 704.112 42.7297 695.382 33.993 688.732C33.3696 688.252 32.7244 687.792 31.434 686.852C27.5801 684.062 25.6532 682.672 24.0507 681.342C0.872993 662.232 -6.50347 629.832 6.10269 602.532C6.97419 600.642 8.10619 598.552 10.3703 594.362C11.1283 592.952 11.5074 592.252 11.8636 591.552C16.8568 581.762 19.3353 570.882 19.0745 559.892C19.0559 559.102 19.0182 558.312 18.9426 556.712C18.7168 551.952 18.6039 549.572 18.6359 547.492C19.0982 517.412 39.7665 491.432 68.9252 484.292C70.9411 483.792 73.2814 483.382 77.9618 482.542C79.5289 482.262 80.3125 482.122 81.0795 481.962C91.829 479.772 101.864 474.922 110.276 467.872C110.876 467.362 111.474 466.842 112.67 465.782Z", "M1468.26 13.3825C1469.99 11.9525 1470.85 11.2425 1471.64 10.6425C1490.19 -3.5475 1515.81 -3.5475 1534.36 10.6425C1535.15 11.2425 1536.01 11.9525 1537.74 13.3825C1538.51 14.0125 1538.89 14.3325 1539.27 14.6425C1548 21.5825 1558.71 25.5227 1569.82 25.8727C1570.3 25.8827 1570.8 25.8925 1571.79 25.9025C1574.02 25.9325 1575.14 25.9426 1576.12 25.9926C1599.36 27.1826 1618.98 43.8226 1624.17 66.7326C1624.39 67.7026 1624.6 68.8126 1625.02 71.0226C1625.2 72.0126 1625.29 72.5026 1625.39 72.9826C1627.66 83.9826 1633.36 93.9425 1641.64 101.423C1642.01 101.753 1642.38 102.083 1643.14 102.733C1644.83 104.203 1645.67 104.943 1646.39 105.623C1663.44 121.613 1667.89 147.113 1657.29 168.033C1656.84 168.923 1656.29 169.903 1655.2 171.863C1654.71 172.743 1654.47 173.183 1654.24 173.613C1648.99 183.503 1647.01 194.843 1648.6 205.953C1648.67 206.443 1648.75 206.933 1648.91 207.923C1649.27 210.153 1649.45 211.263 1649.57 212.253C1652.45 235.573 1639.64 257.992 1618.21 267.132C1617.3 267.522 1616.25 267.923 1614.17 268.723C1613.24 269.073 1612.77 269.253 1612.32 269.433C1602 273.603 1593.28 281.003 1587.42 290.543C1587.17 290.963 1586.92 291.393 1586.41 292.253C1585.27 294.193 1584.7 295.163 1584.16 296.003C1571.53 315.733 1547.46 324.593 1525.22 317.673C1524.28 317.383 1523.22 317.013 1521.12 316.263C1520.18 315.933 1519.71 315.763 1519.25 315.613C1508.7 312.103 1497.3 312.103 1486.75 315.613C1486.29 315.763 1485.82 315.933 1484.88 316.263C1482.78 317.013 1481.72 317.383 1480.78 317.673C1458.54 324.593 1434.47 315.733 1421.84 296.003C1421.3 295.163 1420.73 294.193 1419.59 292.253C1419.08 291.393 1418.83 290.963 1418.58 290.543C1412.72 281.003 1404 273.603 1393.68 269.433C1393.23 269.253 1392.76 269.073 1391.83 268.723C1389.75 267.923 1388.7 267.522 1387.79 267.132C1366.36 257.992 1353.55 235.573 1356.43 212.253C1356.55 211.263 1356.73 210.153 1357.09 207.923C1357.25 206.933 1357.33 206.443 1357.4 205.953C1358.99 194.843 1357.01 183.503 1351.76 173.613C1351.53 173.183 1351.29 172.743 1350.8 171.863C1349.71 169.903 1349.16 168.923 1348.71 168.033C1338.11 147.113 1342.56 121.613 1359.61 105.623C1360.33 104.943 1361.17 104.203 1362.86 102.733C1363.62 102.083 1363.99 101.753 1364.36 101.423C1372.64 93.9425 1378.34 83.9826 1380.61 72.9826C1380.71 72.5026 1380.8 72.0126 1380.98 71.0226C1381.4 68.8126 1381.61 67.7026 1381.83 66.7326C1387.02 43.8226 1406.64 27.1826 1429.88 25.9926C1430.86 25.9426 1431.98 25.9325 1434.21 25.9025C1435.2 25.8925 1435.7 25.8827 1436.18 25.8727C1447.29 25.5227 1458 21.5825 1466.73 14.6425C1467.11 14.3325 1467.49 14.0125 1468.26 13.3825Z", "M1950.7 453.851C1951.24 453.321 1951.51 453.051 1951.74 452.831C1964.25 441.061 1983.75 441.061 1996.26 452.831C1996.49 453.051 1996.76 453.321 1997.3 453.851C1997.63 454.161 1997.79 454.321 1997.94 454.471C2005.95 462.111 2017.28 465.141 2028.03 462.531C2028.24 462.481 2028.46 462.421 2028.9 462.311C2029.63 462.121 2030 462.031 2030.31 461.951C2047.02 458.011 2063.92 467.761 2068.86 484.211C2068.95 484.521 2069.05 484.881 2069.26 485.611C2069.38 486.051 2069.44 486.271 2069.5 486.481C2072.61 497.091 2080.91 505.391 2091.52 508.501C2091.73 508.561 2091.95 508.621 2092.39 508.741C2093.12 508.951 2093.48 509.051 2093.79 509.141C2110.24 514.081 2119.99 530.981 2116.05 547.691C2115.97 548.001 2115.88 548.371 2115.69 549.101C2115.58 549.541 2115.52 549.761 2115.47 549.971C2112.86 560.721 2115.89 572.051 2123.53 580.061C2123.68 580.211 2123.84 580.371 2124.15 580.701C2124.68 581.241 2124.95 581.511 2125.17 581.741C2136.94 594.251 2136.94 613.751 2125.17 626.261C2124.95 626.491 2124.68 626.761 2124.15 627.301C2123.84 627.631 2123.68 627.791 2123.53 627.941C2115.89 635.951 2112.86 647.281 2115.47 658.031C2115.52 658.241 2115.58 658.461 2115.69 658.901C2115.88 659.631 2115.97 660.001 2116.05 660.311C2119.99 677.021 2110.24 693.921 2093.79 698.861C2093.48 698.951 2093.12 699.051 2092.39 699.261C2091.95 699.381 2091.73 699.441 2091.52 699.501C2080.91 702.611 2072.61 710.911 2069.5 721.521C2069.44 721.731 2069.38 721.951 2069.26 722.391C2069.05 723.121 2068.95 723.481 2068.86 723.791C2063.92 740.241 2047.02 749.991 2030.31 746.051C2030 745.971 2029.63 745.881 2028.9 745.691C2028.46 745.581 2028.24 745.521 2028.03 745.471C2017.28 742.861 2005.95 745.891 1997.94 753.531C1997.79 753.681 1997.63 753.841 1997.3 754.151C1996.76 754.681 1996.49 754.951 1996.26 755.171C1983.75 766.941 1964.25 766.941 1951.74 755.171C1951.51 754.951 1951.24 754.681 1950.7 754.151C1950.37 753.841 1950.21 753.681 1950.06 753.531C1942.05 745.891 1930.72 742.861 1919.97 745.471C1919.76 745.521 1919.54 745.581 1919.1 745.691C1918.37 745.881 1918 745.971 1917.69 746.051C1900.98 749.991 1884.08 740.241 1879.14 723.791C1879.05 723.481 1878.95 723.121 1878.74 722.391C1878.62 721.951 1878.56 721.731 1878.5 721.521C1875.39 710.911 1867.09 702.611 1856.48 699.501C1856.27 699.441 1856.05 699.381 1855.61 699.261C1854.88 699.051 1854.52 698.951 1854.21 698.861C1837.76 693.921 1828.01 677.021 1831.95 660.311C1832.03 660.001 1832.12 659.631 1832.31 658.901C1832.42 658.461 1832.48 658.241 1832.53 658.031C1835.14 647.281 1832.11 635.951 1824.47 627.941C1824.32 627.791 1824.16 627.631 1823.85 627.301C1823.32 626.761 1823.05 626.491 1822.83 626.261C1811.06 613.751 1811.06 594.251 1822.83 581.741C1823.05 581.511 1823.32 581.241 1823.85 580.701C1824.16 580.371 1824.32 580.211 1824.47 580.061C1832.11 572.051 1835.14 560.721 1832.53 549.971C1832.48 549.761 1832.42 549.541 1832.31 549.101C1832.12 548.371 1832.03 548.001 1831.95 547.691C1828.01 530.981 1837.76 514.081 1854.21 509.141C1854.52 509.051 1854.88 508.951 1855.61 508.741C1856.05 508.621 1856.27 508.561 1856.48 508.501C1867.09 505.391 1875.39 497.091 1878.5 486.481C1878.56 486.271 1878.62 486.051 1878.74 485.611C1878.95 484.881 1879.05 484.521 1879.14 484.211C1884.08 467.761 1900.98 458.011 1917.69 461.951C1918 462.031 1918.37 462.121 1919.1 462.311C1919.54 462.421 1919.76 462.481 1919.97 462.531C1930.72 465.141 1942.05 462.111 1950.06 454.471C1950.21 454.321 1950.37 454.161 1950.7 453.851Z", "M1105.73 470.213C1165.87 444.093 1226.91 505.133 1200.79 565.273L1196.47 575.213C1188.5 593.583 1188.5 614.423 1196.47 632.793L1200.79 642.733C1226.91 702.873 1165.87 763.913 1105.73 737.793L1095.79 733.473C1077.42 725.503 1056.58 725.503 1038.21 733.473L1028.27 737.793C968.128 763.913 907.086 702.873 933.207 642.733L937.526 632.793C945.501 614.423 945.501 593.583 937.526 575.213L933.207 565.273C907.086 505.133 968.128 444.093 1028.27 470.213L1038.21 474.533C1056.58 482.503 1077.42 482.503 1095.79 474.533L1105.73 470.213Z"];
+    const SHAPE_K = 360;
+    const SHAPE_HOLD_MS = 2000;
+    const SHAPE_MORPH_MS = 1250;
+    const shapePathEl = document.getElementById('shapePath');
+    const tintMatrix = document.getElementById('tintMatrix');
+    const shapeProfiles = [];
+    let shapeFrom = 0;
+    let shapeTo = 0;
+    let sizeFrom = 1;
+    let sizeTo = 1;
+    const shapeHistory = [0];
+    let shapeStart = 0;
+    let shapeLoopOn = false;
+
+    function buildProfiles() {
+      const ns = 'http://www.w3.org/2000/svg';
+      const probe = document.createElementNS(ns, 'svg');
+      probe.setAttribute('width', '0');
+      probe.setAttribute('height', '0');
+      probe.style.cssText = 'position:absolute;visibility:hidden';
+      document.body.appendChild(probe);
+
+      SHAPE_PATHS.forEach((d) => {
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', d);
+        probe.appendChild(path);
+
+        const box = path.getBBox();
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        const total = path.getTotalLength();
+        const samples = 1440;
+        const angles = [];
+        const radii = [];
+        let prev = null;
+        let acc = 0;
+
+        for (let i = 0; i < samples; i++) {
+          const pt = path.getPointAtLength((total * i) / samples);
+          const a = Math.atan2(pt.y - cy, pt.x - cx);
+          if (prev === null) {
+            acc = a;
+          } else {
+            let delta = a - prev;
+            while (delta > Math.PI) delta -= Math.PI * 2;
+            while (delta < -Math.PI) delta += Math.PI * 2;
+            acc += delta;
+          }
+          prev = a;
+          angles.push(acc);
+          radii.push(Math.hypot(pt.x - cx, pt.y - cy));
+        }
+
+        if (angles[angles.length - 1] < angles[0]) {
+          angles.reverse();
+          radii.reverse();
+        }
+
+        const start = angles[0];
+        const span = Math.PI * 2;
+        const profile = new Float32Array(SHAPE_K);
+        let maxR = 0;
+        let j = 0;
+
+        for (let k = 0; k < SHAPE_K; k++) {
+          let theta = -Math.PI + (span * k) / SHAPE_K;
+          theta = start + (((theta - start) % span) + span) % span;
+          while (j < angles.length - 1 && angles[j + 1] <= theta) j++;
+          if (theta < angles[j]) j = 0;
+          const a0 = angles[j];
+          const r0 = radii[j];
+          const a1 = j < angles.length - 1 ? angles[j + 1] : start + span;
+          const r1 = j < angles.length - 1 ? radii[j + 1] : radii[0];
+          const f = a1 > a0 ? (theta - a0) / (a1 - a0) : 0;
+          profile[k] = r0 + (r1 - r0) * Math.min(1, Math.max(0, f));
+          if (profile[k] > maxR) maxR = profile[k];
+        }
+
+        const scale = 160 / maxR;
+        for (let k = 0; k < SHAPE_K; k++) profile[k] *= scale;
+        shapeProfiles.push(profile);
+      });
+
+      probe.remove();
+    }
+
+    function drawShape(rA, rB, t, sA, sB) {
+      const size = sA + (sB - sA) * t;
+      const pts = [];
+      for (let k = 0; k < SHAPE_K; k++) {
+        const theta = -Math.PI + (Math.PI * 2 * k) / SHAPE_K;
+        const r = (rA[k] + (rB[k] - rA[k]) * t) * size;
+        pts.push([Math.cos(theta) * r, Math.sin(theta) * r]);
+      }
+      let d = `M${((pts[0][0] + pts[SHAPE_K - 1][0]) / 2).toFixed(2)} ${((pts[0][1] + pts[SHAPE_K - 1][1]) / 2).toFixed(2)}`;
+      for (let k = 0; k < SHAPE_K; k++) {
+        const p = pts[k];
+        const n = pts[(k + 1) % SHAPE_K];
+        d += `Q${p[0].toFixed(2)} ${p[1].toFixed(2)} ${((p[0] + n[0]) / 2).toFixed(2)} ${((n[1] + p[1]) / 2).toFixed(2)}`;
+      }
+      shapePathEl.setAttribute('d', d + 'Z');
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function pickNextShape() {
+      const recent = shapeHistory.slice(-2);
+      const options = shapeProfiles.map((_, i) => i).filter((i) => !recent.includes(i));
+      shapeTo = options[Math.floor(Math.random() * options.length)];
+      shapeHistory.push(shapeTo);
+      let size = sizeFrom;
+      while (Math.abs(size - sizeFrom) < 0.09) size = 0.86 + Math.random() * 0.18;
+      sizeTo = size;
+    }
+
+    function shapeFrame(now) {
+      if (!shapeLoopOn) return;
+      if (current !== 1 || document.hidden) {
+        shapeLoopOn = false;
+        return;
+      }
+
+      const elapsed = now - shapeStart;
+      if (elapsed >= SHAPE_HOLD_MS) {
+        shapeFrom = shapeTo;
+        sizeFrom = sizeTo;
+        pickNextShape();
+        shapeStart = now;
+      }
+
+      const t = Math.min(1, (now - shapeStart) / SHAPE_MORPH_MS);
+      drawShape(shapeProfiles[shapeFrom], shapeProfiles[shapeTo], easeInOutCubic(t), sizeFrom, sizeTo);
+      requestAnimationFrame(shapeFrame);
+    }
+
+    function startShapeLoop(delay = 600) {
+      if (shapeLoopOn || !shapeProfiles.length) return;
+      shapeLoopOn = true;
+      shapeStart = performance.now() - SHAPE_HOLD_MS + delay;
+      requestAnimationFrame(shapeFrame);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && current === 1) startShapeLoop();
+    });
+
+    function hslToRgb(h, s, l) {
+      s /= 100;
+      l /= 100;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+      const m = l - c / 2;
+      let r = 0, g = 0, b = 0;
+      if (h < 60) { r = c; g = x; }
+      else if (h < 120) { r = x; g = c; }
+      else if (h < 180) { g = c; b = x; }
+      else if (h < 240) { g = x; b = c; }
+      else if (h < 300) { r = x; b = c; }
+      else { r = c; b = x; }
+      return [r + m, g + m, b + m];
+    }
+
+    function updateIconTint() {
+      const dark = themeState.b < 50;
+      const rgb = dark ? hslToRgb(themeState.h, 70, 84) : hslToRgb(themeState.h, 30, 22);
+      const f = (n) => n.toFixed(3);
+      tintMatrix.setAttribute('values', `0 0 0 0 ${f(rgb[0])}  0 0 0 0 ${f(rgb[1])}  0 0 0 0 ${f(rgb[2])}  0 0 0 1 0`);
+    }
+
+    buildProfiles();
+    drawShape(shapeProfiles[0], shapeProfiles[0], 0, 1, 1);
+    updateIconTint();
+
+    let introStarted = false;
+
+    function startIntro() {
+      if (introStarted) return;
+      introStarted = true;
+      document.body.classList.add('intro');
+      startShapeLoop(2600);
+      setTimeout(() => document.body.classList.add('intro-done'), 4200);
+    }
+
+    function scheduleIntro() {
+      if (document.visibilityState === 'visible') {
+        setTimeout(startIntro, 250);
+        return;
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') setTimeout(startIntro, 250);
+      });
+      setTimeout(startIntro, 8000);
+    }
+
+    Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 1200))]).then(scheduleIntro, scheduleIntro);
+
+    applyPreset('light-purple-vibrant');
+
+    const SWITCH_HTML = '<span class="sw-thumb"><svg viewBox="0 0 24 24"><path class="sw-icon"/></svg></span>';
+    document.querySelectorAll('.sw').forEach((sw) => { sw.innerHTML = SWITCH_HTML; });
+
+    const toggles = {};
+    let bgUrl = '';
+
+    const bgPickBtn = document.getElementById('bgPickBtn');
+    const bgSub = document.getElementById('bgSub');
+
+    function bgDisplayName(url) {
+      const raw = url.includes('#') ? decodeURIComponent(url.split('#').pop()) : url;
+      return raw.split(/[\\/]/).pop().split('?')[0];
+    }
+
+    function onToggle(key, on) {
+      toggles[key] = on;
+      bridge.set(key, on ? '1' : '0');
+
+      if (key === 'riff_no_hand_cursor') document.body.classList.toggle('no-hand-cursor', on);
+      if (key === 'riff_custom_bg_enabled') bgPickBtn.classList.toggle('is-hidden', !on);
+    }
+
+    document.querySelectorAll('.sw[data-key]').forEach((sw) => {
+      toggles[sw.dataset.key] = sw.classList.contains('on');
+      sw.addEventListener('click', () => {
+        const on = sw.classList.toggle('on');
+        sw.setAttribute('aria-checked', on ? 'true' : 'false');
+        onToggle(sw.dataset.key, on);
+      });
+    });
+
+    bgPickBtn.addEventListener('click', async () => {
+      const picked = await bridge.pickMedia();
+      if (!picked) return;
+      bgUrl = picked;
+      bridge.set('riff_welcome_bg', bgUrl);
+      bgSub.textContent = bgDisplayName(bgUrl);
+    });
+
+    const discordSwitch = document.getElementById('discordSwitch');
+    const discordSub = document.getElementById('discordSub');
+    const DISCORD_HINT = discordSub.textContent;
+    let discordOn = false;
+
+    async function refreshDiscord() {
+      if (!discordOn) {
+        discordSub.textContent = DISCORD_HINT;
+        return;
+      }
+      const connected = await bridge.discordConnected();
+      discordSub.textContent = connected ? 'Connected to Discord' : 'Waiting for Discord to start';
+    }
+
+    discordSwitch.addEventListener('click', () => {
+      discordOn = discordSwitch.classList.toggle('on');
+      discordSwitch.setAttribute('aria-checked', discordOn ? 'true' : 'false');
+      bridge.discordSetEnabled(discordOn);
+      bridge.set('riff_discord_rpc', discordOn ? '1' : '0');
+      refreshDiscord();
+      if (discordOn) setTimeout(refreshDiscord, 1800);
+    });
+
+
+    const launcherSwitch = document.getElementById('launcherSwitch');
+    const launcherSub = document.getElementById('launcherSub');
+    const launcherTitle = document.getElementById('launcherTitle');
+    const launcherRowSub = document.getElementById('launcherRowSub');
+    let launcherOn = true;
+    let launcherAvailable = true;
+
+    function setLauncherUnavailable(text) {
+      launcherAvailable = false;
+      launcherOn = false;
+      launcherSwitch.classList.remove('on');
+      launcherSwitch.classList.add('disabled');
+      launcherSwitch.setAttribute('aria-checked', 'false');
+      launcherRowSub.textContent = text;
+    }
+
+    async function initLauncher() {
+      const info = await bridge.launcherInfo();
+      const navPlatform = (navigator.platform || '').toLowerCase();
+      const platform = info ? info.platform : navPlatform.includes('win') ? 'win32' : navPlatform.includes('mac') ? 'darwin' : 'linux';
+
+      if (platform === 'darwin') {
+        // Apps live in /Applications on macOS; there is no launcher to install.
+        launcherTitle.textContent = 'Applications folder';
+        launcherSub.textContent = 'On macOS, keep Riff in the Applications folder to open it from Launchpad or Spotlight.';
+        setLauncherUnavailable('Drag Riff into Applications to keep it in Launchpad');
+        return;
+      }
+
+      if (platform === 'win32') {
+        launcherTitle.textContent = 'Start menu shortcut';
+        launcherSub.textContent = 'Pin Riff to the Start menu so you can open it by searching.';
+        launcherRowSub.textContent = 'Adds Riff with its icon to the Start menu';
+      } else {
+        launcherTitle.textContent = 'Applications menu entry';
+        launcherSub.textContent = 'Add Riff to your applications menu with its icon and description.';
+        launcherRowSub.textContent = 'Creates a launcher that starts the AppImage';
+      }
+
+      if (!info) return;
+      if (info.installed) setLauncherUnavailable('Riff is already in your launcher');
+      else if (!info.canInstall) setLauncherUnavailable(info.reason || 'Not available here');
+    }
+
+    launcherSwitch.addEventListener('click', () => {
+      if (!launcherAvailable) return;
+      launcherOn = launcherSwitch.classList.toggle('on');
+      launcherSwitch.setAttribute('aria-checked', launcherOn ? 'true' : 'false');
+    });
+
+    initLauncher();
+
+    const spotifyUrl = document.getElementById('spotifyUrl');
+    const spotifyImportBtn = document.getElementById('spotifyImportBtn');
+    const spotifyStatus = document.getElementById('spotifyStatus');
+    let pendingImport = null;
+
+    function isSpotifyPlaylist(url) {
+      return /open\.spotify\.com\/(intl-[a-z]+\/)?playlist\/[A-Za-z0-9]+/.test(url) || /^spotify:playlist:[A-Za-z0-9]+$/.test(url);
+    }
+
+    async function runSpotifyLookup() {
+      const url = spotifyUrl.value.trim();
+      pendingImport = null;
+
+      if (!url) {
+        spotifyStatus.textContent = '';
+        return;
+      }
+      if (!isSpotifyPlaylist(url)) {
+        spotifyStatus.textContent = 'That does not look like a Spotify playlist link';
+        return;
+      }
+
+      spotifyImportBtn.disabled = true;
+      spotifyStatus.textContent = 'Looking up the playlist...';
+
+      const data = await bridge.spotifyLookup(url);
+      spotifyImportBtn.disabled = false;
+
+      if (!data.success || !Array.isArray(data.tracks) || data.tracks.length === 0) {
+        spotifyStatus.textContent = data.error || 'No tracks found in this playlist';
+        return;
+      }
+
+      pendingImport = { url, name: data.name, tracks: data.tracks };
+      spotifyStatus.textContent = `Found ${data.tracks.length} tracks in "${data.name}". They will be added when you finish.`;
+    }
+
+    spotifyImportBtn.addEventListener('click', runSpotifyLookup);
+    spotifyUrl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSpotifyLookup();
+    });
+
+    const finishBtn = document.getElementById('finishBtn');
+    const finishBtnText = document.getElementById('finishBtnText');
+    const finishBtnIcon = document.getElementById('finishBtnIcon');
+    let finished = false;
+
+    finishBtn.addEventListener('click', async () => {
+      if (finished) return;
+      finished = true;
+
+      if (!pendingImport && spotifyUrl.value.trim() && isSpotifyPlaylist(spotifyUrl.value.trim())) {
+        await runSpotifyLookup();
+      }
+
+      finishBtnText.textContent = 'All Set!';
+      finishBtnIcon.innerHTML = '<path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>';
+
+      const detail = {
+        theme: { ...themeState },
+        toggles: { ...toggles },
+        background: bgUrl || null,
+        discord: discordOn,
+        launcher: launcherOn && launcherAvailable,
+        spotify: pendingImport
+      };
+
+      bridge.set('riff_welcome_theme', JSON.stringify(detail.theme));
+      bridge.set('riff_welcome_done', '1');
+
+      setTimeout(() => {
+        viewport.classList.add('closing');
+        window.dispatchEvent(new CustomEvent('riff:welcome-done', { detail }));
+        setTimeout(() => bridge.finish(detail), 500);
+      }, 700);
+    });
+
+    document.getElementById('winControls').classList.toggle('no-api', !(bridge.api && bridge.api.closeWindow));
+    // macOS shows native traffic lights instead.
+    if (bridge.api && bridge.api.platform === 'darwin') document.getElementById('winControls').style.display = 'none';
+    document.getElementById('winMinBtn').addEventListener('click', () => {
+      if (bridge.api && bridge.api.minimizeWindow) bridge.api.minimizeWindow();
+    });
+    document.getElementById('winCloseBtn').addEventListener('click', () => {
+      if (bridge.api && bridge.api.closeWindow) bridge.api.closeWindow();
+    });
+
+    document.getElementById('skipBtn').addEventListener('click', () => {
+      if (finished) return;
+      finished = true;
+      viewport.classList.add('closing');
+      setTimeout(() => bridge.finish({ skipped: true }), 450);
+    });
+
+    const TRANSLATION_LANGUAGES = [
+      { code: 'af', name: 'Afrikaans', flag: '🇿🇦' },
+      { code: 'sq', name: 'Albanian', flag: '🇦🇱' },
+      { code: 'am', name: 'Amharic', flag: '🇪🇹' },
+      { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+      { code: 'hy', name: 'Armenian', flag: '🇦🇲' },
+      { code: 'as', name: 'Assamese', flag: '🇮🇳' },
+      { code: 'ay', name: 'Aymara', flag: '🇧🇴' },
+      { code: 'az', name: 'Azerbaijani', flag: '🇦🇿' },
+      { code: 'bm', name: 'Bambara', flag: '🇲🇱' },
+      { code: 'eu', name: 'Basque', flag: '🇪🇸' },
+      { code: 'be', name: 'Belarusian', flag: '🇧🇾' },
+      { code: 'bn', name: 'Bengali', flag: '🇧🇩' },
+      { code: 'bho', name: 'Bhojpuri', flag: '🇮🇳' },
+      { code: 'bs', name: 'Bosnian', flag: '🇧🇦' },
+      { code: 'bg', name: 'Bulgarian', flag: '🇧🇬' },
+      { code: 'ca', name: 'Catalan', flag: '🇪🇸' },
+      { code: 'ceb', name: 'Cebuano', flag: '🇵🇭' },
+      { code: 'ny', name: 'Chichewa', flag: '🇲🇼' },
+      { code: 'zh-CN', name: 'Chinese (Simplified)', flag: '🇨🇳' },
+      { code: 'zh-TW', name: 'Chinese (Traditional)', flag: '🇹🇼' },
+      { code: 'co', name: 'Corsican', flag: '🇫🇷' },
+      { code: 'hr', name: 'Croatian', flag: '🇭🇷' },
+      { code: 'cs', name: 'Czech', flag: '🇨🇿' },
+      { code: 'da', name: 'Danish', flag: '🇩🇰' },
+      { code: 'dv', name: 'Dhivehi', flag: '🇲🇻' },
+      { code: 'doi', name: 'Dogri', flag: '🇮🇳' },
+      { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
+      { code: 'en', name: 'English', flag: '🇺🇸' },
+      { code: 'eo', name: 'Esperanto', flag: '🌐' },
+      { code: 'et', name: 'Estonian', flag: '🇪🇪' },
+      { code: 'ee', name: 'Ewe', flag: '🇬🇭' },
+      { code: 'tl', name: 'Filipino', flag: '🇵🇭' },
+      { code: 'fi', name: 'Finnish', flag: '🇫🇮' },
+      { code: 'fr', name: 'French', flag: '🇫🇷' },
+      { code: 'fy', name: 'Frisian', flag: '🇳🇱' },
+      { code: 'gl', name: 'Galician', flag: '🇪🇸' },
+      { code: 'ka', name: 'Georgian', flag: '🇬🇪' },
+      { code: 'de', name: 'German', flag: '🇩🇪' },
+      { code: 'el', name: 'Greek', flag: '🇬🇷' },
+      { code: 'gn', name: 'Guarani', flag: '🇵🇾' },
+      { code: 'gu', name: 'Gujarati', flag: '🇮🇳' },
+      { code: 'ht', name: 'Haitian Creole', flag: '🇭🇹' },
+      { code: 'ha', name: 'Hausa', flag: '🇳🇬' },
+      { code: 'haw', name: 'Hawaiian', flag: '🇺🇸' },
+      { code: 'iw', name: 'Hebrew', flag: '🇮🇱' },
+      { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+      { code: 'hmn', name: 'Hmong', flag: '🇱🇦' },
+      { code: 'hu', name: 'Hungarian', flag: '🇭🇺' },
+      { code: 'is', name: 'Icelandic', flag: '🇮🇸' },
+      { code: 'ig', name: 'Igbo', flag: '🇳🇬' },
+      { code: 'ilo', name: 'Ilocano', flag: '🇵🇭' },
+      { code: 'id', name: 'Indonesian', flag: '🇮🇩' },
+      { code: 'ga', name: 'Irish', flag: '🇮🇪' },
+      { code: 'it', name: 'Italian', flag: '🇮🇹' },
+      { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+      { code: 'jw', name: 'Javanese', flag: '🇮🇩' },
+      { code: 'kn', name: 'Kannada', flag: '🇮🇳' },
+      { code: 'kk', name: 'Kazakh', flag: '🇰🇿' },
+      { code: 'km', name: 'Khmer', flag: '🇰🇭' },
+      { code: 'rw', name: 'Kinyarwanda', flag: '🇷🇼' },
+      { code: 'gom', name: 'Konkani', flag: '🇮🇳' },
+      { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+      { code: 'kri', name: 'Krio', flag: '🇸🇱' },
+      { code: 'ku', name: 'Kurdish (Kurmanji)', flag: '🇮🇶' },
+      { code: 'ckb', name: 'Kurdish (Sorani)', flag: '🇮🇶' },
+      { code: 'ky', name: 'Kyrgyz', flag: '🇰🇬' },
+      { code: 'lo', name: 'Lao', flag: '🇱🇦' },
+      { code: 'la', name: 'Latin', flag: '🇻🇦' },
+      { code: 'lv', name: 'Latvian', flag: '🇱🇻' },
+      { code: 'ln', name: 'Lingala', flag: '🇨🇩' },
+      { code: 'lt', name: 'Lithuanian', flag: '🇱🇹' },
+      { code: 'lg', name: 'Luganda', flag: '🇺🇬' },
+      { code: 'lb', name: 'Luxembourgish', flag: '🇱🇺' },
+      { code: 'mk', name: 'Macedonian', flag: '🇲🇰' },
+      { code: 'mai', name: 'Maithili', flag: '🇮🇳' },
+      { code: 'mg', name: 'Malagasy', flag: '🇲🇬' },
+      { code: 'ms', name: 'Malay', flag: '🇲🇾' },
+      { code: 'ml', name: 'Malayalam', flag: '🇮🇳' },
+      { code: 'mt', name: 'Maltese', flag: '🇲🇹' },
+      { code: 'mi', name: 'Maori', flag: '🇳🇿' },
+      { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
+      { code: 'mni-Mtei', name: 'Meiteilon (Manipuri)', flag: '🇮🇳' },
+      { code: 'lus', name: 'Mizo', flag: '🇮🇳' },
+      { code: 'mn', name: 'Mongolian', flag: '🇲🇳' },
+      { code: 'my', name: 'Myanmar (Burmese)', flag: '🇲🇲' },
+      { code: 'ne', name: 'Nepali', flag: '🇳🇵' },
+      { code: 'no', name: 'Norwegian', flag: '🇳🇴' },
+      { code: 'or', name: 'Odia (Oriya)', flag: '🇮🇳' },
+      { code: 'om', name: 'Oromo', flag: '🇪🇹' },
+      { code: 'ps', name: 'Pashto', flag: '🇦🇫' },
+      { code: 'fa', name: 'Persian', flag: '🇮🇷' },
+      { code: 'pl', name: 'Polish', flag: '🇵🇱' },
+      { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+      { code: 'pa', name: 'Punjabi', flag: '🇮🇳' },
+      { code: 'qu', name: 'Quechua', flag: '🇵🇪' },
+      { code: 'ro', name: 'Romanian', flag: '🇷🇴' },
+      { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+      { code: 'sm', name: 'Samoan', flag: '🇼🇸' },
+      { code: 'sa', name: 'Sanskrit', flag: '🇮🇳' },
+      { code: 'gd', name: 'Scots Gaelic', flag: '🇬🇧' },
+      { code: 'nso', name: 'Sepedi', flag: '🇿🇦' },
+      { code: 'sr', name: 'Serbian', flag: '🇷🇸' },
+      { code: 'st', name: 'Sesotho', flag: '🇱🇸' },
+      { code: 'sn', name: 'Shona', flag: '🇿🇼' },
+      { code: 'sd', name: 'Sindhi', flag: '🇵🇰' },
+      { code: 'si', name: 'Sinhala', flag: '🇱🇰' },
+      { code: 'sk', name: 'Slovak', flag: '🇸🇰' },
+      { code: 'sl', name: 'Slovenian', flag: '🇸🇮' },
+      { code: 'so', name: 'Somali', flag: '🇸🇴' },
+      { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+      { code: 'su', name: 'Sundanese', flag: '🇮🇩' },
+      { code: 'sw', name: 'Swahili', flag: '🇰🇪' },
+      { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
+      { code: 'tg', name: 'Tajik', flag: '🇹🇯' },
+      { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+      { code: 'tt', name: 'Tatar', flag: '🇷🇺' },
+      { code: 'te', name: 'Telugu', flag: '🇮🇳' },
+      { code: 'th', name: 'Thai', flag: '🇹🇭' },
+      { code: 'ti', name: 'Tigrinya', flag: '🇪🇷' },
+      { code: 'ts', name: 'Tsonga', flag: '🇿🇦' },
+      { code: 'tr', name: 'Turkish', flag: '🇹🇷' },
+      { code: 'tk', name: 'Turkmen', flag: '🇹🇲' },
+      { code: 'ak', name: 'Twi (Akan)', flag: '🇬🇭' },
+      { code: 'uk', name: 'Ukrainian', flag: '🇺🇦' },
+      { code: 'ur', name: 'Urdu', flag: '🇵🇰' },
+      { code: 'ug', name: 'Uyghur', flag: '🇨🇳' },
+      { code: 'uz', name: 'Uzbek', flag: '🇺🇿' },
+      { code: 'vi', name: 'Vietnamese', flag: '🇻🇳' },
+      { code: 'cy', name: 'Welsh', flag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿' },
+      { code: 'xh', name: 'Xhosa', flag: '🇿🇦' },
+      { code: 'yi', name: 'Yiddish', flag: '🇮🇱' },
+      { code: 'yo', name: 'Yoruba', flag: '🇳🇬' },
+      { code: 'zu', name: 'Zulu', flag: '🇿🇦' }
+    ];
+
+    async function translateWelcome(lang) {
+      bridge.set('riff_ui_lang', lang);
+      const found = TRANSLATION_LANGUAGES.find(l => l.code === lang);
+      const langBtnLabel = document.getElementById('langBtnLabel');
+      if (langBtnLabel) {
+        langBtnLabel.textContent = found ? `${found.flag} ${found.name} (${found.code})` : `🌐 ${lang}`;
+      }
+
+      const elements = document.querySelectorAll('[data-i18n]');
+      const attrElements = document.querySelectorAll('[data-i18n-attr]');
+
+      elements.forEach(el => {
+        if (!el._origText) el._origText = el.textContent.trim();
+      });
+      attrElements.forEach(el => {
+        const attr = el.getAttribute('data-i18n-attr') || 'placeholder';
+        if (!el._origAttrs) el._origAttrs = {};
+        if (!el._origAttrs[attr]) el._origAttrs[attr] = el.getAttribute(attr) || '';
+      });
+
+      if (lang === 'en') {
+        elements.forEach(el => {
+          if (el._origText) el.textContent = el._origText;
+        });
+        attrElements.forEach(el => {
+          const attr = el.getAttribute('data-i18n-attr') || 'placeholder';
+          if (el._origAttrs && el._origAttrs[attr]) el.setAttribute(attr, el._origAttrs[attr]);
+        });
+        return;
+      }
+
+      const texts = [];
+      elements.forEach(el => {
+        if (el._origText && !texts.includes(el._origText)) texts.push(el._origText);
+      });
+      attrElements.forEach(el => {
+        const attr = el.getAttribute('data-i18n-attr') || 'placeholder';
+        const val = el._origAttrs && el._origAttrs[attr];
+        if (val && !texts.includes(val)) texts.push(val);
+      });
+
+      try {
+        const port = await bridge.serverPort();
+        if (!port) return;
+        const token = (window.electronAPI && window.electronAPI.serverToken) || '';
+        const res = await fetch(`http://127.0.0.1:${port}/api/i18n-batch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Riff-Token': token
+          },
+          body: JSON.stringify({ target: lang, texts })
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.translations)) {
+          const map = {};
+          texts.forEach((orig, idx) => {
+            map[orig] = data.translations[idx] || orig;
+          });
+          elements.forEach(el => {
+            if (el._origText && map[el._origText]) {
+              el.textContent = map[el._origText];
+            }
+          });
+          attrElements.forEach(el => {
+            const attr = el.getAttribute('data-i18n-attr') || 'placeholder';
+            const val = el._origAttrs && el._origAttrs[attr];
+            if (val && map[val]) {
+              el.setAttribute(attr, map[val]);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Welcome i18n-batch failed:', e);
+      }
+    }
+
+    const langBtn = document.getElementById('langBtn');
+    const langMenu = document.getElementById('langMenu');
+    const langSearch = document.getElementById('langSearch');
+    const langList = document.getElementById('langList');
+
+    if (langBtn && langMenu && langList) {
+      const curLang = bridge.get('riff_ui_lang', 'en');
+      const foundCur = TRANSLATION_LANGUAGES.find(l => l.code === curLang);
+      const langBtnLabel = document.getElementById('langBtnLabel');
+      if (foundCur && langBtnLabel) {
+        langBtnLabel.textContent = `${foundCur.flag} ${foundCur.name} (${foundCur.code})`;
+      }
+
+      const frag = document.createDocumentFragment();
+      TRANSLATION_LANGUAGES.forEach(item => {
+        const opt = document.createElement('div');
+        opt.className = 'lang-option' + (item.code === curLang ? ' selected' : '');
+        opt.dataset.value = item.code;
+        opt.textContent = `${item.flag} ${item.name} (${item.code})`;
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          langList.querySelectorAll('.lang-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          langMenu.classList.add('is-hidden');
+          translateWelcome(item.code);
+        });
+        frag.appendChild(opt);
+      });
+      langList.appendChild(frag);
+
+      langBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !langMenu.classList.toggle('is-hidden');
+        if (isOpen && langSearch) {
+          langSearch.value = '';
+          langList.querySelectorAll('.lang-option').forEach(o => o.style.display = '');
+          setTimeout(() => langSearch.focus(), 50);
+        }
+      });
+
+      if (langSearch) {
+        langSearch.addEventListener('click', (e) => e.stopPropagation());
+        langSearch.addEventListener('input', (e) => {
+          const q = e.target.value.toLowerCase().trim();
+          langList.querySelectorAll('.lang-option').forEach(opt => {
+            const text = (opt.textContent || '').toLowerCase();
+            const code = (opt.dataset.value || '').toLowerCase();
+            opt.style.display = (!q || text.includes(q) || code.includes(q)) ? '' : 'none';
+          });
+        });
+        langSearch.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            langMenu.classList.add('is-hidden');
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const first = langList.querySelector('.lang-option:not([style*="display: none"])');
+            if (first) first.click();
+          }
+        });
+      }
+
+      document.addEventListener('click', () => {
+        langMenu.classList.add('is-hidden');
+      });
+
+      if (curLang && curLang !== 'en') {
+        translateWelcome(curLang);
+      }
+    }
+  </script>
+</body>
+</html>

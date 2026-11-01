@@ -1,0 +1,102 @@
+--- a/src/renderer/app.js	2026-10-26 08:34:03.200694654 +0000
++++ b/src/renderer/app.js	2026-10-26 08:34:03.239736739 +0000
+@@ -7141,7 +7141,20 @@
+     }
+ 
+     if (state.isShuffle) {
+-      const nextIdx = Math.floor(Math.random() * state.queue.length);
++      let nextIdx = -1;
++      if (shuffleProvider) {
++        try {
++          const pick = await shuffleProvider.fn({
++            queue: state.queue.slice(),
++            queueIndex: state.queueIndex,
++            context: state.currentTrackContext,
++            current: state.currentTrack
++          });
++          if (pick) nextIdx = state.queue.findIndex(t => isSameTrack(t, pick));
++        } catch (e) { reportPluginError(shuffleProvider.file, e); }
++        if (state.queue.length === 0) return;
++      }
++      if (nextIdx < 0) nextIdx = Math.floor(Math.random() * state.queue.length);
+       state.queueIndex = nextIdx;
+       recordPlayedIndex(nextIdx);
+       playTrack(state.queue[nextIdx]);
+@@ -14175,6 +14188,7 @@
+ 
+   const loadedPlugins = new Map();
+   const pluginListeners = [];
++  let shuffleProvider = null;
+   function emitPluginEvent(event, data) {
+     pluginListeners.filter((l) => l.event === event).forEach((l) => { try { l.cb(data); } catch (e) { reportPluginError(l.file, e); } });
+   }
+@@ -14207,7 +14221,60 @@
+       getTrack: () => state.currentTrack,
+       isPlaying: () => state.isPlaying,
+       audio: () => el.nativeAudio,
+-      query: (sel) => document.querySelector(sel)
++      query: (sel) => document.querySelector(sel),
++      sameTrack: (a, b) => isSameTrack(a, b),
++      shuffle: {
++        // fn({ queue, queueIndex, context, current }) -> track | Promise<track> | null.
++        // Returning null/undefined falls back to Riff's default random pick.
++        setProvider(fn) {
++          shuffleProvider = typeof fn === 'function' ? { fn, file: p.file } : null;
++          return () => { if (shuffleProvider && shuffleProvider.file === p.file) shuffleProvider = null; };
++        },
++        isOn: () => !!state.isShuffle
++      },
++      queue: {
++        get: () => state.queue.slice(),
++        getIndex: () => state.queueIndex,
++        getContext: () => state.currentTrackContext,
++        // Appends tracks that are not already queued; returns the ones actually added.
++        append(tracks) {
++          const added = [];
++          (Array.isArray(tracks) ? tracks : []).forEach((t) => {
++            if (!t || !t.title || (!t.id && !t.url)) return;
++            if (state.queue.some((q) => isSameTrack(q, t))) return;
++            state.queue.push(t);
++            added.push(t);
++          });
++          if (added.length) {
++            updateQueueBadge();
++            if (state.currentView === 'queue') renderQueueView();
++          }
++          return added;
++        }
++      },
++      library: {
++        favorites: () => (state.favorites || []).slice(),
++        history: () => (state.history || []).slice()
++      },
++      api: {
++        async search(q, opts) {
++          const o = opts || {};
++          const lim = Math.max(1, Math.min(parseInt(o.limit, 10) || 10, 30));
++          const url = `http://127.0.0.1:${state.serverPort}/api/search?q=${encodeURIComponent(q)}&platform=${o.platform || state.platform}&limit=${lim}`;
++          const r = await fetch(url, { signal: o.signal });
++          const d = await r.json();
++          return d && d.success && Array.isArray(d.tracks) ? d.tracks : [];
++        },
++        async vibe(body) {
++          const r = await fetch(`http://127.0.0.1:${state.serverPort}/api/vibe`, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify(body || {})
++          });
++          const d = await r.json();
++          return d && d.success && Array.isArray(d.tracks) ? d.tracks : [];
++        }
++      }
+     };
+   }
+   function runPlugin(p) {
+@@ -14223,6 +14290,7 @@
+     const entry = loadedPlugins.get(p.file);
+     try { if (entry && entry.stop) entry.stop(); } catch (e) { reportPluginError(p.file, e); }
+     for (let i = pluginListeners.length - 1; i >= 0; i--) if (pluginListeners[i].file === p.file) pluginListeners.splice(i, 1);
++    if (shuffleProvider && shuffleProvider.file === p.file) shuffleProvider = null;
+     document.querySelectorAll(`style[data-plugin="${p.file}"]`).forEach((n) => n.remove());
+     const hadStop = !!(entry && entry.stop);
+     loadedPlugins.delete(p.file);

@@ -1,0 +1,116 @@
+{
+  "name": "riff",
+  "version": "44.1.1",
+  "main": "src/main/main.js",
+  "bin": {
+    "riff": "src/main/cli.js"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder",
+    "release": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags"
+  },
+  "keywords": [],
+  "author": "rootscripts",
+  "license": "MIT",
+  "description": "made for humans, Riff - audio player.",
+  "devDependencies": {
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "cfonts": "^3.3.1",
+    "discord-rpc": "^4.0.1",
+    "electron-updater": "^6.8.9",
+    "hls.js": "^1.7.1",
+    "tone": "^15.1.22"
+  },
+  "productName": "Riff",
+  "homepage": "https://github.com/rootscripts/riff",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rootscripts/riff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rootscripts/riff/issues"
+  },
+  "build": {
+    "appId": "io.github.rootscripts.riff",
+    "productName": "Riff",
+    "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "vendor/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "AudioVideo"
+    },
+    "mac": {
+      "icon": "assets/icon-1024.png",
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "rootscripts",
+        "repo": "riff",
+        "releaseType": "release"
+      }
+    ],
+    "afterPack": "scripts/mac-adhoc-sign.js"
+  }
+}
