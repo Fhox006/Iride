@@ -36,7 +36,11 @@ Tipo di lavoro: TRADUZIONE RIGA PER RIGA, NON interpretazione.
 - Non semplificare, non ottimizzare, non cambiare la struttura, non sostituire con soluzioni proprie. Se una riga non è traducibile così com'è, scrivi uno stub con il riferimento Kotlin e segnalalo.
 - Ogni blocco porta il numero di riga Kotlin in un commento `KT:`.
 - Non "ispirarsi" al design: i valori (dp, colori, durate, curve) si copiano dal Kotlin così come sono.
-- Le dipendenze non pronte restano stub marcati con file e riga Kotlin, da collegare in un passo successivo.
+- Dipendenze (le funzioni chiamate dal blocco che stai traducendo):
+- NON fermarti per una dipendenza mancante. Traduci il chiamante riga per riga, e per la dipendenza scrivi uno STUB con la stessa firma (stessi parametri, stesso ordine), il commento `KT: file:riga`.
+- Ogni stub va registrato in `desktop/src/renderer/screens/DEPENDENCIES.md` (funzione, file Kotlin e riga, chi la usa, stato STUB / PARZIALE / OK).
+- Quando riempi uno stub, aggiorna lo stato nel registro. Non cambiare il chiamante per farlo funzionare.
+- Esempio: una schermata Home che chiama una struttura Page non ancora tradotta: traduci Home riga per riga, Page resta STUB nel registro.
 
 - [ ] `UpdateInterstitialScreen` — `UpdateInterstitial.kt:77`
 - [ ] `LoadingScreen` — `LoadingScreen.kt:39`
