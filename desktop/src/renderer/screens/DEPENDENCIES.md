@@ -77,3 +77,18 @@ Tutte le altre funzioni `C.*` usate in parte 2 (Box, Column, Row, Text, Image, A
 Tradotte: IridePageLayout (corpo pagina), hero carousel, picked for you, feed filtrato (addFeedSection), your mood, personal mixes, feed status, daily discover, community, similar, account, followed releases, sezione pending, charts, reverie, features. Helper top-level: IrideMoodChipsRow, HomeSimilarityTitle, HomeFeedLoadingShelf, IrideFeatureCard, SyncBanner, homeTestPlaylistSection (test, disattivato).
 
 Stato: tutte le funzioni Compose (item, Column, Row, LazyRow, IrideFolio*, YouTube*Menu, ecc.) sono STUB generici (`DA TRADURRE`, ritornano null). HomeShelfOrder e' implementato (conteggio). Nessuna verifica a runtime con dati reali: la schermata NON e' collegata a index.html.
+
+### Batch 1 implementazioni DOM (home-dom.js)
+
+| Funzione | Kotlin | Stato | Nota |
+|---|---|---|---|
+| `Modifier` (catena: fillMaxWidth, width, height, size, padding, background, border, clip, align, weight, alpha, offset, clickable, combinedClickable, then, onGloballyPositioned) | androidx.compose.ui.Modifier | PARZIALE | stili CSS; offset/alpha parziali; effetti iride* = no-op |
+| `MaterialTheme` (colorScheme, typography) | ui/theme | PARZIALE | palette scura fissa, da collegare ai colori Iride reali |
+| `Box`, `Column`, `Row`, `Spacer` | Compose layout | OK | |
+| `Text`, `Image`, `AsyncImage`, `Icon` | Compose / coil3 | PARZIALE | Icon senza glifo Material |
+| `Surface`, `Card`, `Scaffold`, `BoxWithConstraints`, `CompositionLocalProvider` | Compose material3 | PARZIALE | |
+| `item`, `LazyRow` | LazyListScope / LazyRow | PARZIALE | eager, nessuna virtualizzazione |
+| `IridePageLayout` | ui/component | PARZIALE | titolo + overlay + body |
+| `IrideFolioSection`, `IrideFolioShelfHeader`, `IrideFolioMediaShelf` | ui/component | PARZIALE | placeholder = skeleton |
+
+Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, ArtistMenu, PlaylistMenu), YouTubeGridItem, YouTubeListItem, SongListItem, SharedQuickPicksCarousel, SharedHomeSectionTitle, SharedYouTubePlaylistRow, HeroCarouselSection, PlaylistGridItem, ReverieHomeCard, ReverieAvailabilityCard, NewReleaseChartsShelf, HomeFollowedReleases, ItemThumbnail, rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile, resize, collectAsStateWithLifecycle, dati del ViewModel e tutte le preferenze/Local*.

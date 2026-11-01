@@ -170,6 +170,7 @@
   global.IrideHomeComponents = new Proxy(implemented, {
     get(target, name) {
       if (name in target) return target[name];
+      if (global.IrideHomeDom && name in global.IrideHomeDom) return global.IrideHomeDom[name];
       if (typeof name !== 'string') return undefined;
       return stub(name, 'DA DA TRADURRE', () => null);
     },
