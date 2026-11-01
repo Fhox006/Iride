@@ -22397,20 +22397,25 @@ function bindCoverHoldZoom(wrapEl) {
         localStorage.setItem(key, JSON.stringify(cur.concat(add)));
         return add.length;
       };
-      try {
-        const n = {
-          favorites: mergeArr('devsize_favorites', p.devsize_favorites, (t) => t.id),
-          playlists: mergeArr('devsize_playlists', p.devsize_playlists, (pl) => pl.id),
-          artists: mergeArr('riff_favorite_artists', p.riff_favorite_artists, (a) => String(a.name).toLowerCase()),
-          albums: mergeArr('riff_saved_albums', p.riff_saved_albums, (a) => (a.title + '|' + a.artist).toLowerCase())
-        };
-        const msg = `Importati: ${n.favorites} brani preferiti, ${n.playlists} playlist, ${n.artists} artisti, ${n.albums} album`;
+      const failed = [];
+      const safe = (label, fn) => {
+        try { return fn(); } catch (err) { failed.push(label + ' (' + (err && err.name || 'errore') + ')'); return 0; }
+      };
+      const n = {
+        favorites: safe('preferiti', () => mergeArr('devsize_favorites', p.devsize_favorites, (t) => t.id)),
+        playlists: safe('playlist', () => mergeArr('devsize_playlists', p.devsize_playlists, (pl) => pl.id)),
+        artists: safe('artisti', () => mergeArr('riff_favorite_artists', p.riff_favorite_artists, (a) => String(a.name).toLowerCase())),
+        albums: safe('album', () => mergeArr('riff_saved_albums', p.riff_saved_albums, (a) => (a.title + '|' + a.artist).toLowerCase()))
+      };
+      const msg = `Importati: ${n.favorites} brani preferiti, ${n.playlists} playlist, ${n.artists} artisti, ${n.albums} album`;
+      if (failed.length) {
+        const err = `Non salvati per spazio locale: ${failed.join(', ')}. ${msg}`;
+        setStatus(err);
+        showToast('Import parziale: spazio locale insufficiente', 'error');
+      } else {
         setStatus(msg);
         showToast(msg, 'success');
         setTimeout(() => location.reload(), 1200);
-      } catch (err) {
-        setStatus('Import fallito: ' + err.message);
-        showToast('Import fallito: spazio locale insufficiente', 'error');
       }
     };
   }
