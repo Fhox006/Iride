@@ -5,6 +5,9 @@ import com.metrolist.music.ui.theme.drawFolioRoundRect
 import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.IrideMiniPlayerHeight
 import com.metrolist.music.ui.component.FloatingBottomNavigationHeight
+import com.metrolist.music.ui.component.iridePlayerExpansionPhase
+import com.metrolist.music.ui.component.irideBottomDockEdgeInset
+import com.metrolist.music.ui.component.rememberDeviceMatchedBottomPanelShape
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
@@ -84,6 +87,7 @@ import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -443,17 +447,34 @@ fun IrideMp3PlayerContent(
         val screenBottom = deviceTop + (topSpacing + screenHeight) * scale
         val wheelTop = deviceTop + (topSpacing + screenHeight + wheelTopSpacing +
             (wheelHeight - wheelSize) / 2) * scale
-        // Keep the divider as the mask until the entire transformed display has passed it.
-        // Release the mask and dock together only in the gap before the wheel.
+        // The display stays behind the divider; the wheel uses the pill's outer mask instead.
         val clipRelease = ((dividerInSheet - screenBottom) /
             (wheelTop - screenBottom).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
-        val miniPlayerAlpha = 1f - clipRelease
+        val dockPhase = iridePlayerExpansionPhase(sheetProgress)
+        val pillBottomSpacing = dockBottomSpacing * (1f - dockPhase)
+        val pillBottom = playerBottomSheetState.value - pillBottomSpacing
+        // Finish fading the labels before the wheel reaches the pill's lower edge.
+        val navigationFade = ((pillBottom - screenBottom) /
+            (wheelTop - screenBottom).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
+        val miniPlayerAlpha = 1f - navigationFade
+        val pillMask = rememberDeviceMatchedBottomPanelShape(
+            horizontalPadding = irideBottomDockEdgeInset() * (1f - dockPhase),
+            additionalBottomSpacing = 0.dp,
+            topRadius = IrideFolio.ControlsCornerRadius + (32.dp - IrideFolio.ControlsCornerRadius) * dockPhase,
+            bottomSpacing = pillBottomSpacing,
+            simpleOutline = true,
+        )
         SideEffect { bridgeState?.miniPlayerAlpha = miniPlayerAlpha }
         Column(
             Modifier.fillMaxSize()
                 .drawWithContent {
-                    val divider = dividerInSheet.toPx().coerceIn(0f, size.height)
-                    clipRect(bottom = divider + (size.height - divider) * clipRelease) { this@drawWithContent.drawContent() }
+                    val outline = pillMask.createOutline(
+                        Size(size.width, pillBottom.toPx().coerceIn(0f, size.height)),
+                        layoutDirection,
+                        this,
+                    )
+                    val mask = Path().apply { addOutline(outline) }
+                    clipPath(mask) { this@drawWithContent.drawContent() }
                 }
                 .graphicsLayer {
                     scaleX = scale
@@ -468,6 +489,12 @@ fun IrideMp3PlayerContent(
                 mediaId = mediaMetadata.id,
                 modifier =
                     Modifier.fillMaxWidth()
+                        .drawWithContent {
+                            val divider = ((dividerInSheet - deviceTop) / scale - topSpacing).toPx()
+                            clipRect(bottom = (divider + (size.height - divider) * clipRelease).coerceIn(0f, size.height)) {
+                                this@drawWithContent.drawContent()
+                            }
+                        }
                         .height(screenHeight)
                         .padding(horizontal = IrideMp3FrameHorizontalPadding),
             ) { presentation ->
