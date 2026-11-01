@@ -9479,56 +9479,82 @@ document.addEventListener('DOMContentLoaded', async () => {
     setNavCount(document.getElementById('albums-count'), getSavedAlbums().length);
   }
 
+  // Libreria > Album: LibraryAlbumsScreen (alpha33). Continue listening, griglia, placeholder, conteggio.
+  function continueListeningAlbums() {
+    const seen = new Set();
+    const out = [];
+    for (const t of safeArray('devsize_history')) {
+      const al = t && t.album;
+      if (!al || !al.id || seen.has(al.id)) continue;
+      seen.add(al.id);
+      out.push({ id: al.id, title: al.name || al.title || '', artist: t.artist || '', cover: getTrackThumbUrl(t) || t.thumbnail || '' });
+      if (out.length === 3) break;
+    }
+    return out;
+  }
   function renderSavedAlbums() {
     const container = document.getElementById('saved-albums-grid');
     if (!container) return;
     const albumsAll = sortSavedAlbums(getSavedAlbums());
     const qAlb = (document.getElementById('albums-search-input')?.value || '').trim().toLowerCase();
     const albums = qAlb ? albumsAll.filter(a => `${a.title || ''} ${a.artist || ''}`.toLowerCase().includes(qAlb)) : albumsAll;
+
+    const actions = document.getElementById('albums-search-actions');
+    if (actions) actions.style.display = (albumsAll.length || qAlb) ? '' : 'none';
+    const pills = document.getElementById('albums-pills');
+    if (pills) pills.style.display = albums.length ? '' : 'none';
+
+    const cont = document.getElementById('albums-continue');
+    if (cont) {
+      const recent = qAlb ? [] : continueListeningAlbums();
+      cont.innerHTML = recent.length ? `
+        <div class="lib-albums-continue-title">Continue listening</div>
+        <div class="lib-albums-continue-row">${recent.map(a => `
+          <div class="lib-albums-continue-tile" role="button" tabindex="0">
+            ${a.cover ? `<img src="${escapeHtml(a.cover)}" alt="" loading="lazy" onerror="this.remove()" />` : ''}
+            <span>${escapeHtml(a.title)}</span>
+          </div>`).join('')}</div>` : '';
+      cont.querySelectorAll('.lib-albums-continue-tile').forEach((el, i) => {
+        el.addEventListener('click', () => openAlbum(recent[i]));
+      });
+    }
+
     const footerEl = document.getElementById('albums-footer-count');
-    if (footerEl) footerEl.textContent = albums.length === 1 ? '1 album' : `${albums.length} album`;
+    if (footerEl) footerEl.textContent = albums.length ? (albums.length === 1 ? '1 album' : `${albums.length} album`) : '';
     if (albums.length === 0) {
-      container.innerHTML = '<div class="empty-hint" style="padding: 48px 0; text-align: center; width: 100%;">No saved albums yet. Save albums from the album view.</div>';
+      container.innerHTML = qAlb
+        ? '<div class="empty-hint lib-albums-empty">No matching albums</div>'
+        : '<div class="empty-hint lib-albums-empty">No saved albums yet. Save albums from the album view.</div>';
       return;
     }
-    container.innerHTML = albums.map(album => {
-      const sub = album.artist || '';
-      return `
-        <div class="search-album-card" role="button" tabindex="0">
-          ${album.cover ? `<img class="search-album-cover" src="${escapeHtml(album.cover)}" alt="${escapeHtml(album.title || '')}" loading="lazy" onerror="this.style.display='none'" />` : '<div class="search-album-cover" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high);"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--md-sys-color-outline);"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div>'}
-          <div class="search-album-info">
-            <span class="search-album-title" title="${escapeHtml(album.title || '')}">${escapeHtml(album.title || '')}</span>
-            <span class="search-album-sub" title="${escapeHtml(sub)}">${escapeHtml(sub)}</span>
-          </div>
+    container.innerHTML = albums.map(album => `
+      <div class="search-album-card" role="button" tabindex="0">
+        ${album.cover ? `<img class="search-album-cover" src="${escapeHtml(album.cover)}" alt="${escapeHtml(album.title || '')}" loading="lazy" onerror="this.style.display='none'" />` : '<div class="search-album-cover" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high);"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--md-sys-color-outline);"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div>'}
+        <div class="search-album-info">
+          <span class="search-album-title" title="${escapeHtml(album.title || '')}">${escapeHtml(album.title || '')}</span>
+          <span class="search-album-sub" title="${escapeHtml(album.artist || '')}">${escapeHtml(album.artist || '')}</span>
         </div>
-      `;
-    }).join('');
+      </div>
+    `).join('');
 
-    const cards = container.querySelectorAll('.search-album-card');
-    cards.forEach((card, idx) => {
+    container.querySelectorAll('.search-album-card').forEach((card, idx) => {
       const alb = albums[idx];
       if (!alb) return;
       card.addEventListener('click', () => openAlbum(alb));
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          openAlbum(alb);
-        }
-      });
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openAlbum(alb); } });
     });
   }
 
   // Libreria > Album: sort e vista (LibraryGridPage menuSections, alpha33)
   const ALBUM_SORT_KEY = 'riff_albums_sort';
   const ALBUM_VIEW_KEY = 'riff_albums_view';
-  const ALBUM_SORT_OPTIONS = [['created', 'Date created'], ['name', 'Name'], ['artist', 'Artist']];
+  const ALBUM_SORT_OPTIONS = [['created', 'Date created'], ['name', 'Name']];
   const readPref = (k, d) => { try { return localStorage.getItem(k) || d; } catch (_) { return d; } };
   const writePref = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
   function sortSavedAlbums(list) {
     const mode = readPref(ALBUM_SORT_KEY, 'created');
     const arr = list.slice();
     if (mode === 'name') arr.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
-    else if (mode === 'artist') arr.sort((a, b) => String(a.artist || '').localeCompare(String(b.artist || '')));
     return arr;
   }
   function renderAlbumsMenu() {
