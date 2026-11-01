@@ -91,3 +91,39 @@ html body:not(#_) .sidebar .nav-item > .nav-item-label {
   max-width: 56px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
   text-align: center !important; color: inherit !important;
 }
+
+/* ---- v2: barra come Android (bottom bar): tile a squircle che copre la larghezza, etichette sempre visibili ---- */
+html body:not(#_) .sidebar { padding: 8px 0 !important; }
+html body:not(#_) .sidebar .sidebar-nav { padding: 0 4px !important; gap: 6px !important; }
+
+html body:not(#_) .sidebar .nav-item {
+  width: 100% !important; min-width: 0 !important; height: 60px !important; min-height: 60px !important;
+  margin: 0 !important; padding: 8px 0 !important; gap: 4px !important;
+  border-radius: 22px !important; corner-shape: squircle !important;
+  justify-content: center !important; background: transparent !important;
+  transition: background-color 240ms cubic-bezier(.2,0,0,1) !important;
+}
+html body:not(#_) .sidebar .nav-item:hover:not(.active) { background: rgba(255,255,255,.06) !important; }
+html body:not(#_) .sidebar .nav-item.active {
+  background: rgba(255,255,255,.14) !important; color: #fff !important;
+  animation: ir-nav-tile-in 360ms cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes ir-nav-tile-in { from { transform: scale(.92); } to { transform: scale(1); } }
+
+html body:not(#_) .sidebar .nav-item .nav-indicator {
+  width: 100% !important; min-width: 0 !important; height: 26px !important;
+  border-radius: 13px !important; background: transparent !important; animation: none !important;
+}
+html body:not(#_) .sidebar .nav-item.active .nav-indicator { background: transparent !important; animation: none !important; }
+html body:not(#_) .sidebar .nav-item .nav-indicator::before { width: 24px !important; height: 24px !important; min-width: 24px !important; }
+
+html body:not(#_) .sidebar .nav-item > .folio-nav-label,
+html body:not(#_) .sidebar .nav-item > .nav-item-label {
+  font-size: 12px !important; line-height: 16px !important; font-weight: 500 !important; max-width: 100% !important;
+  color: rgba(255,255,255,.72) !important;
+}
+html body:not(#_) .sidebar .nav-item.active > .folio-nav-label,
+html body:not(#_) .sidebar .nav-item.active > .nav-item-label { font-weight: 700 !important; color: #fff !important; }
+
+html body:not(#_) .sidebar #nav-settings { left: 10px !important; right: auto !important; width: calc(var(--ir-rail-w) - 8px) !important; bottom: 8px !important; }
+html body:not(#_) .sidebar #nav-discover { justify-content: center !important; }
