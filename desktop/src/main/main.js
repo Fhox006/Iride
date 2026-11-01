@@ -49,6 +49,7 @@ function decryptAccount(buffer) {
 }
 const { LIBRARY_DIR, DATA_DIR, resolveBinary, tutorialDone, markTutorialDone, readStartupConfig, writeStartupConfig, cookieJarHasYtLogin } = require('../shared/platform');
 const { getLauncherInfo, installLauncher } = require('./launcher');
+const { importBackupBuffer } = require('./backup-import');
 const { getSystemAudioOutputInfo } = require('../shared/audio-output');
 const { log, tail, LOG_DIR } = require('../shared/logger');
 const logger = { log, tail, LOG_DIR, error: (msg, err) => log('ERROR', `${msg}: ${err && err.message ? err.message : err}`) };
@@ -495,6 +496,7 @@ function runGUI() {
   ipcMain.removeHandler('discord-rpc-reconnect');
   ipcMain.removeHandler('account-export');
   ipcMain.removeHandler('account-import');
+  ipcMain.removeHandler('backup-import');
   ipcMain.removeHandler('pick-media');
   ipcMain.removeHandler('import-audio-files');
   ipcMain.removeHandler('pick-local-files');
@@ -1324,6 +1326,23 @@ function runGUI() {
           const buffer = encryptAccount(payload || {});
           await fs.promises.writeFile(r.filePath, buffer);
           return { success: true, filePath: r.filePath };
+        } catch (err) {
+          return { success: false, error: err.message };
+        }
+      });
+
+      ipcMain.handle('backup-import', async (event) => {
+        try {
+          const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+          const r = await dialog.showOpenDialog(win, {
+            title: 'Importa backup',
+            properties: ['openFile'],
+            filters: [{ name: 'Backup', extensions: ['backup', 'zip'] }]
+          });
+          if (r.canceled || !r.filePaths || !r.filePaths.length) return { canceled: true };
+          const buffer = await fs.promises.readFile(r.filePaths[0]);
+          const payload = importBackupBuffer(buffer, path.join(app.getPath('temp'), 'riff-backup'));
+          return { success: true, payload };
         } catch (err) {
           return { success: false, error: err.message };
         }

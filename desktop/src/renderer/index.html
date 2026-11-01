@@ -2393,6 +2393,22 @@
                 <button class="btn-outline-pill" id="btn-import-account" style="padding: 6px 14px; font-size: calc(12px * var(--font-scale, 1)); flex-shrink: 0;">Import</button>
               </div>
             </div>
+
+            <div class="setting-item" id="backup-import-item">
+              <div class="setting-item-top" style="align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--md-sys-color-surface-container-high); display: flex; align-items: center; justify-content: center; color: var(--md-sys-color-primary);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </div>
+                  <div style="display: flex; flex-direction: column;">
+                    <span class="setting-name">Backup</span>
+                    <span style="font-size: calc(12px * var(--font-scale, 1)); color: var(--md-sys-color-outline);">Importa un backup Android (.backup): libreria, preferiti, playlist, artisti e album salvati</span>
+                  </div>
+                </div>
+                <button class="btn-outline-pill" id="btn-import-backup" style="padding: 6px 14px; font-size: calc(12px * var(--font-scale, 1)); flex-shrink: 0;">Importa</button>
+              </div>
+              <div id="backup-import-status" style="font-size: calc(12px * var(--font-scale, 1)); color: var(--md-sys-color-outline); padding: 0 0 4px 44px;"></div>
+            </div>
             </div>
           </div>
 

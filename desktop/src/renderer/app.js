@@ -22370,6 +22370,51 @@ function bindCoverHoldZoom(wrapEl) {
     });
   }
 
+  const btnImportBackup = document.getElementById('btn-import-backup');
+  if (btnImportBackup) {
+    btnImportBackup.onclick = async () => {
+      if (!window.electronAPI || !window.electronAPI.backupImport) return;
+      const statusEl = document.getElementById('backup-import-status');
+      const setStatus = (txt) => { if (statusEl) statusEl.textContent = txt; };
+      const res = await window.electronAPI.backupImport();
+      if (res && res.canceled) return;
+      if (!res || !res.success || !res.payload) {
+        showToast((res && res.error) || 'Backup non valido', 'error');
+        return;
+      }
+      const p = res.payload;
+      const mergeArr = (key, incoming, idOf) => {
+        let cur = [];
+        try { cur = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) { cur = []; }
+        if (!Array.isArray(cur)) cur = [];
+        const seen = new Set(cur.map(idOf));
+        const add = (incoming || []).filter((x) => {
+          const k = idOf(x);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        localStorage.setItem(key, JSON.stringify(cur.concat(add)));
+        return add.length;
+      };
+      try {
+        const n = {
+          favorites: mergeArr('devsize_favorites', p.devsize_favorites, (t) => t.id),
+          playlists: mergeArr('devsize_playlists', p.devsize_playlists, (pl) => pl.id),
+          artists: mergeArr('riff_favorite_artists', p.riff_favorite_artists, (a) => String(a.name).toLowerCase()),
+          albums: mergeArr('riff_saved_albums', p.riff_saved_albums, (a) => (a.title + '|' + a.artist).toLowerCase())
+        };
+        const msg = `Importati: ${n.favorites} brani preferiti, ${n.playlists} playlist, ${n.artists} artisti, ${n.albums} album`;
+        setStatus(msg);
+        showToast(msg, 'success');
+        setTimeout(() => location.reload(), 1200);
+      } catch (err) {
+        setStatus('Import fallito: ' + err.message);
+        showToast('Import fallito: spazio locale insufficiente', 'error');
+      }
+    };
+  }
+
   const btnImportAccount = document.getElementById('btn-import-account');
   if (btnImportAccount) {
     btnImportAccount.onclick = async () => {

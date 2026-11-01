@@ -112,6 +112,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showPlaylistContextMenu: (playlistId) => ipcRenderer.invoke('show-playlist-context-menu', playlistId),
   accountExport: (payload) => ipcRenderer.invoke('account-export', payload),
   accountImport: () => ipcRenderer.invoke('account-import'),
+  backupImport: () => ipcRenderer.invoke('backup-import'),
   storageInitSync: () => ipcRenderer.sendSync('storage-get-all-sync'),
   storageSaveBatch: (data) => ipcRenderer.send('storage-save-batch', data),
   storageSaveSync: (data) => ipcRenderer.sendSync('storage-save-sync', data),
