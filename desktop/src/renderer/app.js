@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyScale(savedScale);
 
   function applyScale(scalePercent) {
-    const factor = (scalePercent / 100) * 0.90;
+    const factor = scalePercent / 105;
     document.documentElement.style.setProperty('--app-scale', factor.toString());
     if (window.electronAPI && window.electronAPI.setZoomFactor) {
       window.electronAPI.setZoomFactor(factor);

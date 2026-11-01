@@ -1,0 +1,203 @@
+/* Iride desktop - layout ispirato a Liner (misure prese da una finestra 1024x664) */
+:root {
+  --ir-rail-w: 48px;
+  --ir-edge: 6px;
+  --ir-top: 56px;
+  --ir-play-h: 56px;
+  --ir-play-b: 6px;
+  --ir-slot: 28px;
+  --ir-content-l: 70px;
+  --ir-tint: var(--md-sys-color-primary, #8d5ef2);
+}
+html body:not(#_) { background: #000; }
+
+/* ---------- barra del titolo ---------- */
+html body:not(#_) .titlebar {
+  position: fixed !important; top: 0; left: 0; right: 0;
+  width: 100% !important; margin: 0 !important; height: var(--ir-top) !important;
+  padding: 0 !important; z-index: 10001 !important; background: transparent !important;
+  pointer-events: none;
+}
+html body:not(#_) .titlebar .titlebar-drag { position: absolute; inset: 0; pointer-events: auto; -webkit-app-region: drag; }
+html body:not(#_) .titlebar .app-logo {
+  position: absolute !important; left: 16px !important; top: 18px !important;
+  transform: none !important; -webkit-app-region: no-drag;
+}
+html body:not(#_) .titlebar-riff-icon {
+  width: 74px; height: 16px; background-color: #fff;
+  -webkit-mask: url('../../assets/iride-wordmark.svg') no-repeat left center / contain;
+  mask: url('../../assets/iride-wordmark.svg') no-repeat left center / contain;
+}
+html body:not(#_) .titlebar-controls {
+  position: absolute !important; top: 12px; right: 0; height: 30px; gap: 0 !important; width: 96px !important;
+  padding: 0 6px !important; border-radius: 12px 0 0 12px; justify-content: space-between; background: rgba(255,255,255,.09);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  pointer-events: auto; -webkit-app-region: no-drag; align-items: center;
+}
+html body:not(#_) .titlebar-controls #btn-mini-lyrics,
+html body:not(#_) .titlebar-controls #btn-mini-player { display: none !important; }
+html body:not(#_) .titlebar-controls .titlebar-btn {
+  width: 28px !important; min-width: 28px !important; flex: none; height: 30px !important; border-radius: 8px !important; background: transparent;
+}
+html body:not(#_) .titlebar-controls .titlebar-btn svg { width: 14px; height: 14px; }
+
+/* ---------- ricerca e switch piattaforma (barra alta) ---------- */
+html body:not(#_) .top-nav {
+  position: fixed !important; top: 12px; left: calc(var(--ir-content-l) + 120px); right: 150px;
+  width: auto !important; height: 30px !important; margin: 0 !important; padding: 0 !important;
+  gap: 10px !important; z-index: 10000 !important; justify-content: flex-end;
+}
+html body:not(#_) .top-nav .search-box-wrapper {
+  position: static !important; transform: none !important; left: auto !important; top: auto !important;
+  width: 240px !important; max-width: 40vw; height: 30px;
+}
+html body:not(#_) .top-nav .search-box { height: 30px !important; border-radius: 10px !important; background: rgba(255,255,255,.09) !important; }
+html body:not(#_) .top-nav .platform-switch-container { height: 30px; }
+html body:not(#_) .top-nav .platform-pill-switch { height: 30px !important; border-radius: 10px !important; background: rgba(255,255,255,.09) !important; padding: 2px !important; }
+html body:not(#_) .top-nav .platform-btn { height: 26px !important; padding: 0 8px !important; font-size: 12px !important; border-radius: 8px !important; }
+html body:not(#_) .top-nav .platform-btn span { display: none; }
+html body:not(#_) .top-nav .platform-btn.active span { display: inline; }
+
+/* ---------- barra laterale a icone ---------- */
+html body:not(#_) .sidebar, html body:not(#_).sidebar-expanded .sidebar {
+  position: fixed !important; left: var(--ir-edge) !important; top: calc(var(--ir-top) - 2px) !important;
+  bottom: calc(var(--ir-play-h) + var(--ir-play-b) + 8px) !important;
+  width: var(--ir-rail-w) !important; height: auto !important; padding: 4px 0 !important; gap: 0 !important;
+  border-radius: 14px !important; background: rgba(0,0,0,.38) !important;
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  z-index: 3000 !important; align-items: center; overflow: visible;
+}
+html body:not(#_) .sidebar-nav { width: 100% !important; gap: 0 !important; padding: 0 !important; align-items: center; overflow: hidden auto; }
+html body:not(#_) .sidebar .nav-active-indicator, html body:not(#_) .sidebar .rail-divider,
+html body:not(#_) .sidebar .sidebar-library-wrap, html body:not(#_) .sidebar .sidebar-bottom-spacer,
+html body:not(#_) .sidebar .sb-home-banner-content, html body:not(#_) .sidebar .sb-home-banner-fx,
+html body:not(#_) .sidebar .nav-item-label, html body:not(#_) .sidebar .nav-badge,
+html body:not(#_) .sidebar .sidebar-resize-edge, html body:not(#_) .sidebar #btn-toggle-presets-drawer { display: none !important; }
+html body:not(#_) .sidebar .rail-action-group { display: flex !important; flex-direction: column; gap: 0; padding: 0; width: 100%; align-items: center; }
+html body:not(#_) .sidebar .nav-item, html body:not(#_) .sidebar .rail-icon-btn {
+  width: 40px !important; height: 40px !important; min-height: 40px !important; padding: 0 !important;
+  margin: 0 !important; border-radius: 10px !important; display: flex !important; align-items: center; justify-content: center;
+  background: transparent !important; color: rgba(255,255,255,.88);
+}
+html body:not(#_) .sidebar .nav-item:hover, html body:not(#_) .sidebar .rail-icon-btn:hover { background: rgba(255,255,255,.08) !important; }
+html body:not(#_) .sidebar .nav-item.active { color: #fff; background: rgba(255,255,255,.12) !important; }
+html body:not(#_) .sidebar .nav-indicator {
+  position: static !important; width: 20px !important; height: 20px !important; min-width: 0 !important;
+  background: transparent !important; border-radius: 0 !important; display: flex; align-items: center; justify-content: center;
+}
+html body:not(#_) .sidebar .nav-indicator svg { width: 20px; height: 20px; }
+/* Home: icona casa al posto del logo */
+html body:not(#_) .sidebar #nav-discover .nav-home-app-icon { display: none !important; }
+html body:not(#_) .sidebar #nav-discover .nav-indicator::before {
+  content: ''; width: 20px; height: 20px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 3 2 12h3v8h5v-5h4v5h5v-8h3z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 3 2 12h3v8h5v-5h4v5h5v-8h3z'/></svg>") center / contain no-repeat;
+}
+/* Ricerca: nuovo bottone */
+html body:not(#_) .sidebar #nav-search-rail { order: 2; }
+html body:not(#_) .sidebar #nav-discover { order: 1; }
+html body:not(#_) .sidebar .rail-action-group { order: 3; }
+html body:not(#_) .sidebar #nav-favorites { order: 4; } html body:not(#_) .sidebar #nav-albums { order: 5; }
+html body:not(#_) .sidebar #nav-local { order: 6; } html body:not(#_) .sidebar #nav-history { order: 7; }
+html body:not(#_) .sidebar #nav-queue { order: 8; }
+/* Impostazioni in basso a sinistra, sulla riga del player */
+html body:not(#_) .sidebar #nav-settings {
+  display: flex !important; position: fixed !important; left: calc(var(--ir-edge) + 4px) !important;
+  bottom: calc(var(--ir-play-b) + 8px) !important; width: 40px !important; height: 40px !important;
+}
+
+/* ---------- area contenuti ---------- */
+html body:not(#_) .app-layout, html body:not(#_).sidebar-expanded:not(.classic-sidebar):not(.mini) .app-layout {
+  position: fixed !important; top: var(--ir-top); left: var(--ir-content-l) !important; right: 0;
+  bottom: calc(var(--ir-play-h) + var(--ir-play-b) + 6px);
+  width: auto !important; height: auto !important; margin: 0 !important; padding: 0 16px 0 0 !important; gap: 16px !important;
+}
+html body:not(#_).sidebar-expanded:not(.classic-sidebar):not(.mini) .titlebar,
+html body:not(#_).sidebar-expanded:not(.classic-sidebar):not(.mini) .top-nav { margin-left: 0 !important; }
+html body:not(#_) .main-content { margin-left: 0 !important; }
+
+/* ---------- player in basso ---------- */
+html body:not(#_) .playbar {
+  left: 0 !important; right: 0 !important; bottom: var(--ir-play-b) !important; height: var(--ir-play-h) !important;
+  background: transparent !important; border-radius: 0 !important; display: block !important; padding: 0 !important;
+  box-shadow: none !important; z-index: 9999 !important;
+}
+html body:not(#_) .playbar-bg-visualizer, html body:not(#_) #bottom-visualizer { display: none !important; }
+/* scheda del brano */
+html body:not(#_) .playbar-left {
+  position: absolute !important; left: var(--ir-content-l); bottom: 0; width: 344px !important; min-width: 344px; max-width: none !important; box-sizing: border-box; height: var(--ir-play-h);
+  padding: 0 12px !important; gap: 12px !important; display: flex !important; align-items: center;
+  border-radius: 14px; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ir-tint) 38%, #0b0710) 0%, color-mix(in srgb, var(--ir-tint) 30%, #0b0710) 82%, rgba(11,7,16,0) 100%) !important;
+}
+html body:not(#_) .playbar-left .artwork-wrapper, html body:not(#_) .playbar-left .m3c-wrap { width: 36px !important; height: 36px !important; flex: none; border-radius: 8px !important; }
+html body:not(#_) .playbar-left .track-artwork { width: 36px !important; height: 36px !important; border-radius: 8px !important; object-fit: cover; }
+html body:not(#_) .playbar-left .track-meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+html body:not(#_) .playbar-left .track-title { font-size: 14px !important; font-weight: 600 !important; line-height: 1.15; }
+html body:not(#_) .playbar-left .track-artist { font-size: 12px !important; opacity: .7; line-height: 1.1; }
+html body:not(#_) .playbar-left #btn-toggle-fav { flex: none; width: 28px !important; height: 28px !important; }
+html body:not(#_) .playbar-left #btn-edit-current-track, html body:not(#_) .playbar-left #btn-playbar-more,
+html body:not(#_) .playbar-left #btn-playbar-share { display: none !important; }
+/* controlli centrali: centrati sull'area contenuti (centro = 50% + 26px) */
+html body:not(#_) .playbar-center, html body:not(#_) .playback-controls { display: contents !important; }
+html body:not(#_) .playback-controls .control-btn, html body:not(#_) .play-pause-wrapper {
+  position: absolute !important; top: 14px; width: 28px !important; height: 28px !important; margin: 0 !important;
+  background: transparent !important; display: flex !important; align-items: center; justify-content: center; z-index: 3;
+}
+html body:not(#_) #btn-prev { left: calc(50% + 26px - 34px - 14px) !important; }
+html body:not(#_) .play-pause-wrapper { left: calc(50% + 26px - 16px) !important; top: 12px; width: 32px !important; height: 32px !important; }
+html body:not(#_) #btn-next { left: calc(50% + 26px + 34px - 14px) !important; }
+html body:not(#_) .playback-controls .control-btn svg { width: 18px; height: 18px; }
+html body:not(#_) .btn-play-pause { width: 32px !important; height: 32px !important; border-radius: 50% !important; background: #fff !important; color: #000 !important; display: flex; align-items: center; justify-content: center; padding: 0 !important; }
+html body:not(#_) .btn-play-pause svg { width: 18px !important; height: 18px !important; }
+/* shuffle e ripeti: dentro la pillola di destra */
+html body:not(#_) #btn-shuffle, html body:not(#_) #btn-repeat { top: 11px !important; height: 34px !important; color: rgba(255,255,255,.82); }
+html body:not(#_) #btn-repeat  { right: calc(18px + 4px + 4 * var(--ir-slot)) !important; left: auto !important; }
+html body:not(#_) #btn-shuffle { right: calc(18px + 4px + 5 * var(--ir-slot)) !important; left: auto !important; }
+/* barra di avanzamento: sottile, sopra il player */
+html body:not(#_) .scrubber-bar-wrapper {
+  position: absolute !important; left: var(--ir-content-l); right: 18px; top: -7px; height: 12px;
+  width: auto !important; margin: 0 !important; padding: 0 !important; display: flex; align-items: center; gap: 8px; pointer-events: auto;
+}
+html body:not(#_) .scrubber-bar-wrapper .time-label { display: none; font-size: 11px; opacity: .7; }
+html body:not(#_) .scrubber-bar-wrapper:hover .time-label { display: block; }
+/* gruppo di destra: pillola con 6 slot */
+html body:not(#_) .playbar-right {
+  position: absolute !important; right: 18px; top: 11px; height: 34px; width: calc(6 * var(--ir-slot) + 8px);
+  padding: 0 0 0 calc(2 * var(--ir-slot) + 4px) !important; margin: 0 !important; gap: 0 !important;
+  display: flex !important; align-items: center; border-radius: 10px; background: rgba(255,255,255,.07);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html body:not(#_) .playbar-right .visualizer-container { display: none !important; }
+html body:not(#_) .playbar-right .btn-icon-pill, html body:not(#_) .playbar-right .volume-control-group { width: var(--ir-slot) !important; height: 34px !important; min-width: 0; padding: 0 !important; margin: 0 !important; background: transparent !important; display: flex; align-items: center; justify-content: center; position: relative; }
+html body:not(#_) .playbar-right .volume-control-group .btn-icon-pill { width: var(--ir-slot) !important; }
+html body:not(#_) .playbar-right #btn-toggle-lyrics-panel { order: 1; }
+html body:not(#_) .playbar-right .volume-control-group { order: 2; }
+html body:not(#_) .playbar-right #btn-open-settings { order: 3; }
+html body:not(#_) .playbar-right #btn-toggle-queue-panel { order: 4; }
+html body:not(#_) .playbar-right svg { width: 17px; height: 17px; }
+html body:not(#_) .playbar-right .volume-slider-wrapper {
+  display: none !important; position: absolute; bottom: 42px; right: -8px; width: 120px; padding: 10px 12px; border-radius: 12px; background: rgba(24,24,28,.94);
+}
+html body:not(#_) .playbar-right .volume-control-group:hover .volume-slider-wrapper { display: block !important; }
+
+/* pannello testi: nascosto finche' non lo apri */
+html body:not(#_) .right-panel.hidden { display: none !important; }
+
+/* copertina piccola */
+html body:not(#_) .playbar-left .artwork-wrapper { width: 36px !important; height: 36px !important; overflow: hidden; border-radius: 8px !important; position: relative; }
+html body:not(#_) .playbar-left .m3c-wrap { position: relative; overflow: hidden; border-radius: 8px !important; }
+html body:not(#_) .playbar-left .m3c-canvas { display: none !important; }
+html body:not(#_) .playbar-left .track-artwork { display: block !important; opacity: 1 !important; visibility: visible !important; width: 36px !important; height: 36px !important; position: static !important; transform: none !important; border-radius: 8px !important; object-fit: cover; }
+html body:not(#_) .playbar-left .artwork-fallback { width: 36px !important; height: 36px !important; border-radius: 8px !important; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.1); }
+/* icone barra laterale: colore ereditato */
+html body:not(#_) .sidebar .nav-indicator, html body:not(#_) .sidebar .nav-item.active .nav-indicator { color: inherit !important; }
+
+/* contenuto: niente card scura, il fondo resta nero con l'alone della copertina */
+html body:not(#_) .main-content, html body:not(#_) .app-layout { background: transparent !important; box-shadow: none !important; }
+html body:not(#_) .main-content { border-radius: 0 !important; }
+html body:not(#_) .sidebar .nav-item, html body:not(#_) .sidebar .nav-item.active, html body:not(#_) .sidebar .rail-icon-btn { color: rgba(255,255,255,.88) !important; }
+html body:not(#_) .sidebar .nav-item.active { color: #fff !important; }
+html body:not(#_) .sidebar .nav-item * { color: inherit; }
+
+html body:not(#_) .top-nav .search-box input { text-overflow: ellipsis; min-width: 0; }
