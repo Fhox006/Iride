@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const view = document.querySelector('.content-view.active');
     const viewName = view && libViews[view.id];
     body.classList.toggle('ir-lib', !!viewName);
+    body.classList.toggle('ir-lib-albums', !!view && view.id === 'view-albums');
     byId('nav-library').classList.toggle('active', !!viewName || (view && view.id.startsWith('view-library')));
     document.querySelectorAll('.ir-lib-chip').forEach((c) => c.classList.toggle('active', !!viewName && c.dataset.view === viewName));
 

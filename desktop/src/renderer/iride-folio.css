@@ -353,3 +353,15 @@ html body:not(#_).folio-mp3-open .playbar { right: var(--mp3-w) !important; }
 #view-library-songs .view-subtitle { display: block; font: 400 13px/18px 'Inter', sans-serif; color: rgba(255,255,255,.6); margin: 0 0 8px; }
 .ir-lib-card-round { border-radius: 50% !important; }
 .ir-lib-grid-artists .ir-lib-card-cover { border-radius: 50%; }
+
+/* Libreria > Album (LibraryAlbumsScreen.kt): titolo Albums, niente chip di navigazione, griglia 12dp */
+html body:not(#_).ir-lib-albums .ir-lib-row { display: none !important; }
+html body:not(#_) .ir-lib-albums-title { display: none; }
+html body:not(#_).ir-lib-albums .ir-lib-albums-title { display: block; }
+html body:not(#_).ir-lib-albums .ir-lib-bar h1:not(.ir-lib-albums-title) { display: none; }
+html body:not(#_).ir-lib-albums #saved-albums-grid {
+  display: grid !important; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+  padding: 0 12px; flex-wrap: initial;
+}
+html body:not(#_).ir-lib-albums #saved-albums-grid .search-album-card { width: auto !important; min-width: 0; }
+html body:not(#_).ir-lib-albums #saved-albums-grid .search-album-cover { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; }
