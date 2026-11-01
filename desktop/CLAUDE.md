@@ -67,7 +67,7 @@ Regola: una schermata alla volta. Segna `[x]` solo dopo conversione 1:1 e screen
 - [ ] `EqEditorScreen` — `EqEditorScreen.kt:125`
 - [ ] `LibraryPodcastsScreen` — `LibraryPodcastsScreen.kt:116`
 - [ ] `LibraryScreen` — `LibraryScreen.kt:285`
-- [~] `LibraryAlbumsScreen` — `LibraryScreen.kt:359` — struttura portata, mancano download-all, sort Year/Song count/Length/Play time, vista lista, menu lungo-pressione
+- [~] `LibraryAlbumsScreen` — `LibraryScreen.kt:359` — traduzione riga per riga in `src/renderer/screens/library-albums.js` + dipendenze stub in `library-components.js`; NON ancora collegata a `#view-albums`; mancano implementazioni reali delle dipendenze
 - [ ] `LibraryArtistsScreen` — `LibraryScreen.kt:755`
 - [ ] `LibraryPlaylistsScreen` — `LibraryScreen.kt:993`
 - [ ] `LibrarySongsScreen` — `LibraryScreen.kt:1314`
