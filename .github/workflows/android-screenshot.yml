@@ -25,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android compile SDK
+      - name: Configure installed Android tools
         shell: bash
         run: |
           set -euo pipefail
@@ -42,15 +42,14 @@ jobs:
           echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
           printf '%s\n' "$(dirname "$sdkmanager_path")" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
           echo "Using sdkmanager: $sdkmanager_path"
-          "$sdkmanager_path" 'platforms;android-36' 'build-tools;36.0.0'
 
-      - uses: gradle/actions/setup-gradle@v5
-
-      - name: Generate protobuf sources
-        uses: ./.github/actions/setup-protobuf
-
-      - name: Build FOSS debug APK
-        run: bash ./gradlew :app:assembleFossDebug --no-daemon --console=plain
+      - name: Download verified official Iride APK
+        run: |
+          mkdir -p artifacts/diagnostics
+          curl --fail --location --retry 3 --output artifacts/Iride.apk \
+            https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha34/Iride.apk
+          echo 'f6ab42705fcf8752a03d573b25522839b8cdb354d5e3d47cd31e8feaac73acdf  artifacts/Iride.apk' | sha256sum --check
+          echo 'Official release v0.1.0-alpha34; not a build of the checkout.' > artifacts/diagnostics/apk-source.txt
 
       - name: Enable KVM access
         run: |
@@ -68,7 +67,29 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: bash .github/scripts/capture-android-screenshot.sh
+          script: |
+            set -euo pipefail
+            trap 'adb logcat -d > artifacts/diagnostics/logcat.txt 2>&1 || true' EXIT
+            aapt_path="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+            "$aapt_path" dump badging artifacts/Iride.apk > artifacts/diagnostics/apk-badging.txt
+            package="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" artifacts/diagnostics/apk-badging.txt)"
+            activity="$(sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" artifacts/diagnostics/apk-badging.txt)"
+            test -n "$package"
+            test -n "$activity"
+            adb install -r artifacts/Iride.apk
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
+            adb logcat -c
+            adb shell am start -W -n "$package/$activity" | tee artifacts/diagnostics/launch.txt
+            grep -q 'Status: ok' artifacts/diagnostics/launch.txt
+            sleep 20
+            adb shell pidof "$package" > artifacts/diagnostics/pid.txt
+            adb shell dumpsys activity activities > artifacts/diagnostics/activities.txt
+            grep -E '(mResumedActivity|topResumedActivity)' artifacts/diagnostics/activities.txt | grep -F "$package/" | grep -v ':crash/'
+            adb exec-out screencap -p > artifacts/iride-initial.png
+            file --mime-type artifacts/iride-initial.png | grep -q 'image/png'
+            adb shell uiautomator dump /sdcard/iride-window.xml
+            adb pull /sdcard/iride-window.xml artifacts/diagnostics/window.xml
 
       - name: Upload screenshot
         uses: actions/upload-artifact@v4
