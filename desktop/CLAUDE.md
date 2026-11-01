@@ -20,7 +20,7 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 - `src/renderer/index.html`: ordine di caricamento CSS/JS. I CSS sovrascrivono in quest'ordine: `styles.css` → `iride-liner.css` → `iride-folio.css` → `iride-android-nav.css`. Le regole di `iride-android-nav.css` sono le più recenti.
 - `src/renderer/iride-android-shape.js`: applica il clip squircle a sidebar e tile; espone `window.IRIDE_NAV_SHAPE`.
 - `src/renderer/iride-nav-slider.js`: indicatore di selezione a molla con trascinamento. Account (`#nav-settings`) è fuori dalla riga, di proposito.
-- `start-iride.bat`: launcher Windows, aggiorna da GitHub a ogni avvio (branch sopra).
+- `start-iride.bat`: launcher Windows, aggiorna da GitHub a ogni avvio. Riga `set "BRANCH=..."` = branch sopra.
 
 ## Comandi
 - Dipendenze: `npm install` (in `desktop/`).
@@ -29,6 +29,8 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 - Verifica UI in Linux senza display: `xvfb-run -a node_modules/.bin/electron --no-sandbox .` con `RIFF_FLAGS="remote-debugging-port=9222"`, poi screenshot via Playwright `connectOverCDP`. Imposta `HOME` su una cartella temporanea con file `.rifftutorial` (contenuto = versione in `package.json`) per saltare il welcome.
 
 ## Regole di modifica
+- Se cambi branch di lavoro, fai merge o cancelli il branch: aggiorna `BRANCH` in `desktop/start-iride.bat` nello stesso commit, altrimenti il launcher sull'utente PC non prende più l'ultima versione.
+- Ogni modifica a `start-iride.bat` va scritta con fine riga CRLF (cmd non gestisce bene LF).
 - Il codice Android (`app/`) non va toccato da questo progetto: il riferimento è solo visivo/geometrico.
 - Font Inter in `assets/fonts/inter_variable.ttf` (copiato da Android): non sostituirlo.
 - Dopo modifiche al CSS/JS, verifica con uno screenshot prima di committare.
