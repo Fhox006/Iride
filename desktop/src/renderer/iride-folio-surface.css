@@ -171,3 +171,6 @@ html body:not(#_) #btn-repeat,
 html body:not(#_) #btn-toggle-lyrics-panel,
 html body:not(#_) #btn-open-settings,
 html body:not(#_) #btn-toggle-queue-panel { display: none !important; }
+
+/* Player nascosto finché non c'è un brano caricato (classe has-track impostata in app.js). */
+html body:not(#_):not(.has-track) .playbar { display: none !important; }

@@ -3786,6 +3786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateNowPlayingUI(track) {
+    document.body.classList.toggle('has-track', !!track);
     if (el.playbarTitle) {
       el.playbarTitle.textContent = track.title || 'Untitled';
       el.playbarTitle.dataset.origTitle = track.title || '';
