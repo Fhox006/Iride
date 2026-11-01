@@ -21,7 +21,7 @@ const RFACC_KEY = crypto.createHash('sha256').update('riff-account-key-v1').dige
 const APP_ID = 'io.github.rootscripts.riff';
 const IS_MAC = process.platform === 'darwin';
 
-app.setName('Riff');
+app.setName('Iride');
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 function encryptAccount(dataObj) {
