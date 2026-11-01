@@ -1,0 +1,71 @@
+name: Iride Android Screenshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/iride-cloud-screenshot]
+    paths:
+      - .github/workflows/android-screenshot.yml
+      - .github/scripts/capture-android-screenshot.sh
+
+permissions:
+  contents: read
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Generate protobuf sources
+        uses: ./.github/actions/setup-protobuf
+
+      - name: Build FOSS debug APK
+        run: bash ./gradlew :app:assembleFossDebug --no-daemon --console=plain
+
+      - name: Enable KVM access
+        run: |
+          test -c /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch Iride and capture real display
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/capture-android-screenshot.sh
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: iride-screenshot-${{ github.run_id }}
+          path: artifacts/iride-initial.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iride-diagnostics-${{ github.run_id }}
+          path: artifacts/diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
