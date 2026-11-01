@@ -101,5 +101,15 @@
     return vm;
   }
 
-  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage };
+
+  // Monta la HOME tradotta dentro un contenitore DOM. Ritorna il nodo montato o null.
+  async function mountHomeScreen(container, options) {
+    const vm = await createHomeViewModel();
+    const navController = (options && options.navController) || { navigate() {} };
+    const node = global.IrideHomeScreen.HomeScreen({ navController, snackbarHostState: null, viewModel: vm });
+    if (node && node.nodeType === 1) container.appendChild(node);
+    return node;
+  }
+
+  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen };
 })(typeof window !== 'undefined' ? window : globalThis);

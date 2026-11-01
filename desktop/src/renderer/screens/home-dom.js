@@ -12,7 +12,8 @@
   const isNode = (v) => v && typeof v === 'object' && v.nodeType === 1;
   function flatten(list, out) {
     out = out || [];
-    (list || []).forEach((x) => {
+    const arr = Array.isArray(list) ? list : (list == null ? [] : [list]);
+    arr.forEach((x) => {
       if (x == null || x === false) return;
       if (Array.isArray(x)) flatten(x, out);
       else if (x.__item) flatten([x.node], out);
@@ -22,7 +23,10 @@
   }
   function px(v) { return typeof v === 'number' ? v + 'px' : v; }
   function appendAll(el, children) {
-    flatten(children).forEach((c) => el.appendChild(isNode(c) ? c : document.createTextNode(String(c))));
+    flatten(children).forEach((c) => {
+      if (isNode(c)) el.appendChild(c);
+      else if (typeof c === 'string' || typeof c === 'number') el.appendChild(document.createTextNode(String(c)));
+    });
     return el;
   }
   function run(children) { return typeof children === 'function' ? children() : children; }
@@ -452,7 +456,139 @@
   function SongMenu(props) { return songMenuNode(props.originalSong, props.onDismiss); }
   function YouTubeSongMenu(props) { return songMenuNode(props.song, props.onDismiss); }
 
+
+  // KT: IrideFolioDisplayHeadings(menuState) { content } -- PARZIALE: solo passa il contenuto (intestazioni display non ancora portate)
+  function IrideFolioDisplayHeadings(props, body) { return run(body); }
+
+
+  // KT: LocalPlayerAwareWindowInsets (CompositionLocal) -- PARZIALE: nessun mini-player nel desktop, padding 0
+  const LocalPlayerAwareWindowInsets = () => ({ asPaddingValues() { return { calculateBottomPadding() { return 0; } }; } });
+
+
+  // ---------- BATCH 4: valori, forme, colori e helper usati dalla home ----------
+  const CircleShape = 'circle';                                                 // KT: CircleShape
+  function FolioShape(radius) { return { radius }; }                            // KT: FolioShape(dp)
+  const Color = { Black: { copy: (o) => `rgba(0,0,0,${(o && o.alpha) != null ? o.alpha : 1})` }, White: '#ffffff', Transparent: 'transparent' };
+  const ColorFilter = { tint: (c) => ({ tint: c }) };
+  const Rect = { Zero: { x: 0, y: 0, width: 0, height: 0 } };
+  const IrideFolio = { ShelfMosaicGap: 6, ShelfItemSpacing: 12, HorizontalPadding: 20, SatoshiTextHeightScale: 1 };
+  const IrideSoftBorderWidth = 1;
+  const SatoshiFontFamily = 'Satoshi, sans-serif';
+  function folioTypewriterFontFamily() { return 'monospace'; }
+  function irideFolioShelfTypography() { return typo('bodyLarge'); }
+  const CardDefaults = { cardColors: (o) => o };
+  const WindowInsets = Object.assign(() => ({}), { statusBars: {} });
+  function spacedBy(gap) { return { gap }; }
+  function strokeCard() { return palette().strokeCard; }
+  function strokeItemSoft() { return palette().strokeItemSoft; }
+  function painterResource(name) { return name; }
+  function stringResource(key) {                                                 // KT: stringResource(R.string.x)
+    const t = (global.IrideHomeStrings || {})[key];
+    return t != null ? t : key;
+  }
+  function compactHomeTitle(name) { return name; }
+  function homePageTitle() { return stringResource('home'); }
+  const asPlaylistItem = (x) => x;
+  const asSongItem = (x) => x;
+  const toMediaMetadata = (x) => x;
+  const toMediaItem = (x) => x;
+  const PlaylistEntity = Object.assign((o) => o, { LIKED_PLAYLIST_ID: 'LM' });
+  const Playlist = (o) => o;
+  const ListQueue = (o) => o;
+  const YouTubeQueue = (endpoint, metadata) => ({ endpoint, metadata });
+  const WatchEndpoint = (o) => o;
+  const ImageRequest = (o) => o;
+  const MutableInteractionSource = () => ({});
+  const tween = (o) => o;
+  function animateFloatAsState(target) { return { value: target }; }
+  function animateFloat() { return 1; }
+  function mutableStateMapOf() { return {}; }
+  function rememberScrollState() { return {}; }
+  function derivedStateOf(fn) { return { value: fn() }; }
+  function listItemVisible() { return false; }
+  function lastVisibleIndex() { return null; }
+  function snapshotFlow() { return { collect() {} }; }
+  function uuid() { return 'uuid-' + Math.random().toString(36).slice(2); }
+  function collectAsStateWithLifecycle(_flow, _key, fallback) { return fallback; }
+  function irideDepthEnter() { return Modifier(); }
+  function rubberBandOverscroll() { return Modifier(); }
+  function irideFolioCombinedClickable(o) { return Modifier().combinedClickable(o); }
+  function LocalAnimatedVisibilityScope() { return null; }
+  function LocalArtistPortraitNavigation() { return null; }
+  function LocalArtistPortraitTransitionActive() { return false; }
+  // KT: YearMonth.now() -- formato AAAA-MM
+  const YearMonth = { now() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; } };
+  // KT: MixMood -- PARZIALE: nessun mood da titolo; default CHILL
+  const MixMood = { fromMixTitle: () => null, fromChip: () => null, CHILL: 'CHILL' };
+  // KT: hashCode(String) (Java) -- identico al calcolo Java
+  function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; return h; }
+  // KT: kotlin.random.Random(seed) -- generatore deterministico (mulberry32)
+  function Random(seed) { return { seed: seed | 0 }; }
+  function nextRandom(rnd) {
+    if (!rnd) return Math.random();
+    rnd.seed = (rnd.seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(rnd.seed ^ (rnd.seed >>> 15), 1 | rnd.seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  // KT: Iterable.shuffled(random) -- Fisher-Yates con il generatore sopra
+  function shuffled(list, rnd) {
+    const a = (list || []).slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(nextRandom(rnd) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  // KT: Iterable.chunked(n)
+  function chunked(list, n) { const out = []; for (let i = 0; i < (list || []).length; i += n) out.push(list.slice(i, i + n)); return out; }
+  // KT: distinctBy { id }
+  function distinctById(list) { const seen = new Set(); return (list || []).filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true))); }
+  // KT: Menu (album, artista, playlist, canzone YouTube): titolo + chiudi, azioni da portare
+  function menuNode(item, onDismiss) {
+    const box = document.createElement('div');
+    box.setAttribute('role', 'menu');
+    const t = document.createElement('div'); t.textContent = (item && (item.title || (item.playlist && item.playlist.name))) || ''; t.style.fontWeight = '700';
+    box.appendChild(t);
+    const close = document.createElement('button'); close.textContent = '×';
+    close.addEventListener('click', () => { if (onDismiss) onDismiss(); });
+    box.appendChild(close);
+    return box;
+  }
+  function AlbumMenu(props) { return menuNode(props.originalAlbum, props.onDismiss); }
+  function ArtistMenu(props) { return menuNode(props.originalArtist, props.onDismiss); }
+  function PlaylistMenu(props) { return menuNode(props.playlist, props.onDismiss); }
+  function YouTubeAlbumMenu(props) { return menuNode(props.albumItem, props.onDismiss); }
+  function YouTubeArtistMenu(props) { return menuNode(props.artist, props.onDismiss); }
+  function YouTubePlaylistMenu(props) { return menuNode(props.playlist, props.onDismiss); }
+  // KT: SongMenuIconButton(onClick) { icon } -- pulsante con icona
+  function SongMenuIconButton(props, body) {
+    const b = document.createElement('button');
+    b.style.background = 'transparent'; b.style.border = 'none'; b.style.cursor = 'pointer';
+    b.addEventListener('click', (e) => { e.stopPropagation(); if (props.onClick) props.onClick(); });
+    return appendAll(b, run(body));
+  }
+  // KT: TextButton(onClick) { content }
+  function TextButton(props, body) {
+    const b = document.createElement('button');
+    b.style.background = 'transparent'; b.style.border = 'none'; b.style.cursor = 'pointer'; b.style.color = palette().textPrimary;
+    b.addEventListener('click', () => { if (props.onClick) props.onClick(); });
+    return appendAll(b, run(body));
+  }
+  // KT: CircularProgressIndicator / LinearProgressIndicator (progress lineare)
+  function CircularProgressIndicator(props) { const el = document.createElement('span'); el.style.display = 'inline-block'; el.style.width = px(props.modifier ? 16 : 16); el.style.height = '16px'; el.style.borderRadius = '50%'; el.style.border = '2px solid currentColor'; el.style.opacity = '0.6'; return el; }
+  function LinearProgressIndicator(props) {
+    const el = document.createElement('div'); el.style.height = '2px'; el.style.background = props.trackColor || 'rgba(255,255,255,0.2)';
+    const bar = document.createElement('div'); bar.style.height = '100%'; bar.style.width = `${Math.round((props.progress ? props.progress() : 0) * 100)}%`; bar.style.background = props.color || '#fff';
+    el.appendChild(bar); return el;
+  }
+  // KT: MixPosterPlaceholder(title, mood) -- poster senza immagine
+  function MixPosterPlaceholder(props) { const el = document.createElement('div'); el.textContent = props.title || ''; el.style.width = '100%'; el.style.height = '100%'; el.style.background = 'rgba(255,255,255,0.06)'; return el; }
+  // KT: IrideFolioSectionSkeleton / IrideFolioShelfSkeleton -- segnaposto di caricamento
+  function skeletonBox(size) { const el = document.createElement('div'); el.style.width = px(size || 160); el.style.height = px(size || 160); el.style.flex = '0 0 auto'; el.style.borderRadius = '6px'; el.style.background = 'rgba(255,255,255,0.06)'; return el; }
+  function IrideFolioSectionSkeleton(size) { return skeletonBox(size); }
+  function IrideFolioShelfSkeleton(size) { return skeletonBox(size); }
+  // KT: Surface/ Card ok; KT: collectDeferredHomeState gestito in home-components
+
   global.IrideHomeDom = {
+    typography: typo,
     Modifier, MaterialTheme, Box, Column, Row, Spacer, Text, Image, AsyncImage, Icon, Surface, Card,
     Scaffold, BoxWithConstraints, CompositionLocalProvider, item, LazyRow, IridePageLayout,
     IrideFolioSection, IrideFolioShelfHeader, IrideFolioMediaShelf, palette, typo,
@@ -460,6 +596,7 @@
     SharedHomeSectionTitle, SharedYouTubePlaylistRow, PlaylistGridItem, ReverieHomeCard,
     HeroCarouselSection, ReverieAvailabilityCard, NewReleaseChartsShelf, HomeFollowedReleases,
     rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile,
-    rememberArtistPortraitTile, SongMenu, YouTubeSongMenu,
+    rememberArtistPortraitTile, SongMenu, YouTubeSongMenu, IrideFolioDisplayHeadings, LocalPlayerAwareWindowInsets,
+    CircleShape, FolioShape, Color, ColorFilter, Rect, IrideFolio, IrideSoftBorderWidth, SatoshiFontFamily, folioTypewriterFontFamily, irideFolioShelfTypography, CardDefaults, WindowInsets, spacedBy, strokeCard, strokeItemSoft, painterResource, stringResource, compactHomeTitle, homePageTitle, asPlaylistItem, asSongItem, toMediaMetadata, toMediaItem, PlaylistEntity, Playlist, ListQueue, YouTubeQueue, WatchEndpoint, ImageRequest, MutableInteractionSource, tween, animateFloatAsState, animateFloat, mutableStateMapOf, rememberScrollState, derivedStateOf, listItemVisible, lastVisibleIndex, snapshotFlow, uuid, collectAsStateWithLifecycle, irideDepthEnter, rubberBandOverscroll, irideFolioCombinedClickable, LocalAnimatedVisibilityScope, LocalArtistPortraitNavigation, LocalArtistPortraitTransitionActive, YearMonth, MixMood, hashCode, Random, shuffled, chunked, distinctById, AlbumMenu, ArtistMenu, PlaylistMenu, YouTubeAlbumMenu, YouTubeArtistMenu, YouTubePlaylistMenu, SongMenuIconButton, TextButton, CircularProgressIndicator, LinearProgressIndicator, MixPosterPlaceholder, IrideFolioSectionSkeleton, IrideFolioShelfSkeleton,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

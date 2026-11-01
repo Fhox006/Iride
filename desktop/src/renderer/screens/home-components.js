@@ -59,7 +59,7 @@
   // KT: ui/component/LocalMenuState -- STUB
   const LocalMenuState = stub('LocalMenuState', 'ui/component/Menu', () => ({ show() {} }));
   // KT: hiltViewModel -- STUB (ritorna oggetto vuoto)
-  const hiltViewModel = stub('hiltViewModel', 'hilt', (name) => ({ name, archiveMonths: () => null, firstFullMonth: () => null }));
+  const hiltViewModel = stub('hiltViewModel', 'hilt', (name) => ({ name, archiveMonths: () => [], firstFullMonth: () => null }));
   // KT: PreloadHomeCharts(chartViewModel) -- STUB
   const PreloadHomeCharts = stub('PreloadHomeCharts', 'ui/screens/playlist', () => {});
   // KT: rememberSaveable { init } -- STUB (in memoria, non persiste)

@@ -129,3 +129,12 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 | `homePage` (sezioni + chip umore) | `/api/home-feed` (server.js, Innertube FEmusic_home) | PARZIALE | mappa item kind→tipo Kotlin; niente endpoint di sezione |
 | `quickPicks`, `forYouShelves`, `homeMoodContent`, `dailyDiscover`, `communityPlaylists`, `similarRecommendations`, `accountPlaylists`, `homePersonalMixes`, `heroCarouselItems` | — | STUB | liste vuote: serve una route dedicata nel server |
 | `syncState`, `accountName`, flag di caricamento | — | STUB | valori fissi |
+
+### Batch 4 (home-dom.js, home-strings.js) -- verificato in app: la schermata monta senza errori
+
+- Costanti e forme (`CircleShape`, `FolioShape`, `Color`, `Rect`, `IrideFolio`, `SatoshiFontFamily`): OK, valori copiati dal Kotlin dove noti, altrimenti PARZIALE.
+- `stringResource`: OK, legge `home-strings.js` generato da `values/strings.xml` (287 stringhe).
+- Helper di lista/random (`shuffled`, `chunked`, `distinctById`, `hashCode`, `Random`): OK, deterministici come nel Kotlin.
+- Menu (`AlbumMenu`, `ArtistMenu`, `PlaylistMenu`, `YouTube*Menu`): PARZIALE, solo titolo e chiudi.
+- `TextButton`, `SongMenuIconButton`, progress, skeleton, `MixPosterPlaceholder`: PARZIALE.
+- `MixMood`: PARZIALE, nessun mood ricavato dal titolo.

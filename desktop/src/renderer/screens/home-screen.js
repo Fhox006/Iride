@@ -417,7 +417,7 @@
       }
       // KT:600-615  collectLatest su isMoodError: retry ogni 30 s se internet disponibile
       await viewModel.isMoodError.collectLatest(async (failed) => {
-        while (failed && viewModel.isMoodError.value()) {
+        while (failed && viewModel.isMoodError.value) {
           await C.delay(30000);                                                   // KT:602
           if (C.isInternetAvailable(moodContext)) {                               // KT:603
             viewModel.loadMoodPage(selectedMood.value && selectedMood.value.endpoint && selectedMood.value.endpoint.params,
