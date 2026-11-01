@@ -10669,6 +10669,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, true);
 
+  async function startRadioForTrack(track) {
+    playTrack(track, [track], 0);
+    try {
+      const found = await buildAutoplayCandidates();
+      if (Array.isArray(found) && found.length) {
+        state.queue.push(...found);
+        state.isRadioQueue = true;
+        if (typeof updateQueueBadge === 'function') updateQueueBadge();
+      }
+    } catch (_) {}
+  }
+
   function openTrackContextMenu(e, track, options = {}) {
     if (ctxMenuEl && ctxMenuEl.classList.contains('open')) {
       closeTrackContextMenu();
@@ -10868,6 +10880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           showToast(typeof t === 'function' ? t('Play next') : 'Play next', 'success');
         },
         viewArtist: () => openArtistProfile(track.artist, track),
+        radio: () => startRadioForTrack(track),
         viewAlbum: (track.album && track.album.id) ? () => openAlbum(track.album) : null,
       });
     } else {

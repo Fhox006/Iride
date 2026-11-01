@@ -17,81 +17,261 @@
   window.irideIcon = ic;
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // IrideFolioContextMotionSpec
-  const SPEC = { initialScale: 0.94, blur: 14, travel: 8, stiffness: 460, damping: 0.84, closeMs: 300 };
+  // ---------- IrideFolioContextMotionSpec ----------
+  const SPEC = { initialScale: 0.94, blur: 14, travel: 8, stiffness: 460, damping: 0.84, closeMs: 300, compress: 0.06, longPressMs: 400, slop: 8 };
+  const RB = { resistance: 0.55, stiffness: 200 };           // RubberBandResistance, Spring.StiffnessLow (damping 1)
   const reduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
   const smooth = (x) => x * x * (3 - 2 * x);
-  const bez = (x1, y1, x2, y2) => (t) => { // CubicBezierEasing(0.2,0,0.2,1)
+  const bez = (x1, y1, x2, y2) => (t) => {
     let lo = 0, hi = 1, u = t;
-    for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; const x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u; if (x < t) lo = u; else hi = u; }
+    for (let i = 0; i < 28; i++) { u = (lo + hi) / 2; const x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u; if (x < t) lo = u; else hi = u; }
     return 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
   };
-  const closeEase = bez(0.2, 0, 0.2, 1);
-  const spring = (t) => { // spring(dampingRatio .84, stiffness 460), 1 = rest
+  const closeEase = bez(0.2, 0, 0.2, 1);          // CloseTween
+  const anticipation = bez(0.35, 0, 0.65, 1);     // AnticipationEasing
+  const spring = (t) => {                          // OpenSpring: 0 -> 1
     const w = Math.sqrt(SPEC.stiffness), z = SPEC.damping, wd = w * Math.sqrt(1 - z * z);
     return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t));
   };
+  const critical = (x0, v0, k, t) => { const w = Math.sqrt(k); return (x0 + (v0 + w * x0) * t) * Math.exp(-w * t); }; // damping ratio 1
+
+  // ---------- FolioShape: SquircleShape(radius, cornerSmoothing = 0.6) ----------
+  function squircle(w, h, r, sm) {
+    sm = sm == null ? 0.6 : sm;
+    r = Math.min(r, w / 2, h / 2);
+    const maxP = Math.min(w, h) / 2;
+    let p = (1 + sm) * r;
+    if (p > maxP) { sm = maxP / r - 1; p = maxP; }
+    const R = Math.PI / 180;
+    const arcM = 90 * (1 - sm), arc = Math.sin(arcM / 2 * R) * r * Math.SQRT2;
+    const alpha = (90 - arcM) / 2, p34 = r * Math.tan(alpha / 2 * R), beta = 45 * sm;
+    const c = p34 * Math.cos(beta * R), d = c * Math.tan(beta * R);
+    const b = (p - arc - c - d) / 3, a = 2 * b;
+    const seg = [['c', a, 0, a + b, 0, a + b + c, d], ['a', r, r, 0, 0, 1, arc, arc], ['c', d, c, d, b + c, d, a + b + c]];
+    const rot = (k) => (x, y) => k === 0 ? [x, y] : k === 1 ? [-y, x] : k === 2 ? [-x, -y] : [y, -x];
+    const f = (n) => +n.toFixed(3);
+    const corner = (k) => {
+      const m = rot(k);
+      return seg.map((s) => {
+        if (s[0] === 'a') { const e = m(s[6], s[7]); return 'a' + s[1] + ' ' + s[2] + ' 0 0 1 ' + f(e[0]) + ' ' + f(e[1]); }
+        const o = []; for (let i = 1; i < 7; i += 2) { const e = m(s[i], s[i + 1]); o.push(f(e[0]), f(e[1])); }
+        return 'c' + o.join(' ');
+      }).join('');
+    };
+    return 'M' + f(w - p) + ' 0' + corner(0) + 'L' + f(w) + ' ' + f(h - p) + corner(1) + 'L' + f(p) + ' ' + f(h) + corner(2) + 'L0 ' + f(p) + corner(3) + 'Z';
+  }
+  const sqClip = (w, h, r) => "path('" + squircle(w, h, r) + "')";
+
+  // ---------- animazione del pannello (IrideAnchoredSongMenu.graphicsLayer) ----------
   function apply(menu, reveal, origin) {
-    const r = menu.getBoundingClientRect();
-    const focus = Math.min(1, Math.max(0, reveal));
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    const focus = clamp(reveal, 0, 1);
     const scale = SPEC.initialScale + (1 - SPEC.initialScale) * reveal;
-    const ox = Math.min(r.width, Math.max(0, origin.x - menu.offsetLeft)), oy = Math.min(r.height, Math.max(0, origin.y - menu.offsetTop));
-    const tx = Math.max(-SPEC.travel, Math.min(SPEC.travel, origin.x - menu.offsetLeft - ox)) * (1 - reveal);
-    const ty = Math.max(-SPEC.travel, Math.min(SPEC.travel, origin.y - menu.offsetTop - oy)) * (1 - reveal);
-    const disp = 1 - focus, fade = Math.min(1, Math.max(0, (disp - 0.4) / 0.6));
-    menu.style.transformOrigin = ox + 'px ' + oy + 'px';
+    const left = menu.offsetLeft, top = menu.offsetTop;
+    const pivotX = clamp((origin.x - left) / Math.max(1, w), 0, 1), pivotY = clamp((origin.y - top) / Math.max(1, h), 0, 1);
+    const tx = clamp(origin.x - left - w * pivotX, -SPEC.travel, SPEC.travel) * (1 - reveal);
+    const ty = clamp(origin.y - top - h * pivotY, -SPEC.travel, SPEC.travel) * (1 - reveal);
+    const fade = clamp((1 - focus - 0.4) / 0.6, 0, 1);
+    menu.style.transformOrigin = (pivotX * 100) + '% ' + (pivotY * 100) + '%';
     menu.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
     menu.style.filter = 'blur(' + (SPEC.blur * (1 - focus * focus)) + 'px)';
     menu.style.opacity = String(1 - smooth(fade));
   }
+  const srcScale = (el, p) => { if (!el) return; el.style.transformOrigin = '50% 50%'; el.style.scale = p ? String(clamp(1 - SPEC.compress * p, 0.9, 1.015)) : ''; };
   let raf = 0;
   function run(menu, opening, origin) {
     cancelAnimationFrame(raf);
-    if (reduced()) { menu.style.transform = menu.style.filter = ''; menu.style.opacity = opening ? '1' : '0'; return; }
+    const src = menu._smSource; const p0 = menu._smP0 || 0;
+    if (reduced()) { menu.style.transform = menu.style.filter = ''; menu.style.opacity = opening ? '1' : '0'; srcScale(src, 0); return; }
     const from = parseFloat(menu.dataset.reveal || (opening ? '0' : '1'));
     const t0 = performance.now();
     const step = (now) => {
       const t = (now - t0) / 1000;
       let v, done;
-      if (opening) { v = from + (1 - from) * spring(t); done = t > 0.9; }
+      if (opening) { const sp = spring(t); v = from + (1 - from) * sp; done = t > 0.9; srcScale(src, p0 * (1 - sp)); }
       else { const k = Math.min(1, t * 1000 / SPEC.closeMs); v = from * (1 - closeEase(k)); done = k >= 1; }
       menu.dataset.reveal = String(v);
-      apply(menu, opening ? v : Math.max(0, v), origin);
+      apply(menu, Math.max(0, v), origin);
       if (!done) raf = requestAnimationFrame(step);
-      else if (opening) { menu.dataset.reveal = '1'; menu.style.transform = menu.style.filter = ''; menu.style.opacity = '1'; }
+      else if (opening) { menu.dataset.reveal = '1'; menu.style.transform = menu.style.filter = ''; menu.style.opacity = '1'; srcScale(src, 0); }
       else { menu.dataset.reveal = '0'; menu.style.opacity = '0'; }
     };
     raf = requestAnimationFrame(step);
   }
 
-  // songMenuPlacement: prima sopra se ci sta, poi sotto, altrimenti il lato più grande con scroll
-  function place(menu, anchor) {
-    const W = 224, gap = 8, margin = 8, hm = 20;
-    const vp = { l: hm, r: innerWidth - hm, t: 56 + margin, b: (document.querySelector('#playbar')?.getBoundingClientRect().top || innerHeight) - margin };
-    menu.style.maxHeight = 'none'; menu.style.width = W + 'px';
-    const h0 = menu.scrollHeight;
-    const aboveB = Math.min(vp.b, Math.max(vp.t, anchor.top - gap)), belowT = Math.min(vp.b, Math.max(vp.t, anchor.bottom + gap));
+  // ---------- songMenuViewport + songMenuPlacement ----------
+  function viewport() {
+    const margin = 8, hm = 20;
+    const pb = document.querySelector('#playbar');
+    const footerTop = pb ? pb.getBoundingClientRect().top : innerHeight;
+    return { l: hm, r: innerWidth - hm, t: 56 + margin, b: Math.min(innerHeight, footerTop) - margin };
+  }
+  function placement(anchor, vp, W, H0, gap) {
+    const aboveB = clamp(anchor.top - gap, vp.t, vp.b), belowT = clamp(anchor.bottom + gap, vp.t, vp.b);
     const aboveS = aboveB - vp.t, belowS = vp.b - belowT;
-    const above = h0 <= aboveS ? true : h0 <= belowS ? false : aboveS >= belowS;
+    const above = H0 <= aboveS ? true : H0 <= belowS ? false : aboveS >= belowS;
     const avail = above ? aboveS : belowS;
-    const h = Math.min(h0, avail > 0 ? avail : vp.b - vp.t);
-    const x = Math.min(Math.max(anchor.right - W, vp.l), Math.max(vp.l, vp.r - W));
-    const y = Math.min(Math.max(above ? aboveB - h : belowT, vp.t), Math.max(vp.t, vp.b - h));
-    menu.style.maxHeight = h + 'px'; menu.style.left = x + 'px'; menu.style.top = y + 'px';
+    const h = Math.min(H0, avail > 0 ? avail : vp.b - vp.t);
+    const maxX = Math.max(vp.l, vp.r - W), maxY = Math.max(vp.t, vp.b - h);
+    return { x: clamp(anchor.right - W, vp.l, maxX), y: clamp(above ? aboveB - h : belowT, vp.t, maxY), h, constrained: h < H0 };
   }
 
+  // ---------- IrideFolioScrollbar + rubberBandOverscroll ----------
+  function attachScroll(menu) {
+    const vp = menu._smVp, bar = menu._smBar, track = bar.firstChild, thumb = track.firstChild;
+    const st = { raw: 0, raf: 0, idle: 0 };
+    const dim = () => vp.clientHeight;
+    const offset = () => { const r = st.raw, d = dim(); if (!r || d <= 0) return 0; const a = Math.abs(r); return Math.sign(r) * (a * d * RB.resistance) / (d + RB.resistance * a); };
+    const metrics = () => {
+      const trackH = track.clientHeight, content = vp.scrollHeight, view = vp.clientHeight;
+      if (trackH <= 0 || content <= view) return null;
+      const min = Math.min(20, trackH), range = content - view;
+      const height = clamp(trackH * view / content, min, trackH), travel = trackH - height;
+      return { trackH, height, travel, range, offset: travel * clamp(vp.scrollTop / range, 0, 1) };
+    };
+    const paint = () => {
+      const off = offset();
+      vp.style.transform = off ? 'translateY(' + off + 'px)' : '';
+      const m = metrics();
+      if (!m) { thumb.style.display = 'none'; return; }
+      thumb.style.display = '';
+      const comp = clamp(Math.abs(off) / Math.max(1, m.trackH * 0.55), 0, 0.65);
+      const th = Math.max(m.height * (1 - comp), Math.min(20, m.trackH)), travel = m.trackH - th;
+      const to = off > 0 ? 0 : off < 0 ? travel : m.offset;
+      thumb.style.height = th + 'px'; thumb.style.transform = 'translateY(' + to + 'px)';
+    };
+    const settle = (v0) => {
+      cancelAnimationFrame(st.raf);
+      if (!st.raw) return;
+      if (reduced()) { st.raw = 0; paint(); return; }
+      const x0 = st.raw, t0 = performance.now();
+      const f = (now) => {
+        const t = (now - t0) / 1000; st.raw = critical(x0, v0 || 0, RB.stiffness, t); // spring(dampingRatio 1, StiffnessLow)
+        if (Math.abs(st.raw) < 0.01) { st.raw = 0; paint(); return; }
+        paint(); st.raf = requestAnimationFrame(f);
+      };
+      st.raf = requestAnimationFrame(f);
+    };
+    // onPreScroll (reduce an existing pull first) + onPostScroll (unconsumed distance feeds the pull)
+    const pull = (delta, atTop, atBottom) => {
+      const cur = st.raw;
+      if (cur !== 0 && delta !== 0 && Math.sign(delta) !== Math.sign(cur)) {
+        const next = cur > 0 ? Math.max(0, cur + delta) : Math.min(0, cur + delta); st.raw = next; paint(); return true;
+      }
+      if ((delta > 0 && atTop) || (delta < 0 && atBottom)) { st.raw = cur + delta; paint(); return true; }
+      return false;
+    };
+    const edges = () => ({ top: vp.scrollTop <= 0, bottom: vp.scrollTop + vp.clientHeight >= vp.scrollHeight - 1 });
+    vp.addEventListener('wheel', (e) => {
+      const e2 = edges(), d = -e.deltaY * (e.deltaMode === 1 ? 16 : 1) * 0.64;
+      if (pull(d, e2.top, e2.bottom)) { e.preventDefault(); e.stopPropagation(); cancelAnimationFrame(st.raf); clearTimeout(st.idle); st.idle = setTimeout(() => settle(0), 90); }
+    }, { passive: false });
+    let ty = null;
+    vp.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; ty = e.clientY; cancelAnimationFrame(st.raf); });
+    vp.addEventListener('pointermove', (e) => {
+      if (ty == null || e.pointerType === 'mouse') return;
+      const d = e.clientY - ty; ty = e.clientY;
+      const before = vp.scrollTop; const e2 = edges();
+      if (pull(d, e2.top, e2.bottom)) return;
+      vp.scrollTop = before - d;
+      const consumed = before - vp.scrollTop, left = d - consumed;
+      if (left) { st.raw += left; paint(); }
+    });
+    const end = () => { if (ty == null) return; ty = null; settle(0); };
+    vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end);
+    vp.addEventListener('scroll', paint, { passive: true });
+    // thumb drag (draggable target)
+    let dy = null;
+    bar.addEventListener('pointerdown', (e) => { dy = e.clientY; bar.setPointerCapture(e.pointerId); e.preventDefault(); });
+    bar.addEventListener('pointermove', (e) => { if (dy == null) return; const m = metrics(); const d = e.clientY - dy; dy = e.clientY; if (m && m.travel > 0) vp.scrollTop += d * m.range / m.travel; });
+    bar.addEventListener('pointerup', () => { dy = null; }); bar.addEventListener('pointercancel', () => { dy = null; });
+    menu._smPaint = paint;
+  }
+
+  // ---------- layout: IrideFolioMenuSurface (superficie, bordo, clip) ----------
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function layout(menu, W, H, constrained) {
+    menu.style.width = W + 'px'; menu.style.minWidth = W + 'px'; menu.style.height = H + 'px';
+    menu.style.clipPath = sqClip(W, H, 18);                           // ControlsShape
+    menu._smClip.style.clipPath = sqClip(W - 2, H - 2, 17);           // MenuContentShape
+    const sv = menu._smStroke; sv.setAttribute('width', W); sv.setAttribute('height', H);
+    sv.firstChild.setAttribute('d', squircle(W - 1, H - 1, 17.5));    // border 1dp, drawn inside the outline
+    menu._smVp.style.paddingRight = constrained ? '22px' : '2px';     // ScrollbarTouchTargetWidth
+    menu._smBar.style.display = constrained ? '' : 'none';
+    if (menu._smPaint) menu._smPaint();
+  }
+
+  // ---------- IrideFolioPressProtocol: compressione verso il dito, poi molla ----------
+  const press = { row: null, p: 0, raf: 0, timer: 0, t0: 0, x: 0, y: 0, committed: false };
+  function animPress(row, from, to, ms, ease) {
+    cancelAnimationFrame(press.raf);
+    const t0 = performance.now();
+    const f = (now) => {
+      const k = Math.min(1, (now - t0) / ms); press.p = from + (to - from) * ease(k); srcScale(row, press.p);
+      if (k < 1) press.raf = requestAnimationFrame(f); else if (!to) srcScale(row, 0);
+    };
+    press.raf = requestAnimationFrame(f);
+  }
+  function releasePress(row) {
+    cancelAnimationFrame(press.raf); clearTimeout(press.timer);
+    if (!row) return;
+    const p0 = press.p, t0 = performance.now();
+    if (reduced() || !p0) { srcScale(row, 0); press.p = 0; return; }
+    const f = (now) => {                                               // ReturnSpring: damping 1, stiffness 900
+      press.p = critical(p0, 0, 900, (now - t0) / 1000); srcScale(row, press.p);
+      if (Math.abs(press.p) > 0.001) press.raf = requestAnimationFrame(f); else { press.p = 0; srcScale(row, 0); }
+    };
+    press.raf = requestAnimationFrame(f);
+  }
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, .riff-ctx-menu')) return;
+    const row = e.target.closest('.track-row');
+    if (!row || document.querySelector('.riff-ctx-menu.open')) return;
+    press.row = row; press.x = e.clientX; press.y = e.clientY; press.committed = false; press.p = 0;
+    if (!reduced()) animPress(row, 0, 1, SPEC.longPressMs, anticipation);
+    clearTimeout(press.timer);
+    press.timer = setTimeout(() => {
+      press.committed = true; cancelAnimationFrame(press.raf);
+      window.__irideTouch = { x: press.x, y: press.y, row, p: reduced() ? 0 : press.p };
+      const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      document.addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(() => document.removeEventListener('click', swallow, true), 1200);
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: press.x, clientY: press.y, view: window }));
+      if (window.__irideTouch) { window.__irideTouch = null; releasePress(row); }   // nothing opened
+    }, SPEC.longPressMs);
+  }, true);
+  const cancelPress = () => { if (!press.row || press.committed) { press.row = null; return; } const r = press.row; press.row = null; releasePress(r); };
+  document.addEventListener('pointerup', cancelPress, true);
+  document.addEventListener('pointercancel', cancelPress, true);
+  document.addEventListener('pointermove', (e) => { if (press.row && !press.committed && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SPEC.slop) cancelPress(); }, true);
+  document.addEventListener('dragstart', cancelPress, true);
+
+  // ---------- contenuto: SongMenu.kt ----------
   window.irideRenderSongMenu = function (menu, track, o) {
     const tr = (x) => (typeof window.t === 'function' ? window.t(x) : x);
     menu.classList.add('iride-songmenu');
     menu.innerHTML = '';
+    const clip = document.createElement('div'); clip.className = 'sm-clip';
+    const vp = document.createElement('div'); vp.className = 'sm-vp';
+    const bar = document.createElement('div'); bar.className = 'sm-bar';
+    bar.innerHTML = '<div class="sm-track"><div class="sm-thumb"></div></div>';
+    const sv = document.createElementNS(SVGNS, 'svg'); sv.setAttribute('class', 'sm-stroke');
+    const sp = document.createElementNS(SVGNS, 'path'); sp.setAttribute('transform', 'translate(.5 .5)'); sp.setAttribute('fill', 'none'); sp.setAttribute('stroke', 'rgba(255,255,255,.22)'); sp.setAttribute('stroke-width', '1'); sv.appendChild(sp);
+    clip.appendChild(vp); menu.append(clip, bar, sv);
+    menu._smClip = clip; menu._smVp = vp; menu._smBar = bar; menu._smStroke = sv;
+    attachScroll(menu);
+
     const B = o.byId;
+    const multi = String(track.artist || '').split(/,|&| feat\.? | ft\.? | x /i).filter((x) => x.trim()).length > 1;
     const sections = [
       [o.playNext && { icon: 'playlist_play', title: 'Next', action: o.playNext },
-       B.queue && { icon: 'queue_music', title: 'Queue', action: B.queue.action }],
+       B.queue && { icon: 'queue_music', title: 'Queue', action: B.queue.action },
+       o.radio && { icon: 'radio', title: 'Radio', action: o.radio }],
       [B.fav && { icon: o.isFav ? 'favorite' : 'favorite_border', title: o.isFav ? 'Remove star' : 'Star', action: B.fav.action },
        B.playlist && { icon: 'playlist_add', title: 'Add to playlist', action: B.playlist.action },
        B.download && { icon: 'download', title: 'Download', action: B.download.action }],
-      [track.artist && o.viewArtist && { icon: 'artist', avatar: o.artistThumb, round: true, title: 'View artist', action: o.viewArtist },
+      [track.artist && o.viewArtist && { icon: 'artist', avatar: o.artistThumb, round: true, title: multi ? 'View artists' : 'View artist', action: o.viewArtist },
        o.viewAlbum && { icon: 'album', avatar: o.thumb, title: 'View album', action: o.viewAlbum }],
       [B.share && { icon: 'share', title: 'Share', action: B.share.action }],
       [B.rename && { icon: 'edit', title: 'Edit', action: B.rename.action },
@@ -104,9 +284,11 @@
        B['block-track'] && { icon: 'block', title: B['block-track'].label, action: B['block-track'].action },
        B['block-artist'] && { icon: 'block', title: B['block-artist'].label, action: B['block-artist'].action }],
     ].map((g) => g.filter(Boolean)).filter((g) => g.length);
+    let rows = 0;
     sections.forEach((sec, i) => {
-      if (i) { const d = document.createElement('div'); d.className = 'riff-ctx-divider'; menu.appendChild(d); }
+      if (i) { const d = document.createElement('div'); d.className = 'riff-ctx-divider'; vp.appendChild(d); }
       sec.forEach((r) => {
+        rows++;
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'sm-row';
         const lead = r.avatar
@@ -114,9 +296,10 @@
           : ic(r.icon);
         b.innerHTML = '<span class="sm-lead">' + lead + '</span><span class="sm-t">' + esc(tr(r.title)) + '</span>';
         b.addEventListener('click', (ev) => { ev.stopPropagation(); o.close(); r.action(); });
-        menu.appendChild(b);
+        vp.appendChild(b);
       });
     });
+    menu._smRows = rows; menu._smDividers = Math.max(0, sections.length - 1);
     if (!menu._smObs) {
       menu._smObs = new MutationObserver(() => {
         if (!menu.classList.contains('iride-songmenu')) return;
@@ -133,11 +316,21 @@
   // chiamata da app.js dopo il render: posizione + origine dell'animazione
   window.irideSongMenuPlace = function (menu, ev) {
     const a = window.__irideMenuAnchor; window.__irideMenuAnchor = null;
-    const anchor = a || { left: ev.clientX - 24, right: ev.clientX + 24, top: ev.clientY - 24, bottom: ev.clientY + 24 };
+    const touch = window.__irideTouch; window.__irideTouch = null;
+    const px = touch ? touch.x : ev.clientX, py = touch ? touch.y : ev.clientY;
+    const R = 24;                                                     // observeSongMenuAnchor radius
+    const anchor = a || { left: px - R, right: px + R, top: py - R, bottom: py + R };
     menu.classList.remove('open'); menu._smOpen = false;
     menu.style.transition = 'none'; menu.style.opacity = '0'; menu.style.transform = menu.style.filter = ''; menu.dataset.reveal = '0';
-    place(menu, anchor);
-    menu._smOrigin = { x: ev.clientX, y: ev.clientY };
-    if (a) menu._smOrigin = { x: (a.left + a.right) / 2, y: (a.top + a.bottom) / 2 };
+    const vp = viewport();
+    const W = Math.min(224, vp.r - vp.l);
+    const H0 = menu._smRows * 42 + menu._smDividers * 5 + 18;        // MenuItemHeight, section padding + divider, (padding + border) * 2
+    const pl = placement(anchor, vp, W, H0, 8);
+    menu.style.left = pl.x + 'px'; menu.style.top = pl.y + 'px';
+    layout(menu, W, pl.h, pl.constrained);
+    menu._smVp.scrollTop = 0;
+    menu._smOrigin = a ? { x: (a.left + a.right) / 2, y: (a.top + a.bottom) / 2 } : { x: px, y: py };
+    menu._smSource = touch ? touch.row : null; menu._smP0 = touch ? touch.p : 0;
+    if (touch) { press.committed = true; press.row = null; }
   };
 })();

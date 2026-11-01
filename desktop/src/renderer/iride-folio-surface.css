@@ -123,27 +123,38 @@ html body:not(#_) .riff-tg-tip {
 
 /* ---- IrideFolioMenu: irideFolioMenuSurface + IrideFolioMenuItem (DropdownMenuItem M3, labelLarge DM Sans) ---- */
 html body:not(#_) .riff-ctx-menu.iride-songmenu {
-  position: fixed; width: 224px; min-width: 224px; box-sizing: border-box;      /* MenuWidth, bordo incluso */
-  padding: 8px 2px !important;                                                    /* MenuVerticalPadding, MenuContentPadding */
-  border-color: var(--folio-stroke-card, rgba(255,255,255,.22)) !important;      /* strokeCard = onSurface 22% */
+  position: fixed; width: 224px; min-width: 224px; box-sizing: border-box;         /* MenuWidth, bordo incluso */
+  padding: 0 !important; border: 0 !important; overflow: hidden !important;        /* bordo e clip sono squircle, vedi iride-folio-songmenu.js */
   font-family: 'DM Sans', sans-serif; transition: none !important; will-change: transform, filter, opacity;
 }
+.iride-songmenu .sm-stroke { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; overflow: visible; }
+.iride-songmenu .sm-clip { position: absolute; inset: 1px; overflow: hidden; z-index: 1; }   /* Surface.padding(MenuBorderWidth) */
+.iride-songmenu .sm-vp {
+  box-sizing: border-box; height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; touch-action: none;
+  padding: 8px 2px;                                                                /* MenuVerticalPadding, MenuContentPadding */
+  will-change: transform;
+}
+.iride-songmenu .sm-vp::-webkit-scrollbar { display: none; }
 html body:not(#_) .iride-songmenu .riff-ctx-divider {
-  height: 1px; margin: 2px 14px; background: var(--folio-stroke-card, rgba(255,255,255,.22));   /* MenuSection*Padding, strokeCard */
+  height: 1px; margin: 2px 14px; background: rgba(255,255,255,.22);                /* MenuSection*Padding, strokeCard */
 }
 .iride-songmenu .sm-row {
-  position: relative; z-index: 1; display: flex; align-items: center; width: 100%; height: 42px; min-height: 42px; box-sizing: border-box;
+  position: relative; display: flex; align-items: center; width: 100%; height: 42px; min-height: 42px; box-sizing: border-box;
   padding: 0 12px; margin: 0; border: 0; border-radius: 0; background: transparent; color: #fff; cursor: pointer; text-align: left;
-  font: 500 14px/20px 'DM Sans', sans-serif; letter-spacing: .1px;                  /* typography.labelLarge */
+  font: 400 14px/20px 'DM Sans', sans-serif; letter-spacing: .1px;                  /* labelLarge (dm_sans_variable senza variazione peso: 400) */
   transition: background-color 120ms ease;
 }
 .iride-songmenu .sm-row:hover, .iride-songmenu .sm-row:focus-visible { background: rgba(255,255,255,.08); outline: 0; }
 .iride-songmenu .sm-row:active { background: rgba(255,255,255,.10); }
 .iride-songmenu .sm-lead { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
 .iride-songmenu .sm-ic { width: 24px; height: 24px; display: block; }
-.iride-songmenu .sm-av { width: 28px; height: 28px; flex: none; object-fit: cover; border-radius: 4px; }
+.iride-songmenu .sm-av { width: 24px; height: 24px; flex: none; object-fit: cover; border-radius: 4px; }
 .iride-songmenu .sm-av-round { border-radius: 50%; }
 .iride-songmenu .sm-t { flex: 1 1 0; min-width: 0; margin-left: 12px; }
+/* IrideFolioScrollbar: 20 touch, track 3 a 6 dal bordo, padding 10, alfa .12 / .65 */
+.iride-songmenu .sm-bar { position: absolute; right: 1px; top: 19px; bottom: 9px; width: 20px; z-index: 2; cursor: pointer; touch-action: none; }
+.iride-songmenu .sm-track { position: absolute; right: 6px; top: 10px; bottom: 10px; width: 3px; border-radius: 1.5px; background: rgba(255,255,255,.12); }
+.iride-songmenu .sm-thumb { position: absolute; left: 0; top: 0; width: 3px; border-radius: 1.5px; background: rgba(255,255,255,.65); }
 
 /* IrideFolioMenuButton: bordo 1px che appare in 440 ms mentre il menu è aperto */
 html body:not(#_) .btn-row-more { position: relative; }
