@@ -26,7 +26,23 @@ jobs:
           java-version: '21'
 
       - name: Install Android compile SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager_path="$sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$sdkmanager_path" ]]; then
+            sdkmanager_path="$(find "$sdk_root/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -n 1)"
+          fi
+          if [[ ! -x "$sdkmanager_path" ]]; then
+            echo "::error::sdkmanager not found under $sdk_root/cmdline-tools"
+            exit 1
+          fi
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          printf '%s\n' "$(dirname "$sdkmanager_path")" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
+          echo "Using sdkmanager: $sdkmanager_path"
+          "$sdkmanager_path" 'platforms;android-36' 'build-tools;36.0.0'
 
       - uses: gradle/actions/setup-gradle@v5
 
