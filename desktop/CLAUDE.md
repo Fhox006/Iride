@@ -31,16 +31,29 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 
 Regola: una schermata alla volta. Segna `[x]` solo dopo conversione 1:1 e screenshot verificato. Se parziale scrivi `[~]` con il motivo. Fonte: `git show v0.1.0-alpha33:<file>`.
 
+## Come si traduce (leggere prima di ogni lavoro)
+
 Tipo di lavoro: TRADUZIONE RIGA PER RIGA, NON interpretazione.
-- Ogni riga Kotlin corrisponde a una riga JS, nello stesso ordine. Un blocco Kotlin (`if`, `when`, `LaunchedEffect`, `item {}`) diventa un blocco JS equivalente con lo stesso comportamento.
-- Non semplificare, non ottimizzare, non cambiare la struttura, non sostituire con soluzioni proprie. Se una riga non è traducibile così com'è, scrivi uno stub con il riferimento Kotlin e segnalalo.
-- Ogni blocco porta il numero di riga Kotlin in un commento `KT:`.
-- Non "ispirarsi" al design: i valori (dp, colori, durate, curve) si copiano dal Kotlin così come sono.
-- Dipendenze (le funzioni chiamate dal blocco che stai traducendo):
-- NON fermarti per una dipendenza mancante. Traduci il chiamante riga per riga, e per la dipendenza scrivi uno STUB con la stessa firma (stessi parametri, stesso ordine), il commento `KT: file:riga`.
-- Ogni stub va registrato in `desktop/src/renderer/screens/DEPENDENCIES.md` (funzione, file Kotlin e riga, chi la usa, stato STUB / PARZIALE / OK).
-- Quando riempi uno stub, aggiorna lo stato nel registro. Non cambiare il chiamante per farlo funzionare.
-- Esempio: una schermata Home che chiama una struttura Page non ancora tradotta: traduci Home riga per riga, Page resta STUB nel registro.
+
+1. Ogni riga Kotlin corrisponde a una riga JS, nello stesso ordine.
+2. Non semplificare, non ottimizzare, non cambiare la struttura, non inventare soluzioni proprie.
+3. Ogni blocco JS porta il numero di riga Kotlin in un commento `KT: file:riga`.
+4. I valori (dp, colori, durate, curve) si copiano dal Kotlin così come sono. Non "ispirarsi" al design.
+
+### Dipendenze (funzioni chiamate che non sono ancora tradotte)
+
+NON fermarti per una dipendenza mancante. Il chiamante resta tradotto riga per riga.
+
+- La dipendenza diventa uno STUB: stessa firma (stessi parametri, stesso ordine), commento `KT: file:riga`, corpo vuoto o provvisorio, marcato `STUB`.
+- Ogni stub va registrato in `desktop/src/renderer/screens/DEPENDENCIES.md`: funzione, file Kotlin e riga, chi la usa, stato `STUB` / `PARZIALE` / `OK`.
+- Quando riempi uno stub, aggiorni lo stato nel registro. Non tocchi il chiamante.
+
+Esempio: `HomeScreen` chiama `IridePage`, che non è ancora tradotta.
+- `HomeScreen` si traduce riga per riga, come se `IridePage` esistesse.
+- `IridePage` diventa uno STUB con la stessa firma Kotlin.
+- Nel registro: `IridePage` — `STUB` — usata da `HomeScreen`.
+
+Questo vale anche per `rubberBandOverscroll` dentro una pagina che sta dentro `IridePage`: si traduce la pagina, il rubber band resta stub finché non viene tradotto.
 
 - [ ] `UpdateInterstitialScreen` — `UpdateInterstitial.kt:77`
 - [ ] `LoadingScreen` — `LoadingScreen.kt:39`
