@@ -10669,6 +10669,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, true);
 
+  async function startRadioForTrack(track) {
+    playTrack(track, [track], 0);
+    try {
+      const found = await buildAutoplayCandidates();
+      if (Array.isArray(found) && found.length) {
+        state.queue.push(...found);
+        state.isRadioQueue = true;
+        if (typeof updateQueueBadge === 'function') updateQueueBadge();
+      }
+    } catch (_) {}
+  }
+
   function openTrackContextMenu(e, track, options = {}) {
     if (ctxMenuEl && ctxMenuEl.classList.contains('open')) {
       closeTrackContextMenu();
@@ -10853,6 +10865,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    ctxMenuEl.classList.remove('iride-songmenu');
+    if (typeof window.irideRenderSongMenu === 'function') {
+      const byId = {};
+      items.forEach((it) => { if (it.id) byId[it.id] = it; });
+      const thumbRaw = (typeof getTrackThumbUrl === 'function' ? getTrackThumbUrl(track) : '') || track.thumbnail || track.cover || '';
+      window.irideRenderSongMenu(ctxMenuEl, track, {
+        byId, isFav, thumb: thumbRaw, close: closeTrackContextMenu,
+        playNext: () => {
+          const c = Object.assign({}, track);
+          if (!state.currentTrack || !state.queue.length) { addTrackToQueue(track); return; }
+          state.queue.splice(state.queueIndex + 1, 0, c);
+          if (el.queueCount) el.queueCount.textContent = String(state.queue.length);
+          showToast(typeof t === 'function' ? t('Play next') : 'Play next', 'success');
+        },
+        viewArtist: () => openArtistProfile(track.artist, track),
+        radio: () => startRadioForTrack(track),
+        viewAlbum: (track.album && track.album.id) ? () => openAlbum(track.album) : null,
+      });
+    } else {
     ctxMenuEl.innerHTML = '';
     items.forEach((it) => {
       if (it.divider) {
@@ -10873,7 +10904,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       ctxMenuEl.appendChild(btn);
     });
+    }
 
+    if (ctxMenuEl.classList.contains('iride-songmenu') && typeof window.irideSongMenuPlace === 'function') {
+      window.irideSongMenuPlace(ctxMenuEl, e);
+      requestAnimationFrame(() => { if (ctxMenuEl) ctxMenuEl.classList.add('open'); });
+      return;
+    }
     ctxMenuEl.classList.remove('open');
     ctxMenuEl.style.left = '0px';
     ctxMenuEl.style.top = '0px';
@@ -11238,7 +11275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
       </button>` : `
       <button class="btn-icon-pill btn-row-more" title="download & options">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle><circle cx="5" cy="12" r="2"></circle></svg>
+      <svg width="24" height="24" viewBox="0 0 960 960" fill="currentColor"><path d="M480,800Q447,800 423.5,776.5Q400,753 400,720Q400,687 423.5,663.5Q447,640 480,640Q513,640 536.5,663.5Q560,687 560,720Q560,753 536.5,776.5Q513,800 480,800ZM480,560Q447,560 423.5,536.5Q400,513 400,480Q400,447 423.5,423.5Q447,400 480,400Q513,400 536.5,423.5Q560,447 560,480Q560,513 536.5,536.5Q513,560 480,560ZM480,320Q447,320 423.5,296.5Q400,273 400,240Q400,207 423.5,183.5Q447,160 480,160Q513,160 536.5,183.5Q560,207 560,240Q560,273 536.5,296.5Q513,320 480,320Z"/></svg>
       </button>`}
       ${context === 'playlist' ? `
         <button class="btn-icon-pill btn-row-remove-playlist delete-btn btn-delete btn-remove" title="remove from playlist">
