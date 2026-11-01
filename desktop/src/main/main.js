@@ -387,7 +387,6 @@ function runGUI() {
                                    title: 'Iride',
                                    icon: path.join(__dirname, '../../assets', 'iride-icon.png'),
                                    frame: IS_MAC,
-                                   roundedCorners: false,
                                    titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
                                    ...(IS_MAC ? { trafficLightPosition: { x: 14, y: 13 } } : {}),
                                    show: false,
@@ -406,7 +405,6 @@ function runGUI() {
     if (savedState?.isMaximized) {
       mainWindow.maximize();
     }
-    require('./window-shape').attach(mainWindow);
 
     mainWindow.once('ready-to-show', () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;

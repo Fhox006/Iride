@@ -14,12 +14,8 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 
 ## Struttura
 - `src/main/main.js`: processo principale, finestra, IPC. Flag debug: `RIFF_DEBUG=1`, flag Chromium extra: `RIFF_FLAGS="a;b=c"`.
-- `src/main/window-shape.js`: bordi finestra Windows (`setShape`), usa la forma condivisa.
-- `src/shared/squircle.js`: TOKENS (raggio pannello, padding, inset finestra) e geometria squircle. Unica fonte: pannello, tile e bordi finestra leggono da qui. Non duplicare i valori.
 - `src/shared/platform.js`: percorsi dati, marker del tutorial (`~/.rifftutorial` con versione app).
-- `src/renderer/index.html`: ordine di caricamento CSS/JS. I CSS sovrascrivono in quest'ordine: `styles.css` → `iride-liner.css` → `iride-folio.css` → `iride-android-nav.css`. Le regole di `iride-android-nav.css` sono le più recenti.
-- `src/renderer/iride-android-shape.js`: applica il clip squircle a sidebar e tile; espone `window.IRIDE_NAV_SHAPE`.
-- `src/renderer/iride-nav-slider.js`: indicatore di selezione a molla con trascinamento. Account (`#nav-settings`) è fuori dalla riga, di proposito.
+- `src/renderer/index.html`: ordine di caricamento CSS/JS. I CSS sovrascrivono in quest'ordine: `styles.css` → `iride-liner.css` → `iride-folio.css` → `iride-folio-surface.css`. Le regole di `iride-folio-surface.css` sono le più recenti.
 - `start-iride.bat`: launcher Windows, aggiorna da GitHub a ogni avvio. Riga `set "BRANCH=..."` = branch sopra.
 
 ## Comandi
@@ -32,6 +28,5 @@ App Electron (Windows/Linux/macOS) con UI in `src/renderer/`. Lavora solo in `de
 - Se cambi branch di lavoro, fai merge o cancelli il branch: aggiorna `BRANCH` in `desktop/start-iride.bat` nello stesso commit, altrimenti il launcher sull'utente PC non prende più l'ultima versione.
 - Ogni modifica a `start-iride.bat` va scritta con fine riga CRLF (cmd non gestisce bene LF).
 - Il codice Android (`app/`) non va toccato da questo progetto: il riferimento è solo visivo/geometrico.
-- Font Inter in `assets/fonts/inter_variable.ttf` (copiato da Android): non sostituirlo.
 - Dopo modifiche al CSS/JS, verifica con uno screenshot prima di committare.
 - Non introdurre dipendenze nuove senza richiesta.
