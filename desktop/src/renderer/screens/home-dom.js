@@ -277,9 +277,132 @@
     return row;
   }
 
+
+  // ---------- BATCH 2 (10 dipendenze) ----------
+  const artistsLine = (it) => (it && it.artists ? it.artists.map((a) => a.name).filter(Boolean).join(', ') : (it && it.artist && it.artist.name) || '');
+  // KT: resize(w, h) -- PARZIALE: identita' (il ridimensionamento URL Kotlin non e' ancora portato)
+  function resize(url, w, h) { return url; }
+  // KT: ItemThumbnail(thumbnailUrl, isActive, isPlaying, shape, artistArtwork, requestResolution, hairlineBorder, modifier)
+  function ItemThumbnail(props) {
+    const el = document.createElement('img');
+    el.src = props.thumbnailUrl || '';
+    el.loading = 'lazy';
+    el.style.objectFit = 'cover';
+    el.style.borderRadius = props.shape === 'circle' ? '50%' : '6px';
+    if (props.modifier) props.modifier.applyTo(el);
+    return el;
+  }
+  // KT: YouTubeGridItem(item, isActive, isPlaying, size, modifier, ...) -- card: copertina + titolo + artisti
+  function YouTubeGridItem(props) {
+    const it = props.item || {};
+    const card = document.createElement('div');
+    card.style.width = px(props.size || 160);
+    card.style.flex = '0 0 auto';
+    if (props.isActive) card.dataset.active = 'true';
+    const img = document.createElement('img');
+    img.src = props.thumbnailUrlOverride || it.thumbnail || '';
+    img.loading = 'lazy';
+    img.style.width = '100%'; img.style.aspectRatio = props.forceThumbnailRatio ? '16 / 9' : '1 / 1'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
+    card.appendChild(img);
+    const t = document.createElement('div');
+    t.textContent = it.title || it.name || '';
+    t.style.marginTop = '8px'; t.style.fontWeight = '600'; t.style.whiteSpace = 'nowrap'; t.style.overflow = 'hidden'; t.style.textOverflow = 'ellipsis';
+    card.appendChild(t);
+    const sub = document.createElement('div');
+    sub.textContent = artistsLine(it);
+    sub.style.opacity = '0.7'; sub.style.fontSize = '12px'; sub.style.whiteSpace = 'nowrap'; sub.style.overflow = 'hidden'; sub.style.textOverflow = 'ellipsis';
+    card.appendChild(sub);
+    if (props.modifier) props.modifier.applyTo(card);
+    return card;
+  }
+  // KT: YouTubeListItem / SongListItem(item|song, isActive, isPlaying, trailingContent, modifier) -- riga: copertina + titolo + artisti + trailing
+  function listRow(it, props) {
+    const row = document.createElement('div');
+    row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '12px'; row.style.padding = '6px 0';
+    const img = document.createElement('img');
+    img.src = (it && it.thumbnail) || ''; img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'cover'; img.style.borderRadius = '4px';
+    row.appendChild(img);
+    const col = document.createElement('div');
+    col.style.flex = '1'; col.style.minWidth = '0';
+    const t = document.createElement('div'); t.textContent = (it && it.title) || ''; t.style.whiteSpace = 'nowrap'; t.style.overflow = 'hidden'; t.style.textOverflow = 'ellipsis';
+    const sub = document.createElement('div'); sub.textContent = artistsLine(it); sub.style.opacity = '0.7'; sub.style.fontSize = '12px';
+    col.appendChild(t); col.appendChild(sub); row.appendChild(col);
+    if (props.trailingContent) { const tr = props.trailingContent(); if (tr) row.appendChild(tr); }
+    if (props.modifier) props.modifier.applyTo(row);
+    return row;
+  }
+  function YouTubeListItem(props) { return listRow(props.item, props); }
+  function SongListItem(props) { return listRow(props.song, props); }
+  // KT: SharedQuickPicksCarousel(items, key, loading, contentPadding, usePager, minimumRows, modifier) { content(item, width) }
+  function SharedQuickPicksCarousel(props) {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex'; wrap.style.flexDirection = 'column'; wrap.style.gap = '8px';
+    if (props.loading) {                                                       // skeleton mentre carica
+      for (let i = 0; i < (props.minimumRows || 1); i++) {
+        const sk = document.createElement('div'); sk.style.height = '56px'; sk.style.borderRadius = '6px'; sk.style.background = 'rgba(255,255,255,0.06)';
+        wrap.appendChild(sk);
+      }
+      return wrap;
+    }
+    const rows = Math.max(1, props.minimumRows || 1);
+    const items = props.items || [];
+    // raggruppa in colonne da `rows` elementi (come il carosello Kotlin: colonne verticali)
+    const cols = [];
+    for (let i = 0; i < items.length; i += rows) cols.push(items.slice(i, i + rows));
+    const strip = LazyRow({ contentPadding: props.contentPadding || 0, horizontalArrangement: { gap: 16 }, modifier: props.modifier || Modifier() });
+    cols.forEach((group) => {
+      const col = document.createElement('div');
+      col.style.display = 'flex'; col.style.flexDirection = 'column'; col.style.width = '320px'; col.style.flex = '0 0 auto';
+      group.forEach((it) => { const n = props.content ? props.content(it, 320) : null; if (n) col.appendChild(n); });
+      strip.appendChild(col);
+    });
+    wrap.appendChild(strip);
+    return wrap;
+  }
+  // KT: SharedHomeSectionTitle(title, onClick)
+  function SharedHomeSectionTitle(props) {
+    const h = document.createElement('h3');
+    h.textContent = props.title || '';
+    h.style.margin = '0 0 8px 20px'; h.style.fontSize = '16px'; h.style.fontWeight = '600';
+    if (props.onClick) { h.style.cursor = 'pointer'; h.addEventListener('click', () => props.onClick()); }
+    return h;
+  }
+  // KT: SharedYouTubePlaylistRow(items, key, contentPadding, modifier, itemContent)
+  function SharedYouTubePlaylistRow(props) {
+    const row = LazyRow({ contentPadding: props.contentPadding || 0, horizontalArrangement: { gap: 16 }, modifier: props.modifier || Modifier() });
+    (props.items || []).forEach((it) => { const n = props.itemContent ? props.itemContent(it) : null; if (n) row.appendChild(n); });
+    return row;
+  }
+  // KT: PlaylistGridItem(playlist, autoPlaylist, modifier) -- copertina (thumbnail o prima traccia) + nome
+  function PlaylistGridItem(props) {
+    const pl = props.playlist || {};
+    const entity = pl.playlist || {};
+    const thumb = entity.thumbnailUrl || (pl.songThumbnails && pl.songThumbnails[0]) || '';
+    const card = document.createElement('div');
+    card.style.width = '160px'; card.style.flex = '0 0 auto';
+    const img = document.createElement('img');
+    img.src = thumb; img.style.width = '100%'; img.style.aspectRatio = '1 / 1'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
+    card.appendChild(img);
+    const t = document.createElement('div'); t.textContent = entity.name || ''; t.style.marginTop = '8px'; t.style.fontWeight = '600';
+    card.appendChild(t);
+    if (props.modifier) props.modifier.applyTo(card);
+    return card;
+  }
+  // KT: ReverieHomeCard(month, onClick, modifier) -- card con il mese
+  function ReverieHomeCard(props) {
+    const card = document.createElement('div');
+    card.style.width = '300px'; card.style.padding = '16px'; card.style.border = '1px solid rgba(255,255,255,0.12)'; card.style.borderRadius = '6px'; card.style.cursor = 'pointer';
+    card.textContent = String(props.month);
+    if (props.onClick) card.addEventListener('click', () => props.onClick());
+    if (props.modifier) props.modifier.applyTo(card);
+    return card;
+  }
+
   global.IrideHomeDom = {
     Modifier, MaterialTheme, Box, Column, Row, Spacer, Text, Image, AsyncImage, Icon, Surface, Card,
     Scaffold, BoxWithConstraints, CompositionLocalProvider, item, LazyRow, IridePageLayout,
     IrideFolioSection, IrideFolioShelfHeader, IrideFolioMediaShelf, palette, typo,
+    resize, ItemThumbnail, YouTubeGridItem, YouTubeListItem, SongListItem, SharedQuickPicksCarousel,
+    SharedHomeSectionTitle, SharedYouTubePlaylistRow, PlaylistGridItem, ReverieHomeCard,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

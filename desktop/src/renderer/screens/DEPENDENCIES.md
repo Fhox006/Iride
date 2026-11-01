@@ -92,3 +92,17 @@ Stato: tutte le funzioni Compose (item, Column, Row, LazyRow, IrideFolio*, YouTu
 | `IrideFolioSection`, `IrideFolioShelfHeader`, `IrideFolioMediaShelf` | ui/component | PARZIALE | placeholder = skeleton |
 
 Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, ArtistMenu, PlaylistMenu), YouTubeGridItem, YouTubeListItem, SongListItem, SharedQuickPicksCarousel, SharedHomeSectionTitle, SharedYouTubePlaylistRow, HeroCarouselSection, PlaylistGridItem, ReverieHomeCard, ReverieAvailabilityCard, NewReleaseChartsShelf, HomeFollowedReleases, ItemThumbnail, rememberArtistThumbnail, rememberIrideArtistArtwork, rememberCollectionExpansionTile, resize, collectAsStateWithLifecycle, dati del ViewModel e tutte le preferenze/Local*.
+
+### Batch 2 (10 dipendenze, home-dom.js)
+
+| Funzione | Kotlin | Stato | Nota |
+|---|---|---|---|
+| `resize` | String.resize (Coil) | PARZIALE | identita'; ridimensionamento URL Kotlin da portare |
+| `ItemThumbnail` | ui/component | PARZIALE | img, senza hairline/isActive |
+| `YouTubeGridItem` | ui/component/Items.kt | PARZIALE | card copertina+titolo+artisti; niente menu |
+| `YouTubeListItem` / `SongListItem` | ui/component | PARZIALE | riga con trailing; niente swipe |
+| `SharedQuickPicksCarousel` | ui/component | PARZIALE | colonne da minimumRows, niente pager |
+| `SharedHomeSectionTitle` | ui/component | OK | |
+| `SharedYouTubePlaylistRow` | ui/component | PARZIALE | LazyRow |
+| `PlaylistGridItem` | ui/component | PARZIALE | niente autoPlaylist |
+| `ReverieHomeCard` | ui/component | PARZIALE | solo mese, nessun grafico |
