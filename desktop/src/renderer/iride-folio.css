@@ -342,3 +342,14 @@ html body:not(#_).folio-mp3-open .playbar { right: var(--mp3-w) !important; }
 #view-library .ir-lib-card-title { margin-top: 8px; font: 500 14px/20px 'Inter', sans-serif; color: #fff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
 #view-library .ir-lib-card-sub { margin-top: 2px; font: 400 12px/16px 'Inter', sans-serif; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #view-library .ir-lib-empty { padding: 32px 0; font: 400 14px 'Inter', sans-serif; }
+
+/* Libreria > Artisti e Tutti i brani: stesse regole della pagina Libreria */
+#view-library-artists, #view-library-songs { font-family: 'Inter', sans-serif; }
+#view-library-artists .ir-lib-page, #view-library-songs .ir-lib-page { padding: 34px 12px 0; padding-bottom: calc(var(--ir-play-h, 80px) + var(--ir-play-b, 16px) + 24px); }
+#view-library-artists .ir-lib-subhead, #view-library-songs .ir-lib-subhead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+#view-library-artists .ir-lib-subhead .ir-lib-title, #view-library-songs .ir-lib-subhead .ir-lib-title { margin: 0; }
+.ir-lib-back { flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 50%; color: #fff; cursor: pointer; }
+.ir-lib-back:hover { background: rgba(255,255,255,.08); }
+#view-library-songs .view-subtitle { display: block; font: 400 13px/18px 'Inter', sans-serif; color: rgba(255,255,255,.6); margin: 0 0 8px; }
+.ir-lib-card-round { border-radius: 50% !important; }
+.ir-lib-grid-artists .ir-lib-card-cover { border-radius: 50%; }

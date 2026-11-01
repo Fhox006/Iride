@@ -13796,11 +13796,67 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
     });
   }
 
+  // Libreria > Artisti: artisti presenti nella libreria (preferiti, playlist, album salvati)
+  function collectLibraryTracks() {
+    const seen = new Set();
+    const out = [];
+    const add = (t) => {
+      if (!t) return;
+      const key = t.id || `${t.title}|${t.artist}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(t);
+    };
+    (state.favorites || []).forEach(add);
+    (state.playlists || []).forEach(pl => (pl.tracks || []).forEach(add));
+    return out;
+  }
+
+  function renderLibraryArtists() {
+    const grid = document.getElementById('ir-lib-artists-grid');
+    if (!grid) return;
+    const map = new Map();
+    collectLibraryTracks().forEach(t => {
+      const name = (t.artist || '').trim();
+      if (!name) return;
+      const cur = map.get(name) || { name, count: 0, thumb: '' };
+      cur.count += 1;
+      if (!cur.thumb) cur.thumb = getTrackThumbUrl(t) || '';
+      map.set(name, cur);
+    });
+    const artists = [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+    if (artists.length === 0) {
+      grid.innerHTML = '<div class="empty-hint ir-lib-empty">Library artists will show up here</div>';
+      return;
+    }
+    grid.innerHTML = artists.map(a => `
+      <div class="ir-lib-card ir-lib-artist" role="button" tabindex="0">
+        <div class="ir-lib-card-cover ir-lib-card-round${a.thumb ? '' : ' is-empty'}">${a.thumb ? `<img src="${escapeHtml(a.thumb)}" alt="" loading="lazy" onerror="this.remove()" />` : '<svg width="40" height="40" viewBox="0 0 960 960" fill="currentColor"><path d="M740,400h140v80h-80v220q0,42 -29,71t-71,29q-42,0 -71,-29t-29,-71q0,-42 29,-71t71,-29q8,0 18,1.5t22,6.5v-208ZM120,800v-112q0,-35 17.5,-63t46.5,-43q62,-31 126,-46.5T440,520q42,0 83.5,6.5T607,546q-20,12 -36,29t-28,37q-26,-6 -51.5,-9t-51.5,-3q-57,0 -112,14t-108,40q-9,5 -14.5,14t-5.5,20v32h321q2,20 9.5,40t20.5,40L120,800ZM440,480q-66,0 -113,-47t-47,-113q0,-66 47,-113t113,-47q66,0 113,47t47,113q0,66 -47,113t-113,47Z"/></svg>'}</div>
+        <div class="ir-lib-card-title" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</div>
+        <div class="ir-lib-card-sub">${a.count} ${a.count === 1 ? 'track' : 'tracks'}</div>
+      </div>`).join('');
+    grid.querySelectorAll('.ir-lib-artist').forEach((card, idx) => {
+      const open = () => openArtistProfile(artists[idx].name);
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); open(); } });
+    });
+  }
+
+  // Libreria > Tutti i brani
+  function renderLibrarySongs() {
+    const tracks = collectLibraryTracks();
+    const sub = document.getElementById('ir-lib-songs-sub');
+    if (sub) sub.textContent = `${tracks.length} tracks`;
+    renderTracks(document.getElementById('ir-lib-songs-list'), tracks, 'library-songs');
+  }
+
   document.getElementById('ir-lib-cats')?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-target]');
+    const b = e.target.closest('[data-target], [data-lib-view]');
     if (!b) return;
+    if (b.dataset.libView) { switchView(b.dataset.libView); return; }
     document.getElementById(b.dataset.target)?.click();
   });
+  document.querySelectorAll('.ir-lib-back').forEach(b => b.addEventListener('click', () => switchView('library')));
 
   function switchView(viewName) {
     if (typeof resetSettingsSearch === 'function') resetSettingsSearch();
@@ -13819,7 +13875,7 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
 
     requestAnimationFrame(() => {
       document.querySelectorAll('.no-enter-anim').forEach(c => c.classList.remove('no-enter-anim'));
-      document.getElementById('view-library')?.classList.remove('active');
+      document.querySelectorAll('.content-view[id^="view-library"]').forEach(v => v.classList.remove('active'));
       [el.viewDiscover, el.viewFavorites, el.viewAlbums, el.viewLocal, el.viewHistory, el.viewQueue, el.viewPlaylistDetail, el.viewAlbum, el.viewArtist].forEach(v => {
         if (v) v.classList.remove('active');
       });
@@ -13873,6 +13929,14 @@ function renderClickableArtists(container, rawArtist, hintTrack = null) {
             document.getElementById('view-library')?.classList.add('active');
             document.getElementById('nav-library')?.classList.add('active');
             renderLibraryView();
+          } else if (viewName === 'library-artists') {
+            document.getElementById('view-library-artists')?.classList.add('active');
+            document.getElementById('nav-library')?.classList.add('active');
+            renderLibraryArtists();
+          } else if (viewName === 'library-songs') {
+            document.getElementById('view-library-songs')?.classList.add('active');
+            document.getElementById('nav-library')?.classList.add('active');
+            renderLibrarySongs();
           } else if (viewName === 'playlist-detail') {
             if (el.viewPlaylistDetail) el.viewPlaylistDetail.classList.add('active');
           } else if (viewName === 'album') {
