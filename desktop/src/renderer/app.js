@@ -9542,7 +9542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       b.className = 'riff-ctx-item' + (selected ? ' is-active' : '');
       b.setAttribute('role', 'menuitemradio');
       b.setAttribute('aria-checked', String(selected));
-      b.innerHTML = `<span>${escapeHtml(label)}</span>`;
+      b.innerHTML = `<span>${escapeHtml(label)}</span>` + (selected ? '<svg class="lib-albums-check" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>' : '');
       b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
       return b;
     };
@@ -9560,6 +9560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const btnAlbumsMore = document.getElementById('btn-albums-more');
   const albumsMenuEl = document.getElementById('albums-menu');
+  if (albumsMenuEl && albumsMenuEl.parentElement !== document.body) document.body.appendChild(albumsMenuEl);
   if (btnAlbumsMore && albumsMenuEl) {
     btnAlbumsMore.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -9568,7 +9569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       albumsMenuEl.classList.toggle('open', open);
       if (open) {
         const r = btnAlbumsMore.getBoundingClientRect();
-        albumsMenuEl.style.left = Math.max(8, r.right - 216) + 'px';
+        albumsMenuEl.style.left = Math.max(8, r.right - 224) + 'px';
         albumsMenuEl.style.top = (r.bottom + 8) + 'px';
       }
     });

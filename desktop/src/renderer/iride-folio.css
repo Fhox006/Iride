@@ -361,20 +361,24 @@ html body:not(#_).ir-lib-albums .ir-lib-bar { display: none; }
 .lib-albums-title { font-family: 'Satoshi', sans-serif; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.2px; color: #fff; margin: 0; }
 .lib-albums-more { width: 40px; height: 40px; border: 0; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 14px; cursor: pointer; }
 .lib-albums-more:hover { background: rgba(255,255,255,.08); }
-.lib-albums-menu { position: fixed; min-width: 216px; }
-.lib-albums-search { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 4px 0 16px; margin-top: 12px; border-radius: 18px; background: rgba(255,255,255,.06); }
+.lib-albums-menu { position: fixed; width: 224px; min-width: 224px; box-sizing: border-box; }
+.lib-albums-menu .lib-albums-check { margin-left: auto; flex: none; }
+.lib-albums-menu .riff-ctx-item.is-active { color: #fff; }
+.lib-albums-menu .riff-ctx-item span { font: 400 14px/20px 'DM Sans', sans-serif; }
+.lib-albums-search { position: relative; isolation: isolate; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 4px 0 16px; margin-top: 12px; border-radius: 18px; background: rgba(255,255,255,.06); overflow: hidden; }
+.lib-albums-search::before, .lib-albums-action::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background-image: var(--folio-grain-button); background-size: var(--folio-grain-size) var(--folio-grain-size); }
 .lib-albums-search svg { flex: none; color: rgba(255,255,255,.6); }
 .lib-albums-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: rgba(255,255,255,.95); font: 400 15px/20px 'DM Sans', sans-serif; }
 .lib-albums-search input::placeholder { color: rgba(255,255,255,.6); }
 .lib-albums-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 12px; }
-.lib-albums-action { height: 48px; border: 0; border-radius: 18px; background: rgba(255,255,255,.06); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font: 500 14px/20px 'DM Sans', sans-serif; cursor: pointer; }
+.lib-albums-action { position: relative; isolation: isolate; height: 48px; border: 0; border-radius: 18px; background: rgba(255,255,255,.06); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font: 500 14px/20px 'DM Sans', sans-serif; cursor: pointer; overflow: hidden; }
 .lib-albums-action:hover { background: rgba(255,255,255,.10); }
 .lib-albums-action svg { width: 18px; height: 18px; flex: none; }
 html body:not(#_) #view-albums #saved-albums-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px 12px !important; padding: 0 !important; }
 html body:not(#_) #view-albums #saved-albums-grid .search-album-card { width: auto !important; flex: none !important; min-width: 0; }
-html body:not(#_) #view-albums #saved-albums-grid .search-album-cover { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; border-radius: 12px; }
+html body:not(#_) #view-albums #saved-albums-grid .search-album-cover { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; border-radius: 6px; }
 html body:not(#_) #view-albums #saved-albums-grid .search-album-info { padding: 6px 2px 0; }
-html body:not(#_) #view-albums #saved-albums-grid .search-album-title { font: 700 15px/20px 'Satoshi', sans-serif; color: #fff; }
-html body:not(#_) #view-albums #saved-albums-grid .search-album-sub { font: 400 13px/18px 'DM Sans', sans-serif; color: rgba(255,255,255,.6); }
+html body:not(#_) #view-albums #saved-albums-grid .search-album-title { font: 700 16px/20px 'Satoshi', sans-serif; color: #fff; }
+html body:not(#_) #view-albums #saved-albums-grid .search-album-sub { font: 400 14px/20px 'DM Sans', sans-serif; color: rgba(255,255,255,.6); }
 html body:not(#_).ir-lib-albums-dense #view-albums #saved-albums-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 .lib-albums-footer { text-align: center; padding: 16px 0 24px; font: 400 12px/16px 'DM Sans', sans-serif; color: rgba(255,255,255,.6); }
