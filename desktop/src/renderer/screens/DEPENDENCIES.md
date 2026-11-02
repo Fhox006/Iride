@@ -156,3 +156,8 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 - `homePage.chips`: OK come nel Kotlin (filtro home/podcast, senza shuffle).
 - `homeMoodContent` (pagine umore): BLOCCATO. La route `/api/home-feed?params=` esiste, ma per tutti i chip YouTube Music risponde senza sezioni (solo header). Da indagare: probabilmente serve la sessione firmata o un'altra struttura di risposta. Finche' non e' risolto, la lista umore resta vuota.
 - `loadMoodPage` ridisegna la schermata solo se i parametri cambiano.
+
+### Collegamento (index.html)
+
+- La home tradotta e' montata in `#home-tr-root` dentro `#discover-empty`. `#discover-home` (vecchia home) e' nascosta con CSS e resta nel DOM. Se il montaggio fallisce, torna visibile.
+- Verificato nell'app in esecuzione (screen inviato). Le immagini senza URL mostrano un placeholder grigio.

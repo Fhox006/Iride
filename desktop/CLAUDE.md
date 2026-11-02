@@ -64,7 +64,7 @@ Questo vale anche per `rubberBandOverscroll` dentro una pagina che sta dentro `I
 - [ ] `ExploreScreen` — `ExploreScreen.kt:70`
 - [ ] `GenresScreen` — `GenresScreen.kt:256`
 - [ ] `HistoryScreen` — `HistoryScreen.kt:86`
-- [~] `HomeScreen` — `HomeScreen.kt:365` — traduzione riga per riga completa (KT 219-2829) in `src/renderer/screens/home-screen.js`; dipendenze Compose STUB in `home-components.js`; NON collegata a index.html (#view-home), NON verificata a schermo
+- [~] `HomeScreen` — `HomeScreen.kt:365` — traduzione riga per riga (KT 219-2829) in `src/renderer/screens/home-screen.js`; collegata a `index.html` (`#home-tr-root`, con fallback alla home vecchia); dati da `home-data.js`; sezioni ancora mancanti nel registro
 - [ ] `IrideScreen` — `IrideScreen.kt:169`
 - [ ] `ListenTogetherScreen` — `ListenTogetherScreen.kt:106`
 - [ ] `LoginScreen` — `LoginScreen.kt:63`

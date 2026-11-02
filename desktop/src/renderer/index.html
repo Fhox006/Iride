@@ -303,6 +303,11 @@
   .acc-satellite-btn.sat-youtube    { top: 60px; left: 7px; background: #ffffff !important; }
   body.perf .acc-satellite-btn { transition: none !important; }
 </style>
+  <style id="home-tr-css">
+  /* Home tradotta (screens/home-screen.js): nasconde la home vecchia, lasciata nel DOM per tornare indietro. */
+  #discover-home { display: none !important; }
+  .home-tr-root { width: 100%; min-height: 100%; padding: 16px 0 96px 0; box-sizing: border-box; }
+  </style>
 </head>
 <body class="no-nav-transition">
   <div id="splash"><div id="splash-logo"></div></div>
@@ -578,6 +583,7 @@
       <section class="content-view active" id="view-discover">
         <div class="home-ambient" id="home-ambient"><div class="home-ambient-layer"></div><div class="home-ambient-layer"></div></div>
         <div class="discover-content" id="discover-empty">
+          <div id="home-tr-root" class="home-tr-root"></div>
           <div id="discover-home" style="display: contents;">
 
           <div class="home-hero" id="home-hero">
@@ -4409,5 +4415,26 @@
   <script src="iride-folio-grain.js"></script>
   <script src="iride-folio-menu.js"></script>
   <script src="iride-folio-songmenu.js"></script>
+  <script src="screens/home-strings.js"></script>
+  <script src="screens/home-components.js"></script>
+  <script src="screens/home-dom.js"></script>
+  <script src="screens/home-screen.js"></script>
+  <script src="screens/home-data.js"></script>
+  <script>
+    // Monta la home tradotta. Se qualcosa fallisce, resta la home vecchia (display: contents di #discover-home).
+    (function () {
+      var root = document.getElementById('home-tr-root');
+      if (!root || !window.IrideHomeData) return;
+      var oldHome = document.getElementById('discover-home');
+      // Porta reale del server locale (stesso canale di app.js).
+      var portP = (window.electronAPI && window.electronAPI.getServerPort) ? window.electronAPI.getServerPort() : Promise.resolve(null);
+      portP.then(function (port) { if (port) window.__riffServerPort = port; }).catch(function () {});
+      portP.then(function () { return window.IrideHomeData.mountHomeScreen(root, {}); }).catch(function (e) {
+        console.error('[home-tr] mount failed', e);
+        root.remove();
+        if (oldHome) oldHome.style.setProperty('display', 'contents', 'important');
+      });
+    })();
+  </script>
 </body>
 </html>

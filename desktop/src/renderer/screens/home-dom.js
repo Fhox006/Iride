@@ -21,6 +21,12 @@
     });
     return out;
   }
+  // Immagine senza URL: placeholder grigio invece dell'icona di immagine rotta.
+  function setSrc(img, url) {
+    if (url) { img.src = url; return; }
+    img.removeAttribute('src');
+    img.style.background = 'rgba(255,255,255,0.06)';
+  }
   function px(v) { return typeof v === 'number' ? v + 'px' : v; }
   function appendAll(el, children) {
     flatten(children).forEach((c) => {
@@ -169,7 +175,7 @@
   function Image(props) {
     const el = document.createElement('img');
     el.alt = props.contentDescription || '';
-    if (props.bitmap && props.bitmap.src) el.src = props.bitmap.src;
+    if (props.bitmap && props.bitmap.src) setSrc(el, props.bitmap.src);
     el.style.objectFit = props.contentScale === 'Crop' ? 'cover' : 'contain';
     if (props.modifier) props.modifier.applyTo(el);
     return el;
@@ -179,7 +185,7 @@
     el.alt = props.contentDescription || '';
     const m = props.model;
     const url = (m && typeof m === 'object' && m.url) ? m.url : m;
-    if (url) el.src = url;
+    if (url) setSrc(el, url);
     el.loading = 'lazy';
     el.style.objectFit = props.contentScale === 'Crop' ? 'cover' : 'contain';
     el.style.display = 'block';
@@ -290,7 +296,7 @@
   // KT: ItemThumbnail(thumbnailUrl, isActive, isPlaying, shape, artistArtwork, requestResolution, hairlineBorder, modifier)
   function ItemThumbnail(props) {
     const el = document.createElement('img');
-    el.src = props.thumbnailUrl || '';
+    setSrc(el, props.thumbnailUrl || '');
     el.loading = 'lazy';
     el.style.objectFit = 'cover';
     el.style.borderRadius = props.shape === 'circle' ? '50%' : '6px';
@@ -305,7 +311,7 @@
     card.style.flex = '0 0 auto';
     if (props.isActive) card.dataset.active = 'true';
     const img = document.createElement('img');
-    img.src = props.thumbnailUrlOverride || it.thumbnail || '';
+    setSrc(img, props.thumbnailUrlOverride || it.thumbnail || '');
     img.loading = 'lazy';
     img.style.width = '100%'; img.style.aspectRatio = props.forceThumbnailRatio ? '16 / 9' : '1 / 1'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
     card.appendChild(img);
@@ -325,7 +331,7 @@
     const row = document.createElement('div');
     row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '12px'; row.style.padding = '6px 0';
     const img = document.createElement('img');
-    img.src = (it && it.thumbnail) || ''; img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'cover'; img.style.borderRadius = '4px';
+    setSrc(img, (it && it.thumbnail) || ''); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'cover'; img.style.borderRadius = '4px';
     row.appendChild(img);
     const col = document.createElement('div');
     col.style.flex = '1'; col.style.minWidth = '0';
@@ -386,7 +392,7 @@
     const card = document.createElement('div');
     card.style.width = '160px'; card.style.flex = '0 0 auto';
     const img = document.createElement('img');
-    img.src = thumb; img.style.width = '100%'; img.style.aspectRatio = '1 / 1'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
+    setSrc(img, thumb); img.style.width = '100%'; img.style.aspectRatio = '1 / 1'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
     card.appendChild(img);
     const t = document.createElement('div'); t.textContent = entity.name || ''; t.style.marginTop = '8px'; t.style.fontWeight = '600';
     card.appendChild(t);
@@ -412,7 +418,7 @@
       const card = document.createElement('div');
       card.style.width = '280px'; card.style.flex = '0 0 auto'; card.style.cursor = 'pointer';
       const img = document.createElement('img');
-      img.src = it.coverUrl || ''; img.style.width = '100%'; img.style.aspectRatio = '16 / 9'; img.style.objectFit = 'cover'; img.style.borderRadius = '8px';
+      setSrc(img, it.coverUrl || ''); img.style.width = '100%'; img.style.aspectRatio = '16 / 9'; img.style.objectFit = 'cover'; img.style.borderRadius = '8px';
       img.addEventListener('error', () => { if (props.onCoverError) props.onCoverError(it); });
       card.appendChild(img);
       const t = document.createElement('div'); t.textContent = it.artistName || ''; t.style.marginTop = '8px'; t.style.fontWeight = '700';
