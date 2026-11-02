@@ -81,6 +81,67 @@
     return readLocalHistory().map(mapHistoryToSong);
   }
 
+
+  // Lista locale del desktop (localStorage), vuota se assente o non valida.
+  function readLocalList(key) {
+    try {
+      const raw = global.localStorage ? global.localStorage.getItem(key) : null;
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter((t) => t && t.id) : [];
+    } catch (_) { return []; }
+  }
+  // KT: ForYouShelfTile.Local(item) -- la tessera e' una traccia (Song), perche' il desktop non ha album locali.
+  function mapTrackToCell(t) {
+    const artist = t.artist || t.artistName || '';
+    return {
+      type: 'Song',
+      id: String(t.id),
+      title: t.title || '',
+      thumbnailUrl: t.thumbnail || t.cover || '',
+      artists: artist ? [{ name: artist, id: null }] : [],
+      song: { id: String(t.id), title: t.title || '', thumbnailUrl: t.thumbnail || t.cover || '', isVideo: false, isEpisode: false },
+      endpoint: null,
+    };
+  }
+  // KT: Artist (cella artista dello shelf). Chiave sintetica: il desktop non ha id artista locali.
+  function mapArtistCell(name, t) {
+    return {
+      type: 'Artist',
+      id: 'artist:' + name,
+      title: name,
+      thumbnailUrl: (t && (t.thumbnail || t.cover)) || '',
+      artist: { name, channelId: null, isLocal: true, isPodcastChannel: false, isPrivatelyOwnedArtist: false },
+    };
+  }
+  // KT: getForYouShelves / buildForYouShelf -- PARZIALE: pool = artisti dello storico e dei preferiti,
+  // tessere = tracce distinte dell'artista (servono 3 per fare uno shelf, come nel Kotlin).
+  function buildForYouShelves() {
+    const all = readLocalList('devsize_history').concat(readLocalList('devsize_favorites'));
+    const order = [];
+    const byArtist = new Map();
+    all.forEach((t) => {
+      const name = String(t.artist || t.artistName || '').trim();
+      if (!name) return;
+      if (!byArtist.has(name)) { byArtist.set(name, []); order.push(name); }
+      byArtist.get(name).push(t);
+    });
+    const shelves = [];
+    for (const name of order) {
+      const seen = new Set();
+      const tiles = [];
+      for (const t of byArtist.get(name)) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        tiles.push({ type: 'Local', item: mapTrackToCell(t) });
+        if (tiles.length === 3) break;
+      }
+      if (tiles.length < 3) continue;
+      shelves.push({ artist: mapArtistCell(name, byArtist.get(name)[0]), tiles });
+      if (shelves.length >= 20) break;
+    }
+    return shelves;
+  }
+
   // ViewModel minimo: stessi nomi dei flussi di HomeViewModel.kt usati da HomeScreen.
   // I flussi non ancora alimentati restano null / vuoti (nessun dato inventato).
   async function createHomeViewModel() {
@@ -102,7 +163,7 @@
       starredPlaylistThumbnails: flow([]),
       similarRecommendations: flow([]),
       quickPicks: flow(quickPicksFromHistory()),
-      forYouShelves: flow([]),
+      forYouShelves: flow(buildForYouShelves()),
       isHeroCarouselEnabled: flow(false),
       isHeroCarouselLoading: flow(false),
       heroCarouselItems: flow([]),
@@ -137,5 +198,5 @@
     return node;
   }
 
-  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen, quickPicksFromHistory };
+  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen, quickPicksFromHistory, buildForYouShelves };
 })(typeof window !== 'undefined' ? window : globalThis);
