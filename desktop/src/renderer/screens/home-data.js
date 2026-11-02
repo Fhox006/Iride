@@ -39,14 +39,19 @@
       endpoint: null,
       items: (s.items || []).map(mapItem).filter(Boolean),
     }));
-    const chips = (data.chips || []).map((c) => ({ title: c.title, endpoint: { browseId: 'FEmusic_home', params: c.params || null }, deselectEndPoint: null }));
+    // KT: HomeViewModel.transformChips -- senza chip "home" e "podcast" (ordine del feed, senza shuffle)
+    const chips = (data.chips || []).filter((c) => {
+      const t = String(c.title || '').toLowerCase();
+      return !t.includes('home') && !t.includes('podcast');
+    }).map((c) => ({ title: c.title, endpoint: { browseId: 'FEmusic_home', params: c.params || null }, deselectEndPoint: null }));
     return { sections, chips };
   }
 
   // Chiama il server: ritorna HomePage oppure null se non disponibile.
-  async function fetchHomePage() {
+  async function fetchHomePage(params) {
     try {
-      const res = await fetch(`http://127.0.0.1:${serverPort()}/api/home-feed`);
+      const q = params ? `?params=${encodeURIComponent(params)}` : '';
+      const res = await fetch(`http://127.0.0.1:${serverPort()}/api/home-feed${q}`);
       const data = await res.json();
       if (!data || !data.success) return null;
       return mapHomePage(data);
@@ -81,6 +86,18 @@
     return readLocalHistory().map(mapHistoryToSong);
   }
 
+
+
+  // KT: HeroCarouselGenerator -- PARZIALE: artisti dello storico locale (primi per ordine di ascolto), copertina = traccia.
+  function buildHeroCarousel() {
+    const seen = new Map();
+    readLocalList('devsize_history').forEach((t) => {
+      const name = String(t.artist || t.artistName || '').trim();
+      if (!name || seen.has(name)) return;
+      seen.set(name, { type: 'ArtistRadio', artistId: 'artist:' + name, artistName: name, coverUrl: t.thumbnail || t.cover || '' });
+    });
+    return Array.from(seen.values()).slice(0, 8);
+  }
 
   // Lista locale del desktop (localStorage), vuota se assente o non valida.
   function readLocalList(key) {
@@ -147,6 +164,9 @@
   async function createHomeViewModel() {
     const homePage = await fetchHomePage();
     const loaded = homePage !== null;
+    const firstChip = homePage && homePage.chips && homePage.chips[0];
+    const initialMood = (firstChip && firstChip.endpoint && firstChip.endpoint.params
+      ? await fetchMoodItems(firstChip.endpoint.params) : null) || { items: [], posters: {}, params: null };
     const vm = {
       homePage: flow(homePage),
       isHomeFeedLoading: flow(false),
@@ -164,13 +184,13 @@
       similarRecommendations: flow([]),
       quickPicks: flow(quickPicksFromHistory()),
       forYouShelves: flow(buildForYouShelves()),
-      isHeroCarouselEnabled: flow(false),
+      isHeroCarouselEnabled: flow(true),
       isHeroCarouselLoading: flow(false),
-      heroCarouselItems: flow([]),
+      heroCarouselItems: flow(buildHeroCarousel()),
       accountName: flow('Guest'),
       syncState: flow({ overallStatus: 'Idle', currentOperation: '', likedSongs: 'Idle', librarySongs: 'Idle', uploadedSongs: 'Idle', likedAlbums: 'Idle', uploadedAlbums: 'Idle', artists: 'Idle', playlists: 'Idle' }),
       syncBannerLaunchCount: flow(0),
-      homeMoodContent: flow({ items: [], posters: {}, params: null }),
+      homeMoodContent: flow(initialMood),
       isMoodLoading: flow(false),
       isMoodError: flow(!loaded),
       preferredMoodParams: flow(null),
@@ -181,7 +201,16 @@
       archiveMonths: flow([]),
       firstFullMonth: flow(null),
       // azioni (no-op finche' i flussi non sono collegati)
-      loadMoodPage() {}, loadHomeData() {}, loadMoreForYouShelves() {}, onSectionBecameVisible() {},
+      // loadMoodPage: carica la pagina del chip e ridisegna solo se i parametri cambiano
+      loadMoodPage(params) {
+        if (!params || (vm.homeMoodContent.value && vm.homeMoodContent.value.params === params)) return;
+        fetchMoodItems(params).then((content) => {
+          if (!content) return;
+          vm.homeMoodContent = flow(content);
+          if (vm.__rerender) vm.__rerender();
+        });
+      },
+      loadHomeData() {}, loadMoreForYouShelves() {}, onSectionBecameVisible() {},
       repairHeroRadioCover() {}, loadTestPlaylistArtwork() {},
       moodPosterImageLoader: null,
     };
@@ -189,14 +218,33 @@
   }
 
 
+
+  // KT: homeMoodContent -- pagina di un chip umore: elementi playlist (mix) della pagina, in ordine.
+  async function fetchMoodItems(params) {
+    const page = await fetchHomePage(params);
+    if (!page) return null;
+    const items = [];
+    page.sections.forEach((sec) => sec.items.forEach((it) => { if (it.type === 'PlaylistItem' || it.type === 'AlbumItem') items.push(it); }));
+    return { items, posters: {}, params };
+  }
+
   // Monta la HOME tradotta dentro un contenitore DOM. Ritorna il nodo montato o null.
   async function mountHomeScreen(container, options) {
     const vm = await createHomeViewModel();
     const navController = (options && options.navController) || { navigate() {} };
-    const node = global.IrideHomeScreen.HomeScreen({ navController, snackbarHostState: null, viewModel: vm });
-    if (node && node.nodeType === 1) container.appendChild(node);
-    return node;
+    let current = null;
+    // Ridisegna la schermata intera (la traduzione non ha un sistema di stato reattivo).
+    const render = () => {
+      const node = global.IrideHomeScreen.HomeScreen({ navController, snackbarHostState: null, viewModel: vm });
+      if (!node || node.nodeType !== 1) return null;
+      if (current && current.parentNode === container) container.replaceChild(node, current);
+      else container.appendChild(node);
+      current = node;
+      return node;
+    };
+    vm.__rerender = render;
+    return render();
   }
 
-  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen, quickPicksFromHistory, buildForYouShelves };
+  global.IrideHomeData = { createHomeViewModel, mapHomePage, mapItem, fetchHomePage, mountHomeScreen, quickPicksFromHistory, buildForYouShelves, fetchMoodItems, buildHeroCarousel };
 })(typeof window !== 'undefined' ? window : globalThis);

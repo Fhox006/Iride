@@ -2627,6 +2627,7 @@ async function handleVibeRecommendations(req, res, payload) {
 // Con la sessione Electron (cookie YouTube) il feed e' personalizzato come sull'account.
 const YTM_HOME_CACHE_MS = 10 * 60 * 1000;
 let serverHomeFeedCache = { ts: 0, data: null };
+const serverMoodFeedCache = {}; // params -> { ts, data }: pagine umore/genere della home
 
 function ytmRunsText(runs) {
   return Array.isArray(runs) ? runs.map((r) => (r && r.text) || '').join('').trim() : '';
@@ -2697,14 +2698,18 @@ function parseYtmHomeFeed(json) {
   return { chips, sections };
 }
 
-async function fetchYtmHomeFeed() {
-  if (serverHomeFeedCache.data && Date.now() - serverHomeFeedCache.ts < YTM_HOME_CACHE_MS) {
+async function fetchYtmHomeFeed(params = '') {
+  const cacheKey = params || '';
+  if (cacheKey === '' && serverHomeFeedCache.data && Date.now() - serverHomeFeedCache.ts < YTM_HOME_CACHE_MS) {
     return serverHomeFeedCache.data;
   }
-  const body = JSON.stringify({
-    context: { client: { clientName: 'WEB_REMIX', clientVersion: YTM_CLIENT_VERSION, hl: 'en', gl: 'US' } },
-    browseId: 'FEmusic_home'
-  });
+  const moodCache = serverMoodFeedCache[cacheKey];
+  if (cacheKey !== '' && moodCache && moodCache.data && Date.now() - moodCache.ts < YTM_HOME_CACHE_MS) {
+    return moodCache.data;
+  }
+  const browseBody = { context: { client: { clientName: 'WEB_REMIX', clientVersion: YTM_CLIENT_VERSION, hl: 'en', gl: 'US' } }, browseId: 'FEmusic_home' };
+  if (cacheKey) browseBody.params = cacheKey;
+  const body = JSON.stringify(browseBody);
   const headers = {
     'Content-Type': 'application/json',
     'Origin': 'https://music.youtube.com',
@@ -2729,7 +2734,8 @@ async function fetchYtmHomeFeed() {
   }
   const data = parseYtmHomeFeed(json);
   if (!data.sections.length) throw new Error('ytmusic home: nessuna sezione');
-  serverHomeFeedCache = { ts: Date.now(), data };
+  if (cacheKey) serverMoodFeedCache[cacheKey] = { ts: Date.now(), data };
+  else serverHomeFeedCache = { ts: Date.now(), data };
   return data;
 }
 
@@ -8606,7 +8612,7 @@ async function requestHandler(req, res) {
 
   if (parsedUrl.pathname === '/api/home-feed') {
     try {
-      const feed = await fetchYtmHomeFeed();
+      const feed = await fetchYtmHomeFeed(String(parsedUrl.query.params || ''));
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ success: true, ...feed }));
     } catch (error) {

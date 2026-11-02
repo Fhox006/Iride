@@ -148,3 +148,11 @@ Restano STUB (ancora 'DA TRADURRE'): menu (YouTube*Menu, SongMenu, AlbumMenu, Ar
 ### Player (home-components.js, app.js)
 
 - `LocalPlayerConnection`: PARZIALE. `playQueue` e `togglePlayPause` passano dal ponte `window.IrideHomePlayer` (app.js) al player del desktop. `isEffectivelyPlaying` e `mediaMetadata` sono fissi (non ancora collegati allo stato reale).
+
+### Batch 5 (home-data.js, server.js)
+
+- `forYouShelves`: PARZIALE. Artisti da storico e preferiti, 3 tracce per shelf (come il minimo Kotlin). Tessere = tracce, non album (il desktop non ha album locali). Verificato: lo shelf di "Artist A" compare.
+- `heroCarouselItems`: PARZIALE. Artisti dello storico, copertina dalla traccia. Verificato: "Artist A" e "Artist B" compaiono.
+- `homePage.chips`: OK come nel Kotlin (filtro home/podcast, senza shuffle).
+- `homeMoodContent` (pagine umore): BLOCCATO. La route `/api/home-feed?params=` esiste, ma per tutti i chip YouTube Music risponde senza sezioni (solo header). Da indagare: probabilmente serve la sessione firmata o un'altra struttura di risposta. Finche' non e' risolto, la lista umore resta vuota.
+- `loadMoodPage` ridisegna la schermata solo se i parametri cambiano.
