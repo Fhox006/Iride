@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -104,7 +105,6 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumTopGradientKey
-import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
@@ -124,10 +124,15 @@ import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.collectionExpansionTarget
+import com.metrolist.music.ui.component.rememberCollectionArtworkRequest
 import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
+import com.metrolist.music.ui.component.LocalCollectionExpansionSource
+import com.metrolist.music.ui.component.CollectionExpansionKind
+import com.metrolist.music.ui.component.rememberCollectionArtworkRequest
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.LocalIrideFolioScrimColor
 import com.metrolist.music.ui.component.IrideFolio
@@ -139,14 +144,17 @@ import com.metrolist.music.ui.component.IrideFolioAlbumShelf
 import com.metrolist.music.ui.component.NeedleDropLeadInMs
 import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.formatAlbumTrackArtistCredits
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.IrideArtworkSurface
 import com.metrolist.music.ui.component.VinylPeekDisc
+import com.metrolist.music.ui.component.AlbumSleeve
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.menu.albumScreenMenuSections
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
+import com.metrolist.music.utils.AlbumDeluxeGroupingEnabled
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
@@ -162,7 +170,6 @@ import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.TurntableSfx
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeReadableTimeString
-import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
@@ -176,6 +183,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import sv.lib.squircleshape.SquircleShape
 
 // Turntable feel for the cover-peeking disc: how far it slides out from behind the cover, how much
@@ -185,9 +193,9 @@ import sv.lib.squircleshape.SquircleShape
 // MsPerRevolution / 1000, otherwise a free-spinning disc and a dragged disc disagree about how
 // much music a turn is worth, which is exactly what makes a scratch feel fake. Half real 33⅓ RPM:
 // a literal 1.8s/turn read as frantic on a phone-sized disc.
-private const val AlbumDiscPeekFraction = 0.30f
-private const val AlbumCoverShiftFraction = 0.12f
-private const val AlbumDiscDegreesPerSecond = 100f
+internal const val AlbumDiscPeekFraction = 0.30f
+internal const val AlbumCoverShiftFraction = 0.12f
+internal const val AlbumDiscDegreesPerSecond = 100f
 private const val AlbumDiscMsPerRevolution = 3600L
 private const val AlbumDiscFrictionPerSecond = 3.2f
 private const val AlbumDiscCoastSettleEpsilon = 0.02
@@ -203,9 +211,9 @@ private const val AlbumDiscHoldTimeoutMs = 70L
 // Slow, unhurried glide — the disc easing out from behind the cover is a small ceremony, not a
 // snap; EaseOutExpo's long soft landing reads as calm at this length where it'd read as sluggish
 // at the shared IrideMotion.Short/Medium durations used for on-screen movement elsewhere.
-private const val AlbumDiscRevealMs = 900
+internal const val AlbumDiscRevealMs = 900
 
-private fun angleOfTouch(position: Offset, center: Offset): Float {
+internal fun angleOfTouch(position: Offset, center: Offset): Float {
     val dx = position.x - center.x
     val dy = position.y - center.y
     return Math.toDegrees(atan2(dy, dx).toDouble()).toFloat()
@@ -219,6 +227,7 @@ private fun angleOfTouch(position: Offset, center: Offset): Float {
 @Composable
 fun AlbumScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: AlbumViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -238,10 +247,12 @@ fun AlbumScreen(
     val unavailableSongs by viewModel.unavailableSongs.collectAsStateWithLifecycle()
     val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
+    val deluxeBlock by viewModel.deluxeBlock.collectAsStateWithLifecycle()
     val discovery by viewModel.discovery.collectAsStateWithLifecycle()
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val collectionExpansion = LocalCollectionExpansionProgress.current
+    val expansionSource = LocalCollectionExpansionSource.current
     LaunchedEffect(hideExplicit) {
         collectionExpansion.awaitSettled()
         viewModel.configureDiscovery(hideExplicit)
@@ -267,6 +278,14 @@ fun AlbumScreen(
     val revealedSections = remember { mutableSetOf<String>() }
 
     val albumTitle = albumWithSongs?.album?.title
+    var showAlbumLoadingIndicator by remember(viewModel.albumId) { mutableStateOf(false) }
+    LaunchedEffect(albumWithSongs == null, hasError) {
+        showAlbumLoadingIndicator = false
+        if (albumWithSongs == null && !hasError) {
+            delay(1_200L)
+            showAlbumLoadingIndicator = albumWithSongs == null && !hasError
+        }
+    }
     // Everything in the header waits for the title to finish typing, so the block reads as one
     // sentence being composed rather than several things appearing at once.
     val titleTypingMs = 0
@@ -302,6 +321,7 @@ fun AlbumScreen(
             }
             songs
         }
+    val isSingleTrackAlbum = albumWithSongs?.songs?.size == 1
 
     val recentAlbumPlayEvents by
         produceState<List<AlbumPlayEvent>>(initialValue = emptyList(), albumWithSongs?.album?.id) {
@@ -399,14 +419,14 @@ fun AlbumScreen(
         albumWithSongs?.let { current ->
             playerConnection.playQueue(
                 ListQueue(
-                    sourceRoute = "album/${current.album.id}",
+                    sourceRoute = "album/${current.album.id}?offline=$isOffline",
                     title = current.album.title,
                     items = current.songs.shuffled().map { it.toMediaItem() },
                 )
             )
         }
     }
-    val onControlPanelDownloadClick: () -> Unit = {
+    val onAlbumDownloadClick: () -> Unit = {
         albumWithSongs?.let { current ->
             when (downloadState) {
                 Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
@@ -551,7 +571,12 @@ fun AlbumScreen(
         }
     }
     val albumMenuSections =
-        albumScreenMenuSections(albumWithSongs = albumWithSongs, onRefetch = viewModel::retry)
+        albumScreenMenuSections(
+            albumWithSongs = albumWithSongs,
+            downloadState = downloadState,
+            onDownload = onAlbumDownloadClick,
+            onRefetch = viewModel::retry,
+        )
 
     IrideArtworkSurface(
         backgroundColor = Color.Black,
@@ -617,7 +642,6 @@ fun AlbumScreen(
             state = lazyListState,
             showTopBar = true,
             showPageTitle = false,
-            showTopScrim = false,
             menuSections = if (inSelectMode) emptyList() else albumMenuSections,
             topScrimColor = if (albumTopGradientEnabled) albumBackdropColor else defaultScrimColor,
             animateTopScrimColor = !albumTopGradientEnabled,
@@ -669,7 +693,7 @@ fun AlbumScreen(
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null) {
                 item(key = "album_header") {
-                    val albumCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+                    val albumCoverShape = CollectionArtworkShape
 
                     // Shared across both layouts below.
                     val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
@@ -796,6 +820,7 @@ fun AlbumScreen(
                                 }
                             }
 
+
                             // Disc sits fully hidden behind the cover until this album is the one
                             // playing (or being scratched): then it peeks out to the right and
                             // spins, and the cover steps aside to make room for it.
@@ -857,6 +882,7 @@ fun AlbumScreen(
                                             var lastVelocity = 1.0
                                             var coastJob: Job? = null
                                             var holdWatchJob: Job? = null
+                                            var acceptedDrag = false
 
                                             // Release is not a hand-back: the platter is the
                                             // playback engine, so all that
@@ -907,7 +933,14 @@ fun AlbumScreen(
 
                                             detectDragGestures(
                                                 onDragStart = { startPosition ->
-                                                    if (discRevealProgress.value < 0.4f)
+                                                    val reveal = discRevealProgress.value
+                                                    val coverRight = size.width *
+                                                        (1f - (AlbumDiscPeekFraction + AlbumCoverShiftFraction) * reveal)
+                                                    center = Offset(size.width / 2f, size.height / 2f)
+                                                    acceptedDrag = reveal >= 0.4f &&
+                                                        startPosition.x > coverRight &&
+                                                        (startPosition - center).getDistance() <= size.width / 2f
+                                                    if (!acceptedDrag)
                                                         return@detectDragGestures
                                                     coastJob?.cancel()
                                                     holdWatchJob?.cancel()
@@ -941,7 +974,7 @@ fun AlbumScreen(
                                                     }
                                                 },
                                                 onDrag = { change, _ ->
-                                                    if (!isScratchingDisc) return@detectDragGestures
+                                                    if (!acceptedDrag || !isScratchingDisc) return@detectDragGestures
                                                     val angle =
                                                         angleOfTouch(change.position, center)
                                                     var delta = angle - lastAngle
@@ -971,17 +1004,26 @@ fun AlbumScreen(
                                                     }
                                                     lastEventUptimeMillis = change.uptimeMillis
                                                 },
-                                                onDragEnd = { startCoast() },
-                                                onDragCancel = { startCoast() },
+                                                onDragEnd = {
+                                                    if (acceptedDrag) startCoast()
+                                                    acceptedDrag = false
+                                                },
+                                                onDragCancel = {
+                                                    if (acceptedDrag) startCoast()
+                                                    acceptedDrag = false
+                                                },
                                             )
                                         },
                             )
 
-                            AsyncImage(
-                                model = albumWithSongs.album.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                onState = { state ->
+                            AlbumSleeve(
+                                albumId = albumWithSongs.album.id,
+                                title = albumWithSongs.album.title,
+                                trackTitles = albumWithSongs.songs.map { it.song.title },
+                                thumbnailUrl = albumWithSongs.album.thumbnailUrl,
+                                accentColor = albumBackdropColor,
+                                isPlaying = isPlaying,
+                                onArtworkState = { state ->
                                     if (state is AsyncImagePainter.State.Success) {
                                         if (state.result.dataSource == DataSource.MEMORY_CACHE) {
                                             skipCoverEnterAnim = true
@@ -1002,25 +1044,15 @@ fun AlbumScreen(
                                                     AlbumCoverShiftFraction *
                                                     discRevealProgress.value
                                         }
-                                        .collectionExpansionTarget(ready = coverLoaded)
-                                        .irideArtworkOverlayBorder(
-                                            IrideBaseBorderWidth,
-                                            MaterialTheme.colorScheme.strokeCard,
-                                            albumCoverSquircle,
-                                        )
-                                        .shadow(
-                                            elevation = 20.dp,
-                                            shape = albumCoverSquircle,
-                                            spotColor = Color.Black.copy(alpha = 0.5f),
-                                        )
-                                        .clip(albumCoverSquircle)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .collectionExpansionTarget(ready = coverLoaded),
                             )
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        IrideCollectionTitle(title = albumWithSongs.album.title)
+                        IrideCollectionTitle(
+                            title = albumWithSongs.album.title,
+                        )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -1131,8 +1163,6 @@ fun AlbumScreen(
                     IridePlaylistControlPanel(
                         onShuffleClick = onControlPanelShuffleClick,
                         onPlayClick = onControlPanelPlayClick,
-                        onDownloadClick = onControlPanelDownloadClick,
-                        downloadState = downloadState,
                         isPlaying = isThisAlbumPlaying,
                         modifier =
                             Modifier.padding(bottom = 12.dp).irideEnterScale(controlPanelProgress),
@@ -1217,11 +1247,9 @@ fun AlbumScreen(
 
                 if (filteredSongs.isNotEmpty()) {
                     item(key = "songs_container") {
-                        val hideDurationForStandard by
-                            rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
-                        val albumArtistNames = albumWithSongs.artists
-                            .map { it.name.trim().lowercase() }
-                            .toSet()
+                        val sourceBlock = deluxeBlock.takeIf { AlbumDeluxeGroupingEnabled }
+                        val sourceSongIds = sourceBlock?.songIds.orEmpty().toSet()
+                        val firstSourceSongId = filteredSongs.firstOrNull { it.id in sourceSongIds }?.id
                         Column(
                             modifier =
                                 Modifier.fillMaxWidth()
@@ -1230,6 +1258,20 @@ fun AlbumScreen(
                                     .revealMask(rememberSectionEnterState("songs", revealedSections))
                         ) {
                             filteredSongs.fastForEachIndexed { index, song ->
+                                if (sourceBlock != null && song.id == firstSourceSongId) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                        Text(
+                                            text = stringResource(R.string.album_tracks_from, sourceBlock.sourceAlbumTitle),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                                 val onCheckedChange: (Boolean) -> Unit = {
                                     if (it) {
                                         selection.add(song.id)
@@ -1238,31 +1280,15 @@ fun AlbumScreen(
                                     }
                                 }
 
-                                val featuredNames = song.orderedArtists
-                                    .drop(1)
-                                    .distinctBy { it.id }
-                                    .filterNot { it.name.trim().lowercase() in albumArtistNames }
-                                    .map { it.name }
-                                val hideDuration =
-                                    hideDurationForStandard && song.song.duration in 60..300
-                                val subtitleText = buildString {
-                                    if (featuredNames.isNotEmpty()) {
-                                        append("feat. ")
-                                        append(featuredNames.joinToString(", "))
-                                    }
-                                    if (!hideDuration) {
-                                        if (isNotEmpty()) append(" • ")
-                                        append(makeTimeString(song.song.duration * 1000L))
-                                    }
-                                }
-
                                 SongListItem(
                                     song = song,
                                     albumIndex = index + 1,
-                                    subtitleOverride = subtitleText,
-                                    // New Iride UI: featuring-artist credits ("feat. X") should
-                                    // read in the same color as the rest of the row instead of
-                                    // the default muted secondary tone.
+                                    artistCreditOverride =
+                                        formatAlbumTrackArtistCredits(
+                                            trackArtistNames = song.orderedArtists.map { it.name },
+                                            albumArtistNames = albumWithSongs.artists.map { it.name },
+                                            title = song.song.title,
+                                        ),
                                     subtitleColor = Color.Unspecified,
                                     isActive = song.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
@@ -1286,10 +1312,7 @@ fun AlbumScreen(
                                                     }
                                                 }
                                             ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.more_vert),
-                                                    contentDescription = null,
-                                                )
+                                                TrackOverflowIcon()
                                             }
                                         }
                                     },
@@ -1328,7 +1351,7 @@ fun AlbumScreen(
                     }
                 }
 
-                if (otherVersions.isNotEmpty()) {
+                if (!isSingleTrackAlbum && otherVersions.isNotEmpty()) {
                     item(key = "other_versions_title") {
                         SharedHomeSectionTitle(
                             title = stringResource(R.string.other_versions),
@@ -1364,28 +1387,28 @@ fun AlbumScreen(
                     }
                 }
 
-                item(key = "discovery_mix_title") {
-                    SharedHomeSectionTitle(
-                        title = stringResource(R.string.album_discovery_mix),
-                        titleMaxLines = 2,
-                        onRefreshClick = viewModel::refreshDiscovery,
-                        isRefreshing = discovery.albumsLoading,
-                    )
-                }
-                item(key = "discovery_mix_albums") {
-                    IrideFolioAlbumShelf(
-                        albums = discovery.albums,
-                        loading = discovery.albumsLoading,
-                        activeAlbumId = mediaMetadata?.album?.id,
-                        isPlaying = isPlaying,
-                        coroutineScope = scope,
-                        onClick = { navController.navigate("album/${it.id}") },
-                        onLongClick = { album ->
-                            menuState.show(anchored = true) {
-                                YouTubeAlbumMenu(albumItem = album, navController = navController, onDismiss = menuState::dismiss)
-                            }
-                        },
-                    )
+                if (!isSingleTrackAlbum) {
+                    item(key = "discovery_mix_title") {
+                        SharedHomeSectionTitle(
+                            title = stringResource(R.string.album_discovery_mix),
+                            titleMaxLines = 2,
+                        )
+                    }
+                    item(key = "discovery_mix_albums") {
+                        IrideFolioAlbumShelf(
+                            albums = discovery.albums,
+                            loading = discovery.albumsLoading,
+                            activeAlbumId = mediaMetadata?.album?.id,
+                            isPlaying = isPlaying,
+                            coroutineScope = scope,
+                            onClick = { navController.navigate("album/${it.id}") },
+                            onLongClick = { album ->
+                                menuState.show(anchored = true) {
+                                    YouTubeAlbumMenu(albumItem = album, navController = navController, onDismiss = menuState::dismiss)
+                                }
+                            },
+                        )
+                    }
                 }
 
             } else {
@@ -1409,11 +1432,42 @@ fun AlbumScreen(
                     }
                 } else {
                     item(key = "loading") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            IrideLoadingIndicator()
+                        val sourceAlbum = expansionSource?.takeIf {
+                            it.kind == CollectionExpansionKind.Album &&
+                                it.id == viewModel.albumId
+                        }
+                        if (sourceAlbum != null) {
+                            val artworkUrl = sourceAlbum.artworkUrl?.takeIf(String::isNotBlank)
+                            var loadingCoverReady by remember(artworkUrl) { mutableStateOf(false) }
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+                                    .padding(top = 12.dp, bottom = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                if (artworkUrl != null) {
+                                    AsyncImage(
+                                        model = rememberCollectionArtworkRequest(artworkUrl),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        onSuccess = { loadingCoverReady = true },
+                                        modifier = Modifier.size(240.dp).clip(CollectionArtworkShape)
+                                            .collectionExpansionTarget(ready = loadingCoverReady),
+                                    )
+                                    Spacer(Modifier.height(20.dp))
+                                }
+                                IrideCollectionTitle(title = sourceAlbum.title)
+                                if (showAlbumLoadingIndicator) {
+                                    Spacer(Modifier.height(20.dp))
+                                    IrideLoadingIndicator()
+                                }
+                            }
+                        } else if (showAlbumLoadingIndicator) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                IrideLoadingIndicator()
+                            }
                         }
                     }
                 }

@@ -7,7 +7,9 @@ import androidx.compose.foundation.shape.CircleShape
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
-import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -85,6 +87,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import com.metrolist.music.utils.reportException
+
+private fun showAlbumMenuToast(context: android.content.Context, message: Int) {
+    Handler(Looper.getMainLooper()).post {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+}
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -271,7 +279,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                     title = { Text(text = stringResource(R.string.remove_download)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.offline),
+                            painter = painterResource(R.drawable.track_downloaded),
                             contentDescription = null,
                         )
                     },
@@ -319,7 +327,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                     description = { Text(text = stringResource(R.string.download_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.download),
+                            painter = painterResource(R.drawable.track_download),
                             contentDescription = null,
                         )
                     },
@@ -492,7 +500,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                                         scope.launch(Dispatchers.IO) {
                                             YouTube.album(album.id).onSuccess {
                                                 database.transaction {
-                                                    update(album.album, it, album.artists)
+                                                    update(album.album, it)
                                                 }
                                             }
                                         }
@@ -575,7 +583,7 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                         context.startActivity(Intent.createChooser(shareIntent, exportPlaylistStr))
                     }
                     .onFailure {
-                        Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                        showAlbumMenuToast(context, R.string.export_failed)
                     }
                 showExportDialog = false
             },
@@ -614,16 +622,14 @@ fun AlbumMenu(originalAlbum: Album, navController: NavController, onDismiss: () 
                         val save = saveToPublicDocuments(context, file, mimeType)
                         save
                             .onSuccess {
-                                Toast.makeText(context, R.string.export_success, Toast.LENGTH_SHORT)
-                                    .show()
+                                showAlbumMenuToast(context, R.string.export_success)
                             }
                             .onFailure {
-                                Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT)
-                                    .show()
+                                showAlbumMenuToast(context, R.string.export_failed)
                             }
                     }
                     .onFailure {
-                        Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show()
+                        showAlbumMenuToast(context, R.string.export_failed)
                     }
                 showExportDialog = false
             },

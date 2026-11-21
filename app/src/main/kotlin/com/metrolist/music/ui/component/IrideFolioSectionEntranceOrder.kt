@@ -18,6 +18,7 @@ internal class IrideFolioSectionEntranceOrder {
     private val started = mutableStateMapOf<String, Boolean>()
 
     fun position(key: String, top: Float, visible: Boolean, ready: Boolean) {
+        if (started[key] == true) return
         slots[key] = Slot(top, visible, ready)
     }
 

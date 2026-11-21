@@ -229,7 +229,7 @@ fun RomanizationSettings(navController: NavController) {
 
                 checkboxesList +=
                     Material3SettingsItem(
-                        title = { Text("Play all") },
+                        title = { Text(stringResource(R.string.play_all)) },
                         trailingContent = {
                             TriStateCheckbox(
                                 state = parentState,

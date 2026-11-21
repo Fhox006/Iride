@@ -11,6 +11,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExternalAlbumCatalogTest {
+    private fun releaseRow(date: String, title: String = "Album", artist: String = "Artist") =
+        Json.parseToJsonElement("""{
+            "wrapperType":"collection", "collectionType":"Album", "collectionName":"$title",
+            "artistName":"$artist", "releaseDate":"${date}T08:00:00Z"
+        }""").jsonObject
+
+    @Test fun releaseDateRejectsAnotherYearAndAnotherEdition() {
+        assertNull(ExternalAlbumCatalog.matchingReleaseDate("Album", "Artist", 2026, listOf(
+            releaseRow("2025-07-10"), releaseRow("2026-07-10", title = "Album (Deluxe)"),
+            releaseRow("2026-07-10", artist = "Other Artist"),
+        )))
+    }
+
+    @Test fun releaseDateSkipsInvalidDatesAndChoosesEarliestMatchingRelease() {
+        val rows = listOf(
+            releaseRow("2026-02-30"), releaseRow("2026-07-20"), releaseRow("2026-07-10"),
+            releaseRow("2025-07-10"),
+        )
+        assertEquals("2026-07-10", ExternalAlbumCatalog.matchingReleaseDate("Album", "Artist", 2026, rows))
+        assertEquals("2026-07-10", ExternalAlbumCatalog.matchingReleaseDate("Album", "Artist", 2026, rows.reversed()))
+    }
+
     private fun album(id: String, title: String = "CASA GOSPEL", artist: String = "thasup", year: Int = 2024) = AlbumItem(
         browseId = id, playlistId = "", title = title, artists = listOf(Artist(artist, null)),
         year = year, thumbnail = "https://example.com/cover.jpg",

@@ -147,20 +147,13 @@ fun OnboardingScreen(navController: NavController) {
 
 @Composable
 private fun WelcomePage(onNext: () -> Unit) {
-    ExperiencePage(
-        title = stringResource(R.string.experience_intro_title),
-        description = stringResource(R.string.experience_intro_body),
-        illustration = { NavigationMotionIllustration(NavigationDemo.Welcome) },
-        illustrationMaxHeight = 128.dp,
-        applyInsets = false,
-        actions = { ExperienceButton(stringResource(R.string.onboarding_get_started), onNext) },
-    )
+    OnboardingWelcomeLegacy(onNext)
 }
 
 @Composable
 private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
     ExperiencePage(
-        title = stringResource(R.string.experience_account_title),
+        title = stringResource(R.string.onboarding_login_title),
         description = stringResource(R.string.experience_account_body),
         illustration = { NavigationMotionIllustration(NavigationDemo.Account) },
         applyInsets = false,

@@ -24,6 +24,20 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
+import com.metrolist.music.db.entities.Song
+import com.metrolist.music.ui.screens.search.rankSearchSuggestions
+import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.models.Album
+import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.music.constants.HideYoutubeShortsKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,12 +47,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.delay
+import com.metrolist.music.ui.screens.search.searchPredictionScore
+import com.metrolist.music.discovery.searchPersonalCatalog
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -54,78 +68,83 @@ class OnlineSearchSuggestionViewModel
         private val _viewState = MutableStateFlow(SearchSuggestionViewState())
         val viewState = _viewState.asStateFlow()
 
+        private val personalItems = database.searchPersonalCatalog()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
         init {
             viewModelScope.launch {
-                query
-                    .debounce(250)
-                    .flatMapLatest { query ->
-                        if (query.isEmpty()) {
-                            database.searchHistory().map { history ->
-                                SearchSuggestionViewState(
-                                    history = history,
-                                )
-                            }
+                query.flatMapLatest { draft ->
+                    val network = flow {
+                        if (draft.isBlank()) {
+                            emit(SearchSuggestionViewState(query = draft))
+                            return@flow
+                        }
+                        val parsed = YouTubeUrlParser.parse(draft)
+                        if (parsed != null) {
+                            emit(SearchSuggestionViewState(query = draft, isUrlQuery = true))
+                            val parsedItem = listOfNotNull(withTimeoutOrNull(8_000) { fetchParsedUrlItem(parsed) })
+                            emit(SearchSuggestionViewState(query = draft, items = parsedItem, isUrlQuery = true))
                         } else {
-                            val parsedUrl = YouTubeUrlParser.parse(query)
-                            if (parsedUrl != null) {
-                                val parsedItem = fetchParsedUrlItem(parsedUrl)
-                                database
-                                    .searchHistory(query)
-                                    .map { it.take(3) }
-                                    .map { history ->
-                                        SearchSuggestionViewState(
-                                            history = history,
-                                            suggestions = emptyList(),
-                                            items = parsedItem?.let { listOf(it) } ?: emptyList(),
-                                            parsedUrlItem = parsedItem,
-                                            isUrlQuery = true,
-                                        )
+                            // Clear previous-query previews while the current draft loads.
+                            emit(SearchSuggestionViewState(query = draft))
+                            delay(150)
+                            val result = withTimeoutOrNull(5_000) { YouTube.searchSuggestions(draft).getOrNull() }
+                            currentCoroutineContext().ensureActive()
+                            emit(SearchSuggestionViewState(items = result?.recommendedItems.orEmpty(), suggestions = result?.queries.orEmpty()))
+                            // Fetch a preview only when completions do not fill the five useful slots.
+                            if (previewResultsEnabled && draft.trim().length >= 2 &&
+                                rankSearchSuggestions(draft, personalItems.value, result?.recommendedItems.orEmpty()).size < 5) {
+                                val recognizedArtist = rankSearchSuggestions(draft, personalItems.value, emptyList())
+                                    .filterIsInstance<ArtistItem>().firstOrNull {
+                                        searchPredictionScore(draft, it.title) != null
                                     }
-                            } else {
-                                val (result, summary) = coroutineScope {
-                                    val completions = async { YouTube.searchSuggestions(query).getOrNull() }
-                                    val previews = async {
-                                        if (previewResultsEnabled && query.trim().length >= 3) {
-                                            YouTube.searchSummary(query).getOrNull()
-                                        } else null
-                                    }
-                                    completions.await() to previews.await()
-                                }
+                                val lookup = recognizedArtist?.title ?: draft
+                                val summary = withTimeoutOrNull(5_000) { YouTube.searchSummary(lookup).getOrNull() }
                                 currentCoroutineContext().ensureActive()
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-
-                                database
-                                    .searchHistory(query)
-                                    .map { it.take(3) }
-                                    .map { history ->
-                                        val remainingSlots = (6 - history.size).coerceAtLeast(0)
-                                        SearchSuggestionViewState(
-                                            history = history,
-                                            suggestions =
-                                                result
-                                                    ?.queries
-                                                    ?.filter { suggestionQuery ->
-                                                        history.none { it.query == suggestionQuery }
-                                                    }
-                                                    ?.take(remainingSlots)
-                                                    .orEmpty(),
-                                            items = (
-                                                result?.recommendedItems.orEmpty() +
-                                                    summary?.summaries.orEmpty().flatMap { it.items }
-                                                ).distinctBy { it.id }
-                                                .filterExplicit(hideExplicit)
-                                                .filterVideoSongs(hideVideoSongs)
-                                                .take(24),
-                                        )
-                                    }
+                                val items = result?.recommendedItems.orEmpty() + summary?.summaries.orEmpty().flatMap { it.items }
+                                emit(SearchSuggestionViewState(items = items, suggestions = result?.queries.orEmpty()))
+                                if (rankSearchSuggestions(draft, personalItems.value, items).size < 5) {
+                                    val songs = withTimeoutOrNull(5_000) { YouTube.search(lookup, YouTube.SearchFilter.FILTER_SONG).getOrNull() }
+                                    currentCoroutineContext().ensureActive()
+                                    emit(SearchSuggestionViewState(items = items + songs?.items.orEmpty(), suggestions = result?.queries.orEmpty()))
+                                }
                             }
                         }
-                    }.collect {
-                        _viewState.value = it
+                    }.flowOn(Dispatchers.IO)
+                    combine(network, personalItems, database.searchHistory()) { remote, personal, history ->
+                        withContext(Dispatchers.Default) {
+                            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                            val hideShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                            val local = personal.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs)
+                                .filterYoutubeShorts(hideShorts)
+                            val online = remote.items.filterNot { it is SongItem && (it.isVideoSong || it.isEpisode) }.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs)
+                                .filterYoutubeShorts(hideShorts)
+                            val ranked = rankSearchSuggestions(draft, local, online)
+                            val parsed = YouTubeUrlParser.parse(draft)
+                            SearchSuggestionViewState(
+                                query = draft,
+                                history = history,
+                                suggestions = remote.suggestions,
+                                recommendedItems = ranked,
+                                items = ranked,
+                                parsedUrlItem = remote.items.firstOrNull().takeIf { parsed != null },
+                                isUrlQuery = parsed != null,
+                            )
+                        }
                     }
+                }.collect { state ->
+                    if (state.query == query.value) _viewState.value = state
+                }
             }
         }
+
+        private fun Song.searchSong() = SongItem(
+            id = id, title = title, artists = orderedArtists.map { Artist(it.name, it.id) },
+            album = song.albumId?.let { Album(song.albumName.orEmpty(), it) },
+            duration = song.duration.takeIf { it > 0 }, thumbnail = thumbnailUrl.orEmpty(),
+            explicit = song.explicit, endpoint = WatchEndpoint(videoId = id),
+        )
 
         private suspend fun fetchParsedUrlItem(parsedUrl: YouTubeUrlParser.ParsedUrl): YTItem? =
             when (parsedUrl) {
@@ -173,8 +192,10 @@ class OnlineSearchSuggestionViewModel
     }
 
 data class SearchSuggestionViewState(
+    val query: String = "",
     val history: List<SearchHistory> = emptyList(),
     val suggestions: List<String> = emptyList(),
+    val recommendedItems: List<YTItem> = emptyList(),
     val items: List<YTItem> = emptyList(),
     val parsedUrlItem: YTItem? = null,
     val isUrlQuery: Boolean = false,

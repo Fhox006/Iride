@@ -60,6 +60,7 @@
     <string name="show_less">Show less</string>
     <string name="artist_page_settings">Artist page</string>
     <string name="show_artist_description">Show artist description</string>
+    <string name="artist_page_load_error">Couldn\'t load the artist page.</string>
     <string name="show_artist_subscriber_count">Show subscriber count</string>
     <string name="show_artist_monthly_listeners">Show monthly listeners</string>
 
@@ -168,13 +169,13 @@
     <string name="auto_scroll">Re-sync</string>
     <string name="slim">Slim</string>
     <string name="slim_navbar">Slim bottom navigation bar</string>
-    <string name="auto_playlists">Auto playlists</string>
+    <string name="auto_playlists">Iride automatic playlists</string>
     <string name="show_liked_playlist">Show Liked Songs playlist</string>
     <string name="show_downloaded_playlist">Show Downloaded playlist</string>
     <string name="show_top_playlist">Show Top playlist</string>
     <string name="show_cached_playlist">Show temporary downloads playlist</string>
-    <string name="enable_song_cache">Enable song cache</string>
-    <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
+    <string name="enable_song_cache">Save temporary songs</string>
+    <string name="enable_song_cache_desc">Keep recently played songs for faster playback</string>
     <string name="show_uploaded_playlist">Show Uploaded playlist</string>
     <string name="shuffle_playlist_first">Shuffle playlist or album first</string>
     <string name="shuffle_playlist_first_desc">When shuffling, play all songs from the current playlist or album before moving to similar content</string>
@@ -251,9 +252,9 @@
     <string name="swipe_sensitivity">Mini-player swipe sensitivity</string>
     <string name="sensitivity_percentage">%1$d%%</string>
 
-    <string name="clear_song_cache_dialog">Are you sure you want to clear all cached songs?</string>
-    <string name="clear_image_cache_dialog">Are you sure you want to clear all cached images?</string>
-    <string name="clear_downloads_dialog">Are you sure you want to clear all downloads?</string>
+    <string name="clear_song_cache_dialog">Clear temporary songs? They will be downloaded again when needed.</string>
+    <string name="clear_image_cache_dialog">Images are managed automatically.</string>
+    <string name="clear_downloads_dialog">Delete all downloaded songs?</string>
 
     <string name="disable">Disable</string>
 
@@ -292,6 +293,19 @@
     <string name="update_download_error_no_space">Not enough free space</string>
     <string name="update_download_error_connection">Connection error</string>
     <string name="update_download_notification_description">Downloading the new version…</string>
+    <string name="update_download_ready_title">Update ready! Iride %1$s</string>
+    <string name="update_download_ready_description">Iride will restart to install it.</string>
+    <string name="update_ready_toast">Update ready! Iride will restart to install it.</string>
+    <string name="update_permission_required_toast">Update ready! Allow Iride to install updates in Android settings.</string>
+    <string name="update_size_unknown">Size unavailable</string>
+    <string name="update_roaming_title">Update available</string>
+    <string name="update_roaming_message">Iride %1$s is available (%2$s). Your phone is using mobile data outside your usual country, which may cost extra.</string>
+    <string name="update_roaming_question">Download it now?</string>
+    <string name="update_roaming_download_now">Download now</string>
+    <string name="update_roaming_wait_wifi">Wait for Wi-Fi</string>
+    <string name="update_home_title">New version found</string>
+    <string name="update_home_version">Iride %s is available</string>
+    <string name="update_home_downloading">Downloading…</string>
 
     <string name="all_time">All time</string>
     <string name="past_24_hours">Past 24 hours</string>
@@ -384,8 +398,8 @@
     <string name="keep_screen_on_when_player_is_expanded">Keep screen on when player is expanded</string>
 
     <string name="crossfade">Crossfade</string>
-    <string name="crossfade_desc">Fades between songs and briefly when skipping</string>
-    <string name="crossfade_duration">Between songs</string>
+    <string name="crossfade_duration">Crossfade duration</string>
+    <string name="crossfade_desc">Crossfade between songs</string>
     <string name="crossfade_gapless">Disable for gapless albums</string>
     <string name="crossfade_gapless_desc">Skip crossfade for albums designed to play without gaps</string>
     <string name="crossfade_beta_title">Beta feature!</string>
@@ -432,6 +446,13 @@
     <string name="settings_section_storage">Storage &amp; Data</string>
     <string name="app_data_storage">App Data &amp; Storage</string>
     <string name="app_management_backup">Data &amp; Storage</string>
+    <string name="iride_backup_screen_title">Iride copies</string>
+    <string name="iride_save_copy">Save a copy of Iride</string>
+    <string name="iride_load_copy">Load a saved copy</string>
+    <string name="iride_backup_notice">Phone transfer needs Android device backup.</string>
+    <string name="iride_choose_backup">Choose a saved copy</string>
+    <string name="iride_choose_file">Find a saved copy</string>
+    <string name="iride_no_backups">No saved copies found on this device.</string>
     <string name="settings_section_system">System &amp; About</string>
     <string name="settings_section_player">Playback</string>
     <string name="settings_section_content">Content</string>
@@ -498,6 +519,14 @@
     <string name="add_to_queue_desc">Add to the end of the queue</string>
     <string name="add_to_library_desc">Save to your library</string>
     <string name="download_desc">Download for offline playback</string>
+    <string name="track_favorite_saved">Favorite</string>
+    <string name="track_favorite_not_saved">Not a favorite</string>
+    <string name="track_download_status_not_downloaded">Not downloaded</string>
+    <string name="track_download_status_queued">Download queued</string>
+    <string name="track_download_status_downloading">Downloading</string>
+    <string name="track_download_status_downloaded">Downloaded</string>
+    <string name="track_download_status_failed">Download failed</string>
+    <string name="track_download_status_removing">Removing download</string>
     <string name="add_to_playlist_desc">Add to a playlist</string>
     <string name="refetch_desc">Refresh metadata from YouTube Music</string>
     <string name="share_desc">Share a link to this item</string>
@@ -518,7 +547,7 @@
     <string name="transparent">Transparent</string>
     <string name="mini_player_background_not_available">Unavailable when the new mini-player design is disabled</string>
     <string name="cache_size_warning_title">Hold on!</string>
-    <string name="cache_size_warning_message">The limit you\'ve chosen (%1$s) is smaller than what the app is currently using. Continuing may cause some cached %2$s to be removed. Proceed anyway?</string>
+    <string name="cache_size_warning_message">The limit you chose (%1$s) is below current %2$s storage used. Some files will be removed to meet the limit. Continue?</string>
     <string name="cache_size_warning_confirm">Continue</string>
 
     <string name="lyrics_animation_style_title">Word-by-word animation style</string>
@@ -746,6 +775,7 @@
     <string name="creating_room">Creating room…</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
+    <string name="reconnect">Reconnect</string>
     <string name="create">Create</string>
     <string name="join">Join</string>
     <string name="approve">Approve</string>
@@ -795,6 +825,22 @@
     <string name="ai_translation_mode">Translation mode</string>
     <string name="ai_target_language">Target language</string>
     <string name="ai_setup_guide">API credentials</string>
+    <string name="ai_fast_integration_title">Quick Gemini setup</string>
+    <string name="ai_fast_integration_body">Use Gemini for translations and other AI features. Google offers a free quota with usage limits that may change.</string>
+    <string name="ai_fast_integration_step_1">Open Google AI Studio and sign in.</string>
+    <string name="ai_fast_integration_step_2">Choose or create a project, then select “Create API key”.</string>
+    <string name="ai_fast_integration_step_3">Copy the key and paste it below.</string>
+    <string name="ai_fast_integration_open_google">Open Google AI Studio</string>
+    <string name="ai_fast_integration_key_label">Gemini API key</string>
+    <string name="ai_fast_integration_key_placeholder">Paste your key here</string>
+    <string name="ai_fast_integration_key_hint">This code lets Iride use Gemini through your selected Google project.</string>
+    <string name="ai_fast_integration_checking">Checking key…</string>
+    <string name="ai_fast_integration_connected">Gemini connected</string>
+    <string name="ai_fast_integration_verified">Connected · model %1$s</string>
+    <string name="ai_fast_integration_failed">Key is invalid or service is unreachable. Check the key and try again.</string>
+    <string name="ai_fast_integration_retry">Retry</string>
+    <string name="ai_advanced_settings">Advanced settings</string>
+    <string name="ai_hide_advanced_settings">Hide advanced settings</string>
     <string name="ai_translation_literal">Translation</string>
     <string name="ai_translation_literal_desc">Translates the meaning into the target language</string>
     <string name="ai_translation_transcribed">Transcription</string>
@@ -832,6 +878,8 @@
     <string name="crash_share_logs">Share logs</string>
     <string name="crash_share_title">Share crash report</string>
     <string name="crash_report_subject">Iride crash report</string>
+    <string name="crash_restarting">Restarting Iride…</string>
+    <string name="crash_report_copied">Crash report copied</string>
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
 
@@ -990,6 +1038,7 @@
     <string name="credits_instagram">Instagram</string>
     <string name="credits_github">GitHub</string>
     <string name="credits_view_repo">View repository</string>
+    <string name="home_app_version">App version %1$s</string>
     <string name="app_version_info">%1$s • %2$s</string>
     <string name="like_what_i_do">Like what I do?</string>
     <string name="buy_mo_a_coffee">Buy me a coffee!</string>
@@ -1079,10 +1128,11 @@
     <!-- Accessibility -->
     <string name="back">Back</string>
     <string name="clear_search">Clear search</string>
+    <string name="clear_search_on_open">Clear search</string>
     <string name="close_chip">Close</string>
     <string name="switch_to_list_view">Switch to list view</string>
     <string name="switch_to_grid_view">Switch to grid view</string>
-    <string name="switch_to_wide_grid_view">Switch to wide grid view</string>
+    <string name="switch_to_wide_grid_view">Switch to dense visual view</string>
     <string name="more_options">More options</string>
 
     <!-- Settings hub descriptions -->
@@ -1098,13 +1148,16 @@
     <string name="settings_ai_desc">Lyrics translation and AI providers</string>
     <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>
     <string name="settings_privacy_desc">Listening history and security</string>
-    <string name="settings_storage_desc">Downloads, cache and backup</string>
+    <string name="settings_storage_title">Storage &amp; memory</string>
+    <string name="settings_storage_desc">Manage downloads, cache and space used</string>
     <string name="settings_system_desc">Credits, license and version</string>
     <string name="settings_account_desc">Sign-in, sync, stats and privacy</string>
     <string name="android_auto_settings_desc">Visible sections and playlists</string>
     <string name="manage_account">Manage account</string>
     <string name="spotify_import_title">Import Music Library</string>
     <string name="spotify_import_desc">Playlists and songs from Spotify</string>
+    <string name="sync_youtube_account">Sync YouTube account</string>
+    <string name="spotify_import_playlists">Import playlists from Spotify</string>
     <string name="sign_in_desc">Connect your account to access playlists and recommendations</string>
     <string name="settings_theme">Theme</string>
     <string name="player_appearance">Player</string>
@@ -1126,6 +1179,9 @@
     <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
     <string name="iride_animations">Iride animations</string>
     <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
+    <string name="reduced_folio_mode">Low Power Mode</string>
+    <string name="reduced_folio_mode_desc">Uses simple fades, removes home backdrop blur, limits cover preloading, and darkens the MP3 opening</string>
+    <string name="reduced_folio_mode_low_end_desc">Recommended for this device. Turn it off at your own risk; visual effects may stutter.</string>
     <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
     <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
 
@@ -1221,10 +1277,31 @@
     <string name="trending_artist_subtitle">Rising on your feed</string>
     <string name="artist_radio_subtitle">Endless mix inspired by this artist</string>
     <string name="artist_radio_title">%1$s Radio</string>
+    <string name="iride_monthly_drop_home_title">New Iride Update!</string>
+    <string name="iride_monthly_drop_title">What’s new in %1$s</string>
+    <plurals name="iride_monthly_drop_changes">
+        <item quantity="one">%d change</item>
+        <item quantity="other">%d changes</item>
+    </plurals>
+    <string name="iride_monthly_drop_tap_to_read">See what’s new</string>
+    <string name="iride_monthly_drop_settings_section">Monthly updates</string>
+    <string name="iride_monthly_drop_guide_title">How monthly updates work</string>
+    <string name="iride_monthly_drop_guide_subtitle">Monthly updates, explained</string>
+    <string name="iride_monthly_drop_guide_schedule_title">When new features appear</string>
+    <string name="iride_monthly_drop_guide_schedule">Monthly features can be included in an update before release day. They become available at 00:00 on the first day of the month, using your phone’s local time.</string>
+    <string name="iride_monthly_drop_guide_fixes_title">Urgent fixes</string>
+    <string name="iride_monthly_drop_guide_fixes">Important bug and security fixes can be released as soon as they are ready.</string>
+    <string name="iride_monthly_drop_guide_download_title">Downloading updates</string>
+    <string name="iride_monthly_drop_guide_download">Iride downloads updates automatically on Wi-Fi or mobile data in your usual country. If mobile data appears to be roaming, Iride asks before downloading.</string>
+    <string name="iride_monthly_drop_guide_install">When the download is ready, Android may ask you to confirm installation. Iride restarts while the update is installed.</string>
     <string name="mood_and_playlists_for_you">Mood &amp; Playlists for You</string>
     <string name="syncing_library">Syncing library</string>
     <string name="network_sync_warning">Network features may not work until sync completes.</string>
     <string name="syncing_your_library">Syncing your library…</string>
     <string name="collapse_section">Collapse section</string>
     <string name="expand_section">Expand section</string>
-    </resources>
+        <string name="playlist_set_image">Set image</string>
+    <string name="playlist_change_image">Change image</string>
+    <string name="playlist_image_failed">Unable to import this image. Please choose another photo.</string>
+    <string name="iride_search_top_results">Top results</string>
+</resources>

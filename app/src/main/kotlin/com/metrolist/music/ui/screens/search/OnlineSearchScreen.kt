@@ -2,7 +2,9 @@
 package com.metrolist.music.ui.screens.search
 
 import com.metrolist.music.ui.component.CollectionExpansionKind
+import com.metrolist.music.ui.component.PlaylistArtwork
 import com.metrolist.music.ui.component.rememberCollectionExpansionTile
+import com.metrolist.music.ui.component.rememberArtistPortraitTile
 
 import androidx.compose.foundation.shape.CircleShape
 
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -35,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -82,6 +86,7 @@ import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -94,10 +99,13 @@ import com.metrolist.music.constants.SuggestionItemHeight
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.LibraryListPage
 import com.metrolist.music.ui.component.LocalArtworkBackgroundColor
 import com.metrolist.music.ui.component.LibraryPageMenuAction
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -151,7 +159,7 @@ fun OnlineSearchScreen(
     onScrollChanged: (Boolean) -> Unit = {},
     pageMenuSections: List<List<LibraryPageMenuAction>> = emptyList(),
     lazyListState: LazyListState = rememberLazyListState(),
-    viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
+    viewModel: OnlineSearchSuggestionViewModel? = null,
 ) {
     val database = LocalDatabase.current
     val context = LocalContext.current
@@ -162,7 +170,9 @@ fun OnlineSearchScreen(
 
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val viewState by viewModel.viewState.collectAsState()
+    val suggestionModel = if (header == null) viewModel ?: hiltViewModel() else null
+    val viewState = suggestionModel?.viewState?.collectAsState()?.value
+        ?: remember { com.metrolist.music.viewmodels.SearchSuggestionViewState() }
 
     var listeningGenreScores by
         remember(context) {
@@ -190,16 +200,19 @@ fun OnlineSearchScreen(
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }.collect(onScrollChanged)
     }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, suggestionModel) {
+        val model = suggestionModel ?: return@LaunchedEffect
         snapshotFlow { query }
             .debounce(300L)
             .collectLatest {
-                viewModel.query.value = it
+                model.query.value = it
             }
     }
 
     LaunchedEffect(database, query.isEmpty(), isFocused) {
         if (query.isNotEmpty() || isFocused) return@LaunchedEffect
+        // Let the tab/return animation finish before genre enrichment starts.
+        kotlinx.coroutines.delay(450)
         val preferences = context.dataStore.data.first()
         tappedGenreScores =
             decodeGenreTapScores(preferences[SearchGenrePersonalization.tapScoresKey])
@@ -257,6 +270,11 @@ fun OnlineSearchScreen(
         if (query.isNotEmpty() && !viewState.isUrlQuery) {
             resultsContent()
         } else if (query.isEmpty() && !isFocused) {
+            if (header != null) {
+                item(key = "search_genre_header_spacing") {
+                    Spacer(Modifier.height(5.dp))
+                }
+            }
             val gridRows = searchGenres.chunked(2)
             itemsIndexed(
                 items = gridRows,
@@ -267,7 +285,7 @@ fun OnlineSearchScreen(
                         Modifier.fillMaxWidth()
                             .padding(
                                 horizontal = 20.dp,
-                                vertical = 4.dp,
+                                vertical = 5.dp,
                             )
                             .animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -407,10 +425,7 @@ fun OnlineSearchScreen(
                                     }
                                 }
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = null,
-                                )
+                                TrackOverflowIcon()
                             }
                         },
                         modifier =
@@ -569,6 +584,15 @@ fun OnlineSearchScreen(
                     online = false,
                     thumbnailUrl = history.thumbnailUrl,
                     isArtistThumbnail = history.itemType == "artist",
+                    isCollectionThumbnail = history.itemType == "album",
+                    playlistId = history.itemId.takeIf { history.itemType == "playlist" },
+                    leadingIcon = when (history.itemType) {
+                        "artist" -> R.drawable.artist
+                        "album" -> R.drawable.album
+                        "playlist" -> R.drawable.playlist_play
+                        "song" -> R.drawable.music_note
+                        else -> R.drawable.history
+                    },
                     onClick = {
                         when (history.itemType) {
                             "song" -> {
@@ -734,10 +758,7 @@ fun OnlineSearchScreen(
                                 }
                             }
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.more_vert),
-                                contentDescription = null,
-                            )
+                            TrackOverflowIcon()
                         }
                     },
                     modifier =
@@ -890,9 +911,12 @@ fun OnlineSearchScreen(
         IridePageLayout(
             titleRes = R.string.search,
             state = lazyListState,
+            showTopScrim = false,
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             showTopBar = true,
+            contentTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+                if (gestureNavigationEnabled()) IrideFolio.TitleTopSpacing else IrideFolio.TitleAfterControls,
             modifier = pageModifier,
             contentHorizontalPadding = 0.dp,
             menuSections = pageMenuSections,
@@ -902,6 +926,7 @@ fun OnlineSearchScreen(
         IridePageLayout(
             titleRes = R.string.search,
             state = lazyListState,
+            showTopScrim = false,
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             modifier = pageModifier,
@@ -1100,10 +1125,50 @@ fun SuggestionItem(
     pureBlack: Boolean,
     useIrideStyle: Boolean = false,
     thumbnailUrl: String? = null,
+    subtitle: String? = null,
     isArtistThumbnail: Boolean = false,
+    isCollectionThumbnail: Boolean = false,
+    playlistId: String? = null,
+    searchItem: YTItem? = null,
+    historyItemId: String? = null,
+    historyItemType: String? = null,
+    leadingIcon: Int = if (online) R.drawable.search else R.drawable.history,
     showDelete: Boolean = !online && !useIrideStyle,
     thumbnailModifier: Modifier = Modifier,
 ) {
+    val artistItem = searchItem as? ArtistItem
+    val transitionArtistId = artistItem?.id ?: historyItemId.takeIf { historyItemType == "artist" }
+    val artistTile = if (transitionArtistId != null) {
+        rememberArtistPortraitTile(
+            artistId = transitionArtistId,
+            name = artistItem?.title ?: query,
+            url = artistItem?.thumbnail ?: thumbnailUrl,
+            channelId = artistItem?.channelId,
+            externalEnabled = artistItem?.let { !it.isProfile } ?: transitionArtistId.startsWith("UC"),
+        )
+    } else Modifier to Modifier
+    val albumItem = searchItem as? AlbumItem
+    val songAlbum = (searchItem as? SongItem)?.album
+    val transitionAlbumId = albumItem?.id ?: songAlbum?.id
+        ?: historyItemId.takeIf { historyItemType == "album" }
+    val albumTile = if (transitionAlbumId != null) {
+        rememberCollectionExpansionTile(
+            kind = CollectionExpansionKind.Album,
+            id = transitionAlbumId,
+            artworkUrl = albumItem?.thumbnail ?: (searchItem as? SongItem)?.thumbnail ?: thumbnailUrl,
+            title = albumItem?.title ?: songAlbum?.name ?: query,
+        )
+    } else Modifier to Modifier
+    val playlistItem = searchItem as? PlaylistItem
+    val transitionPlaylistId = playlistItem?.id ?: historyItemId.takeIf { historyItemType == "playlist" }
+    val playlistTile = if (transitionPlaylistId != null) {
+        rememberCollectionExpansionTile(
+            kind = CollectionExpansionKind.Playlist,
+            id = transitionPlaylistId,
+            artworkUrl = playlistItem?.thumbnail ?: thumbnailUrl,
+            title = playlistItem?.title ?: query,
+        )
+    } else Modifier to Modifier
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -1117,10 +1182,24 @@ fun SuggestionItem(
                         else -> MaterialTheme.colorScheme.surface
                     }
                 )
+                .then(artistTile.first)
+                .then(albumTile.first)
+                .then(playlistTile.first)
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
-        if (thumbnailUrl != null) {
+        if (playlistId != null) {
+            PlaylistArtwork(
+                title = query,
+                thumbnailUrl = thumbnailUrl,
+                playlistId = playlistId,
+                modifier = Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
+                    .size(ListThumbnailSize)
+                    .then(thumbnailModifier)
+                    .then(playlistTile.second),
+                showBadge = false,
+            )
+        } else if (thumbnailUrl != null) {
             AsyncImage(
                 model =
                     ImageRequest.Builder(LocalContext.current)
@@ -1135,10 +1214,21 @@ fun SuggestionItem(
                     Modifier.padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
                         .size(ListThumbnailSize)
                         .then(thumbnailModifier)
-                        .clip(if (isArtistThumbnail) CircleShape else FolioShape(4.dp)),
+                    .clip(if (isArtistThumbnail) CircleShape else if (isCollectionThumbnail) CollectionArtworkShape else FolioShape(4.dp))
+                    .then(artistTile.second)
+                    .then(albumTile.second)
+                    .then(playlistTile.second),
             )
         } else if (useIrideStyle) {
-            Spacer(modifier = Modifier.width(20.dp))
+            Icon(
+                painter = painterResource(leadingIcon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.textSecondary,
+                modifier = Modifier.padding(start = 20.dp, end = 12.dp)
+                    .size(ListThumbnailSize)
+                    .padding(4.dp)
+                    .alpha(0.7f),
+            )
         } else {
             Icon(
                 painterResource(if (online) R.drawable.search else R.drawable.history),
@@ -1148,24 +1238,34 @@ fun SuggestionItem(
             )
         }
 
-        Text(
-            text = query,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style =
-                if (useIrideStyle) {
-                    MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = IBMPlexMonoFontFamily,
-                        fontSize = 13.sp,
-                    )
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                },
-            color =
-                if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
-                else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f).padding(end = if (useIrideStyle) 12.dp else 0.dp),
-        )
+        Column(Modifier.weight(1f).padding(end = if (useIrideStyle) 12.dp else 0.dp)) {
+            Text(
+                text = query,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style =
+                    if (useIrideStyle) {
+                        MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = IBMPlexMonoFontFamily,
+                            fontSize = 13.sp,
+                        )
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    },
+                color =
+                    if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
+                    else MaterialTheme.colorScheme.onSurface,
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.textTertiary,
+                )
+            }
+        }
 
         if (showDelete) {
             IconButton(
@@ -1187,11 +1287,12 @@ fun SuggestionItem(
             modifier = Modifier.alpha(if (useIrideStyle) 1f else 0.5f),
         ) {
             Icon(
-                painter = painterResource(R.drawable.arrow_top_left),
+                painter = painterResource(R.drawable.navigate_next),
                 contentDescription = null,
                 tint =
                     if (useIrideStyle) MaterialTheme.colorScheme.textTertiary
                     else LocalContentColor.current,
+                modifier = Modifier.size(16.dp),
             )
         }
     }

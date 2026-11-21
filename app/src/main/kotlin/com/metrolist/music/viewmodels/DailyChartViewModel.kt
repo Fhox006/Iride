@@ -9,6 +9,7 @@ import com.metrolist.music.playback.queues.DailyChartQueue
 import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.repository.DailyChartRepository
 import com.metrolist.music.repository.ChartDirectoryRepository
+import com.metrolist.music.repository.ChartPlaylistIdentity
 import com.metrolist.music.repository.SavedChartPlaylistRepository
 import com.metrolist.music.data.remote.ChartMarkets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,7 +54,10 @@ class DailyChartViewModel @Inject constructor(
     private val repository: DailyChartRepository,
     private val savedPlaylists: SavedChartPlaylistRepository,
 ) : ViewModel() {
-    val market = ChartMarket(checkNotNull(savedStateHandle.get<String>("market")))
+    val market = checkNotNull(
+        savedStateHandle.get<String>("market")?.let(::ChartMarket)
+            ?: savedStateHandle.get<String>("playlistId")?.let(ChartPlaylistIdentity::market),
+    )
     val charts = repository.charts
     val tracks = repository.tracks
     val savedPlaylist = savedPlaylists.playlist(market)

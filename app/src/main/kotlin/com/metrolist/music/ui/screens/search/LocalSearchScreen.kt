@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -33,7 +32,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -56,9 +54,13 @@ import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import androidx.compose.foundation.layout.statusBars
 import com.metrolist.music.ui.component.LibraryListPage
 import com.metrolist.music.ui.component.LibraryPageMenuAction
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -146,9 +148,12 @@ fun LocalSearchScreen(
         IridePageLayout(
             titleRes = R.string.search,
             state = lazyListState,
+            showTopScrim = false,
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             showTopBar = true,
+            contentTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+                if (gestureNavigationEnabled()) IrideFolio.TitleTopSpacing else IrideFolio.TitleAfterControls,
             contentHorizontalPadding = 0.dp,
             menuSections = pageMenuSections,
             modifier =
@@ -194,6 +199,7 @@ fun LocalSearchScreen(
     IridePageLayout(
         titleRes = R.string.search,
         state = lazyListState,
+        showTopScrim = false,
         modifier =
             Modifier.fillMaxSize()
                 .background(
@@ -440,10 +446,7 @@ private fun LazyListScope.localSearchResultItems(
                                     }
                                 }
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = null,
-                                )
+                                TrackOverflowIcon()
                             }
                         },
                         modifier =

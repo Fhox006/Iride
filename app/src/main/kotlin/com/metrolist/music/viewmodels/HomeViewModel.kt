@@ -17,6 +17,8 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -55,6 +57,9 @@ import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
 import com.metrolist.music.constants.HeroCarouselSnapshotKey
+import com.metrolist.music.constants.HeroCarouselPendingSnapshotKey
+import com.metrolist.music.constants.HomeRecommendationSnapshotKey
+import com.metrolist.music.constants.HomeRecommendationPendingSnapshotKey
 import com.metrolist.music.constants.LastDiscoveryWeeklySyncKey
 import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.ShowWrappedCardKey
@@ -62,12 +67,12 @@ import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.discovery.DiscoveryWeeklyGenerator
 import com.metrolist.music.discovery.MixMood
 import com.metrolist.music.discovery.MoodMixes
-import com.metrolist.music.discovery.MixPosterRepository
 import com.metrolist.music.discovery.MoodLoadRetry
 import com.metrolist.music.discovery.MoodPageCache
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.update
 import com.metrolist.music.discovery.HeroCarouselGenerator
+import com.metrolist.music.discovery.HERO_CAROUSEL_TARGET_SIZE
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.ForYouShelfTile
@@ -75,9 +80,15 @@ import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
 import com.metrolist.music.models.HomeSnapshotItem
+import com.metrolist.music.models.HomeDailyDiscoverSnapshotItem
+import com.metrolist.music.models.HomeForYouShelfSnapshot
+import com.metrolist.music.models.HomeForYouTileSnapshot
+import com.metrolist.music.models.HomeSimilarShelfSnapshot
+import com.metrolist.music.models.HomeRecommendationSnapshot
 import com.metrolist.music.models.MoodSnapshot
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.models.toPlaylistItem
+import com.metrolist.music.models.toYTItem
 import com.metrolist.music.models.SpeedDialSnapshot
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -85,6 +96,7 @@ import kotlinx.serialization.json.Json
 import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
@@ -129,9 +141,36 @@ import javax.inject.Inject
 import kotlin.random.Random
 
 private const val QUICK_PICKS_TARGET_COUNT = 20
+private const val QUICK_PICKS_ALGORITHM_VERSION = 1
+private const val FOR_YOU_ALGORITHM_VERSION = 3
+private val FOR_YOU_THUMBNAIL_SIZE_SUFFIX =
+    Regex("=(?:w\\d+|h\\d+|s\\d+)(?:-[a-z0-9]+)*$", RegexOption.IGNORE_CASE)
+
+private fun normalizeForYouAlbumTitle(title: String): String =
+    title.trim().replace(Regex("\\s+"), " ").lowercase()
+
+private fun normalizeForYouArtwork(url: String?): String? =
+    url?.trim()?.replace(FOR_YOU_THUMBNAIL_SIZE_SUFFIX, "")?.takeIf { it.isNotEmpty() }
+private const val INITIAL_FOR_YOU_SHELF_COUNT = 8
+private const val INITIAL_FOR_YOU_ARTIST_SCAN_LIMIT = 24
 private const val HOME_MIX_CONTINUATION_LIMIT = 3
+internal const val HOME_MOOD_SECTION_ENABLED = false
+internal const val HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED = false
 private const val MAX_SIMILAR_RECOMMENDATIONS = 14
 private const val HOME_SIMILAR_CONTINUATION_LIMIT = 6
+private const val HOME_RECOMMENDATION_REFRESH_INTERVAL_MS = 24L * 60 * 60 * 1000
+
+private fun <T> List<T>.randomSample(limit: Int): List<T> {
+    if (limit <= 0 || isEmpty()) return emptyList()
+    val sampleSize = minOf(limit, size)
+    val selectedIndices = HashSet<Int>(sampleSize)
+    val sample = ArrayList<T>(sampleSize)
+    while (sample.size < sampleSize) {
+        val index = Random.nextInt(size)
+        if (selectedIndices.add(index)) sample += this[index]
+    }
+    return sample
+}
 
 private val HomeMixTitleMatchers = listOf(
     listOf("new release", "nuove uscite", "nuova uscita", "novita", "fresh"),
@@ -168,6 +207,8 @@ data class CommunityPlaylistItem(
     val songs: List<SongItem>
 )
 
+private const val HERO_CAROUSEL_REFRESH_INTERVAL_MS = 24L * 60 * 60 * 1000
+
 @HiltViewModel
 @OptIn(FlowPreview::class)
 class HomeViewModel @Inject constructor(
@@ -178,6 +219,7 @@ class HomeViewModel @Inject constructor(
     private val wrappedAudioService: WrappedAudioService,
     private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
+    private val isFirstHomeViewModelInProcess = HomeCache.markViewModelCreated()
     val contentSnapshot = HomeContentSnapshot(viewModelScope)
     val syncState = syncUtils.syncState
 
@@ -216,8 +258,6 @@ class HomeViewModel @Inject constructor(
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
     val homePersonalMixes = MutableStateFlow<List<PlaylistItem>>(emptyList())
-    val starredPlaylistThumbnails = database.lastLikedSongThumbnails()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private var homeMixContinuationJob: Job? = null
     val explorePage = MutableStateFlow<ExplorePage?>(null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
@@ -251,13 +291,12 @@ class HomeViewModel @Inject constructor(
 
     val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
-    private val heroCarouselGenerator = HeroCarouselGenerator(database)
+    private val heroCarouselGenerator = HeroCarouselGenerator(database, context)
 
     val dischiPerTe = MutableStateFlow<List<DischiPerTeItem>?>(null)
     val forYouShelves = MutableStateFlow<List<ForYouShelfItem>>(emptyList())
-    private var forYouArtistPool: List<Artist> = emptyList()
-    private var forYouPoolCursor = 0
-    private var forYouEnrichmentJob: Job? = null
+    private val forYouPreparationMutex = kotlinx.coroutines.sync.Mutex()
+    private var pendingForYouShelves: List<ForYouShelfItem> = emptyList()
     private val _isLoadingMoreForYou = MutableStateFlow(false)
 
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
@@ -330,56 +369,47 @@ class HomeViewModel @Inject constructor(
     private var heroCarouselJob: Job? = null
     private var previousHeroArtistIds: Set<String> = emptySet()
     private var previousFirstHeroArtistId: String? = null
-    private val repairedHeroCovers = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private var lastHeroCarouselRefreshAt = 0L
 
     fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed, force: Boolean = false) {
-        if (!force && heroCarouselItems.value.isNotEmpty()) return
-        if (force) {
-            previousFirstHeroArtistId = heroCarouselItems.value
-                .filterIsInstance<HeroCarouselItem.ArtistRadio>().firstOrNull()?.artistId
-            previousHeroArtistIds = heroCarouselItems.value
-                .filterIsInstance<HeroCarouselItem.ArtistRadio>().map { it.artistId }.toSet()
-            repairedHeroCovers.clear()
+        if (heroCarouselJob?.isActive == true) {
+            if (!force) return
+            heroCarouselJob?.cancel()
         }
+        val now = System.currentTimeMillis()
+        if (!force && lastHeroCarouselRefreshAt > 0L &&
+            (now < lastHeroCarouselRefreshAt || now - lastHeroCarouselRefreshAt < HERO_CAROUSEL_REFRESH_INTERVAL_MS)) {
+            isHeroCarouselLoading.value = heroCarouselItems.value.isEmpty()
+            return
+        }
+        previousHeroArtistIds = heroCarouselItems.value
+            .filterIsInstance<HeroCarouselItem.MusicVideo>().map { it.artistId }.toSet()
+        previousFirstHeroArtistId = heroCarouselItems.value
+            .filterIsInstance<HeroCarouselItem.MusicVideo>().firstOrNull()?.artistId
         lastHeroCarouselSeed = seed
-        heroCarouselJob?.cancel()
+        lastHeroCarouselRefreshAt = now
         isHeroCarouselLoading.value = true
         heroCarouselJob = viewModelScope.launch(Dispatchers.IO, start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val myJob = coroutineContext[Job]
             try {
-                val radios = heroCarouselGenerator.generate(
+                val videos = heroCarouselGenerator.generate(
                     homePage = homePage.value,
                     seed = seed,
                     previousArtistIds = previousHeroArtistIds,
                     previousFirstArtistId = previousFirstHeroArtistId,
+                    hideExplicit = context.dataStore.get(HideExplicitKey, false),
+                    hideVideos = context.dataStore.get(HideVideoSongsKey, false),
                 )
                 coroutineContext.ensureActive()
-                if (radios.isEmpty()) return@launch
-                heroCarouselItems.value = radios
-                if (smartBootEnabled) persistHeroCarouselSnapshot(seed, radios)
-                val withCovers = heroCarouselGenerator.resolveMissingCovers(radios) { resolved ->
-                    if (seed == lastHeroCarouselSeed) {
-                        heroCarouselItems.update { current ->
-                            current.map { item ->
-                                if (item is HeroCarouselItem.ArtistRadio &&
-                                    item.artistId == resolved.artistId && item.coverUrl.isNullOrBlank()) {
-                                    resolved
-                                } else item
-                            }
-                        }
-                    }
-                }
-                coroutineContext.ensureActive()
-                if (withCovers != radios) {
-                    val coversById = withCovers.associateBy { it.artistId }
-                    heroCarouselItems.update { current ->
-                        current.map { item ->
-                            if (item is HeroCarouselItem.ArtistRadio && item.coverUrl.isNullOrBlank()) {
-                                coversById[item.artistId] ?: item
-                            } else item
-                        }
-                    }
-                    if (smartBootEnabled) persistHeroCarouselSnapshot(seed, heroCarouselItems.value)
+                val generatedAt = System.currentTimeMillis()
+                lastHeroCarouselRefreshAt = generatedAt
+                if (isCompleteHeroCarousel(videos)) {
+                    persistPendingHeroCarouselSnapshot(seed, generatedAt, videos)
+                    if (heroCarouselItems.value.isEmpty()) heroCarouselItems.value = videos
+                } else if (heroCarouselItems.value.isEmpty()) {
+                    // First install has no complete snapshot to keep; show validated results once
+                    // generation ends, but never save a partial replacement over a full snapshot.
+                    heroCarouselItems.value = videos.take(HERO_CAROUSEL_TARGET_SIZE)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -392,31 +422,103 @@ class HomeViewModel @Inject constructor(
         heroCarouselJob?.start()
     }
 
-    fun repairHeroRadioCover(artistId: String) {
-        if (!repairedHeroCovers.add(artistId)) return
-        val seed = lastHeroCarouselSeed
-        viewModelScope.launch(Dispatchers.IO) {
-            val cover = heroCarouselGenerator.resolveCover(artistId) ?: return@launch
-            if (seed != lastHeroCarouselSeed) return@launch
-            heroCarouselItems.update { current ->
-                current.map { item ->
-                    if (item is HeroCarouselItem.ArtistRadio && item.artistId == artistId) item.copy(coverUrl = cover)
-                    else item
-                }
-            }
-            if (smartBootEnabled) persistHeroCarouselSnapshot(seed, heroCarouselItems.value)
+    private fun isCompleteHeroCarousel(items: List<HeroCarouselItem>): Boolean {
+        val videos = items.filterIsInstance<HeroCarouselItem.MusicVideo>()
+        return videos.size == HERO_CAROUSEL_TARGET_SIZE &&
+            videos.map { it.artistId }.distinct().size == HERO_CAROUSEL_TARGET_SIZE &&
+            videos.map { it.song.id }.distinct().size == HERO_CAROUSEL_TARGET_SIZE
+    }
+
+    fun removeHeroVideo(videoId: String) {
+        heroCarouselItems.update { current ->
+            current.filterNot { it is HeroCarouselItem.MusicVideo && it.song.id == videoId }
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            persistCurrentHeroCarouselSnapshot(lastHeroCarouselSeed, lastHeroCarouselRefreshAt, heroCarouselItems.value)
+        }
+        if (heroCarouselJob?.isActive != true) refreshHeroCarousel(force = true)
     }
 
     @kotlinx.serialization.Serializable
     private data class HeroCarouselSnapshot(
         val seed: Long,
         val items: List<HeroCarouselItem>,
+        val artworkVersion: Int = 0,
+        val generatedAt: Long = 0L,
     )
 
-    private suspend fun persistHeroCarouselSnapshot(seed: Long, items: List<HeroCarouselItem>) {
-        if (items.isEmpty()) return
-        val json = runCatching { snapshotJson.encodeToString(HeroCarouselSnapshot(seed, items)) }.getOrNull() ?: return
+    private fun decodeHeroCarouselSnapshot(json: String?): HeroCarouselSnapshot? =
+        json?.takeIf { it.isNotBlank() }?.let {
+            runCatching { snapshotJson.decodeFromString<HeroCarouselSnapshot>(it) }.getOrNull()
+        }?.takeIf { it.artworkVersion == 1 && it.items.isNotEmpty() }
+
+    private fun visibleHeroVideos(
+        items: List<HeroCarouselItem>,
+        hideVideos: Boolean,
+        hideExplicit: Boolean,
+    ): List<HeroCarouselItem.MusicVideo> {
+        if (hideVideos) return emptyList()
+        val artistIds = mutableSetOf<String>()
+        val songIds = mutableSetOf<String>()
+        return items.filterIsInstance<HeroCarouselItem.MusicVideo>()
+            .filter { video ->
+                (!hideExplicit || !video.song.explicit) &&
+                    artistIds.add(video.artistId) && songIds.add(video.song.id)
+            }
+            .take(HERO_CAROUSEL_TARGET_SIZE)
+    }
+
+    private suspend fun restoreHeroCarouselSnapshot(prefs: androidx.datastore.preferences.core.Preferences) {
+        val hideVideos = prefs[HideVideoSongsKey] ?: false
+        val hideExplicit = prefs[HideExplicitKey] ?: false
+        val pendingJson = prefs[HeroCarouselPendingSnapshotKey]
+        val pending = decodeHeroCarouselSnapshot(pendingJson)
+        val current = decodeHeroCarouselSnapshot(prefs[HeroCarouselSnapshotKey])
+        val pendingVideos = pending?.let { visibleHeroVideos(it.items, hideVideos, hideExplicit) }.orEmpty()
+        val currentVideos = current?.let { visibleHeroVideos(it.items, hideVideos, hideExplicit) }.orEmpty()
+        val usePending = pending != null && isCompleteHeroCarousel(pendingVideos)
+        val selectedSnapshot = if (usePending) pending else current
+        val selectedVideos = if (usePending) pendingVideos else currentVideos
+
+        heroCarouselItems.value = selectedVideos
+        previousHeroArtistIds = selectedVideos.map { it.artistId }.toSet()
+        previousFirstHeroArtistId = selectedVideos.firstOrNull()?.artistId
+        lastHeroCarouselRefreshAt = selectedSnapshot?.generatedAt
+            ?.takeIf { isCompleteHeroCarousel(selectedVideos) } ?: 0L
+        isHeroCarouselLoading.value = selectedVideos.isEmpty()
+
+        if (usePending && pendingJson != null) {
+            context.dataStore.edit {
+                it[HeroCarouselSnapshotKey] = pendingJson
+                it.remove(HeroCarouselPendingSnapshotKey)
+            }
+        }
+    }
+
+    private suspend fun persistPendingHeroCarouselSnapshot(
+        seed: Long,
+        generatedAt: Long,
+        items: List<HeroCarouselItem>,
+    ) {
+        if (!isCompleteHeroCarousel(items)) return
+        val json = runCatching {
+            snapshotJson.encodeToString(HeroCarouselSnapshot(seed, items, artworkVersion = 1, generatedAt = generatedAt))
+        }.getOrNull() ?: return
+        context.dataStore.edit { it[HeroCarouselPendingSnapshotKey] = json }
+    }
+
+    private suspend fun persistCurrentHeroCarouselSnapshot(
+        seed: Long,
+        generatedAt: Long,
+        items: List<HeroCarouselItem>,
+    ) {
+        if (items.isEmpty()) {
+            context.dataStore.edit { it.remove(HeroCarouselSnapshotKey) }
+            return
+        }
+        val json = runCatching {
+            snapshotJson.encodeToString(HeroCarouselSnapshot(seed, items, artworkVersion = 1, generatedAt = generatedAt))
+        }.getOrNull() ?: return
         context.dataStore.edit { it[HeroCarouselSnapshotKey] = json }
     }
 
@@ -428,6 +530,24 @@ class HomeViewModel @Inject constructor(
 
     private val snapshotJson = Json { ignoreUnknownKeys = true }
     private var lastSavedSpeedDialIds: List<String> = emptyList()
+    @Volatile private var currentRecommendationSnapshot = HomeRecommendationSnapshot()
+    @Volatile private var pendingRecommendationSnapshot: HomeRecommendationSnapshot? = null
+    private var lastSavedQuickPicksSnapshotIds: List<String> = emptyList()
+
+    private fun isRecommendationSnapshotFresh(updatedAt: Long, now: Long = System.currentTimeMillis()): Boolean =
+        updatedAt > 0L && now - updatedAt in 0..HOME_RECOMMENDATION_REFRESH_INTERVAL_MS
+
+    private fun isSectionSnapshotFresh(currentUpdatedAt: Long, pendingUpdatedAt: Long): Boolean =
+        isRecommendationSnapshotFresh(maxOf(currentUpdatedAt, pendingUpdatedAt))
+
+    private fun isQuickPicksSnapshotFresh(): Boolean {
+        val current = currentRecommendationSnapshot
+        val pending = pendingRecommendationSnapshot
+        return (current.quickPicksAlgorithmVersion == QUICK_PICKS_ALGORITHM_VERSION &&
+            isRecommendationSnapshotFresh(current.quickPicksUpdatedAt)) ||
+            (pending?.quickPicksAlgorithmVersion == QUICK_PICKS_ALGORITHM_VERSION &&
+                isRecommendationSnapshotFresh(pending.quickPicksUpdatedAt))
+    }
 
     private fun mapYTItemToSnapshot(item: YTItem): HomeSnapshotItem? = when (item) {
         is SongItem -> HomeSnapshotItem(
@@ -436,6 +556,7 @@ class HomeViewModel @Inject constructor(
             subtitle = item.artists.joinToString(", ") { it.name }.takeIf { it.isNotEmpty() },
             thumbnailUrl = item.thumbnail.takeIf { it.isNotEmpty() },
             type = "song",
+            explicit = item.explicit,
         )
         is AlbumItem -> HomeSnapshotItem(
             id = item.browseId,
@@ -445,6 +566,10 @@ class HomeViewModel @Inject constructor(
             type = "album",
             browseId = item.browseId,
             playlistId = item.playlistId,
+            explicit = item.explicit,
+            year = item.year,
+            albumType = item.albumType,
+            releaseDate = item.releaseDate,
         )
         is ArtistItem -> HomeSnapshotItem(
             id = item.id,
@@ -460,6 +585,330 @@ class HomeViewModel @Inject constructor(
             type = "playlist",
         )
         else -> null
+    }
+
+    private fun Song.toHomeSnapshotItem() = HomeSnapshotItem(
+        id = id,
+        title = title,
+        subtitle = artists.joinToString(", ") { it.name }.takeIf { it.isNotEmpty() },
+        thumbnailUrl = thumbnailUrl,
+        type = "song",
+        explicit = song.explicit,
+    )
+
+    private fun ForYouShelfItem.toHomeForYouShelfSnapshot(): HomeForYouShelfSnapshot? {
+        val snapshotTiles = tiles.mapNotNull { tile ->
+            when (tile) {
+                is ForYouShelfTile.Local -> {
+                    val album = tile.item as? Album ?: return@mapNotNull null
+                    HomeForYouTileSnapshot(
+                        type = "local",
+                        item = HomeSnapshotItem(
+                            id = album.id,
+                            title = album.title,
+                            subtitle = album.artists.joinToString(", ") { it.name },
+                            thumbnailUrl = album.thumbnailUrl,
+                            type = "album",
+                            browseId = album.album.id,
+                            playlistId = album.album.playlistId,
+                            explicit = album.album.explicit,
+                            year = album.album.year,
+                            albumType = album.album.albumType,
+                            releaseDate = album.album.releaseDate,
+                        ),
+                    )
+                }
+                is ForYouShelfTile.RecommendedAlbum -> mapYTItemToSnapshot(tile.item)?.let {
+                    HomeForYouTileSnapshot(type = "recommended", item = it)
+                }
+            }
+        }
+        if (snapshotTiles.size < 3) return null
+        return HomeForYouShelfSnapshot(
+            artistId = artist.id,
+            artistName = artist.artist.name,
+            artistThumbnailUrl = artist.thumbnailUrl,
+            tiles = snapshotTiles,
+        )
+    }
+
+    private fun HomeSnapshotItem.toSongFallback(): Song? {
+        val item = toYTItem() as? SongItem ?: return null
+        return Song(
+            song = item.toMediaMetadata().toSongEntity(),
+            artists = item.artists.map { artist ->
+                ArtistEntity(id = artist.id ?: ArtistEntity.generateArtistId(), name = artist.name)
+            },
+        )
+    }
+
+    private fun SimilarRecommendation.toHomeSimilarShelfSnapshot(): HomeSimilarShelfSnapshot? {
+        val (type, browseId) = when (val title = title) {
+            is Artist -> "artist" to null
+            is Album -> "album" to null
+            is Playlist -> "playlist" to title.playlist.browseId
+            else -> return null
+        }
+        val items = items.mapNotNull(::mapYTItemToSnapshot)
+        if (items.size < 2) return null
+        return HomeSimilarShelfSnapshot(
+            titleType = type,
+            titleId = title.id,
+            title = title.title,
+            thumbnailUrl = thumbnailUrl ?: title.thumbnailUrl,
+            playlistBrowseId = browseId,
+            items = items,
+        )
+    }
+
+    private suspend fun persistPendingRecommendationSnapshot(
+        update: (HomeRecommendationSnapshot) -> HomeRecommendationSnapshot,
+    ) {
+        context.dataStore.edit { prefs ->
+            val base = prefs[HomeRecommendationPendingSnapshotKey]
+                ?.let { runCatching { snapshotJson.decodeFromString<HomeRecommendationSnapshot>(it) }.getOrNull() }
+                ?: prefs[HomeRecommendationSnapshotKey]
+                    ?.let { runCatching { snapshotJson.decodeFromString<HomeRecommendationSnapshot>(it) }.getOrNull() }
+                ?: HomeRecommendationSnapshot()
+            val pending = update(base)
+            runCatching { snapshotJson.encodeToString(pending) }.getOrNull()?.let {
+                prefs[HomeRecommendationPendingSnapshotKey] = it
+                pendingRecommendationSnapshot = pending
+            }
+        }
+    }
+
+    private suspend fun persistForYouSnapshot(shelves: List<ForYouShelfItem>) {
+        val snapshots = shelves.take(24).mapNotNull { it.toHomeForYouShelfSnapshot() }
+        if (snapshots.isEmpty()) return
+        val updatedAt = System.currentTimeMillis()
+        persistPendingRecommendationSnapshot { snapshot ->
+            snapshot.copy(
+                forYouUpdatedAt = updatedAt,
+                forYouAlgorithmVersion = FOR_YOU_ALGORITHM_VERSION,
+                forYouShelves = snapshots,
+            )
+        }
+    }
+
+    private fun trackQuickPicksSnapshot() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            quickPicks.collect { songs ->
+                val eligible = eligibleQuickPicks(songs.orEmpty(), hideExplicit)
+                    .take(QUICK_PICKS_TARGET_COUNT)
+                if (eligible.size < QUICK_PICKS_TARGET_COUNT) return@collect
+                val ids = eligible.map { it.id }
+                if (ids == lastSavedQuickPicksSnapshotIds) return@collect
+                val items = eligible.map { it.toHomeSnapshotItem() }
+                if (items.size != QUICK_PICKS_TARGET_COUNT) return@collect
+                val updatedAt = System.currentTimeMillis()
+                persistPendingRecommendationSnapshot { snapshot ->
+                    snapshot.copy(
+                        quickPicksUpdatedAt = updatedAt,
+                        quickPicks = items,
+                        quickPicksAlgorithmVersion = QUICK_PICKS_ALGORITHM_VERSION,
+                    )
+                }
+                lastSavedQuickPicksSnapshotIds = ids
+            }
+        }
+    }
+
+    private suspend fun restoreHomeRecommendationSnapshot(prefs: androidx.datastore.preferences.core.Preferences) {
+        val current = prefs[HomeRecommendationSnapshotKey]
+            ?.let { runCatching { snapshotJson.decodeFromString<HomeRecommendationSnapshot>(it) }.getOrNull() }
+            ?: HomeRecommendationSnapshot()
+        val pending = prefs[HomeRecommendationPendingSnapshotKey]
+            ?.let { runCatching { snapshotJson.decodeFromString<HomeRecommendationSnapshot>(it) }.getOrNull() }
+        val promotePending = isFirstHomeViewModelInProcess
+        val now = System.currentTimeMillis()
+
+        fun <T> choose(
+            currentAt: Long,
+            currentItems: List<T>,
+            pendingAt: Long,
+            pendingItems: List<T>,
+        ): Pair<Long, List<T>> = when {
+            promotePending && pendingItems.isNotEmpty() &&
+                (isRecommendationSnapshotFresh(pendingAt, now) || currentItems.isEmpty()) -> pendingAt to pendingItems
+            currentItems.isNotEmpty() -> currentAt to currentItems
+            promotePending && pendingItems.isNotEmpty() -> pendingAt to pendingItems
+            else -> 0L to emptyList()
+        }
+
+        val currentQuickPicksMatch = current.quickPicksAlgorithmVersion == QUICK_PICKS_ALGORITHM_VERSION
+        val pendingQuickPicks = pending?.takeIf {
+            it.quickPicksAlgorithmVersion == QUICK_PICKS_ALGORITHM_VERSION
+        }
+        val (quickPicksAt, quickPicksItems) = choose(
+            if (currentQuickPicksMatch) current.quickPicksUpdatedAt else 0L,
+            if (currentQuickPicksMatch) current.quickPicks else emptyList(),
+            pendingQuickPicks?.quickPicksUpdatedAt ?: 0L,
+            pendingQuickPicks?.quickPicks.orEmpty(),
+        )
+        val (dailyAt, dailyItems) = choose(
+            current.dailyDiscoverUpdatedAt, current.dailyDiscover,
+            pending?.dailyDiscoverUpdatedAt ?: 0L, pending?.dailyDiscover.orEmpty(),
+        )
+        val (communityAt, communityItems) = choose(
+            current.communityUpdatedAt, current.communityPlaylists,
+            pending?.communityUpdatedAt ?: 0L, pending?.communityPlaylists.orEmpty(),
+        )
+        val (similarAt, similarItems) = choose(
+            current.similarUpdatedAt, current.similarShelves,
+            pending?.similarUpdatedAt ?: 0L, pending?.similarShelves.orEmpty(),
+        )
+        val currentForYouMatches = current.forYouAlgorithmVersion == FOR_YOU_ALGORITHM_VERSION
+        val pendingForYou = pending?.takeIf { it.forYouAlgorithmVersion == FOR_YOU_ALGORITHM_VERSION }
+        val pendingForYouWithShelves = pendingForYou?.takeIf { it.forYouShelves.isNotEmpty() }
+        val (forYouAt, forYouItems) = when {
+            promotePending && pendingForYouWithShelves != null ->
+                pendingForYouWithShelves.forYouUpdatedAt to pendingForYouWithShelves.forYouShelves
+            currentForYouMatches && current.forYouShelves.isNotEmpty() ->
+                current.forYouUpdatedAt to current.forYouShelves
+            pendingForYouWithShelves != null ->
+                pendingForYouWithShelves.forYouUpdatedAt to pendingForYouWithShelves.forYouShelves
+            else -> 0L to emptyList()
+        }
+        val selected = HomeRecommendationSnapshot(
+            quickPicksUpdatedAt = quickPicksAt,
+            quickPicks = quickPicksItems,
+            quickPicksAlgorithmVersion = if (quickPicksItems.isNotEmpty()) QUICK_PICKS_ALGORITHM_VERSION else 0,
+            dailyDiscoverUpdatedAt = dailyAt,
+            dailyDiscover = dailyItems,
+            communityUpdatedAt = communityAt,
+            communityPlaylists = communityItems,
+            similarUpdatedAt = similarAt,
+            similarShelves = similarItems,
+            forYouUpdatedAt = forYouAt,
+            forYouAlgorithmVersion = if (forYouItems.isNotEmpty()) FOR_YOU_ALGORITHM_VERSION else 0,
+            forYouShelves = forYouItems,
+        )
+        currentRecommendationSnapshot = if (promotePending) selected else current
+        pendingRecommendationSnapshot = if (promotePending) null else pending
+
+        val songSnapshotItems = quickPicksItems + dailyItems.map { it.seed }
+        val restoredSongs = if (songSnapshotItems.isEmpty()) emptyMap() else {
+            runCatching { database.getSongsByIds(songSnapshotItems.map { it.id }.distinct()) }
+                .getOrDefault(emptyList())
+                .associateBy { it.id }
+        }
+        fun restoreSong(item: HomeSnapshotItem): Song? = restoredSongs[item.id] ?: item.toSongFallback()
+        val hideExplicit = prefs[HideExplicitKey] ?: false
+
+        if (quickPicksItems.isNotEmpty()) {
+            val restored = quickPicksItems.mapNotNull(::restoreSong)
+                .filter { !it.song.isVideo && !it.song.isEpisode && (!hideExplicit || !it.song.explicit) }
+                .distinctBy { it.id }
+                .take(QUICK_PICKS_TARGET_COUNT)
+            quickPicks.value = restored
+            HomeCache.quickPicks = restored
+            lastSavedQuickPicksSnapshotIds = restored.map { it.id }
+        }
+        if (dailyItems.isNotEmpty()) {
+            val restored = dailyItems.mapNotNull { item ->
+                val seed = restoreSong(item.seed) ?: return@mapNotNull null
+                val recommendation = item.recommendation.toYTItem() ?: return@mapNotNull null
+                if (recommendation is SongItem && (recommendation.isVideoSong || recommendation.explicit)) {
+                    return@mapNotNull null
+                }
+                DailyDiscoverItem(seed, recommendation, relatedEndpoint = null)
+            }.distinctBy { it.recommendation.id }
+            dailyDiscover.value = restored
+            HomeCache.dailyDiscover = restored
+        }
+        if (communityItems.isNotEmpty()) {
+            val restored = communityItems.mapNotNull { item ->
+                item.toPlaylistItem()?.let { CommunityPlaylistItem(it, emptyList()) }
+            }.distinctBy { it.playlist.id }
+            communityPlaylists.value = restored
+            HomeCache.communityPlaylists = restored
+        }
+        if (similarItems.isNotEmpty()) {
+            val restored = similarItems.mapNotNull { shelf ->
+                val title: LocalItem = when (shelf.titleType) {
+                    "artist" -> Artist(
+                        ArtistEntity(id = shelf.titleId, name = shelf.title, thumbnailUrl = shelf.thumbnailUrl),
+                        songCount = 0,
+                    )
+                    "album" -> Album(
+                        AlbumEntity(
+                            id = shelf.titleId,
+                            title = shelf.title,
+                            thumbnailUrl = shelf.thumbnailUrl,
+                            songCount = 0,
+                            duration = 0,
+                        ),
+                    )
+                    "playlist" -> Playlist(
+                        PlaylistEntity(
+                            id = shelf.titleId,
+                            name = shelf.title,
+                            browseId = shelf.playlistBrowseId ?: shelf.titleId,
+                            thumbnailUrl = shelf.thumbnailUrl,
+                            isEditable = false,
+                        ),
+                        songCount = 0,
+                        songThumbnails = emptyList(),
+                    )
+                    else -> return@mapNotNull null
+                }
+                val items = shelf.items.mapNotNull { item -> item.toYTItem() }
+                    .filterNot { it is SongItem && hideExplicit && it.explicit }
+                if (items.size < 2) null else SimilarRecommendation(title, items, shelf.thumbnailUrl)
+            }.distinctBy { it.title.id }.take(MAX_SIMILAR_RECOMMENDATIONS)
+            similarRecommendations.value = restored
+            HomeCache.similarRecommendations = restored
+        }
+        if (forYouItems.isNotEmpty() && (promotePending || HomeCache.forYouShelves.isNullOrEmpty())) {
+            val initialForYouItems = forYouItems.take(INITIAL_FOR_YOU_SHELF_COUNT)
+            val localAlbumIds = initialForYouItems.flatMap { shelf ->
+                shelf.tiles.filter { it.type == "local" }.map { it.item.id }
+            }.distinct()
+            val localAlbums = if (localAlbumIds.isEmpty()) emptyMap<String, Album>() else {
+                runCatching { database.albumsByIds(localAlbumIds).first() }
+                    .getOrDefault(emptyList()).associateBy { it.id }
+            }
+            val restored = initialForYouItems.mapNotNull { shelf ->
+                val artist = Artist(
+                    ArtistEntity(
+                        id = shelf.artistId,
+                        name = shelf.artistName,
+                        thumbnailUrl = shelf.artistThumbnailUrl,
+                    ),
+                    songCount = 0,
+                )
+                val tiles = shelf.tiles.mapNotNull { tile ->
+                    when (tile.type) {
+                        "local" -> localAlbums[tile.item.id]
+                            ?.takeIf { !it.thumbnailUrl.isNullOrBlank() && (!hideExplicit || !it.album.explicit) }
+                            ?.let { ForYouShelfTile.Local(it) }
+                        "recommended" -> (tile.item.toYTItem() as? AlbumItem)
+                            ?.takeIf { !it.thumbnail.isNullOrBlank() && (!hideExplicit || !it.explicit) }
+                            ?.let { ForYouShelfTile.RecommendedAlbum(it) }
+                        else -> null
+                    }
+                }
+                ForYouShelfItem(artist, tiles).withArtworkOnly()
+            }
+            if (restored.isNotEmpty()) {
+                forYouShelves.value = restored
+                HomeCache.forYouShelves = restored
+            }
+        }
+
+        if (promotePending) {
+            context.dataStore.edit { stored ->
+                val encoded = runCatching { snapshotJson.encodeToString(selected) }.getOrNull()
+                if (encoded != null && selected != HomeRecommendationSnapshot()) {
+                    stored[HomeRecommendationSnapshotKey] = encoded
+                } else {
+                    stored.remove(HomeRecommendationSnapshotKey)
+                }
+                stored.remove(HomeRecommendationPendingSnapshotKey)
+            }
+        }
     }
 
     private suspend fun saveMoodSnapshotAfterLoad(chipTitle: String, chipParams: String?, page: HomePage) {
@@ -489,74 +938,16 @@ class HomeViewModel @Inject constructor(
     val loadedMoodParams = MutableStateFlow<String?>(null)
     private var moodPageJob: kotlinx.coroutines.Job? = null
 
-    private val moodPostersLazy = lazy { MixPosterRepository(context) }
-    private val moodPosters by moodPostersLazy
-    val moodPosterImageLoader get() = moodPosters.imageLoader
-    val moodPosterUrls = MutableStateFlow<Map<String, String>>(emptyMap())
     data class HomeMoodContent(
         val params: String?,
         val items: List<PlaylistItem>?,
-        val posters: Map<String, String>,
     )
-    val homeMoodContent = combine(loadedMoodParams, moodMixItems, moodPosterUrls) { params, items, posters ->
-        HomeMoodContent(params, items, posters)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeMoodContent(null, null, emptyMap()))
-    private var moodPosterJob: Job? = null
-    private var moodPosterSize = 448
+    val homeMoodContent = combine(loadedMoodParams, moodMixItems) { params, items ->
+        HomeMoodContent(params, items)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeMoodContent(null, null))
     private var requestedMoodParams: String? = null
-    val testPlaylistTrackThumbnails = MutableStateFlow<List<String>>(emptyList())
-    private var testPlaylistArtworkJob: Job? = null
-    private var testPlaylistArtworkId: String? = null
-
-    fun loadTestPlaylistArtwork(playlistId: String) {
-        if (testPlaylistArtworkId == playlistId) return
-        testPlaylistArtworkId = playlistId
-        testPlaylistTrackThumbnails.value = emptyList()
-        testPlaylistArtworkJob?.cancel()
-        testPlaylistArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            val thumbnails = YouTube.playlist(playlistId).getOrNull()
-                ?.songs
-                ?.take(4)
-                ?.mapNotNull { it.thumbnail.takeIf(String::isNotBlank) }
-                .orEmpty()
-            if (testPlaylistArtworkId == playlistId) {
-                testPlaylistTrackThumbnails.value = thumbnails
-            }
-        }
-    }
     private var requestedMoodFilters: Triple<Boolean, Boolean, Boolean>? = null
     private val moodPageCache = MoodPageCache(context)
-
-    private fun publishMoodMixes(items: List<PlaylistItem>, mood: MixMood?, revalidate: Boolean) {
-        moodPosterJob?.cancel()
-        val ids = items.map { it.id }.toSet()
-        moodPosterUrls.update { urls -> urls.filterKeys { it in ids } }
-        if (items.isEmpty()) {
-            moodMixItems.value = items
-            return
-        }
-        val size = moodPosterSize
-        moodPosterJob = viewModelScope.launch(Dispatchers.IO) {
-            moodPosters.prepare(items, mood ?: MixMood.CHILL, size, revalidate = false) { id, path ->
-                coroutineContext.ensureActive()
-                moodPosterUrls.update { if (path == null) it - id else it + (id to path) }
-            }
-            coroutineContext.ensureActive()
-            moodMixItems.value = items
-            if (!revalidate) return@launch
-            var pending = items
-            val delays = longArrayOf(0, 1_500, 4_000, 10_000)
-            for (attempt in delays.indices) {
-                if (delays[attempt] > 0) kotlinx.coroutines.delay(delays[attempt])
-                val missing = moodPosters.prepare(pending, mood ?: MixMood.CHILL, size, revalidate) { id, path ->
-                    coroutineContext.ensureActive()
-                    moodPosterUrls.update { if (path == null) it - id else it + (id to path) }
-                }
-                pending = items.filter { it.id in missing }
-                if (pending.isEmpty() || !revalidate) break
-            }
-        }
-    }
 
     fun loadMoodPage(
         params: String?,
@@ -564,18 +955,14 @@ class HomeViewModel @Inject constructor(
         hideExplicit: Boolean,
         hideVideoSongs: Boolean,
         hideYoutubeShorts: Boolean,
-        posterSize: Int = moodPosterSize,
         forceReload: Boolean = false,
     ) {
-        val mood = MixMood.fromChip(chipTitle)
-        val sizeChanged = moodPosterSize != posterSize.coerceIn(128, 768)
-        moodPosterSize = posterSize.coerceIn(128, 768)
+        if (!HOME_MOOD_SECTION_ENABLED) return
         val filters = Triple(hideExplicit, hideVideoSongs, hideYoutubeShorts)
         if (!forceReload && isMoodLoading.value && params == requestedMoodParams &&
             filters == requestedMoodFilters) return
         if (!forceReload && !isMoodError.value && params == loadedMoodParams.value &&
             loadedMoodFilters == filters && moodPage.value != null && !isMoodLoading.value) {
-            if (sizeChanged) publishMoodMixes(moodMixItems.value.orEmpty(), mood, revalidate = false)
             return
         }
         requestedMoodParams = params
@@ -583,8 +970,6 @@ class HomeViewModel @Inject constructor(
         isMoodError.value = false
         if (params == null || !MoodMixes.isAllowedCategory(chipTitle)) {
             moodPageJob?.cancel()
-            moodPosterJob?.cancel()
-            moodPosterUrls.value = emptyMap()
             moodPage.value = null
             moodMixItems.value = null
             isMoodLoading.value = false
@@ -593,12 +978,10 @@ class HomeViewModel @Inject constructor(
             return
         }
         moodPageJob?.cancel()
-        moodPosterJob?.cancel()
         if (params != loadedMoodParams.value ||
             (loadedMoodFilters != null && filters != loadedMoodFilters)) {
             moodPage.value = null
             moodMixItems.value = null
-            moodPosterUrls.value = emptyMap()
             loadedMoodParams.value = null
             loadedMoodFilters = null
         }
@@ -613,7 +996,7 @@ class HomeViewModel @Inject constructor(
                     moodPage.value = cached
                     loadedMoodParams.value = params
                     loadedMoodFilters = filters
-                    publishMoodMixes(MoodMixes.select(cached.sections.flatMap { it.items }), mood, revalidate = false)
+                    moodMixItems.value = MoodMixes.select(cached.sections.flatMap { it.items })
                 }
                 val result = Result.success(MoodLoadRetry.load {
                     withTimeout(25_000L) {
@@ -651,7 +1034,7 @@ class HomeViewModel @Inject constructor(
                     val mixItems = MoodMixes.select(filteredPage.sections.flatMap { it.items })
                     loadedMoodParams.value = params
                     loadedMoodFilters = filters
-                    publishMoodMixes(mixItems, mood, revalidate = true)
+                    moodMixItems.value = mixItems
                     preferredMoodParams.value = params
                     moodPageCache.write(cacheFile, filteredPage)
                     if (chipTitle != null) {
@@ -1008,194 +1391,181 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * One mini 2x2 block per artist (most-listened, last 30 days, or followed via the star):
-     * artist photo + 3 album tiles, never songs. An artist's most-listened albums come first;
-     * if listening history doesn't cover 3 albums, the rest of that artist's credited discography
-     * fills the remaining tiles — their own albums plus albums they're featured on, not
-     * necessarily listened to. Artists who still can't fill all 3 tiles are dropped rather than
-     * shown as an incomplete box. Followed artists are oversampled so starred artists show up
-     * often even when they're not in the top listening history.
-     */
-    private suspend fun buildForYouShelf(
-        artist: Artist,
-        fromTimeStamp: Long,
-        toTimeStamp: Long,
-        usedAlbumIds: Set<String>,
-    ): ForYouShelfItem? {
-        val tiles = mutableListOf<ForYouShelfTile>()
-        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-
-        val candidateSongs = database.mostPlayedSongsByArtist(artist.id, fromTimeStamp, toTimeStamp)
-            .first()
-        val artistAlbums = linkedMapOf<String, Album>()
-        for (song in candidateSongs) {
-            val albumId = song.album?.id ?: continue
-            val album = database.album(albumId).first() ?: continue
-            if (album.album.songCount > 1 && (!album.album.explicit || !hideExplicit)) {
-                artistAlbums.putIfAbsent(albumId, album)
+    private fun ForYouShelfItem.withArtworkOnly(): ForYouShelfItem? {
+        if (artist.thumbnailUrl.isNullOrBlank()) return null
+        val tilesWithArtwork = tiles.filter { tile ->
+            when (tile) {
+                is ForYouShelfTile.Local -> !tile.item.thumbnailUrl.isNullOrBlank()
+                is ForYouShelfTile.RecommendedAlbum -> !tile.item.thumbnail.isNullOrBlank()
             }
         }
-
-        database.artistCreditedAlbumsPreview(artist.id, previewSize = 30).first()
-            .shuffled()
-            .filter { it.album.songCount > 1 && (!it.album.explicit || !hideExplicit) }
-            .forEach { artistAlbums.putIfAbsent(it.id, it) }
-
-        artistAlbums.values.filterNot { it.id in usedAlbumIds }.shuffled().take(2).forEach { album ->
-            tiles += ForYouShelfTile.Local(album)
-        }
-
-        artistAlbums.values.shuffled()
-            .filterNot { album -> album.id in usedAlbumIds || tiles.any { it.id == album.id } }
-            .take(3 - tiles.size)
-            .forEach { tiles += ForYouShelfTile.Local(it) }
-
-        return if (tiles.size < 3) null else ForYouShelfItem(artist, tiles)
+        return if (tilesWithArtwork.size < 3) null else copy(tiles = tilesWithArtwork)
     }
 
-    private suspend fun buildForYouArtistPool(): List<Artist> {
-        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
-        val toTimeStamp = System.currentTimeMillis()
-        val listenedArtists = database.mostPlayedArtists(fromTimeStamp, limit = 25, toTimeStamp = toTimeStamp).first()
-        val followedArtists = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true).first()
-        val libraryArtists = database.artists(ArtistSortType.PLAY_TIME, true).first()
-        return (listenedArtists + followedArtists + followedArtists + libraryArtists)
-            .filter { it.artist.thumbnailUrl != null }
+    private suspend fun buildForYouShelfBatch(
+        previous: List<ForYouShelfItem> = emptyList(),
+        existing: List<ForYouShelfItem> = emptyList(),
+        limit: Int = INITIAL_FOR_YOU_SHELF_COUNT,
+    ): List<ForYouShelfItem> {
+        val now = System.currentTimeMillis()
+        val recent = database.mostPlayedArtists(now - 86400000L * 30, limit = 25, toTimeStamp = now).first()
+        val followed = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true).first()
+        val library = database.artists(ArtistSortType.PLAY_TIME, true).first()
+        val existingArtistIds = existing.mapTo(mutableSetOf()) { it.artist.id }
+        val previousArtistIds = previous.map { it.artist.id }
+        val artists = (recent + followed + keepListening.value.orEmpty().filterIsInstance<Artist>() + library)
+            .filter { !it.thumbnailUrl.isNullOrBlank() && it.id !in existingArtistIds && !it.artist.isPodcastChannel }
             .distinctBy { it.id }
             .shuffled()
-    }
+            .sortedBy { artist ->
+                val previousIndex = previousArtistIds.indexOf(artist.id)
+                if (previousIndex < 0) 0 else previousArtistIds.size - previousIndex
+            }
+            .take(INITIAL_FOR_YOU_ARTIST_SCAN_LIMIT)
+        if (artists.isEmpty()) return emptyList()
 
-    private suspend fun getForYouShelves() {
-        forYouArtistPool = buildForYouArtistPool()
-        forYouPoolCursor = 0
-        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
-        val toTimeStamp = System.currentTimeMillis()
-
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val localAlbums = database.artistAlbumsForArtists(artists.map { it.id }).first()
+            .filter { it.album.songCount > 1 && !it.thumbnailUrl.isNullOrBlank() && (!hideExplicit || !it.album.explicit) }
+        val usedAlbumIds = existing.flatMap { it.tiles }.mapTo(mutableSetOf()) { it.id }
+        val previousAlbumIds = previous.flatMap { it.tiles }.mapTo(mutableSetOf()) { it.id }
         val shelves = mutableListOf<ForYouShelfItem>()
-        val usedArtistIds = mutableSetOf<String>()
-        val usedAlbumIds = mutableSetOf<String>()
-        while (shelves.size < 20 && forYouPoolCursor < forYouArtistPool.size) {
-            val artist = forYouArtistPool[forYouPoolCursor]
-            forYouPoolCursor++
-            if (usedArtistIds.add(artist.id)) {
-                buildForYouShelf(artist, fromTimeStamp, toTimeStamp, usedAlbumIds)?.let { shelf ->
-                    usedAlbumIds += shelf.tiles.map { it.id }
-                    shelves += shelf
-                    // Present the first viewport without waiting for the entire twenty-artist pool.
-                    if (shelves.size % 4 == 0) forYouShelves.value = shelves.toList()
+        for (group in artists.chunked(3)) {
+            val remoteAlbums = coroutineScope {
+                group.map { artist ->
+                    async {
+                        if (artist.artist.isYouTubeArtist && networkConnectivity.networkStatus.value) {
+                            getForYouRemoteAlbums(artist.id, hideExplicit)
+                        } else {
+                            emptyList()
+                        }
+                    }
+                }.awaitAll()
+            }
+            for ((artist, albums) in group.zip(remoteAlbums)) {
+                val recommended = albums.map { ForYouShelfTile.RecommendedAlbum(it) }
+                val local = localAlbums.filter { album -> album.artists.any { it.id == artist.id } }
+                    .shuffled()
+                    .map { ForYouShelfTile.Local(it) }
+                val tiles = (recommended + local)
+                    .filterNot { it.id in usedAlbumIds }
+                    .sortedBy { it.id in previousAlbumIds }
+                    .distinctBy { it.id }
+                    .distinctBy { tile ->
+                        normalizeForYouAlbumTitle(when (tile) {
+                            is ForYouShelfTile.Local -> tile.item.title
+                            is ForYouShelfTile.RecommendedAlbum -> tile.item.title
+                        })
+                    }
+                    .distinctBy { tile ->
+                        normalizeForYouArtwork(when (tile) {
+                            is ForYouShelfTile.Local -> tile.item.thumbnailUrl
+                            is ForYouShelfTile.RecommendedAlbum -> tile.item.thumbnail
+                        })
+                    }
+                    .take(3)
+                if (tiles.size == 3) {
+                    shelves += ForYouShelfItem(artist, tiles)
+                    usedAlbumIds += tiles.map { it.id }
+                    if (shelves.size == limit) return shelves
                 }
             }
         }
-        forYouShelves.value = shelves
-        HomeCache.forYouShelves = shelves
-        scheduleForYouRecommendations()
+        return shelves
     }
 
-    private fun scheduleForYouRecommendations() {
-        forYouEnrichmentJob?.cancel()
-        forYouEnrichmentJob = viewModelScope.launch(Dispatchers.IO) {
-            val albumIds = forYouShelves.value.flatMap { it.tiles }.mapTo(mutableSetOf()) { it.id }
-            // Serialized enrichment: shares the InnerTube pool (5) with home/account
-            // reloads, so a burst here must never starve them after a network switch.
-            val semaphore = Semaphore(1)
-            forYouShelves.value.forEach { shelf ->
-                launch {
-                    val alreadyUsed = synchronized(albumIds) { albumIds.toSet() }
-                    val recommended = semaphore.withPermit {
-                        findRelatedAlbum(shelf.artist.id, alreadyUsed)
-                    } ?: return@launch
+    private suspend fun getForYouRemoteAlbums(artistId: String, hideExplicit: Boolean): List<AlbumItem> {
+        fun List<YTItem>.albums() = filterIsInstance<AlbumItem>()
+            .filter { it.thumbnail.isNotBlank() && (!hideExplicit || !it.explicit) }
+            .filterNot { it.albumType?.trim()?.lowercase() in setOf("single", "singolo") }
 
-                    synchronized(albumIds) {
-                        val shelves = forYouShelves.value
-                        val index = shelves.indexOfFirst { it.artist.id == shelf.artist.id }
-                        if (index < 0 || recommended.id in albumIds) return@synchronized
-                        val current = shelves[index]
-                        val replaceIndex = current.tiles.indexOfLast { it is ForYouShelfTile.Local }
-                        if (replaceIndex < 0) return@synchronized
-                        val updatedTiles = current.tiles.toMutableList()
-                        albumIds.remove(updatedTiles[replaceIndex].id)
-                        albumIds.add(recommended.id)
-                        updatedTiles[replaceIndex] = ForYouShelfTile.RecommendedAlbum(recommended)
-                        forYouShelves.value = shelves.toMutableList().also {
-                            it[index] = current.copy(tiles = updatedTiles)
+        var seedAlbums = emptyList<AlbumItem>()
+        val relatedAlbums = mutableListOf<AlbumItem>()
+        withTimeoutOrNull(5_000L) {
+            val items = YouTube.artist(artistId).getOrNull()?.sections.orEmpty().flatMap { it.items }
+            seedAlbums = items.albums()
+            val relatedArtists = items.filterIsInstance<ArtistItem>()
+                .distinctBy { it.id }
+                .filterNot { it.id == artistId }
+                .shuffled()
+                .take(2)
+            for (related in relatedArtists) {
+                relatedAlbums += YouTube.artist(related.id).getOrNull()
+                    ?.sections.orEmpty().flatMap { it.items }.albums()
+                if (relatedAlbums.distinctBy { it.id }.size >= 6) break
+            }
+        }
+        return (relatedAlbums.shuffled() + seedAlbums.shuffled()).distinctBy { it.id }
+            .sortedBy { album -> album.artists.orEmpty().any { it.id == artistId } }
+    }
+
+    private fun launchForYouLoad(rotate: Boolean = false) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            forYouPreparationMutex.withLock {
+                val shown = forYouShelves.value
+                if (shown.isEmpty() || rotate) {
+                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val prepared = pendingForYouShelves.filter { shelf ->
+                        !hideExplicit || shelf.tiles.none { tile ->
+                            when (tile) {
+                                is ForYouShelfTile.Local -> (tile.item as? Album)?.album?.explicit == true
+                                is ForYouShelfTile.RecommendedAlbum -> tile.item.explicit
+                            }
                         }
-                        HomeCache.forYouShelves = forYouShelves.value
+                    }
+                    val next = prepared.ifEmpty { buildForYouShelfBatch(previous = shown) }
+                    if (next.isNotEmpty()) {
+                        forYouShelves.value = next
+                        HomeCache.forYouShelves = next
+                        pendingForYouShelves = emptyList()
+                        persistForYouSnapshot(next)
+                    }
+                }
+                isForYouLoading.value = false
+                val current = forYouShelves.value
+                if (current.isNotEmpty() && pendingForYouShelves.isEmpty()) {
+                    val next = buildForYouShelfBatch(previous = current)
+                    if (next.isNotEmpty()) {
+                        persistForYouSnapshot(next)
+                        pendingForYouShelves = next
                     }
                 }
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            reportException(error)
+        } finally {
+            isForYouLoading.value = false
         }
-    }
-
-    private suspend fun findRelatedAlbum(artistId: String, usedAlbumIds: Set<String>): AlbumItem? {
-        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-        val relatedArtists = YouTube.artist(artistId).getOrNull()
-            ?.sections?.flatMap { it.items }
-            ?.filterIsInstance<ArtistItem>()
-            ?.filterNot { it.id == artistId }
-            ?.distinctBy { it.id }
-            ?.shuffled()
-            .orEmpty()
-
-        for (artist in relatedArtists.take(1)) {
-            val albums = YouTube.artist(artist.id).getOrNull()
-                ?.sections?.flatMap { it.items }
-                ?.filterIsInstance<AlbumItem>()
-                ?.filter { it.id !in usedAlbumIds && (!it.explicit || !hideExplicit) }
-                ?.filterNot { it.albumType?.trim()?.lowercase() in setOf("single", "singolo") }
-                ?.shuffled()
-                .orEmpty()
-            if (albums.isNotEmpty()) return albums.first()
-        }
-        return null
     }
 
     fun loadMoreForYouShelves() {
-        if (isForYouLoading.value || _isLoadingMoreForYou.value || forYouArtistPool.isEmpty()) return
+        if (isForYouLoading.value || !_isLoadingMoreForYou.compareAndSet(false, true)) return
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoadingMoreForYou.value = true
-            val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
-            val toTimeStamp = System.currentTimeMillis()
-            val newShelves = mutableListOf<ForYouShelfItem>()
-            val usedArtistIds = forYouShelves.value.mapTo(mutableSetOf()) { it.artist.id }
-            val usedAlbumIds = forYouShelves.value.flatMap { it.tiles }.mapTo(mutableSetOf()) { it.id }
-            var scanned = 0
-            while (newShelves.size < 10 && scanned < forYouArtistPool.size) {
-                if (forYouPoolCursor >= forYouArtistPool.size) {
-                    forYouArtistPool = forYouArtistPool.shuffled()
-                    forYouPoolCursor = 0
-                }
-                val artist = forYouArtistPool[forYouPoolCursor]
-                forYouPoolCursor++
-                scanned++
-                if (usedArtistIds.add(artist.id)) {
-                    buildForYouShelf(artist, fromTimeStamp, toTimeStamp, usedAlbumIds)?.let { shelf ->
-                        usedAlbumIds += shelf.tiles.map { it.id }
-                        newShelves += shelf
+            try {
+                forYouPreparationMutex.withLock {
+                    val existing = forYouShelves.value
+                    val newShelves = buildForYouShelfBatch(existing = existing, limit = 10)
+                    if (newShelves.isNotEmpty()) {
+                        val combined = existing + newShelves
+                        forYouShelves.value = combined
+                        HomeCache.forYouShelves = combined
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                reportException(error)
+            } finally {
+                _isLoadingMoreForYou.value = false
             }
-            if (newShelves.isNotEmpty()) {
-                val combined = forYouShelves.value + newShelves
-                forYouShelves.value = combined
-                HomeCache.forYouShelves = combined
-                scheduleForYouRecommendations()
-            }
-            _isLoadingMoreForYou.value = false
         }
     }
 
     fun regenerateForYouShelves() {
-        viewModelScope.launch(Dispatchers.IO) {
-            regenerateSection(
-                key = "for_you_shelf",
-                currentIds = {
-                    forYouShelves.value.orEmpty()
-                        .flatMap { listOf(it.artist.id) + it.tiles.map { tile -> tile.id } }
-                        .toSet()
-                },
-                generate = { getForYouShelves() },
-            )
+        if (!isForYouLoading.value || forYouShelves.value.isNotEmpty()) {
+            launchForYouLoad(rotate = true)
         }
     }
 
@@ -1214,37 +1584,36 @@ class HomeViewModel @Inject constructor(
         val likedSongs = database.likedSongsByCreateDateAsc().first()
         if (likedSongs.isEmpty()) return
 
-        val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
+        val seeds = likedSongs.randomSample(5).distinctBy { it.id }
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())
+        val semaphore = Semaphore(2)
 
         kotlinx.coroutines.coroutineScope {
             seeds.map { seed ->
                 launch(Dispatchers.IO) {
-                    val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
-                    if (endpoint != null) {
-                        YouTube.related(endpoint).onSuccess { page ->
-                            val recommendations = page.songs
-                                .filter { item ->
-                                    if (item.isVideoSong) return@filter false
-                                    if (item.explicit) return@filter false
-                                    true
-                                }
-                                .shuffled()
+                    semaphore.withPermit {
+                        val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
+                        if (endpoint != null) {
+                            YouTube.related(endpoint).onSuccess { page ->
+                                val recommendation = page.songs
+                                    .asSequence()
+                                    .filter { !it.isVideoSong && !it.explicit && it.id != seed.id }
+                                    .take(20)
+                                    .toList()
+                                    .randomSample(1)
+                                    .firstOrNull()
 
-                            val recommendation = recommendations.firstOrNull { rec ->
-                                rec.id != seed.id
-                            }
-
-                            if (recommendation != null) {
-                                items.add(
-                                    DailyDiscoverItem(
-                                        seed = seed,
-                                        recommendation = recommendation,
-                                        relatedEndpoint = endpoint
+                                if (recommendation != null) {
+                                    items.add(
+                                        DailyDiscoverItem(
+                                            seed = seed,
+                                            recommendation = recommendation,
+                                            relatedEndpoint = endpoint,
+                                        ),
                                     )
-                                )
-                                synchronized(items) {
-                                    dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }
+                                    synchronized(items) {
+                                        dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }
+                                    }
                                 }
                             }
                         }
@@ -1259,13 +1628,22 @@ class HomeViewModel @Inject constructor(
         songs.filter { !it.song.isVideo && !it.song.isEpisode && (!hideExplicit || !it.song.explicit) }
             .distinctBy { it.id }
 
-    private suspend fun quickPickSong(item: SongItem): Song =
-        database.song(item.id).first() ?: Song(
+    private fun quickPickFallbackSong(item: SongItem): Song = Song(
             song = item.toMediaMetadata().toSongEntity(),
             artists = item.artists.map { artist ->
                 ArtistEntity(id = artist.id ?: ArtistEntity.generateArtistId(), name = artist.name)
             },
         )
+
+    private suspend fun quickPickSongs(items: List<SongItem>): List<Song> {
+        val uniqueItems = items.distinctBy { it.id }
+        val stored = if (uniqueItems.isEmpty()) emptyMap() else {
+            runCatching { database.getSongsByIds(uniqueItems.map { it.id }) }
+                .getOrDefault(emptyList())
+                .associateBy { it.id }
+        }
+        return uniqueItems.map { item -> stored[item.id] ?: quickPickFallbackSong(item) }
+    }
 
     private suspend fun fillQuickPicksFromHome(page: HomePage, hideExplicit: Boolean) {
         if (quickPicks.value.orEmpty().size >= QUICK_PICKS_TARGET_COUNT) return
@@ -1276,13 +1654,12 @@ class HomeViewModel @Inject constructor(
             .shuffled()
         val songs = eligibleQuickPicks(quickPicks.value.orEmpty(), hideExplicit).toMutableList()
         val usedIds = songs.mapTo(mutableSetOf()) { it.id }
-        for (item in homeSongs) {
-            if (songs.size >= QUICK_PICKS_TARGET_COUNT) break
-            if (item.id in usedIds) continue
-            val song = quickPickSong(item)
-            if (eligibleQuickPicks(listOf(song), hideExplicit).isNotEmpty() && usedIds.add(song.id)) {
-                songs += song
-            }
+        val candidates = homeSongs.asSequence()
+            .filter { it.id !in usedIds }
+            .take(QUICK_PICKS_TARGET_COUNT - songs.size)
+            .toList()
+        for (song in eligibleQuickPicks(quickPickSongs(candidates), hideExplicit)) {
+            if (usedIds.add(song.id)) songs += song
         }
         quickPicks.update { current ->
             eligibleQuickPicks(current.orEmpty() + songs, hideExplicit).take(QUICK_PICKS_TARGET_COUNT)
@@ -1346,9 +1723,10 @@ class HomeViewModel @Inject constructor(
                 .filterNot { it.id in existingIds }
                 .shuffled()
                 .take(QUICK_PICKS_TARGET_COUNT - existingIds.size)
-                .map { quickPickSong(it) }
+                .toList()
+            val hydratedCandidates = quickPickSongs(candidates)
             quickPicks.update { current ->
-                eligibleQuickPicks(current.orEmpty() + candidates, hideExplicit)
+                eligibleQuickPicks(current.orEmpty() + hydratedCandidates, hideExplicit)
                     .take(QUICK_PICKS_TARGET_COUNT)
             }
         }
@@ -1356,28 +1734,31 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getCommunityPlaylists() {
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 4
+        val semaphore = Semaphore(2)
         val artistSeeds = database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
             .filter { it.artist.isYouTubeArtist }
-            .shuffled().take(3)
+            .randomSample(3)
         val songSeeds = database.mostPlayedSongs(fromTimeStamp, limit = 5).first()
-            .shuffled().take(2)
+            .randomSample(2)
 
         val candidatePlaylists = java.util.Collections.synchronizedList(mutableListOf<PlaylistItem>())
 
         kotlinx.coroutines.coroutineScope {
             artistSeeds.map { seed ->
                 launch(Dispatchers.IO) {
-                    YouTube.artist(seed.id).onSuccess { page ->
-                        page.sections.forEach { section ->
-                            section.items.filterIsInstance<PlaylistItem>().forEach { playlist ->
-                                if (playlist.author?.name != "YouTube Music" && 
-                                    playlist.author?.name != "YouTube" && 
-                                    playlist.author?.name != "Playlist" &&
-                                    playlist.author?.name != seed.artist.name &&
-                                    !playlist.id.startsWith("RD") &&
-                                    !playlist.id.startsWith("OLAK")
-                                ) {
-                                    candidatePlaylists.add(playlist)
+                    semaphore.withPermit {
+                        YouTube.artist(seed.id).onSuccess { page ->
+                            page.sections.forEach { section ->
+                                section.items.filterIsInstance<PlaylistItem>().forEach { playlist ->
+                                    if (playlist.author?.name != "YouTube Music" &&
+                                        playlist.author?.name != "YouTube" &&
+                                        playlist.author?.name != "Playlist" &&
+                                        playlist.author?.name != seed.artist.name &&
+                                        !playlist.id.startsWith("RD") &&
+                                        !playlist.id.startsWith("OLAK")
+                                    ) {
+                                        candidatePlaylists.add(playlist)
+                                    }
                                 }
                             }
                         }
@@ -1386,17 +1767,19 @@ class HomeViewModel @Inject constructor(
             }
             songSeeds.map { seed ->
                 launch(Dispatchers.IO) {
-                    val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
-                    if (endpoint != null) {
-                        YouTube.related(endpoint).onSuccess { page ->
-                            page.playlists.forEach { playlist ->
-                                if (playlist.author?.name != "YouTube Music" && 
-                                    playlist.author?.name != "YouTube" && 
-                                    playlist.author?.name != "Playlist" &&
-                                    !playlist.id.startsWith("RD") &&
-                                    !playlist.id.startsWith("OLAK")
-                                ) {
-                                    candidatePlaylists.add(playlist)
+                    semaphore.withPermit {
+                        val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
+                        if (endpoint != null) {
+                            YouTube.related(endpoint).onSuccess { page ->
+                                page.playlists.forEach { playlist ->
+                                    if (playlist.author?.name != "YouTube Music" &&
+                                        playlist.author?.name != "YouTube" &&
+                                        playlist.author?.name != "Playlist" &&
+                                        !playlist.id.startsWith("RD") &&
+                                        !playlist.id.startsWith("OLAK")
+                                    ) {
+                                        candidatePlaylists.add(playlist)
+                                    }
                                 }
                             }
                         }
@@ -1412,12 +1795,14 @@ class HomeViewModel @Inject constructor(
         kotlinx.coroutines.coroutineScope {
             uniqueCandidates.map { playlist ->
                 launch(Dispatchers.IO) {
-                    YouTube.playlist(playlist.id).onSuccess { page ->
-                        val songs = page.songs.take(10)
-                        if (songs.isNotEmpty()) {
-                            val songCountText = page.playlist.songCountText ?: playlist.songCountText
-                            val updatedPlaylist = playlist.copy(songCountText = songCountText)
-                            playlists.add(CommunityPlaylistItem(updatedPlaylist, songs))
+                    semaphore.withPermit {
+                        YouTube.playlist(playlist.id).onSuccess { page ->
+                            val songs = page.songs.take(10)
+                            if (songs.isNotEmpty()) {
+                                val songCountText = page.playlist.songCountText ?: playlist.songCountText
+                                val updatedPlaylist = playlist.copy(songCountText = songCountText)
+                                playlists.add(CommunityPlaylistItem(updatedPlaylist, songs))
+                            }
                         }
                     }
                 }
@@ -1427,7 +1812,10 @@ class HomeViewModel @Inject constructor(
         communityPlaylists.value = playlists.shuffled()
     }
 
-    private suspend fun getSimilarRecommendations(onlySeedId: String? = null) = coroutineScope {
+    private suspend fun getSimilarRecommendations(
+        onlySeedId: String? = null,
+        replaceExisting: Boolean = false,
+    ) = coroutineScope {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 14
         val artists = (
@@ -1435,15 +1823,15 @@ class HomeViewModel @Inject constructor(
                 database.artistsBookmarked(ArtistSortType.CREATE_DATE, descending = true).first() +
                 database.artists(ArtistSortType.PLAY_TIME, descending = true).first()
             ).distinctBy { it.id }.filter { it.artist.isYouTubeArtist && !it.thumbnailUrl.isNullOrBlank() }
-            .shuffled().take(20)
+            .randomSample(20)
         val albums = (
             database.mostPlayedAlbums(fromTimeStamp, limit = 40).first() +
                 database.albums(AlbumSortType.PLAY_TIME, descending = true).first()
             ).distinctBy { it.id }.filter { !it.thumbnailUrl.isNullOrBlank() && it.artists.isNotEmpty() }
-            .shuffled().take(20)
+            .randomSample(20)
         val playlists = database.playlists(PlaylistSortType.LAST_UPDATED, descending = true).first()
             .filter { !it.playlist.isLocal && !it.playlist.browseId.isNullOrBlank() && it.thumbnails.isNotEmpty() }
-            .distinctBy { it.playlist.browseId }.shuffled().take(20)
+            .distinctBy { it.playlist.browseId }.randomSample(20)
 
         val localSeeds = buildList<LocalItem> {
             repeat(maxOf(artists.size, albums.size, playlists.size)) { index ->
@@ -1452,21 +1840,25 @@ class HomeViewModel @Inject constructor(
                 playlists.getOrNull(index)?.let(::add)
             }
         }
-        val generated: MutableList<SimilarRecommendation> = similarRecommendations.value.orEmpty()
-            .filter { it.title is Artist || it.title is Album || it.title is Playlist }
-            .filter { recommendation ->
-                !recommendation.thumbnailUrl.isNullOrBlank() &&
-                    recommendation.items.distinctBy { it.id }.count { item ->
-                        item is SongItem && !item.isVideoSong || item is AlbumItem ||
-                            item is ArtistItem || item is PlaylistItem
-                    } >= 2
-            }
+        val generated: MutableList<SimilarRecommendation> = if (replaceExisting) {
+            mutableListOf()
+        } else {
+            similarRecommendations.value.orEmpty()
+                .filter { it.title is Artist || it.title is Album || it.title is Playlist }
+                .filter { recommendation ->
+                    !recommendation.thumbnailUrl.isNullOrBlank() &&
+                        recommendation.items.distinctBy { it.id }.count { item ->
+                            item is SongItem && !item.isVideoSong || item is AlbumItem ||
+                                item is ArtistItem || item is PlaylistItem
+                        } >= 2
+                }
                 .distinctBy { it.title.id }.take(MAX_SIMILAR_RECOMMENDATIONS).toMutableList()
+        }
         val refreshSeed = onlySeedId?.let { id ->
             similarRecommendations.value.orEmpty().firstOrNull { it.title.id == id }?.title
         }
         val seedsToGenerate = if (refreshSeed != null) listOf(refreshSeed) else localSeeds
-        val semaphore = Semaphore(4)
+        val semaphore = Semaphore(2)
         val publishLock = kotlinx.coroutines.sync.Mutex()
         val shelfFallbacks = java.util.concurrent.ConcurrentHashMap<String, List<YTItem>>()
 
@@ -1717,6 +2109,16 @@ class HomeViewModel @Inject constructor(
                 currentIds = { communityPlaylists.value?.map { it.playlist.id }?.toSet().orEmpty() },
                 generate = { getCommunityPlaylists() },
             )
+            val items = communityPlaylists.value.orEmpty()
+                .mapNotNull { mapYTItemToSnapshot(it.playlist) }
+                .distinctBy { it.id }
+                .take(5)
+            if (items.isNotEmpty()) {
+                val updatedAt = System.currentTimeMillis()
+                persistPendingRecommendationSnapshot { snapshot ->
+                    snapshot.copy(communityUpdatedAt = updatedAt, communityPlaylists = items)
+                }
+            }
             HomeCache.communityPlaylists = communityPlaylists.value
         }
     }
@@ -1728,6 +2130,16 @@ class HomeViewModel @Inject constructor(
                 currentIds = { dailyDiscover.value?.map { it.recommendation.id }?.toSet().orEmpty() },
                 generate = { getDailyDiscover() },
             )
+            val items = dailyDiscover.value.orEmpty().mapNotNull { item ->
+                val recommendation = mapYTItemToSnapshot(item.recommendation) ?: return@mapNotNull null
+                HomeDailyDiscoverSnapshotItem(item.seed.toHomeSnapshotItem(), recommendation)
+            }.distinctBy { it.recommendation.id }.take(5)
+            if (items.isNotEmpty()) {
+                val updatedAt = System.currentTimeMillis()
+                persistPendingRecommendationSnapshot { snapshot ->
+                    snapshot.copy(dailyDiscoverUpdatedAt = updatedAt, dailyDiscover = items)
+                }
+            }
             HomeCache.dailyDiscover = dailyDiscover.value
         }
     }
@@ -1739,10 +2151,23 @@ class HomeViewModel @Inject constructor(
                 currentIds = { similarRecommendations.value.orEmpty().firstOrNull { it.title.id == seedId }?.items?.map { it.id }?.toSet().orEmpty() },
                 generate = { getSimilarRecommendations(onlySeedId = seedId) },
             )
+            val shelves = similarRecommendations.value.orEmpty()
+                .mapNotNull { it.toHomeSimilarShelfSnapshot() }
+                .distinctBy { it.titleId }
+                .take(MAX_SIMILAR_RECOMMENDATIONS)
+            if (shelves.size >= 2) {
+                val updatedAt = System.currentTimeMillis()
+                persistPendingRecommendationSnapshot { snapshot ->
+                    snapshot.copy(similarUpdatedAt = updatedAt, similarShelves = shelves)
+                }
+            }
         }
     }
 
-    fun onSectionBecameVisible(sectionId: String) {
+    fun onSectionBecameVisible(
+        sectionId: String,
+        forceRefresh: Boolean = isFirstHomeViewModelInProcess,
+    ) {
         val current = visibleSections.value
         if (sectionId in current) return
         visibleSections.value = current + sectionId
@@ -1752,7 +2177,26 @@ class HomeViewModel @Inject constructor(
                 dailyDiscoverLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        withTimeoutOrNull(20_000L) { getDailyDiscover() }
+                        if (forceRefresh || !isSectionSnapshotFresh(
+                                currentRecommendationSnapshot.dailyDiscoverUpdatedAt,
+                                pendingRecommendationSnapshot?.dailyDiscoverUpdatedAt ?: 0L,
+                            )
+                        ) {
+                            val completed = withTimeoutOrNull(20_000L) { getDailyDiscover(); true } == true
+                            if (completed) {
+                                val items = dailyDiscover.value.orEmpty().mapNotNull { item ->
+                                    val seed = item.seed.toHomeSnapshotItem()
+                                    val recommendation = mapYTItemToSnapshot(item.recommendation) ?: return@mapNotNull null
+                                    HomeDailyDiscoverSnapshotItem(seed, recommendation)
+                                }.distinctBy { it.recommendation.id }.take(5)
+                                if (items.isNotEmpty()) {
+                                    val updatedAt = System.currentTimeMillis()
+                                    persistPendingRecommendationSnapshot { snapshot ->
+                                        snapshot.copy(dailyDiscoverUpdatedAt = updatedAt, dailyDiscover = items)
+                                    }
+                                }
+                            }
+                        }
                         HomeCache.dailyDiscover = dailyDiscover.value
                     } finally {
                         currentCoroutineContext().ensureActive()
@@ -1765,7 +2209,25 @@ class HomeViewModel @Inject constructor(
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        withTimeoutOrNull(20_000L) { getCommunityPlaylists() }
+                        if (forceRefresh || !isSectionSnapshotFresh(
+                                currentRecommendationSnapshot.communityUpdatedAt,
+                                pendingRecommendationSnapshot?.communityUpdatedAt ?: 0L,
+                            )
+                        ) {
+                            val completed = withTimeoutOrNull(20_000L) { getCommunityPlaylists(); true } == true
+                            if (completed) {
+                                val items = communityPlaylists.value.orEmpty()
+                                    .mapNotNull { mapYTItemToSnapshot(it.playlist) }
+                                    .distinctBy { it.id }
+                                    .take(5)
+                                if (items.isNotEmpty()) {
+                                    val updatedAt = System.currentTimeMillis()
+                                    persistPendingRecommendationSnapshot { snapshot ->
+                                        snapshot.copy(communityUpdatedAt = updatedAt, communityPlaylists = items)
+                                    }
+                                }
+                            }
+                        }
                         HomeCache.communityPlaylists = communityPlaylists.value
                     } finally {
                         currentCoroutineContext().ensureActive()
@@ -1777,10 +2239,28 @@ class HomeViewModel @Inject constructor(
             sectionId.startsWith("similar_recommendation_") && similarRecommendationsLaunchJob == null -> {
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        // Gate behind phase 1 like the other sections: the similar fan-out
-                        // must not race (and starve) the home/account load on reconnect.
-                        phase1Complete.filter { it }.first()
-                        withTimeoutOrNull(30_000L) { getSimilarRecommendations() }
+                        if (forceRefresh || !isSectionSnapshotFresh(
+                                currentRecommendationSnapshot.similarUpdatedAt,
+                                pendingRecommendationSnapshot?.similarUpdatedAt ?: 0L,
+                            )
+                        ) {
+                            val completed = withTimeoutOrNull(30_000L) {
+                                getSimilarRecommendations(replaceExisting = forceRefresh)
+                                true
+                            } == true
+                            if (completed) {
+                                val shelves = similarRecommendations.value.orEmpty()
+                                    .mapNotNull { it.toHomeSimilarShelfSnapshot() }
+                                    .distinctBy { it.titleId }
+                                    .take(MAX_SIMILAR_RECOMMENDATIONS)
+                                if (shelves.size >= 2) {
+                                    val updatedAt = System.currentTimeMillis()
+                                    persistPendingRecommendationSnapshot { snapshot ->
+                                        snapshot.copy(similarUpdatedAt = updatedAt, similarShelves = shelves)
+                                    }
+                                }
+                            }
+                        }
                     } finally {
                         currentCoroutineContext().ensureActive()
                         phase2SimilarDone.value = true
@@ -1805,9 +2285,9 @@ class HomeViewModel @Inject constructor(
 
     fun loadHomeData() = viewModelScope.launch { load() }
 
-    private suspend fun load() {
+    private suspend fun load(forceHeroCarouselRefresh: Boolean = false) {
         refreshHomeFeed()
-        refreshHeroCarousel(defaultHeroCarouselSeed(), force = true)
+        refreshHeroCarousel(defaultHeroCarouselSeed(), force = forceHeroCarouselRefresh)
         isLoading.value = true
         phase1Complete.value = false
         phase2Complete.value = false
@@ -1822,13 +2302,17 @@ class HomeViewModel @Inject constructor(
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
+        val quickPicksNeedRefresh =
+            forceHeroCarouselRefresh || isFirstHomeViewModelInProcess || !isQuickPicksSnapshotFresh()
 
         isForYouLoading.value = true
 
         try {
             coroutineScope {
-                launch(Dispatchers.IO) {
-                    runCatching { getQuickPicks() }.onFailure { reportException(it) }
+                if (quickPicksNeedRefresh) {
+                    launch(Dispatchers.IO) {
+                        runCatching { getQuickPicks() }.onFailure { reportException(it) }
+                    }
                 }
                 launch(Dispatchers.IO) {
                     runCatching {
@@ -1855,21 +2339,15 @@ class HomeViewModel @Inject constructor(
                 "daily_discover", "from_the_community", "similar_recommendation_0",
             ).intersect(visibleSections.value)
             visibleSections.value = visibleSections.value - sectionsToRestart
-            sectionsToRestart.forEach(::onSectionBecameVisible)
-        }
-
-        // Keep the initial Home shelves responsive before starting this secondary recommendation pass.
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                getForYouShelves()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                reportException(e)
-            } finally {
-                isForYouLoading.value = false
+            sectionsToRestart.forEach {
+                onSectionBecameVisible(
+                    it,
+                    forceRefresh = forceHeroCarouselRefresh || isFirstHomeViewModelInProcess,
+                )
             }
         }
+
+        launchForYouLoad(rotate = forceHeroCarouselRefresh)
 
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
@@ -1887,9 +2365,11 @@ class HomeViewModel @Inject constructor(
             isAccountPlaylistsLoading.value = false
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            enrichQuickPicksFromNetwork()
-            HomeCache.quickPicks = quickPicks.value
+        if (quickPicksNeedRefresh) {
+            viewModelScope.launch(Dispatchers.IO) {
+                enrichQuickPicksFromNetwork()
+                HomeCache.quickPicks = quickPicks.value
+            }
         }
     }
 
@@ -1899,8 +2379,9 @@ class HomeViewModel @Inject constructor(
         isHomeFeedLoading.value = true
         homeFeedJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (!networkConnectivity.networkStatus.value) return@launch
-                withTimeout(20_000L) { fetchHomeFeed() }
+                if (networkConnectivity.networkStatus.value) {
+                    withTimeout(20_000L) { fetchHomeFeed() }
+                }
             } catch (_: TimeoutCancellationException) {
                 // Keep the last successful feed when the connection stalls.
             } catch (e: CancellationException) {
@@ -1959,22 +2440,24 @@ class HomeViewModel @Inject constructor(
             fillQuickPicksFromHome(transformedPage, hideExplicit)
             HomeCache.quickPicks = quickPicks.value
 
-            val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
-            val allowedMoodChips = MoodMixes.chips(transformedChips)
-            val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
-                transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
-            else null
+            if (HOME_MOOD_SECTION_ENABLED) {
+                val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
+                val allowedMoodChips = MoodMixes.chips(transformedChips)
+                val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
+                    transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
+                else null
 
-            if (smartBootEnabled) {
-                (allowedMoodChips.firstOrNull { it.endpoint?.params == savedParamsForChip }
-                    ?: allowedMoodChips.firstOrNull() ?: preferredChip ?: transformedChips?.firstOrNull())
-                    ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
-                    ?.let { chip ->
-                        applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                if (smartBootEnabled) {
+                    (allowedMoodChips.firstOrNull { it.endpoint?.params == savedParamsForChip }
+                        ?: allowedMoodChips.firstOrNull() ?: preferredChip ?: transformedChips?.firstOrNull())
+                        ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
+                        ?.let { chip ->
+                            applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                        }
+                } else {
+                    if (selectedChip.value == null) {
+                        (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
                     }
-            } else {
-                if (selectedChip.value == null) {
-                    (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
                 }
             }
             HomeCache.homePage = homePage.value
@@ -2093,6 +2576,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun updateHomePersonalMixes(page: HomePage?) {
+        if (!HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED) return
         val initialPage = page ?: return
         val initialMixes = initialPage.freshFindOldFavoritePlaylists()
         homePersonalMixes.value = initialMixes
@@ -2152,7 +2636,7 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    load()
+                    load(forceHeroCarouselRefresh = true)
                 }
                 refreshHeroCarousel()
             } finally {
@@ -2179,7 +2663,7 @@ class HomeViewModel @Inject constructor(
                 runCatching { snapshotJson.decodeFromString<SpeedDialSnapshot>(json) }
                     .getOrNull()?.let { cachedSpeedDialSnapshot.value = it }
             }
-            prefs[MoodSnapshotKey]?.let { json ->
+            if (HOME_MOOD_SECTION_ENABLED) prefs[MoodSnapshotKey]?.let { json ->
                 runCatching { snapshotJson.decodeFromString<MoodSnapshot>(json) }
                     .getOrNull()?.let { snapshot ->
                         val restored = snapshot.items.mapNotNull { it.toPlaylistItem() }
@@ -2190,14 +2674,16 @@ class HomeViewModel @Inject constructor(
                             items = snapshot.items.filter { item -> mixes.any { it.id == item.id } }.distinctBy { it.id })
                         cachedMoodSnapshot.value = clean.takeIf { allowedCategory }
                         if (allowedCategory && moodPage.value == null && moodPageJob?.isActive != true) {
-                            publishMoodMixes(mixes, mood, revalidate = false)
+                            moodMixItems.value = mixes
                             loadedMoodParams.value = snapshot.chipParams
                         }
                         if (clean != snapshot) context.dataStore.edit { it[MoodSnapshotKey] = snapshotJson.encodeToString(clean) }
                     }
             }
-            preferredMoodParams.value = cachedMoodSnapshot.value?.chipParams
-                ?: prefs[LastMoodChipParamsKey]
+            if (HOME_MOOD_SECTION_ENABLED) {
+                preferredMoodParams.value = cachedMoodSnapshot.value?.chipParams
+                    ?: prefs[LastMoodChipParamsKey]
+            }
             isMoodPreferenceReady.value = true
             prefs[AccountNameKey]?.takeIf { it.isNotEmpty() }?.let { accountName.value = it }
             prefs[AccountPhotoUrlKey]?.takeIf { it.isNotEmpty() }?.let { accountImageUrl.value = it }
@@ -2220,6 +2706,7 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
+            val prefs = context.dataStore.data.first()
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
             }
@@ -2227,18 +2714,8 @@ class HomeViewModel @Inject constructor(
                 homePage.value = restoredPage
                 updateHomePersonalMixes(restoredPage)
             }
-            if (smartBootEnabled && isHeroCarouselEnabled.value) {
-                context.dataStore.get(HeroCarouselSnapshotKey, "")?.takeIf { it.isNotEmpty() }?.let { json ->
-                    runCatching { snapshotJson.decodeFromString<HeroCarouselSnapshot>(json) }.getOrNull()
-                        ?.takeIf { it.items.isNotEmpty() }?.let { snapshot ->
-                            heroCarouselItems.value = snapshot.items.filterIsInstance<HeroCarouselItem.ArtistRadio>()
-                            previousHeroArtistIds = heroCarouselItems.value
-                                .filterIsInstance<HeroCarouselItem.ArtistRadio>().map { it.artistId }.toSet()
-                            previousFirstHeroArtistId = heroCarouselItems.value
-                                .filterIsInstance<HeroCarouselItem.ArtistRadio>().firstOrNull()?.artistId
-                        }
-                }
-            }
+            if (isHeroCarouselEnabled.value) restoreHeroCarouselSnapshot(prefs)
+            restoreHomeRecommendationSnapshot(prefs)
             quickPicks.value = HomeCache.quickPicks?.take(QUICK_PICKS_TARGET_COUNT)
             HomeCache.quickPicks = quickPicks.value
             keepListening.value = HomeCache.keepListening
@@ -2252,42 +2729,31 @@ class HomeViewModel @Inject constructor(
             communityPlaylists.value = HomeCache.communityPlaylists
             dischiPerTe.value = HomeCache.dischiPerTe
             forYouShelves.value = HomeCache.forYouShelves.orEmpty()
+                .mapNotNull { it.withArtworkOnly() }
+                .take(INITIAL_FOR_YOU_SHELF_COUNT)
+            HomeCache.forYouShelves = forYouShelves.value
+            trackQuickPicksSnapshot()
             if (!HomeCache.isStale() && HomeCache.homePage != null) {
                 homePage.value = HomeCache.homePage
-                if (homePersonalMixes.value.isEmpty()) {
+                if (HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED && homePersonalMixes.value.isEmpty()) {
                     HomeCache.homePage?.freshFindOldFavoritePlaylists()
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { homePersonalMixes.value = it }
                 }
-                if (forYouShelves.value.isEmpty()) {
-                    isForYouLoading.value = true
-                    viewModelScope.launch(Dispatchers.IO) {
-                        try {
-                            getForYouShelves()
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (error: Exception) {
-                            reportException(error)
-                        } finally {
-                            isForYouLoading.value = false
-                        }
-                    }
-                } else {
-                    isForYouLoading.value = false
-                }
+                launchForYouLoad()
                 isHomeFeedLoading.value = false
                 if (YouTube.cookie != null) {
                     viewModelScope.launch(Dispatchers.IO) { loadAccountPlaylists() }
                 } else {
                     isAccountPlaylistsLoading.value = false
                 }
-                refreshHeroCarousel(force = true)
+                refreshHeroCarousel()
                 isPhase1Complete.value = true
                 phase2DischiPerTeDone.value = true
                 phase1Complete.value = true
                 isLoading.value = false
                 refreshHomeFeed()
-                if (quickPicks.value.orEmpty().size < QUICK_PICKS_TARGET_COUNT) {
+                if (!isQuickPicksSnapshotFresh()) {
                     getQuickPicks()
                     enrichQuickPicksFromNetwork()
                     HomeCache.quickPicks = quickPicks.value
@@ -2397,7 +2863,6 @@ class HomeViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        if (moodPostersLazy.isInitialized()) moodPosters.imageLoader.shutdown()
         super.onCleared()
     }
 

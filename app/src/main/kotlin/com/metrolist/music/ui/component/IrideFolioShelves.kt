@@ -35,44 +35,47 @@ import com.metrolist.music.ui.utils.pressScale
 @Composable
 fun irideFolioShelfTypography(): Typography =
     MaterialTheme.typography.let { type ->
-        type.copy(
-            titleMedium =
-                type.titleMedium.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfTitleFontSize,
-                    lineHeight = IrideFolio.ShelfTitleFontSize * 1.35f,
-                ),
-            bodyLarge =
-                type.bodyLarge.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfItemFontSize,
-                    lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
-                ),
-            titleSmall =
-                type.titleSmall.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfItemFontSize,
-                    lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
-                ),
-            bodyMedium =
-                type.bodyMedium.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfDetailFontSize,
-                    lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
-                ),
-            bodySmall =
-                type.bodySmall.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfDetailFontSize,
-                    lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
-                ),
-            labelLarge =
-                type.labelLarge.copy(
-                    fontFamily = folioTypewriterFontFamily(),
-                    fontSize = IrideFolio.ShelfLabelFontSize,
-                    lineHeight = IrideFolio.ShelfLabelFontSize * 1.4f,
-                ),
-        )
+        val typewriterFont = folioTypewriterFontFamily()
+        remember(type, typewriterFont) {
+            type.copy(
+                titleMedium =
+                    type.titleMedium.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfTitleFontSize,
+                        lineHeight = IrideFolio.ShelfTitleFontSize * 1.35f,
+                    ),
+                bodyLarge =
+                    type.bodyLarge.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfItemFontSize,
+                        lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
+                    ),
+                titleSmall =
+                    type.titleSmall.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfItemFontSize,
+                        lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
+                    ),
+                bodyMedium =
+                    type.bodyMedium.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfDetailFontSize,
+                        lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
+                    ),
+                bodySmall =
+                    type.bodySmall.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfDetailFontSize,
+                        lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
+                    ),
+                labelLarge =
+                    type.labelLarge.copy(
+                        fontFamily = typewriterFont,
+                        fontSize = IrideFolio.ShelfLabelFontSize,
+                        lineHeight = IrideFolio.ShelfLabelFontSize * 1.4f,
+                    ),
+            )
+        }
     }
 
 @Composable
@@ -89,6 +92,7 @@ fun IrideFolioShelfHeader(
     showNavigationArrow: Boolean = false,
     titleMaxLines: Int = 2,
     trailingContent: (@Composable () -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         NavigationTitle(
@@ -96,6 +100,7 @@ fun IrideFolioShelfHeader(
             label = label,
             thumbnail = thumbnail,
             onClick = onClick,
+            onLongClick = onLongClick,
             onPlayAllClick = onPlayAllClick,
             onRefreshClick = onRefreshClick,
             isRefreshing = isRefreshing,

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.listentogether
 
+import com.metrolist.music.R
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -1188,7 +1189,7 @@ class ListenTogetherManager
                     connection.seekTo(position)
 
                     try {
-                        connection.service.queueTitle = queueTitle ?: "Listen Together"
+                        connection.service.queueTitle = queueTitle ?: context.getString(R.string.listen_together)
                     } catch (e: Exception) {
                         Timber.tag(TAG).e(e, "Failed to set queue title during applyPlaybackState")
                     }
@@ -1297,7 +1298,7 @@ class ListenTogetherManager
                                         ),
                                     )
                                     try {
-                                        connection.service.queueTitle = "Listen Together"
+                                        connection.service.queueTitle = context.getString(R.string.listen_together)
                                     } catch (e: Exception) {
                                         Timber.tag(TAG).e(e, "Failed to set queue title")
                                     }

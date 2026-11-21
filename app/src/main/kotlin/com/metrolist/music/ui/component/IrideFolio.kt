@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -53,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Density
@@ -268,7 +270,14 @@ object IrideFolio {
 
     val ShelfPagerFooterHeight = 18.dp
     val ShelfMosaicGap = 4.05.dp
-    const val FadeDurationMillis = 440
+    val PlaylistBadgeMinSize = 18.dp
+    val PlaylistBadgeMaxSize = 24.dp
+    val PlaylistBadgeInset = 5.dp
+    val PlaylistBadgeShadowOffset = 1.dp
+    val PlaylistBadgeShadowBlur = 1.dp
+    const val PlaylistBadgeShadowAlpha = 0.28f
+    const val PlaylistBadgeWhiteAlpha = 0.88f
+    const val FadeDurationMillis = 700
     const val TopScrimOpacity = 1f
     val TopScrimFadeHeight = 12.dp
     val TopScrimCameraGap = 8.dp
@@ -335,7 +344,7 @@ object IrideFolio {
     const val SurfaceGrainOpacity = 0.05f
     const val ButtonGrainOpacity = 0.065f
     const val VideoThumbnailRatio = 16f / 9f
-    val VideoThumbnailHeight = 112.dp
+    val VideoThumbnailHeight = 148.dp
     val VideoThumbnailRadius = 12.dp
     val PlayerDisplayInset = 8.dp
     val PlayerViewportFooterGap = 12.dp
@@ -364,6 +373,9 @@ object IrideFolio {
     val ShelfSelectorIconSize = 18.dp
     val ShelfSelectorMaxWidth = 150.dp
     val SongRowHorizontalPadding = 12.dp
+    val ListRowThumbnailPadding = 4.dp
+    val TrackArtworkInset = SongRowHorizontalPadding + ListRowThumbnailPadding
+    val CompactTrackArtworkInset = 14.dp
     val ReleaseSpotlightHeight = 176.dp
     val ReleaseSpotlightCoverSize = 72.dp
     val ReleaseSpotlightPadding = 14.dp
@@ -384,7 +396,6 @@ object IrideFolio {
     val GeneratedPlaylistArtworkSize = 240.dp
     val GeneratedPlaylistArtworkRadius = 12.dp
     const val GeneratedPlaylistArtworkSmoothing = 0.45f
-    const val GeneratedPlaylistBadgeSizeFraction = 0.65f
     val GeneratedPlaylistArtworkShadow = 24.dp
     val GeneratedPlaylistTopPadding = 12.dp
     val GeneratedPlaylistBottomPadding = 20.dp
@@ -403,6 +414,8 @@ object IrideFolio {
     val ControlsHeight = 48.dp
     val ControlsTouchTargetSize = 40.dp
     const val ControlsScale = 0.875f
+    // Shrink Material's default 24.dp menu glyph to 20.dp, matching collection stars.
+    const val ControlsMenuIconScale = 20f / 24f
     val ControlSurfaceSize = 44.dp
     val NavigationSurfaceHeight = 52.dp
     val NavigationHeight = NavigationSurfaceHeight + 8.dp
@@ -491,10 +504,14 @@ object IrideFolio {
 }
 
 internal val LocalIrideFolioScrimColor = staticCompositionLocalOf { Color.Black }
+private val LocalCompactFolioHeaderActions = staticCompositionLocalOf { false }
 
 /** Scale only header controls; page typography and popup rows keep their original density. */
 @Composable
-internal fun IrideFolioCompactControls(content: @Composable () -> Unit) {
+internal fun IrideFolioCompactControls(
+    normalizeHeaderActionIcons: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     val density = LocalDensity.current
     val viewConfiguration = LocalViewConfiguration.current
     val controlsDensity = remember(density) {
@@ -512,6 +529,7 @@ internal fun IrideFolioCompactControls(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalDensity provides controlsDensity,
         LocalViewConfiguration provides controlsViewConfiguration,
+        LocalCompactFolioHeaderActions provides normalizeHeaderActionIcons,
         content = content,
     )
 }
@@ -559,7 +577,7 @@ internal fun IrideFolioOverflowMenu(
     if (sections.none { it.isNotEmpty() }) return
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IrideFolioCompactControls {
+        IrideFolioCompactControls(normalizeHeaderActionIcons = true) {
             IrideFolioMenuButton(
                 expanded = expanded,
                 onClick = { expanded = true },
@@ -591,6 +609,7 @@ internal fun IrideFolioMenuButton(
 ) {
     val progress = rememberIrideFolioFade(if (expanded) 1f else 0f)
     val stroke = MaterialTheme.colorScheme.strokeCard
+    val compactControl = LocalCompactFolioHeaderActions.current
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier.size(IrideFolio.ControlSurfaceSize)
@@ -602,7 +621,22 @@ internal fun IrideFolioMenuButton(
                 ),
         )
         CompositionLocalProvider(LocalRippleConfiguration provides null) {
-            IconButton(onClick = onClick, enabled = enabled, content = content)
+            IconButton(
+                onClick = onClick,
+                enabled = enabled,
+            ) {
+                Box(
+                    Modifier.graphicsLayer {
+                        if (compactControl) {
+                            scaleX = IrideFolio.ControlsMenuIconScale
+                            scaleY = IrideFolio.ControlsMenuIconScale
+                        }
+                    },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    content()
+                }
+            }
         }
     }
 }
@@ -658,9 +692,11 @@ internal fun IrideFolioMenuItem(
     leadingIcon: (@Composable () -> Unit)? = null,
     selected: Boolean = false,
     enabled: Boolean = true,
+    destructive: Boolean = false,
+    itemHeight: Dp = IrideFolio.MenuItemHeight,
     onClick: () -> Unit,
 ) {
-    val menuInk = LocalArtworkContentColor.current ?: Color.White
+    val menuInk = if (destructive) MaterialTheme.colorScheme.error else LocalArtworkContentColor.current ?: Color.White
     val opacity = remember { Animatable(1f) }
     val reducedMotion = rememberReducedMotion()
     LaunchedEffect(enabled, reducedMotion) {
@@ -685,7 +721,7 @@ internal fun IrideFolioMenuItem(
                 disabledLeadingIconColor = menuInk,
                 disabledTrailingIconColor = menuInk,
             ),
-        modifier = Modifier.height(IrideFolio.MenuItemHeight)
+        modifier = Modifier.height(itemHeight)
             .graphicsLayer { alpha = opacity.value }
             .semantics { this.selected = selected },
     )
@@ -711,11 +747,15 @@ internal fun Modifier.irideFolioControlSurface(
     progress: Float,
     backdrop: FrostBackdrop?,
     forceArtworkSurface: Boolean = true,
+    shape: Shape = IrideFolio.ControlsShape,
+    showBorder: Boolean = true,
+    lowPerformanceSurface: Color? = null,
 ): Modifier {
     val stroke = MaterialTheme.colorScheme.strokeCard
     val artworkInk = LocalArtworkContentColor.current
     val artworkBackground = LocalArtworkBackgroundColor.current
     val surfaceProgress = if (forceArtworkSurface && artworkInk != null) 1f else progress
+    val controlBackdrop = backdrop ?: LocalFolioButtonBackdrop.current ?: LocalScreenFrostBackground.current
     return layout { measurable, constraints ->
             val placeable = measurable.measure(constraints)
             // actions can be empty; the surface's own padding must not create a tiny ghost box.
@@ -723,14 +763,18 @@ internal fun Modifier.irideFolioControlSurface(
             else layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
         }
         .frostedNavigationSurface(
-            backdrop ?: LocalFolioButtonBackdrop.current ?: LocalScreenFrostBackground.current,
+            controlBackdrop,
             IrideFolio.frostedSurfaceColor(artworkInk ?: Color.White, artworkBackground),
-            IrideFolio.ControlsShape,
+            shape,
             surfaceProgress,
             surfaceAlpha = IrideFolio.frostedSurfaceAlpha(artworkInk ?: Color.White, artworkBackground),
             observeBackdrop = surfaceProgress > 0f,
+            lowPerformanceSurface = lowPerformanceSurface,
         )
-        .border(1.dp, stroke.copy(alpha = stroke.alpha * surfaceProgress), IrideFolio.ControlsShape)
+        .then(
+            if (showBorder) Modifier.border(1.dp, stroke.copy(alpha = stroke.alpha * surfaceProgress), shape)
+            else Modifier,
+        )
         .padding(2.dp)
 }
 

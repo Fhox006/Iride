@@ -4,7 +4,7 @@ package com.metrolist.music.ui.screens.settings.integrations
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -133,31 +133,43 @@ fun ListenTogetherSettings(
                 is ListenTogetherEvent.RoomCreated -> {}
 
                 is ListenTogetherEvent.JoinApproved -> {
-                    Toast.makeText(context, "Joined room: ${event.roomCode}", Toast.LENGTH_SHORT)
+                    Toast.makeText(context, context.getString(R.string.listen_together_joined_room, event.roomCode), Toast.LENGTH_SHORT)
                         .show()
                 }
 
                 is ListenTogetherEvent.JoinRejected -> {
-                    Toast.makeText(context, "Join rejected: ${event.reason}", Toast.LENGTH_SHORT)
+                    Toast.makeText(context, context.getString(R.string.listen_together_join_rejected, event.reason), Toast.LENGTH_SHORT)
                         .show()
                 }
 
                 is ListenTogetherEvent.JoinRequestReceived -> {
-                    Toast.makeText(context, "${event.username} wants to join", Toast.LENGTH_SHORT)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.listen_together_join_request, event.username),
+                        Toast.LENGTH_SHORT,
+                    )
                         .show()
                 }
 
                 is ListenTogetherEvent.Kicked -> {
-                    Toast.makeText(context, "Kicked: ${event.reason}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.listen_together_kicked, event.reason),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
 
                 is ListenTogetherEvent.ConnectionError -> {
-                    Toast.makeText(context, "Connection error: ${event.error}", Toast.LENGTH_SHORT)
+                    Toast.makeText(context, context.getString(R.string.listen_together_connection_error_details, event.error), Toast.LENGTH_SHORT)
                         .show()
                 }
 
                 is ListenTogetherEvent.ServerError -> {
-                    Toast.makeText(context, "Error: ${event.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.listen_together_error_details, event.message),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
 
                 else -> {}
@@ -439,44 +451,6 @@ fun ListenTogetherSettings(
                                         },
                                 ),
                                 IntegrationCardItem(
-                                    icon = painterResource(R.drawable.cloud),
-                                    title = {
-                                        Text(stringResource(R.string.listen_together_server_url))
-                                    },
-                                    description = {
-                                        Text(
-                                            selectedServer?.let { server ->
-                                                "${server.name} - ${server.location}"
-                                            } ?: serverUrl,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    onClick = { showServerUrlDialog = true },
-                                ),
-                                IntegrationCardItem(
-                                    icon = painterResource(R.drawable.person),
-                                    title = {
-                                        Text(stringResource(R.string.listen_together_username))
-                                    },
-                                    description = {
-                                        Text(username.ifEmpty { stringResource(R.string.not_set) })
-                                    },
-                                    onClick =
-                                        if (roomState == null) {
-                                            { showUsernameDialog = true }
-                                        } else {
-                                            {
-                                                Toast.makeText(
-                                                        context,
-                                                        cannotEditUsernameInRoomStr,
-                                                        Toast.LENGTH_SHORT,
-                                                    )
-                                                    .show()
-                                            }
-                                        },
-                                ),
-                                IntegrationCardItem(
                                     icon = painterResource(R.drawable.done),
                                     title = {
                                         Text(
@@ -593,18 +567,6 @@ fun ListenTogetherSettings(
                                         )
                                     },
                                     onClick = { syncHostVolume = !syncHostVolume },
-                                ),
-                                IntegrationCardItem(
-                                    icon = painterResource(R.drawable.bug_report),
-                                    title = {
-                                        Text(stringResource(R.string.listen_together_view_logs))
-                                    },
-                                    description = {
-                                        Text(
-                                            stringResource(R.string.listen_together_view_logs_desc)
-                                        )
-                                    },
-                                    onClick = { showLogsDialog = true },
                                 ),
                             ),
                     )

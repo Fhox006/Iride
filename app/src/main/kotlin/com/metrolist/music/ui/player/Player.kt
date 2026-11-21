@@ -9,9 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 
 import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.LocalFloatingPanelAppearance
-import com.metrolist.music.ui.component.irideBottomDockEdgeInset
+import com.metrolist.music.ui.component.irideBottomDockHorizontalInset
 import com.metrolist.music.ui.component.iridePlayerExpansionPhase
-import com.metrolist.music.ui.component.rememberDeviceMatchedBottomPanelShape
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
@@ -22,7 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.view.WindowManager
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -195,6 +194,7 @@ import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
 import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
@@ -207,7 +207,7 @@ import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.PillPlayerRow
 import com.metrolist.music.ui.component.PillProgressState
-import com.metrolist.music.ui.component.PlaceholderMediaMetadata
+import com.metrolist.music.ui.component.placeholderMediaMetadata
 import com.metrolist.music.ui.component.IrideMiniPlayerPreview
 import com.metrolist.music.ui.component.IrideMiniPlayerHeight
 import com.metrolist.music.utils.MiniPlayerSnapshotStore
@@ -412,9 +412,25 @@ fun BottomSheetPlayer(
     }
 
     val playbackState by playerConnection.playbackState.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val playbackMetadata by playerConnection.mediaMetadata.collectAsState()
+    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val mediaMetadata = remember(playbackMetadata, currentSong) {
+        playbackMetadata?.let { metadata ->
+            val stored = currentSong?.takeIf { it.id == metadata.id }
+            if (metadata.artists.none { it.name.isNotBlank() } && stored != null) {
+                metadata.copy(artists = stored.toMediaMetadata().artists)
+            } else {
+                metadata
+            }
+        }
+    }
     val videoOpenRequest by playerConnection.videoPlayback.openPlayerRequests.collectAsState()
     val videoPlaybackState by playerConnection.videoPlayback.state.collectAsState()
+    val miniPlayerMetadata = if (videoPlaybackState.isVideo) {
+        videoPlaybackState.audioMetadata ?: mediaMetadata
+    } else {
+        mediaMetadata
+    }
     var consumedVideoOpenRequest by rememberSaveable { mutableStateOf(0L) }
     LaunchedEffect(videoOpenRequest, videoPlaybackState.isVideo, videoPlaybackState.mediaId, mediaMetadata?.id) {
         if (videoOpenRequest > consumedVideoOpenRequest &&
@@ -424,8 +440,17 @@ fun BottomSheetPlayer(
             state.expandSoft()
         }
     }
-    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val favoriteSong by playerConnection.favoriteSong.collectAsState(initial = null)
+    val isEpisodeFavorite = if (currentSong?.song?.isEpisode == true) {
+        favoriteSong?.song?.inLibrary != null
+    } else {
+        favoriteSong?.song?.liked == true
+    }
+    var optimisticFavorite by remember(favoriteSong?.song?.id) { mutableStateOf<Boolean?>(null) }
+    val isFavorite = optimisticFavorite ?: isEpisodeFavorite
+    LaunchedEffect(favoriteSong?.song?.id, isEpisodeFavorite, optimisticFavorite) {
+        if (optimisticFavorite == isEpisodeFavorite) optimisticFavorite = null
+    }
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
 
     val lyricsViewModel: LyricsViewModel = hiltViewModel()
@@ -508,7 +533,7 @@ fun BottomSheetPlayer(
 
     LaunchedEffect(mediaMetadata?.id, playerBackground) {
         if (playerBackground == PlayerBackgroundStyle.GRADIENT) {
-            val currentMetadata = mediaMetadata
+            val currentMetadata = miniPlayerMetadata
             if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
                 val cachedColors = gradientColorsCache[currentMetadata.id]
                 if (cachedColors != null) {
@@ -979,10 +1004,10 @@ fun BottomSheetPlayer(
                         LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
                             if (mediaMetadata?.thumbnailUrl != null) {
                                 val request = ImageRequest.Builder(context)
-                                    .data(mediaMetadata?.thumbnailUrl)
+                                    .data(mediaMetadata.thumbnailUrl)
                                     .size(100, 100)
                                     .allowHardware(false)
-                                    .memoryCacheKey("gradient_${mediaMetadata?.id}")
+                                    .memoryCacheKey("gradient_${mediaMetadata.id}")
                                     .build()
                                 val result = context.imageLoader.execute(request)
                                 currentBitmap = result.image?.toBitmap()
@@ -1005,10 +1030,10 @@ fun BottomSheetPlayer(
                         LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
                             if (mediaMetadata?.thumbnailUrl != null) {
                                 val request = ImageRequest.Builder(context)
-                                    .data(mediaMetadata?.thumbnailUrl)
+                                    .data(mediaMetadata.thumbnailUrl)
                                     .size(100, 100)
                                     .allowHardware(false)
-                                    .memoryCacheKey("gradient_${mediaMetadata?.id}")
+                                    .memoryCacheKey("gradient_${mediaMetadata.id}")
                                     .build()
                                 val result = context.imageLoader.execute(request)
                                 val newBitmap = result.image?.toBitmap()
@@ -1044,7 +1069,7 @@ fun BottomSheetPlayer(
         collapsedContent = {
             val currentMetadata = mediaMetadata
             if (curtainMode) {
-                val displayMetadata = currentMetadata ?: PlaceholderMediaMetadata
+                val displayMetadata = currentMetadata ?: placeholderMediaMetadata()
                 val pillProgressState = remember(positionState, durationState) {
                     PillProgressState(positionState, durationState)
                 }
@@ -1390,6 +1415,7 @@ fun BottomSheetPlayer(
                                             mediaMetadata = mediaMetadata,
                                             navController = navController,
                                             playerBottomSheetState = state,
+                                            showDissolve = true,
                                             onShowDetailsDialog = {
                                                 mediaMetadata.id.let {
                                                     bottomSheetPageState.show {
@@ -1449,6 +1475,7 @@ fun BottomSheetPlayer(
                                 if (isLyricsOrQueue) {
                                     isFullScreen = !isFullScreen
                                 } else {
+                                    optimisticFavorite = !isFavorite
                                     playerConnection.toggleLike()
                                 }
                             },
@@ -1467,8 +1494,6 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(24.dp),
                                 )
                             } else {
-                                val isEpisode = currentSong?.song?.isEpisode == true
-                                val isFavorite = if (isEpisode) favoriteSong?.song?.inLibrary != null else favoriteSong?.song?.liked == true
                                 Icon(
                                     painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
                                     contentDescription = null,
@@ -1893,10 +1918,15 @@ fun BottomSheetPlayer(
             }
 
             else -> {
-                val isEpisode = currentSong?.song?.isEpisode == true
-                val isFavorite = if (isEpisode) favoriteSong?.song?.inLibrary != null else favoriteSong?.song?.liked == true
-
                 mediaMetadata?.let {
+                    val horizontalPadding = irideBottomDockHorizontalInset() * (1f - iridePlayerExpansionPhase(state.progress))
+                    val panelShape = FolioShape(
+                        topStart = 32.dp,
+                        topEnd = 32.dp,
+                        bottomStart = 50.dp,
+                        bottomEnd = 50.dp,
+                    )
+                    val edgeAlpha = irideMp3ShellAlpha(state.progress)
                     IrideMp3PlayerContent(
                         mediaMetadata = it,
                         position = sliderPosition ?: effectivePosition,
@@ -1925,7 +1955,10 @@ fun BottomSheetPlayer(
                                 playerConnection.seekToNext()
                             }
                         },
-                        onFavoriteClick = { playerConnection.service.toggleLike() },
+                        onFavoriteClick = {
+                            optimisticFavorite = !isFavorite
+                            playerConnection.service.toggleLike()
+                        },
                         onLyricsOptions = {
                             menuState.show(anchored = true) {
                                 com.metrolist.music.ui.menu.LyricsMenu(
@@ -1978,14 +2011,18 @@ fun BottomSheetPlayer(
                         bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding(),
                         bridgeState = bridgeState,
                         modifier = Modifier
-                            .padding(horizontal = irideBottomDockEdgeInset() * (1f - iridePlayerExpansionPhase(state.progress)))
-                            .clip(rememberDeviceMatchedBottomPanelShape(
-                                horizontalPadding = irideBottomDockEdgeInset() * (1f - iridePlayerExpansionPhase(state.progress)),
-                                additionalBottomSpacing = 0.dp,
-                                topRadius = 32.dp,
-                                bottomSpacing = 0.dp,
-                                simpleOutline = true,
-                            ))
+                            .padding(horizontal = horizontalPadding)
+                            .clip(panelShape)
+                            .border(
+                                width = 0.75.dp,
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.10f * edgeAlpha),
+                                        Color.White.copy(alpha = 0.035f * edgeAlpha),
+                                    ),
+                                ),
+                                shape = panelShape,
+                            )
                             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                     )
                 }

@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -36,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.tappableElement
@@ -44,7 +47,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import sv.lib.squircleshape.SquircleShape
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
@@ -90,6 +92,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -103,7 +106,6 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -115,11 +117,13 @@ import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
+import com.metrolist.music.ui.player.PlaybackErrorIndicator
 import com.metrolist.music.ui.player.irideReportRect
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.valentinilk.shimmer.shimmer
@@ -130,9 +134,10 @@ import kotlinx.coroutines.withContext
 
 // Shared with BottomSheetPlayer's curtain collapsedContent (Player.kt) — the New Iride UI curtain
 // shows this same "no track yet" placeholder instead of ever falling back to this classic pill.
-internal val PlaceholderMediaMetadata = MediaMetadata(
+@Composable
+internal fun placeholderMediaMetadata() = MediaMetadata(
     id = "",
-    title = "Tap a track to start listening",
+    title = stringResource(R.string.tap_track_to_start),
     artists = emptyList(),
     duration = 0,
 )
@@ -153,18 +158,31 @@ internal val IrideMiniPlayerCoverRadius = IrideFolio.ControlsCornerRadius -
 internal val IrideMiniPlayerNavigationSpacing = 0.dp
 
 @Composable
-internal fun irideBottomDockEdgeInset(): Dp {
+internal fun irideBottomDockHorizontalInset(): Dp {
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
-    val bars = WindowInsets.systemBars
-    val buttons = WindowInsets.tappableElement
+    val safeDrawing = WindowInsets.safeDrawing
     return with(density) {
-        // Gesture navigation can share its empty inset with a floating surface. Button navigation
-        // and side bars still need clearance; all three edges use the same physical distance.
         maxOf(
             IrideFolio.HorizontalPadding.roundToPx(),
-            bars.getLeft(density, direction),
-            bars.getRight(density, direction),
+            safeDrawing.getLeft(density, direction),
+            safeDrawing.getRight(density, direction),
+        ).toDp()
+    }
+}
+
+@Composable
+internal fun irideBottomDockBottomInset(): Dp {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val safeDrawing = WindowInsets.safeDrawing
+    val buttons = WindowInsets.tappableElement
+    return with(density) {
+        maxOf(
+            IrideFolio.HorizontalPadding.roundToPx(),
+            safeDrawing.getLeft(density, direction),
+            safeDrawing.getRight(density, direction),
+            safeDrawing.getBottom(density),
             buttons.getBottom(density),
         ).toDp()
     }
@@ -172,7 +190,7 @@ internal fun irideBottomDockEdgeInset(): Dp {
 
 internal fun Modifier.irideBottomDockBounds(): Modifier = composed {
     fillMaxWidth()
-        .padding(horizontal = irideBottomDockEdgeInset())
+        .padding(horizontal = irideBottomDockHorizontalInset())
 }
 
 private fun Modifier.irideMiniPlayerBounds() =
@@ -438,7 +456,7 @@ private fun PillContent(
     }
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val effectiveMetadata = mediaMetadata ?: PlaceholderMediaMetadata
+    val effectiveMetadata = mediaMetadata ?: placeholderMediaMetadata()
     val playbackState by playerConnection.playbackState.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
@@ -709,7 +727,9 @@ fun PillPlayerRow(
 
             favoriteSongId?.let {
                 PillFavoriteButton(
-                    songId = it,
+                    songId = displayMetadata.id,
+                    isEpisode = displayMetadata.isEpisode,
+                    isVideoSong = displayMetadata.isVideoSong,
                     onSurfaceColor = onSurfaceColor,
                     playerConnection = playerConnection,
                 )
@@ -953,40 +973,53 @@ internal fun PillSongInfo(
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
         }
-        AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
-            Text(
-                text = stringResource(R.string.error_playing),
-                color = errorColor,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        PlaybackErrorIndicator(hasPlaybackError = error != null)
     }
 }
 
 @Composable
 private fun PillFavoriteButton(
     songId: String,
+    isEpisode: Boolean,
+    isVideoSong: Boolean,
     onSurfaceColor: Color,
     playerConnection: PlayerConnection,
 ) {
-    val database = LocalDatabase.current
-    val librarySong by database.song(songId).collectAsState(initial = null)
-    val isEpisode = librarySong?.song?.isEpisode == true
-    val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+    val favoriteSong by playerConnection.favoriteSong.collectAsState(initial = null)
+    val currentFavorite = favoriteSong?.takeIf { isVideoSong || it.id == songId }?.song
+    val isLikedFromDatabase = if (isEpisode) {
+        currentFavorite?.inLibrary != null
+    } else {
+        currentFavorite?.liked == true
+    }
+    var optimisticLiked by remember(songId) { mutableStateOf<Boolean?>(null) }
+    val isLiked = optimisticLiked ?: isLikedFromDatabase
+    LaunchedEffect(songId, currentFavorite?.id, isLikedFromDatabase, optimisticLiked) {
+        if (optimisticLiked != null && currentFavorite != null && optimisticLiked == isLikedFromDatabase) {
+            optimisticLiked = null
+        }
+    }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(IrideBottomDockTouchTargetSize)
-            .clickable { playerConnection.service.toggleLike() },
+            .clip(CircleShape),
     ) {
-        Icon(
-            painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+        IrideOutlineIconButton(
+            onClick = {
+                optimisticLiked = !isLiked
+                playerConnection.toggleLike()
+            },
+            icon = if (isLiked) R.drawable.favorite else R.drawable.favorite_border,
             contentDescription = null,
+            pressEffect = IridePressEffect.Punch,
             tint = onSurfaceColor,
-            modifier = Modifier.size(24.dp),
+            size = IrideBottomDockTouchTargetSize,
+            iconSize = 24.dp,
+            interactionSource = interactionSource,
+            modifier = Modifier.pillButtonPressScale(interactionSource),
         )
     }
 }
@@ -1005,20 +1038,31 @@ private fun PillPlayPauseButton(
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
     val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
+    val interactionSource = remember { MutableInteractionSource() }
 
-    IconButton(
-        modifier = Modifier.size(IrideBottomDockTouchTargetSize),
-        onClick = {
-            if (isListenTogetherGuest) return@IconButton
-            if (isCasting) {
-                if (castIsPlaying) castHandler?.pause() else castHandler?.play()
-            } else if (playbackState == Player.STATE_ENDED) {
-                playerConnection.player.seekTo(0, 0)
-                playerConnection.player.playWhenReady = true
-            } else {
-                playerConnection.togglePlayPause()
-            }
-        },
+    Box(
+        modifier = Modifier
+            .size(IrideBottomDockTouchTargetSize)
+            .clip(CircleShape)
+            .pillButtonPressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClick = {
+                    if (!isListenTogetherGuest) {
+                        if (isCasting) {
+                            if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                        } else if (playbackState == Player.STATE_ENDED) {
+                            playerConnection.player.seekTo(0, 0)
+                            playerConnection.player.playWhenReady = true
+                        } else {
+                            playerConnection.togglePlayPause()
+                        }
+                    }
+                },
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(
@@ -1044,10 +1088,21 @@ private fun PillSkipNextButton(
     useSharpIcons: Boolean = false,
 ) {
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
-    IconButton(
-        modifier = Modifier.size(IrideBottomDockTouchTargetSize),
-        enabled = canSkipNext && !isListenTogetherGuest,
-        onClick = { playerConnection.seekToNext() },
+    val interactionSource = remember { MutableInteractionSource() }
+    val enabled = canSkipNext && !isListenTogetherGuest
+    Box(
+        modifier = Modifier
+            .size(IrideBottomDockTouchTargetSize)
+            .clip(CircleShape)
+            .pillButtonPressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = { playerConnection.seekToNext() },
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             // Apple-style double-chevron (>>) for skip-next everywhere in the player.
@@ -1056,6 +1111,33 @@ private fun PillSkipNextButton(
             tint = if (canSkipNext && !isListenTogetherGuest) onSurfaceColor else onSurfaceColor.copy(alpha = 0.3f),
             modifier = Modifier.size(28.dp),
         )
+    }
+}
+
+@Composable
+private fun Modifier.pillButtonPressScale(
+    interactionSource: MutableInteractionSource,
+): Modifier {
+    val reducedMotion = rememberReducedMotion()
+    if (reducedMotion) return this
+    var pressed by remember(interactionSource) { mutableStateOf(false) }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collectLatest { interaction ->
+            pressed = when (interaction) {
+                is PressInteraction.Press -> true
+                is PressInteraction.Release, is PressInteraction.Cancel -> false
+                else -> pressed
+            }
+        }
+    }
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = tween(durationMillis = 90, easing = EaseInOut),
+        label = "miniPlayerButtonPress",
+    )
+    return graphicsLayer {
+        scaleX = scale
+        scaleY = scale
     }
 }
 

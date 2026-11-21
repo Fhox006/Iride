@@ -7,6 +7,19 @@ import org.junit.Test
 
 class SearchSessionStateTest {
     @Test
+    fun openingASectionDiscardsDraftAndResultsBeforeReturningToGenres() {
+        val editing = SearchSessionState().submit("Radiohead").open()
+        val landing = editing.leaveForSection()
+        assertEquals("", landing.submittedQuery)
+        assertEquals(SearchSceneMode.Landing, landing.event.mode)
+        assertTrue(landing.event.revision > editing.event.revision)
+        assertFalse(landing.event.confirmsSearch)
+        assertFalse(landing.event.returnsToRoot)
+        assertEquals(landing, landing.finish(editing.event.revision))
+        assertEquals("", landing.restoredQuery)
+    }
+
+    @Test
     fun firstAndRepeatedManualSearchAlwaysConfirm() {
         var state = SearchSessionState()
         repeat(20) {

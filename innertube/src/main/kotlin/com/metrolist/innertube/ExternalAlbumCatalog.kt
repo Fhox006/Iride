@@ -4,6 +4,7 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.AlbumPage
+import com.metrolist.innertube.utils.parseAlbumReleaseDate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -71,19 +72,24 @@ internal object ExternalAlbumCatalog {
 
     suspend fun releaseDate(title: String, artist: String?, year: Int?, country: String): String? = optional {
         if (title.isBlank() || artist.isNullOrBlank()) return@optional null
-        rows("search", mapOf(
+        matchingReleaseDate(title, artist, year, rows("search", mapOf(
             "term" to "$artist $title",
             "entity" to "album",
             "country" to country,
             "limit" to "50",
-        )).asSequence()
+        )))
+    }
+
+    internal fun matchingReleaseDate(title: String, artist: String, year: Int?, rows: List<JsonObject>): String? =
+        rows.asSequence()
             .filter { it.text("wrapperType") == "collection" && it.text("collectionType") == "Album" }
             .filter { releaseName(it.text("collectionName").orEmpty()) == releaseName(title) }
             .filter { row -> credits(row.text("artistName").orEmpty()).any { it == normalize(artist) } }
-            .sortedBy { row -> if (year != null && row.text("releaseDate")?.take(4)?.toIntOrNull() == year) 0 else 1 }
-            .mapNotNull { row -> row.text("releaseDate")?.take(10)?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) } }
-            .firstOrNull()
-    }
+            .mapNotNull { row -> row.text("releaseDate")?.take(10)?.takeIf { date ->
+                val parsed = parseAlbumReleaseDate(date)
+                date.length == 10 && parsed != null && (year == null || parsed.year == year)
+            } }
+            .minOrNull()
 
     internal fun matchingArtistId(name: String, artists: List<JsonObject>): String? = artists
         .filter { it.text("wrapperType") == "artist" && it.text("artistName")?.trim()?.equals(name.trim(), ignoreCase = true) == true }

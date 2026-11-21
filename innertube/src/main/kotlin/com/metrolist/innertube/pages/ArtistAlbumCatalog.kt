@@ -3,24 +3,37 @@ package com.metrolist.innertube.pages
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.utils.albumReleaseDate
+import java.time.LocalDate
+import java.util.Locale
 
 fun List<AlbumItem>.sortedByReleaseDate(): List<AlbumItem> = sortedWith(
     compareBy<AlbumItem> { it.releaseDateSortKey() == null }
         .thenByDescending { it.releaseDateSortKey() }
-        .thenBy { it.title.lowercase() },
+        .thenBy { it.title.lowercase(Locale.ROOT) }
+        .thenBy { it.id },
 )
 
-private fun AlbumItem.releaseDateSortKey(): String? {
-    val date = releaseDate
-    val key = when {
-        date?.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) == true -> date
-        date?.matches(Regex("\\d{4}-\\d{2}")) == true -> "$date-01"
-        date?.matches(Regex("\\d{4}")) == true -> "$date-01-01"
-        year != null -> "${year.toString().padStart(4, '0')}-01-01"
-        else -> null
+private fun AlbumItem.releaseDateSortKey() = albumReleaseDate(releaseDate, year)
+
+/** Select the latest release from YouTube's artist shelves without treating catalog-only matches as confirmed. */
+fun ArtistPage.latestNativeRelease(): Pair<ArtistSection, AlbumItem>? = sections.asSequence()
+    .filter { section ->
+        val title = section.title
+        val isReleaseShelf = listOf("album", "singl", "singol", "EP", "latest", "uscita", "release")
+            .any { title.contains(it, ignoreCase = true) }
+        val isOtherArtistsShelf = listOf(
+            "appears on", "featured on", "compilation", "compare in", "presente in", "presente su", "raccolta",
+        ).any { title.contains(it, ignoreCase = true) }
+        isReleaseShelf && !isOtherArtistsShelf
     }
-    return key
-}
+    .flatMap { section ->
+        section.items.asSequence()
+            .filterIsInstance<AlbumItem>()
+            .filterNot { it.id.startsWith("itunes:") || it.browseId.startsWith("itunes:") }
+            .map { section to it }
+    }
+    .maxByOrNull { (_, album) -> albumReleaseDate(album.releaseDate, album.year) ?: LocalDate.MIN }
 
 /** Add credited catalog releases to the artist's own shelves, leaving other shelves intact. */
 fun ArtistPage.withCatalogAlbums(

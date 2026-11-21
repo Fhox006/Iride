@@ -5,6 +5,8 @@
 
 package com.metrolist.music.api
 
+import android.content.Context
+import com.metrolist.music.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -34,12 +36,15 @@ object OpenRouterStreamingService {
     private val json = Json { ignoreUnknownKeys = true }
 
     private suspend fun validateAndRefreshKey(
+        context: Context,
         apiKey: String,
         readKeyFromPrefs: suspend () -> String,
     ): String {
         if (apiKey.isNotBlank()) return apiKey
         val fresh = readKeyFromPrefs()
-        if (fresh.isBlank()) throw IllegalStateException("API key not configured")
+        if (fresh.isBlank()) {
+            throw IllegalStateException(context.getString(R.string.ai_error_api_key_required))
+        }
         return fresh
     }
 
@@ -64,6 +69,7 @@ object OpenRouterStreamingService {
         }
 
     fun streamTranslation(
+        context: Context,
         text: String,
         targetLanguage: String,
         apiKey: String,
@@ -75,15 +81,19 @@ object OpenRouterStreamingService {
     ): Flow<StreamChunk> =
         flow {
             if (text.isBlank()) {
-                emit(StreamChunk.Error("Input text is empty"))
+                emit(StreamChunk.Error(context.getString(R.string.ai_error_lyrics_empty)))
                 return@flow
             }
 
             val effectiveKey =
                 try {
-                    validateAndRefreshKey(apiKey, readKeyFromPrefs ?: { apiKey })
+                    validateAndRefreshKey(context, apiKey, readKeyFromPrefs ?: { apiKey })
                 } catch (e: IllegalStateException) {
-                    emit(StreamChunk.Error(e.message ?: "API key not configured"))
+                    emit(
+                        StreamChunk.Error(
+                            e.message ?: context.getString(R.string.ai_error_api_key_required)
+                        )
+                    )
                     return@flow
                 }
             var activeKey = effectiveKey
@@ -194,7 +204,11 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         keyRefreshed = true
                         firstResponse = client.newCall(buildRequest(activeKey)).execute()
                     } else {
-                        emit(StreamChunk.Error("API key invalid or expired"))
+                        emit(
+                            StreamChunk.Error(
+                                context.getString(R.string.ai_error_api_key_invalid)
+                            )
+                        )
                         return@flow
                     }
                 }
@@ -206,9 +220,21 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         val rawBody = response.body?.string() ?: "(empty body)"
                         Timber.e("API error [${response.code}] raw body: $rawBody")
                         if (response.code == 401 || response.code == 403) {
-                            emit(StreamChunk.Error("API key invalid or expired"))
+                            emit(
+                                StreamChunk.Error(
+                                    context.getString(R.string.ai_error_api_key_invalid)
+                                )
+                            )
                         } else {
-                            emit(StreamChunk.Error("HTTP ${response.code}: $rawBody"))
+                            emit(
+                                StreamChunk.Error(
+                                    context.getString(
+                                        R.string.ai_error_http_response,
+                                        response.code,
+                                        rawBody,
+                                    )
+                                )
+                            )
                         }
                         return@flow
                     }
@@ -233,7 +259,12 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                             emit(StreamChunk.Complete(translatedLines))
                                         }.onFailure { error ->
                                             Timber.e(error, "Failed to parse translation")
-                                            emit(StreamChunk.Error(error.message ?: "Parsing failed"))
+                                            emit(
+                                                StreamChunk.Error(
+                                                    error.message
+                                                        ?: context.getString(R.string.ai_error_parse_failed)
+                                                )
+                                            )
                                         }
                                     return@flow
                                 }
@@ -269,13 +300,22 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             .onSuccess { translatedLines ->
                                 emit(StreamChunk.Complete(translatedLines))
                             }.onFailure { error ->
-                                emit(StreamChunk.Error(error.message ?: "Parsing failed"))
+                                emit(
+                                    StreamChunk.Error(
+                                        error.message
+                                            ?: context.getString(R.string.ai_error_parse_failed)
+                                    )
+                                )
                             }
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Streaming error")
-                emit(StreamChunk.Error(e.message ?: "Unknown error"))
+                emit(
+                    StreamChunk.Error(
+                        e.message ?: context.getString(R.string.error_unknown)
+                    )
+                )
             }
         }.flowOn(Dispatchers.IO)
 

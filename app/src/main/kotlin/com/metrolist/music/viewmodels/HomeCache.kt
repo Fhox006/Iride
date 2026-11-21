@@ -9,6 +9,15 @@ import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.SimilarRecommendation
 
 object HomeCache {
+    private var viewModelCreatedInProcess = false
+
+    @Synchronized
+    fun markViewModelCreated(): Boolean {
+        val first = !viewModelCreatedInProcess
+        viewModelCreatedInProcess = true
+        return first
+    }
+
     var homePage: HomePage? = null
     var quickPicks: List<Song>? = null
     var keepListening: List<LocalItem>? = null

@@ -4,7 +4,7 @@ package com.metrolist.music.ui.menu
 import androidx.compose.foundation.shape.CircleShape
 
 import android.content.Intent
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -108,6 +108,7 @@ import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.ui.component.DefaultDialog
@@ -153,6 +154,7 @@ fun SongMenu(
     playlistBrowseId: String? = null,
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
+    sourceMetadata: MediaMetadata? = null,
     onHistoryRemoved: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -512,7 +514,7 @@ fun SongMenu(
                     title = { Text(text = stringResource(R.string.remove_download)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.offline),
+                            painter = painterResource(R.drawable.track_downloaded),
                             contentDescription = null,
                         )
                     },
@@ -554,7 +556,7 @@ fun SongMenu(
                     description = { Text(text = stringResource(R.string.download_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.download),
+                            painter = painterResource(R.drawable.track_download),
                             contentDescription = null,
                         )
                     },
@@ -686,13 +688,7 @@ fun SongMenu(
                         title = {
                             Text(
                                 text =
-                                    stringResource(
-                                        if (isPodcastSubscribed) {
-                                            R.string.iride_remove_star
-                                        } else {
-                                            R.string.iride_star
-                                        }
-                                    )
+                                    stringResource(R.string.iride_star)
                             )
                         },
                         description = {
@@ -739,7 +735,7 @@ fun SongMenu(
                                             PodcastEntity(
                                                     id = podcastId,
                                                     title =
-                                                        song.song.albumName ?: "Unknown Podcast",
+                                                        song.song.albumName ?: context.getString(R.string.unknown_podcast),
                                                     author = song.artists.firstOrNull()?.name,
                                                     thumbnailUrl = song.song.thumbnailUrl,
                                                 )
@@ -929,7 +925,7 @@ fun SongMenu(
         }
     }
 
-    val favoriteItem = favoriteMenuItem(song, database, syncUtils, onDismiss)
+    val favoriteItem = favoriteMenuItem(song, sourceMetadata ?: song.toMediaMetadata(), database, syncUtils, onDismiss)
     val shareItem =
         Material3MenuItemData(
             title = { Text(stringResource(R.string.share)) },
@@ -976,9 +972,10 @@ fun SongMenu(
     val menuScrollState = rememberLazyListState()
     val menuOverscrollPull = rememberRubberBandPull()
     val density = LocalDensity.current
+    val menuItemHeight = 36.dp
     val menuContentHeight =
         with(density) {
-            sections.sumOf { it.size } * IrideFolio.MenuItemHeight.roundToPx() +
+            sections.sumOf { it.size } * menuItemHeight.roundToPx() +
                 (sections.size - 1).coerceAtLeast(0) *
                     (IrideFolio.MenuSectionVerticalPadding.roundToPx() * 2 +
                         IrideFolio.MenuDividerThickness.roundToPx()) +
@@ -1006,6 +1003,7 @@ fun SongMenu(
                     items(section) { action ->
                         IrideFolioMenuItem(
                             text = action.title,
+                            itemHeight = menuItemHeight,
                             selected = action.selected,
                             leadingIcon =
                                 action.icon?.let { icon ->
@@ -1057,6 +1055,7 @@ fun SongMenu(
 @Composable
 private fun favoriteMenuItem(
     song: Song,
+    metadata: MediaMetadata,
     database: MusicDatabase,
     syncUtils: SyncUtils,
     onDismiss: () -> Unit,
@@ -1065,10 +1064,7 @@ private fun favoriteMenuItem(
     return Material3MenuItemData(
         title = {
             Text(
-                stringResource(
-                    if (optimisticFavorite) R.string.iride_remove_star
-                    else R.string.iride_star
-                )
+                stringResource(R.string.iride_star)
             )
         },
         icon = {
@@ -1081,9 +1077,10 @@ private fun favoriteMenuItem(
         },
         onClick = {
             optimisticFavorite = !optimisticFavorite
-            val updatedSong = song.song.toggleLike(syncToYouTube = false)
-            database.query { upsert(updatedSong) }
-            if (!song.song.isLocal) syncUtils.likeSong(updatedSong)
+            database.query {
+                val updatedSong = toggleSongLike(song.song, metadata)
+                syncUtils.likeSong(updatedSong)
+            }
             onDismiss()
         },
     )

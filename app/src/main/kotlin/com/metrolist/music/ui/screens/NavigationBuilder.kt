@@ -72,6 +72,7 @@ import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
 import com.metrolist.music.ui.screens.settings.StorageSettings
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
+import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.ui.screens.SpotifyImportScreen
 import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
 import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
@@ -91,15 +92,22 @@ fun NavGraphBuilder.NavigationBuilder(
     latestVersionName: String,
     activity: Activity,
     snackbarHostState: SnackbarHostState,
+    homeUpdateVersion: String?,
+    homeUpdateDownloadState: UpdateDownloadState,
+    onHomeUpdateClick: () -> Unit,
 ) {
     portraitComposable("onboarding") {
         OnboardingScreen(navController = navController)
     }
 
     portraitComposable(Screens.Home.route) {
-        CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-            HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
-        }
+        HomeScreen(
+            navController = navController,
+            snackbarHostState = snackbarHostState,
+            updateVersion = homeUpdateVersion,
+            updateDownloadState = homeUpdateDownloadState,
+            onUpdateClick = onHomeUpdateClick,
+        )
     }
 
     portraitComposable(
@@ -211,10 +219,13 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     portraitComposable(
-        route = "album/{albumId}",
-        arguments = listOf(navArgument("albumId") { type = NavType.StringType })
-    ) {
-        AlbumScreen(navController)
+        route = "album/{albumId}?offline={offline}",
+        arguments = listOf(
+            navArgument("albumId") { type = NavType.StringType },
+            navArgument("offline") { type = NavType.BoolType; defaultValue = false },
+        )
+    ) { backStackEntry ->
+        AlbumScreen(navController, isOffline = backStackEntry.arguments?.getBoolean("offline") == true)
     }
 
     portraitComposable(
@@ -298,10 +309,13 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     portraitComposable(
-        route = "online_playlist/{playlistId}",
-        arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
-    ) {
-        OnlinePlaylistScreen(navController)
+        route = "online_playlist/{playlistId}?offline={offline}",
+        arguments = listOf(
+            navArgument("playlistId") { type = NavType.StringType },
+            navArgument("offline") { type = NavType.BoolType; defaultValue = false },
+        )
+    ) { backStackEntry ->
+        OnlinePlaylistScreen(navController, isOffline = backStackEntry.arguments?.getBoolean("offline") == true)
     }
 
     portraitComposable(
@@ -312,29 +326,29 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     portraitComposable(
-        route = "local_playlist/{playlistId}",
-        arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+        route = "local_playlist/{playlistId}?offline={offline}",
+        arguments = listOf(
+            navArgument("playlistId") { type = NavType.StringType },
+            navArgument("offline") { type = NavType.BoolType; defaultValue = false },
+        )
     ) { backStackEntry ->
         val market = ChartPlaylistIdentity.market(backStackEntry.arguments?.getString("playlistId").orEmpty())
         if (market == null) {
-            LocalPlaylistScreen(navController)
+            LocalPlaylistScreen(navController, isOffline = backStackEntry.arguments?.getBoolean("offline") == true)
         } else {
-            LaunchedEffect(backStackEntry.id) {
-                if (navController.currentBackStackEntry == backStackEntry) {
-                    navController.navigate("new_releases_chart/${market.code}") {
-                        popUpTo(backStackEntry.destination.id) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-            }
+            // Keep the same back-stack entry that owns the selected playlist artwork.
+            DailyChartScreen(navController, englishTitle = true)
         }
     }
 
     portraitComposable(
-        route = "auto_playlist/{playlist}",
-        arguments = listOf(navArgument("playlist") { type = NavType.StringType })
-    ) {
-        AutoPlaylistScreen(navController)
+        route = "auto_playlist/{playlist}?offline={offline}",
+        arguments = listOf(
+            navArgument("playlist") { type = NavType.StringType },
+            navArgument("offline") { type = NavType.BoolType; defaultValue = false },
+        )
+    ) { backStackEntry ->
+        AutoPlaylistScreen(navController, isOffline = backStackEntry.arguments?.getBoolean("offline") == true)
     }
 
     portraitComposable(
@@ -439,6 +453,10 @@ fun NavGraphBuilder.NavigationBuilder(
 
     portraitComposable("settings/about") {
         AboutScreen(navController)
+    }
+
+    portraitComposable(IrideMonthlyDropRoute) {
+        IrideMonthlyDropScreen(navController)
     }
 
     portraitComposable("settings/equalizer") {

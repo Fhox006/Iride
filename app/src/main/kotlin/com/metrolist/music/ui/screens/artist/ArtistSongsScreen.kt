@@ -54,6 +54,7 @@ import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.SongMenu
@@ -185,10 +186,7 @@ fun ArtistSongsScreen(
                                     }
                                 }
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = null,
-                                )
+                                TrackOverflowIcon()
                             }
                         },
                         modifier =

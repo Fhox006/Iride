@@ -107,7 +107,7 @@ fun BottomSheet(
     val gestureLock = remember { mutableStateOf(false) }
     val cornerRadius = when {
         !selfPositions -> 0.dp
-        expandedTopInset > 0.dp -> 16.dp + 16.dp * state.progress.coerceIn(0f, 1f)
+        expandedTopInset > 0.dp -> iridePlayerPanelCornerRadius(state.progress)
         !state.isExpanded -> 16.dp
         else -> 0.dp
     }

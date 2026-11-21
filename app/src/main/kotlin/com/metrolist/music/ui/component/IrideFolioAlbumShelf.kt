@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.music.R
+import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -39,14 +41,23 @@ fun IrideFolioAlbumShelf(
                 }
             }
         } else {
-            SharedYouTubePlaylistRow(albums, key = { it.id }, contentPadding = IrideFolio.HorizontalPadding, modifier = modifier) { album ->
-                YouTubeGridItem(
-                    item = album,
-                    isActive = activeAlbumId == album.id,
-                    isPlaying = isPlaying,
-                    coroutineScope = coroutineScope,
-                    modifier = Modifier.irideFolioCombinedClickable(onClick = { onClick(album) }, onLongClick = { onLongClick(album) }),
-                )
+            CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                SharedYouTubePlaylistRow(
+                    albums,
+                    key = { it.id },
+                    contentPadding = IrideFolio.HorizontalPadding,
+                    modifier = modifier,
+                    prefetchArtwork = { it.thumbnail.resize(448, 448) },
+                ) { album ->
+                    YouTubeGridItem(
+                        item = album,
+                        isActive = activeAlbumId == album.id,
+                        isPlaying = isPlaying,
+                        coroutineScope = coroutineScope,
+                        size = currentGridThumbnailHeight(),
+                        modifier = Modifier.irideFolioCombinedClickable(onClick = { onClick(album) }, onLongClick = { onLongClick(album) }),
+                    )
+                }
             }
         }
     }

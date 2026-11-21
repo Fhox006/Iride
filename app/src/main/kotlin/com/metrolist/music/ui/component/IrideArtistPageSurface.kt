@@ -28,6 +28,7 @@ internal fun IrideArtistPageSurface(artistId: String, content: @Composable () ->
     IrideArtworkSurface(
         backgroundColor = tint,
         contentColor = Color.White,
+        lowPerformanceSurfaceColor = tint,
         modifier = Modifier.fillMaxSize(),
     ) { content() }
 }

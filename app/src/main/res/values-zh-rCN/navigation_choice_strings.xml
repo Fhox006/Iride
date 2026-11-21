@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_continue_anyway">仍然继续</string>
+    <string name="navigation_choice_title">你确定吗？</string>
+    <string name="navigation_choice_heart">设计师用心打造。</string>
+    <string name="navigation_choice_motion">有些动作和细节需要手势。</string>
+    <string name="navigation_choice_support">按钮导航的支持有限。</string>
+    <string name="navigation_choice_alternatives">如果您愿意，可以选择免费的替代品。</string>
+    <string name="navigation_choice_confirm">我还是想用Iride</string>
+    <string name="navigation_choice_close">关闭</string>
+    <string name="navigation_choice_save_failed">无法保存。请再试一次。</string>
+    <string name="navigation_choice_browser_failed">没有可用的浏览器。</string>
+    <string name="navigation_choice_open_repository">在 GitHub 上打开 %1$s</string>
+</resources>

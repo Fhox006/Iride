@@ -1,33 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<!-- Upstream InnerTune strings -->
-<!-- Do not add new features here -->
-<!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
-<!-- "InnerTune" is replaced with "Iride" -->
-<!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
-
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- Bottom navigation -->
-    <string name="home">Główna</string>
-    <string name="new_home">Home</string>
-    <string name="old_home">Old Home</string>
+    <string name="home">Strona główna</string>
+    <string name="new_home">Strona główna</string>
+    <string name="old_home">Poprzednia strona główna</string>
     <string name="what_new">Nowości</string>
     <string name="songs">Utwory</string>
     <string name="all_tracks">Wszystkie utwory</string>
     <string name="artists">Artyści</string>
     <string name="albums">Albumy</string>
     <string name="playlists">Playlisty</string>
-    <string name="mixes">Mixes</string>
-
-    <!-- Top bar -->
-        <plurals name="n_selected">
+    <string name="mixes">Miksy</string>
+    <plurals name="n_selected">
         <item quantity="one">%d zaznaczony</item>
         <item quantity="few">%d zaznaczone</item>
         <item quantity="many">%d zaznaczonych</item>
         <item quantity="other">%d zaznaczonych</item>
     </plurals>
-
-    <!-- Home -->
     <string name="history">Historia</string>
     <string name="stats">Statystyki</string>
     <string name="mood_and_genres">Nastroje i gatunki</string>
@@ -54,14 +42,10 @@
     <string name="essential_albums">Kluczowe albumy</string>
     <string name="suggested_follow_artists">Dużo słuchasz — zacząć ich obserwować?</string>
     <string name="new_from_followed_artists">Nowości od obserwowanych artystów</string>
-
-    <!-- History -->
     <string name="today">Dzisiaj</string>
     <string name="yesterday">Wczoraj</string>
     <string name="this_week">Ten tydzień</string>
     <string name="last_week">Ostatni tydzień</string>
-
-    <!-- Stats -->
     <string name="most_played_songs">Najczęściej słuchane utwory</string>
     <string name="most_played_artists">Najczęściej słuchani artyści</string>
     <string name="most_played_albums">Najczęściej słuchane albumy</string>
@@ -73,12 +57,10 @@
     <string name="stats_not_enough_data">Słuchaj dalej, aby odkryć swoją muzyczną historię</string>
     <string name="listened">Odsłuchano</string>
     <string name="songs_played">Odtworzono</string>
-
-    <!-- Search -->
     <string name="search">Szukaj</string>
     <string name="search_yt_music">Szukaj w YouTube Music…</string>
     <string name="search_library">Szukaj w bibliotece…</string>
-    <string name="online">Online</string>
+    <string name="online">W Internecie</string>
     <string name="filter_library">Biblioteka</string>
     <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Pobrane</string>
@@ -92,43 +74,33 @@
     <string name="filter_featured_playlists">Polecane playlisty</string>
     <string name="filter_bookmarked">Zapisane</string>
     <string name="no_results_found">Brak wyników</string>
-
-    <!-- Library -->
     <string name="library_song_empty">Utwory z biblioteki pojawią się tutaj</string>
     <string name="library_artist_empty">Artyści z biblioteki pojawią się tutaj</string>
     <string name="library_album_empty">Albumy z biblioteki pojawią się tutaj</string>
     <string name="library_playlist_empty">Twoje playlisty pojawią się tutaj</string>
-
-    <!-- Artist screen -->
     <string name="from_your_library">Z Twojej biblioteki</string>
-
-    <!-- Album screen -->
     <string name="other_versions">Inne wersje</string>
     <string name="similar_albums">Może Ci się też spodobać</string>
-
-    <!-- Playlist -->
     <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Pobrane utwory</string>
     <string name="playlist_is_empty">Playlista jest pusta</string>
     <string name="remove_download_playlist_confirm">Czy na pewno chcesz usunąć wszystkie utwory playlisty \"%s\" z Pobranych utworów?</string>
     <string name="delete_playlist_confirm">Czy na pewno chcesz usunąć playlistę \"%s\"?</string>
-
-    <!-- Button -->
     <string name="retry">Ponów</string>
-    <string name="radio">Radio</string>
+    <string name="radio">Radia</string>
     <string name="shuffle">Losuj</string>
-    <string name="reset">Reset</string>
-
-    <!-- Guess the song game -->
+    <string name="reset">Zresetuj</string>
     <string name="guess_game">Zgadnij utwór</string>
     <string name="guess_game_subtitle">Zgadnij utwór i sprawdź, jak dobrze naprawdę znasz artystę</string>
     <string name="guess_game_best_score">Twój najlepszy wynik: %1$s</string>
     <string name="guess_game_best_label">Twój rekord</string>
     <string name="guess_game_no_score">Jeszcze bez wyniku</string>
     <string name="guess_game_play_now">Zagraj teraz</string>
-        <plurals name="guess_game_songs_left">
-        <item quantity="one">Został %1$d utwór do zagrania</item>
-        <item quantity="other">Zostało %1$d utworów do zagrania</item>
+    <plurals name="guess_game_songs_left">
+        <item quantity="one">Pozostał %1$d utwór do odtworzenia</item>
+        <item quantity="few">Pozostały %1$d utwory do odtworzenia</item>
+        <item quantity="many">Pozostało %1$d utworów do odtworzenia</item>
+        <item quantity="other">Pozostało %1$d utworu do odtworzenia</item>
     </plurals>
     <string name="guess_game_hint_default">Zgadnij, aby kontynuować</string>
     <string name="guess_game_hint_wrong">Zła odpowiedź! Poczekaj 3 sekundy</string>
@@ -137,8 +109,6 @@
     <string name="guess_game_result_correct_label">Poprawnie</string>
     <string name="guess_game_not_enough_songs">Nie znaleziono wystarczającej liczby utworów do tej gry</string>
     <string name="guess_game_loading_hint">Ładowanie może chwilę potrwać — każdy utwór jest z góry ładowany w całości, więc rundy zaczynają się natychmiast, bez buforowania.</string>
-
-    <!-- Menu -->
     <string name="details">Szczegóły</string>
     <string name="edit">Edytuj</string>
     <string name="start_radio">Włącz radio</string>
@@ -169,9 +139,9 @@
     <string name="refetch">Odśwież</string>
     <string name="share">Udostępnij</string>
     <string name="share_choose_platform">Udostępnij przez</string>
-    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_youtube_music">Muzyka YouTube</string>
     <string name="share_platform_spotify">Spotify</string>
-    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_apple_music">Muzyka Apple</string>
     <string name="share_platform_soundcloud">SoundCloud</string>
     <string name="share_link_resolving">Szukanie linku…</string>
     <string name="share_link_not_found">Nie znaleziono linku do tego utworu na tej platformie</string>
@@ -185,8 +155,6 @@
     <string name="library_refreshing">Odświeżanie…</string>
     <string name="advanced">Zaawansowane</string>
     <string name="tempo_and_pitch">Tempo i wysokość</string>
-
-    <!-- Sort menu -->
     <string name="sort_by_create_date">Data dodania</string>
     <string name="sort_by_name">Nazwa</string>
     <string name="sort_by_artist">Wykonawca</string>
@@ -195,8 +163,6 @@
     <string name="sort_by_length">Długość</string>
     <string name="sort_by_play_time">Długość utworu</string>
     <string name="sort_by_custom">Niestandardowa kolejność</string>
-
-    <!-- Dialog -->
     <string name="media_id">ID media</string>
     <string name="mime_type">Typ MIME</string>
     <string name="codecs">Kodeki</string>
@@ -207,89 +173,78 @@
     <string name="file_size">Rozmiar pliku</string>
     <string name="unknown">Nieznane</string>
     <string name="copied">Skopiowano do schowka</string>
-
     <string name="edit_lyrics">Edytuj tekst</string>
     <string name="search_lyrics">Szukaj tekstu</string>
-
     <string name="edit_song">Edytuj utwór</string>
     <string name="song_title">Tytuł utworu</string>
     <string name="song_artists">Wykonawcy utworu</string>
     <string name="error_song_title_empty">Tytuł utworu nie może być pusty.</string>
     <string name="error_song_artist_empty">Wykonawca utworu nie może być pusty.</string>
     <string name="save">Zapisz</string>
-
     <string name="choose_playlist">Wybierz playlistę</string>
     <string name="edit_playlist">Edytuj playlistę</string>
     <string name="create_playlist">Utwórz playlistę</string>
     <string name="playlist_name">Nazwa playlisty</string>
     <string name="error_playlist_name_empty">Nazwa playlisty nie może być pusta.</string>
-
     <string name="edit_artist">Edytuj artystę</string>
     <string name="artist_name">Nazwa artysty</string>
     <string name="error_artist_name_empty">Nazwa artysty nie może być pusta.</string>
-
     <string name="duplicates">Duplikaty</string>
     <string name="skip_duplicates">Pomiń duplikaty</string>
     <string name="add_anyway">Dodaj mimo to</string>
     <string name="duplicates_description_single">Utwór jest już obecny w Twojej playliście</string>
     <string name="duplicates_description_multiple">%d utwory są już obecne w Twojej playliście</string>
-
-    <!-- Noun -->
-        <plurals name="n_song">
+    <plurals name="n_song">
         <item quantity="one">%d utwór</item>
         <item quantity="few">%d utworów</item>
         <item quantity="many">%d utworów</item>
         <item quantity="other">%d utworów</item>
     </plurals>
-        <plurals name="n_artist">
+    <plurals name="n_artist">
         <item quantity="one">%d artysta</item>
         <item quantity="few">%d artystów</item>
         <item quantity="many">%d artystów</item>
         <item quantity="other">%d artystów</item>
     </plurals>
-        <plurals name="n_album">
+    <plurals name="n_album">
         <item quantity="one">%d album</item>
         <item quantity="few">%d albumów</item>
         <item quantity="many">%d albumów</item>
         <item quantity="other">%d albumów</item>
     </plurals>
-        <plurals name="n_playlist">
+    <plurals name="n_playlist">
         <item quantity="one">%d playlista</item>
         <item quantity="few">%d playlist</item>
         <item quantity="many">%d playlist</item>
         <item quantity="other">%d playlist</item>
     </plurals>
-        <plurals name="n_week">
+    <plurals name="n_week">
         <item quantity="one">%d tydzień</item>
         <item quantity="few">%d tygodni</item>
         <item quantity="many">%d tygodni</item>
         <item quantity="other">%d tygodni</item>
     </plurals>
-        <plurals name="n_month">
+    <plurals name="n_month">
         <item quantity="one">%d miesiąc</item>
         <item quantity="few">%d miesięcy</item>
         <item quantity="many">%d miesięcy</item>
         <item quantity="other">%d miesięcy</item>
     </plurals>
-        <plurals name="n_year">
+    <plurals name="n_year">
         <item quantity="one">%d rok</item>
         <item quantity="few">%d lat</item>
         <item quantity="many">%d lat</item>
         <item quantity="other">%d lat</item>
     </plurals>
-
-    <!-- Snackbar -->
     <string name="playlist_imported">Playlista zaimportowana</string>
     <string name="removed_song_from_playlist">Usunięto \"%s\" z playlisty</string>
     <string name="playlist_synced">Playlista zsynchronizowana</string>
     <string name="undo">Cofnij</string>
-
-    <!-- Player -->
     <string name="lyrics_not_found">Nie znaleziono tekstu</string>
     <string name="lyrics_searching">…</string>
     <string name="sleep_timer">Wyłącznik czasowy</string>
     <string name="end_of_song">Koniec utworu</string>
-        <plurals name="minute">
+    <plurals name="minute">
         <item quantity="one">1 minuta</item>
         <item quantity="few">%d minut</item>
         <item quantity="many">%d minut</item>
@@ -299,26 +254,18 @@
     <string name="error_no_internet">Brak połączenia z Internetem</string>
     <string name="error_timeout">Limit czasu</string>
     <string name="error_unknown">Nieznany błąd</string>
-
-    <!-- Player action -->
-    <string name="action_like">Star</string>
-    <string name="action_like_all">Star all</string>
-    <string name="action_remove_like">Remove star</string>
-    <string name="action_remove_like_all">Remove all stars</string>
+    <string name="action_like">Dodaj do ulubionych</string>
+    <string name="action_like_all">Dodaj wszystko do ulubionych</string>
+    <string name="action_remove_like">Usuń z ulubionych</string>
+    <string name="action_remove_like_all">Usuń wszystko z ulubionych</string>
     <string name="action_shuffle_on">Losowanie włączone</string>
     <string name="action_shuffle_off">Losowanie wyłączone</string>
     <string name="repeat_mode_off">Powtarzanie wyłączone</string>
     <string name="repeat_mode_one">Powtórz bieżący utwór</string>
     <string name="repeat_mode_all">Powtórz kolejkę</string>
-
-    <!-- Queue Title -->
     <string name="queue_all_songs">Wszystkie utwory</string>
     <string name="queue_searched_songs">Wyszukane utwory</string>
-
-    <!-- Notification name -->
     <string name="music_player">Odtwarzacz</string>
-
-    <!-- Settings -->
     <string name="settings">Ustawienia</string>
     <string name="appearance">Wygląd</string>
     <string name="theme">Motyw</string>
@@ -349,14 +296,12 @@
     <string name="grid_cell_size">Rozmiar komórki siatki</string>
     <string name="small">Mały</string>
     <string name="big">Duży</string>
-
     <string name="content">Zawartość</string>
     <string name="action_logout">Wyloguj</string>
     <string name="action_login">Zaloguj</string>
-    <string name="login">Login</string>
+    <string name="login">Zaloguj się</string>
     <string name="not_logged_in">Nie zalogowano</string>
     <string name="login_failed">Błąd logowania</string>
-
     <string name="content_language">Domyślny język zawartości</string>
     <string name="content_country">Domyślny kraj zawartości</string>
     <string name="system_default">Domyślny systemu</string>
@@ -364,7 +309,6 @@
     <string name="proxy_type">Typ proxy</string>
     <string name="proxy_url">URL proxy</string>
     <string name="restart_to_take_effect">Uruchom ponownie, aby zastosować zmiany</string>
-
     <string name="player_and_audio">Odtwarzacz i audio</string>
     <string name="audio_quality">Jakość audio</string>
     <string name="audio_quality_auto">Automatyczna</string>
@@ -402,7 +346,6 @@
     <string name="auto_skip_next_on_error_desc">Zapewnij ciągłość odtwarzania</string>
     <string name="stop_music_on_task_clear">Zatrzymaj muzykę po wykonaniu zadania</string>
     <string name="equalizer">Korektor</string>
-
     <string name="storage">Pamięć</string>
     <string name="cache">Pamięć podręczna</string>
     <string name="image_cache">Pamięć podręczna obrazów</string>
@@ -415,7 +358,6 @@
     <string name="max_song_cache_size">Maksymalny rozmiar pamięci podręcznej utworów</string>
     <string name="clear_song_cache">Wyczyść pamięć podręczną utworów</string>
     <string name="size_used">%s w użyciu</string>
-
     <string name="privacy">Prywatność</string>
     <string name="listen_history">Słuchaj historii</string>
     <string name="pause_listen_history">Wstrzymaj historię odtwarzania</string>
@@ -435,7 +377,6 @@
     <string name="hide_explicit_desc">Usuń utwory z treściami explicite z wyników wyszukiwania i przeglądania</string>
     <string name="show_explicit_badge">Pokaż plakietkę treści explicite</string>
     <string name="show_explicit_badge_desc">Pokazuje ikonę „E” przy utworach z treściami explicite</string>
-
     <string name="backup_restore">Kopia zapasowa i przywracanie</string>
     <string name="action_backup">Kopia zapasowa</string>
     <string name="action_restore">Przywróć</string>
@@ -443,20 +384,15 @@
     <string name="backup_create_success">Kopia zapasowa utworzona pomyślnie</string>
     <string name="backup_create_failed">Nie udało się stworzyć kopii zapasowej</string>
     <string name="restore_failed">Nie udało się przywrócić kopii zapasowej</string>
-
     <string name="discord_integration">Integracja z Discordem</string>
     <string name="discord_information">Metrolist używa biblioteki KizzyRPC do aktualizacji statusu konta Discord. Wiąże się to z korzystaniem z połączenia Discord Gateway, co może być postrzegane jako naruszenie warunków korzystania z usług Discord (TOS). Nie są jednak znane przypadki zawieszenia kont użytkowników z tego powodu. Używaj na własne ryzyko.\n\nMetrolist wyodrębni tylko twój token; wszystko inne jest przechowywane lokalnie.</string>
     <string name="dismiss">Odrzuć</string>
     <string name="options">Opcje</string>
     <string name="preview">Podgląd</string>
     <string name="enable_discord_rpc">Włącz Rich Presence</string>
-
     <string name="about">O aplikacji</string>
     <string name="app_version">Wersja aplikacji</string>
-
     <string name="new_version_available">Dostępna nowa wersja</string>
-
-    <!-- Advanced Mode -->
     <string name="advanced_mode">Tryb zaawansowany</string>
     <string name="advanced_mode_banner">Tryb zaawansowany jest włączony. W aplikacji pojawi się więcej ustawień i opcji technicznych — ten interfejs nie jest przeznaczony do zwykłego codziennego użytku.</string>
     <string name="my_account">Moje konto</string>
@@ -467,11 +403,8 @@
     <string name="interface_section">Interfejs</string>
     <string name="lyrics_translation">Tłumaczenie tekstów</string>
     <string name="behavior">Zachowanie</string>
-
     <string name="translation_models">Modele tłumaczeń</string>
     <string name="clear_translation_models">Wyczyść modele tłumaczeń</string>
-
-    <!-- New settings for track resolution -->
     <string name="resolve_video_songs">Rozpoznawaj utwory wideo</string>
     <string name="resolve_video_songs_desc">Automatycznie znajduj utwory wideo i zastępuj je wersjami audio</string>
     <string name="hide_video_only_results">Ukryj wyniki tylko z wideo</string>
@@ -483,9 +416,15 @@
     <string name="clear_resolved_track_cache">Wyczyść pamięć podręczną rozpoznanych utworów</string>
     <string name="clear_resolved_track_cache_dialog">Czy naprawdę chcesz wyczyścić pamięć podręczną rozpoznanych utworów? Aplikacja będzie wtedy musiała ponownie wyszukać wersje audio filmów.</string>
     <string name="searching_synced_lyrics">Szukanie zsynchronizowanych tekstów…</string>
-
     <string name="main_top_gradient">Górny gradient na głównych ekranach</string>
     <string name="main_top_gradient_desc">Za górną częścią ekranów Start, Biblioteka, Szukaj i Nowości subtelnie wyświetla się gradient odtwarzacza bieżącego utworu</string>
     <string name="album_top_gradient">Górny gradient na albumach</string>
     <string name="album_top_gradient_desc">Za górną częścią ekranów Album, Singiel i EP subtelnie wyświetla się gradient odtwarzacza oglądanego albumu</string>
+    <string name="all_tracks_offline">Wszystkie utwory</string>
+    <string name="images">Obrazy</string>
+    <string name="temporary_songs">Tymczasowe utwory</string>
+    <string name="free_up_space">Zwolnij miejsce</string>
+    <string name="delete_downloads">Usuń pobrane utwory</string>
+    <string name="clear_temporary_songs">Usuń tymczasowe utwory</string>
+    <string name="space_used">Używany %s</string>
 </resources>

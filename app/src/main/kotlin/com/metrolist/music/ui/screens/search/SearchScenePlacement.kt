@@ -61,8 +61,10 @@ internal fun searchScenePlacement(
     fieldHeight: Float,
     resultHeight: Float,
     gap: Float,
+    resultTitleTop: Float = initialFieldTop,
 ): SearchScenePlacement {
-    val resultTop = ((viewportHeight - resultHeight) * 0.5f).coerceAtLeast(0f)
+    // Once submitted, the search field becomes the page title and anchors the result list.
+    val resultTop = resultTitleTop.coerceAtLeast(0f)
     val restingTop = if (hasResult) resultTop else initialFieldTop
     val fieldTop = if (editing && (keyboardTargetBottom > 0 || keyboardFallbackReady)) {
         val availableBottom = if (keyboardTargetBottom > 0) {

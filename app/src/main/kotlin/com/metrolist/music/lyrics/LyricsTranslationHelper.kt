@@ -39,6 +39,15 @@ import java.util.concurrent.ConcurrentHashMap
  * A helper class that provides AI-powered translation for lyrics.
  */
 object LyricsTranslationHelper {
+    private fun localizedTranslationError(context: Context, message: String?): String =
+        when (message) {
+            "API key not configured" ->
+                context.getString(com.metrolist.music.R.string.ai_error_api_key_required)
+            "API key invalid or expired" ->
+                context.getString(com.metrolist.music.R.string.ai_error_api_key_invalid)
+            else -> message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
+        }
+
     private val _status = MutableStateFlow<TranslationStatus>(TranslationStatus.Idle)
     val status: StateFlow<TranslationStatus> = _status.asStateFlow()
 
@@ -333,6 +342,7 @@ object LyricsTranslationHelper {
 
                             OpenRouterStreamingService
                                 .streamTranslation(
+                                    context = context,
                                     text = fullText,
                                     targetLanguage = fullLanguageName,
                                     apiKey = apiKey,
@@ -472,13 +482,13 @@ object LyricsTranslationHelper {
                                 return@onFailure
                             }
 
-                            val errorMessage = error.message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
+                            val errorMessage = localizedTranslationError(context, error.message)
 
                             _status.value = TranslationStatus.Error(errorMessage)
                         }
                 } catch (e: Exception) {
                     if (e !is kotlinx.coroutines.CancellationException && isCompositionActive) {
-                        val errorMessage = e.message ?: context.getString(com.metrolist.music.R.string.ai_error_translation_failed)
+                        val errorMessage = localizedTranslationError(context, e.message)
                         _status.value = TranslationStatus.Error(errorMessage)
                     }
                 }

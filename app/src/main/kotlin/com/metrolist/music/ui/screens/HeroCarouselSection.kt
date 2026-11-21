@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -41,17 +43,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.request.transformations
+import coil3.size.Size
+import com.metrolist.music.ui.component.BlackBorderCropTransformation
 import com.metrolist.music.R
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.models.stableKey
 import com.metrolist.music.ui.component.CarouselPageIndicator
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioShelfHeader
+import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.folioTypewriterFontFamily
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
+import com.metrolist.music.ui.component.rememberArtistThumbnail
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.theme.IBMPlexMonoBoldFontFamily
@@ -65,20 +73,45 @@ private val HeroScrimColor = Color(0xFF1C1C1E)
 
 @Composable
 fun HeroCarouselSection(
-    items: List<HeroCarouselItem.ArtistRadio>,
-    onArtistClick: (String) -> Unit,
-    onArtistLongClick: (HeroCarouselItem.ArtistRadio) -> Unit = {},
+    items: List<HeroCarouselItem.MusicVideo>,
+    onVideoClick: (HeroCarouselItem.MusicVideo) -> Unit,
+    onVideoLongClick: (HeroCarouselItem.MusicVideo) -> Unit = {},
     modifier: Modifier = Modifier,
     pagerState: PagerState? = null,
     onCoverError: (String) -> Unit = {},
+    lowPowerMode: Boolean = false,
 ) {
     if (items.isEmpty()) return
     val internalPagerState = rememberPagerState(pageCount = { items.size })
     val activePagerState = pagerState ?: internalPagerState
     val pagerPull = rememberRubberBandPull()
+    val context = LocalContext.current
+
+    // Warm the same transformed requests used by cards so Coil can reuse both its
+    // memory and persistent disk entries when the pager composes each page.
+    LaunchedEffect(items, context, lowPowerMode) {
+        // Warm every cover in standard mode; low-power mode warms only first two.
+        // Later covers still load at full quality when their page is displayed.
+        (if (lowPowerMode) items.take(2) else items).asSequence()
+            .map { it.coverUrl }
+            .filter(String::isNotBlank)
+            .distinct()
+            .forEach { cover ->
+                context.imageLoader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(cover)
+                        .size(Size.ORIGINAL)
+                        .transformations(BlackBorderCropTransformation)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                )
+            }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        RadioSectionTitle()
+        VideoSectionTitle()
         HorizontalPager(
             state = activePagerState,
             key = { page -> items.getOrNull(page)?.stableKey() ?: "hero_page_$page" },
@@ -90,7 +123,7 @@ fun HeroCarouselSection(
                     .rubberBandOverscroll(Orientation.Horizontal, activePagerState, pagerPull),
         ) { page ->
             items.getOrNull(page)?.let { item ->
-                HeroCard(item, onArtistClick, onArtistLongClick, onCoverError)
+                HeroCard(item, onVideoClick, onVideoLongClick, onCoverError)
             }
         }
         Box(Modifier.fillMaxWidth().height(IrideFolio.ShelfPagerFooterHeight)) {
@@ -104,9 +137,9 @@ fun HeroCarouselSection(
 }
 
 @Composable
-private fun RadioSectionTitle() {
+private fun VideoSectionTitle() {
     IrideFolioShelfHeader(
-        title = stringResource(R.string.folio_artists_for_you),
+        title = stringResource(R.string.folio_videos_for_you),
         showNavigationArrow = false,
     )
 }
@@ -115,7 +148,7 @@ private fun RadioSectionTitle() {
 fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
     Column(modifier = modifier.fillMaxWidth()) {
-        RadioSectionTitle()
+        VideoSectionTitle()
         ShimmerHost(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier =
@@ -132,13 +165,13 @@ fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
 
 @Composable
 private fun HeroCard(
-    item: HeroCarouselItem.ArtistRadio,
-    onArtistClick: (String) -> Unit,
-    onArtistLongClick: (HeroCarouselItem.ArtistRadio) -> Unit,
+    item: HeroCarouselItem.MusicVideo,
+    onVideoClick: (HeroCarouselItem.MusicVideo) -> Unit,
+    onVideoLongClick: (HeroCarouselItem.MusicVideo) -> Unit,
     onCoverError: (String) -> Unit,
 ) {
     val title = item.artistName
-    val subtitle = stringResource(R.string.folio_explore_artist)
+    val subtitle = stringResource(R.string.hero_image_from_track, item.song.title)
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     Box(
@@ -149,12 +182,12 @@ private fun HeroCard(
                 .irideFolioCombinedClickable(
                     role = Role.Button,
                     onClickLabel = title,
-                    onLongClick = { onArtistLongClick(item) },
-                    onClick = { onArtistClick(item.artistId) },
+                    onLongClick = { onVideoLongClick(item) },
+                    onClick = { onVideoClick(item) },
                 )
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
     ) {
-        RadioCover(item, Modifier.fillMaxSize(), onCoverError)
+        VideoCover(item, Modifier.fillMaxSize(), onCoverError)
         Box(
             modifier =
                 Modifier.fillMaxSize()
@@ -166,62 +199,90 @@ private fun HeroCard(
                         )
                     )
         )
-        Column(
+        Row(
             modifier =
                 Modifier.align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                style =
-                    MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = IBMPlexMonoBoldFontFamily,
-                        fontSize = IrideFolio.ShelfItemFontSize,
-                        lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subtitle.isNotEmpty()) {
+            ArtistProfileBadge(item)
+            Spacer(Modifier.size(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = subtitle,
+                    text = title,
                     style =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = folioTypewriterFontFamily(),
-                            fontSize = IrideFolio.ShelfDetailFontSize,
-                            lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
-                            letterSpacing = 0.02.em,
+                        MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = IBMPlexMonoBoldFontFamily,
+                            fontSize = IrideFolio.ShelfItemFontSize,
+                            lineHeight = IrideFolio.ShelfItemFontSize * 1.4f,
+                            letterSpacing = (-0.1).sp,
                         ),
-                    color = Color.White.copy(alpha = 0.85f),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        style =
+                            MaterialTheme.typography.bodyMedium.copy(
+                                fontFamily = folioTypewriterFontFamily(),
+                                fontSize = IrideFolio.ShelfDetailFontSize,
+                                lineHeight = IrideFolio.ShelfDetailFontSize * 1.4f,
+                                letterSpacing = 0.02.em,
+                            ),
+                        color = Color.White.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun RadioCover(
-    item: HeroCarouselItem.ArtistRadio,
+private fun ArtistProfileBadge(item: HeroCarouselItem.MusicVideo) {
+    val imageUrl = rememberArtistThumbnail(
+        id = item.artistId,
+        name = item.artistName,
+        youtubeUrl = item.artistThumbnail,
+    )
+    ItemThumbnail(
+        thumbnailUrl = imageUrl,
+        isActive = false,
+        isPlaying = false,
+        shape = CircleShape,
+        modifier = Modifier.size(40.dp),
+        hairlineBorder = true,
+        requestResolution = 192,
+        artistArtwork = true,
+    )
+}
+
+@Composable
+private fun VideoCover(
+    item: HeroCarouselItem.MusicVideo,
     modifier: Modifier,
     onCoverError: (String) -> Unit,
 ) {
-    val cover = item.coverUrl?.takeIf { it.isNotBlank() }
-    var attempt by remember(item.artistId, cover) { mutableIntStateOf(0) }
-    var failed by remember(item.artistId, cover) { mutableStateOf(false) }
+    val cover = item.coverUrl.takeIf { it.isNotBlank() }
+    var attempt by remember(item.song.id, cover) { mutableIntStateOf(0) }
+    var failed by remember(item.song.id, cover) { mutableStateOf(false) }
     val context = LocalContext.current
     val reducedMotion = rememberReducedMotion()
     val request =
         remember(context, cover, attempt, reducedMotion) {
             ImageRequest.Builder(context)
                 .data(cover)
+                .size(Size.ORIGINAL)
+                .transformations(BlackBorderCropTransformation)
                 .crossfade(if (reducedMotion) 0 else IrideMotion.Short)
-                .diskCachePolicy(if (attempt == 0) CachePolicy.ENABLED else CachePolicy.WRITE_ONLY)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .networkCachePolicy(CachePolicy.ENABLED)
                 .build()
         }
     LaunchedEffect(failed, attempt) {
@@ -230,7 +291,7 @@ private fun RadioCover(
             failed = false
             attempt = 1
         } else if (failed) {
-            onCoverError(item.artistId)
+            onCoverError(item.song.id)
         }
     }
     Box(

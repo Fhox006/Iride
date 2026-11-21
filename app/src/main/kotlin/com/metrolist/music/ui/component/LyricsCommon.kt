@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -33,6 +34,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.lyrics.LyricsEntry
+
+internal fun lyricsStaggeredScrollSpec(distance: Int) = tween<Float>(
+    durationMillis = 750,
+    delayMillis = (distance * 20).coerceAtMost(200),
+    easing = FastOutSlowInEasing,
+)
 
 sealed class LyricsListItem {
     data class Line(val index: Int, val entry: LyricsEntry) : LyricsListItem()

@@ -57,12 +57,10 @@ import sv.lib.squircleshape.SquircleShape
 @Composable
 fun IrideFolioPlaylistComposer(
     draft: PlaylistDraftState,
-    onDismiss: () -> Unit,
     onNameChange: (String) -> Unit,
     onQueryChange: (String) -> Unit,
     onSelectionChange: (Boolean) -> Unit,
     onToggleSong: (MediaMetadata) -> Unit,
-    onRefresh: () -> Unit,
     onRetrySeeds: () -> Unit,
     onCreate: () -> Unit,
 ) {
@@ -74,7 +72,6 @@ fun IrideFolioPlaylistComposer(
     val tracks = if (draft.showingSelection) draft.songs else draft.suggestions
     val selectedLabel = pluralStringResource(R.plurals.playlist_draft_tracks, draft.songs.size, draft.songs.size)
     val allSongs = remember(draft.existingSongs, draft.songs) { draft.existingSongs + draft.songs }
-    val thumbnails = remember(allSongs) { allSongs.asSequence().mapNotNull { it.thumbnailUrl }.distinct().take(4).toList() }
     val duration = remember(allSongs) { allSongs.sumOf { it.duration.coerceAtLeast(0).toLong() } }
     val totalLabel = pluralStringResource(R.plurals.playlist_draft_tracks, allSongs.size, allSongs.size)
 
@@ -83,34 +80,27 @@ fun IrideFolioPlaylistComposer(
         state = listState,
         showTopBar = true,
         bottomPadding = IrideFolio.PlaylistDraftSectionGap,
-        navigationIcon = {
-            IrideOutlineIconButton(
-                onClick = onDismiss,
-                icon = R.drawable.close,
-                contentDescription = stringResource(R.string.playlist_draft_close),
-                enabled = !draft.saving,
-            )
-        },
         actions = {
-            val saveLabel = stringResource(when {
-                draft.saving -> R.string.playlist_draft_saving
-                draft.addingToPlaylist -> R.string.playlist_draft_add
-                else -> R.string.playlist_draft_create
-            })
-            IrideFolioPrimaryIconButton(
-                onClick = { focus.clearFocus(); onCreate() },
-                size = IrideFolio.ControlSurfaceSize,
-                enabled = !draft.preparing && !draft.saving && draft.error != PlaylistDraftError.INITIAL_SONGS &&
-                    (!draft.addingToPlaylist || draft.songs.isNotEmpty()),
-            ) {
-                if (draft.saving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(IrideFolio.CollectionActionIconSize).semantics { contentDescription = saveLabel },
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.background,
-                    )
-                } else {
-                    Icon(painterResource(R.drawable.check), saveLabel, Modifier.size(IrideFolio.CollectionActionIconSize))
+            if (!draft.addingToPlaylist || draft.songs.isNotEmpty()) {
+                val saveLabel = stringResource(when {
+                    draft.saving -> R.string.playlist_draft_saving
+                    draft.addingToPlaylist -> R.string.playlist_draft_add
+                    else -> R.string.playlist_draft_create
+                })
+                IrideFolioPrimaryIconButton(
+                    onClick = { focus.clearFocus(); onCreate() },
+                    size = IrideFolio.ControlSurfaceSize,
+                    enabled = !draft.preparing && !draft.saving && draft.error != PlaylistDraftError.INITIAL_SONGS,
+                ) {
+                    if (draft.saving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(IrideFolio.CollectionActionIconSize).semantics { contentDescription = saveLabel },
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.background,
+                        )
+                    } else {
+                        Icon(painterResource(R.drawable.check), saveLabel, Modifier.size(IrideFolio.CollectionActionIconSize))
+                    }
                 }
             }
         },
@@ -125,17 +115,9 @@ fun IrideFolioPlaylistComposer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PlaylistThumbnail(
-                    thumbnails = thumbnails,
+                    title = draft.name,
                     size = IrideFolio.PlaylistDraftArtworkSize,
                     shape = IrideFolio.PlaylistDraftArtworkShape,
-                    placeHolder = {
-                        Icon(
-                            painterResource(R.drawable.queue_music),
-                            contentDescription = null,
-                            modifier = Modifier.size(IrideFolio.CollectionPlayIconSize),
-                            tint = MaterialTheme.colorScheme.textSecondary,
-                        )
-                    },
                     softBorder = true,
                 )
                 Column(
@@ -185,7 +167,7 @@ fun IrideFolioPlaylistComposer(
             }
         }
         item(key = "draft_search") {
-            IrideFolioCollectionSearchBox(
+            IrideSearchBox(
                 query = query,
                 onQueryChange = {
                     if (!draft.saving) {
@@ -203,7 +185,9 @@ fun IrideFolioPlaylistComposer(
                         onQueryChange("")
                     }
                 },
-                modifier = Modifier.padding(horizontal = IrideFolio.HorizontalPadding),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = IrideFolio.HorizontalPadding),
             )
         }
         item(key = "draft_sections") {
@@ -224,13 +208,11 @@ fun IrideFolioPlaylistComposer(
                         selected = !draft.showingSelection,
                         onClick = { onSelectionChange(false) },
                         enabled = !draft.saving,
-                        compact = true,
                     ) { Text(stringResource(R.string.playlist_draft_discover)) }
                     IrideFolioChoiceButton(
                         selected = draft.showingSelection,
                         onClick = { onSelectionChange(true) },
                         enabled = !draft.saving,
-                        compact = true,
                     ) { Text(selectedLabel) }
                 }
                 if (draft.loading || draft.preparing) {
@@ -238,14 +220,6 @@ fun IrideFolioPlaylistComposer(
                         modifier = Modifier.size(IrideFolio.ShelfSelectorIconSize),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.textSecondary,
-                    )
-                } else if (!draft.showingSelection && draft.query.isBlank()) {
-                    IrideOutlineIconButton(
-                        onClick = onRefresh,
-                        icon = R.drawable.refresh,
-                        contentDescription = stringResource(R.string.playlist_draft_refresh),
-                        enabled = !draft.saving,
-                        iconSize = IrideFolio.ShelfSelectorIconSize,
                     )
                 }
             }
@@ -263,7 +237,7 @@ fun IrideFolioPlaylistComposer(
         }
         if (!draft.showingSelection && draft.unavailable) {
             item(key = "draft_network") {
-                IrideFolioDraftMessage(stringResource(R.string.playlist_draft_offline), onRefresh)
+                IrideFolioDraftMessage(stringResource(R.string.playlist_draft_offline))
             }
         }
         items(tracks, key = { "draft_song_${it.id}" }) { song ->

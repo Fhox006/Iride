@@ -1,6 +1,7 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,14 +39,15 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -55,10 +57,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
+import com.metrolist.music.ui.component.LocalIrideExpansionBackdrop
 import com.metrolist.music.ui.component.rememberArtistPortraitTile
 import com.metrolist.music.ui.component.rememberCollectionExpansionTile
 import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.rememberIrideArtistArtwork
+import com.metrolist.music.ui.component.rememberArtistArtworkLoader
+import com.metrolist.music.ui.component.ArtistArtworkRequest
 import androidx.compose.ui.graphics.asImageBitmap
 import com.metrolist.music.ui.component.LocalArtistPortraitTransitionActive
 import com.metrolist.music.ui.component.ArtistPortraitMotion
@@ -71,17 +76,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -104,6 +112,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -111,8 +120,10 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.size.Precision
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.BrowseEndpoint
@@ -127,6 +138,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.HideExplicitKey
@@ -140,8 +152,8 @@ import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.Song
-import com.metrolist.music.discovery.MixMood
 import com.metrolist.music.discovery.MoodMixes
+import com.metrolist.music.discovery.MixMood
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.ForYouShelfTile
@@ -151,10 +163,14 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.HomeFollowedReleases
+import com.metrolist.music.ui.component.PreloadHomeFollowedReleases
 import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioDisplayHeadings
 import com.metrolist.music.ui.component.IrideFolioMediaShelf
 import com.metrolist.music.ui.component.IrideFolioSection
+import com.metrolist.music.ui.component.LocalFolioSectionFastReveal
+import com.metrolist.music.ui.component.rememberLightweightFolioMode
 import com.metrolist.music.ui.component.IrideFolioSectionSkeleton
 import com.metrolist.music.ui.component.IrideFolioShelfHeader
 import com.metrolist.music.ui.component.IrideFolioShelfSkeleton
@@ -162,16 +178,18 @@ import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.LocalHomeContentSnapshot
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
-import com.metrolist.music.ui.component.MixPosterPlaceholder
+import com.metrolist.music.ui.component.PlaylistArtwork
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.ReverieHomeCard
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
 import com.metrolist.music.ui.component.SharedQuickPicksCarousel
 import com.metrolist.music.ui.component.SharedYouTubePlaylistRow
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.SongMenuIconButton
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.ui.component.collectDeferredHomeState
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.folioTypewriterFontFamily
@@ -187,11 +205,10 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.screens.playlist.NewReleaseChartsShelf
-import com.metrolist.music.ui.screens.playlist.PreloadHomeCharts
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.SatoshiFontFamily
 import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.viewmodels.prefetchArtistPage
 import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
@@ -200,7 +217,7 @@ import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.IrideTabEntrance
 import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideDepthEnter
-import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.rememberEnterProgressState
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.SyncState
@@ -208,13 +225,16 @@ import com.metrolist.music.utils.SyncStatus
 import com.metrolist.music.utils.appendLoadedHomeSections
 import com.metrolist.music.utils.isInternetAvailable
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.viewmodels.ChartDirectoryViewModel
+import com.metrolist.music.viewmodels.FollowedReleasesViewModel
+import com.metrolist.music.viewmodels.HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED
+import com.metrolist.music.viewmodels.HOME_MOOD_SECTION_ENABLED
 import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.MonthlyReverieViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 
 private const val SHOW_HOME_TEST_PLAYLIST = false
 
@@ -273,8 +293,21 @@ private fun <E> IrideMoodChipsRow(
             Spacer(Modifier.width(horizontalPadding))
             chips.forEachIndexed { index, (value, label) ->
                 val isSelected = currentValue == value
+                val moodLabel =
+                    when (MixMood.fromChip(label)) {
+                        MixMood.CHILL -> stringResource(R.string.mood_chill)
+                        MixMood.FOCUS -> stringResource(R.string.mood_focus)
+                        MixMood.ENERGY -> stringResource(R.string.mood_energy)
+                        MixMood.FEEL_GOOD -> stringResource(R.string.mood_feel_good)
+                        MixMood.PARTY -> stringResource(R.string.mood_party)
+                        MixMood.WORKOUT -> stringResource(R.string.mood_workout)
+                        MixMood.ROMANTIC -> stringResource(R.string.mood_romantic)
+                        MixMood.SAD -> stringResource(R.string.mood_sad)
+                        MixMood.SLEEP -> stringResource(R.string.mood_sleep)
+                        null -> label
+                    }
                 Text(
-                    text = label,
+                    text = moodLabel,
                     style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
                     color =
                         if (isSelected) MaterialTheme.colorScheme.textPrimary
@@ -324,8 +357,10 @@ private fun HomeSimilarityTitle(
     thumbnailUrl: String?,
     isArtist: Boolean,
     artistId: String? = null,
+    albumId: String? = null,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val shape = if (isArtist) CircleShape else FolioShape(5.dp)
     val resolvedThumbnail =
@@ -334,6 +369,14 @@ private fun HomeSimilarityTitle(
         } else thumbnailUrl
     val portraitTile = if (isArtist && artistId != null && onClick != null) {
         rememberArtistPortraitTile(artistId, name, resolvedThumbnail, null, true)
+    } else Modifier to Modifier
+    val collectionTile = if (!isArtist && albumId != null && onClick != null) {
+        rememberCollectionExpansionTile(
+            CollectionExpansionKind.Album,
+            albumId,
+            artworkUrl = resolvedThumbnail,
+            title = name,
+        )
     } else Modifier to Modifier
     IrideFolioShelfHeader(
         label = stringResource(R.string.home_similar_to),
@@ -347,11 +390,12 @@ private fun HomeSimilarityTitle(
                 artistArtwork = isArtist,
                 requestResolution = 192,
                 hairlineBorder = true,
-                modifier = Modifier.size(48.dp).then(portraitTile.second),
+                modifier = Modifier.size(48.dp).then(portraitTile.second).then(collectionTile.second),
             )
         },
         onClick = onClick,
-        modifier = portraitTile.first.then(modifier),
+        onLongClick = onLongClick,
+        modifier = portraitTile.first.then(collectionTile.first).then(modifier),
         showNavigationArrow = false,
     )
 }
@@ -365,9 +409,28 @@ private fun HomeSimilarityTitle(
 fun HomeScreen(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
+    updateVersion: String?,
+    updateDownloadState: UpdateDownloadState,
+    onUpdateClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val activityLifecycle = (LocalActivity.current as? LifecycleOwner)?.lifecycle
+    DisposableEffect(activityLifecycle, viewModel) {
+        var wasBackgrounded = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> wasBackgrounded = true
+                Lifecycle.Event.ON_START -> if (wasBackgrounded) {
+                    wasBackgrounded = false
+                    viewModel.regenerateForYouShelves()
+                }
+                else -> Unit
+            }
+        }
+        activityLifecycle?.addObserver(observer)
+        onDispose { activityLifecycle?.removeObserver(observer) }
+    }
     DisposableEffect(lifecycle, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -385,8 +448,18 @@ fun HomeScreen(
             viewModel.contentSnapshot.setVisible(false)
         }
     }
-    CompositionLocalProvider(LocalHomeContentSnapshot provides viewModel.contentSnapshot) {
-        HomeScreenContent(navController, snackbarHostState, viewModel)
+    CompositionLocalProvider(
+        LocalHomeContentSnapshot provides viewModel.contentSnapshot,
+        LocalFolioSectionFastReveal provides true,
+    ) {
+        HomeScreenContent(
+            navController,
+            snackbarHostState,
+            viewModel,
+            updateVersion,
+            updateDownloadState,
+            onUpdateClick,
+        )
     }
 }
 
@@ -400,14 +473,19 @@ private fun HomeScreenContent(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel,
+    updateVersion: String?,
+    updateDownloadState: UpdateDownloadState,
+    onUpdateClick: () -> Unit,
 ) {
     val menuState = com.metrolist.music.ui.component.LocalMenuState.current
-    val chartViewModel: ChartDirectoryViewModel = hiltViewModel()
     val reverieViewModel: MonthlyReverieViewModel = hiltViewModel()
     val reverieMonths by reverieViewModel.archiveMonths.collectAsStateWithLifecycle()
     val firstFullReverieMonth by reverieViewModel.firstFullMonth.collectAsStateWithLifecycle()
-    PreloadHomeCharts(chartViewModel)
-    val followedReleasesPosition = rememberSaveable { kotlin.random.Random.nextInt(1, 6) }
+    val followedReleasesViewModel: FollowedReleasesViewModel =
+        hiltViewModel()
+    PreloadHomeFollowedReleases(followedReleasesViewModel)
+    val followedReleaseTracks by followedReleasesViewModel.tracks.collectAsStateWithLifecycle()
+    val followedReleasesPosition = rememberSaveable { kotlin.random.Random.nextInt(4, 6) }
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
     val context = LocalContext.current
@@ -434,72 +512,71 @@ private fun HomeScreenContent(
     val similarComplete by viewModel.phase2SimilarDone.collectAsStateWithLifecycle()
 
     val communityPlaylists by
-        viewModel.communityPlaylists.collectDeferredHomeState("community_playlists") {
+        viewModel.communityPlaylists.collectDeferredHomeState(
+            key = "community_playlists",
+            applyPendingWhenHidden = false,
+        ) {
             it.orEmpty().distinctBy { item -> item.playlist.id }.size >= 4
         }
     val dailyDiscover by
-        viewModel.dailyDiscover.collectDeferredHomeState("daily_discover") {
+        viewModel.dailyDiscover.collectDeferredHomeState(
+            key = "daily_discover",
+            applyPendingWhenHidden = false,
+        ) {
             it.orEmpty().distinctBy { item -> item.recommendation.id }.size >= 4
         }
     val accountPlaylists by
         viewModel.accountPlaylists.collectDeferredHomeState("account_playlists") {
             it.orEmpty().distinctBy { item -> item.id }.size >= 4
         }
-    val homePersonalMixes by viewModel.homePersonalMixes.collectDeferredHomeState("personal_mixes")
-    val starredPlaylistThumbnails by
-        viewModel.starredPlaylistThumbnails.collectDeferredHomeState("starred_thumbnails")
+    val homePersonalMixesState =
+        if (HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED) {
+            viewModel.homePersonalMixes.collectDeferredHomeState("personal_mixes")
+        } else {
+            remember { mutableStateOf(emptyList<PlaylistItem>()) }
+        }
+    val homePersonalMixes by homePersonalMixesState
     val similarRecommendations by
         viewModel.similarRecommendations.collectDeferredHomeState(
-            "similar_recommendations",
+            key = "similar_recommendations",
             mergeWhileVisible = { current, incoming ->
                 appendLoadedHomeSections(current.orEmpty(), incoming.orEmpty()) { it.title.id }
             },
         )
     val quickPicks by
-        viewModel.quickPicks.collectDeferredHomeState("quick_picks") {
+        viewModel.quickPicks.collectDeferredHomeState(
+            key = "quick_picks",
+            mergeWhileVisible = { current, _ -> current },
+            applyPendingWhenHidden = false,
+        ) {
             it.orEmpty()
                 .filterNot { song -> song.song.isVideo || song.song.isEpisode }
                 .distinctBy { song -> song.id }
                 .size >= 4
         }
-    val forYouShelves by
-        viewModel.forYouShelves.collectDeferredHomeState(
-            "for_you",
-            mergeWhileVisible = { current, incoming ->
-                appendLoadedHomeSections(current, incoming) { it.artist.id }
-            },
-        ) {
-            it.size >= 4
-        }
+    val forYouShelves by viewModel.forYouShelves.collectAsStateWithLifecycle()
     val homePage by
         viewModel.homePage.collectDeferredHomeState("feed") { !it?.sections.isNullOrEmpty() }
-    val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
     val isHeroCarouselLoading by viewModel.isHeroCarouselLoading.collectAsStateWithLifecycle()
     val heroCarouselItems by
         viewModel.heroCarouselItems.collectDeferredHomeState(
             "hero_carousel",
-            mergeWhileVisible = { current, incoming ->
-                val covers =
-                    incoming.filterIsInstance<HeroCarouselItem.ArtistRadio>().associateBy {
-                        it.artistId
-                    }
-                current.map { item ->
-                    if (item is HeroCarouselItem.ArtistRadio) {
-                        covers[item.artistId]?.coverUrl?.let { item.copy(coverUrl = it) } ?: item
-                    } else item
-                }
-            },
+            mergeWhileVisible = { _, incoming -> incoming },
         )
+    val heroVideos = remember(heroCarouselItems) {
+        heroCarouselItems.filterIsInstance<HeroCarouselItem.MusicVideo>()
+    }
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val syncBannerLaunchCount by viewModel.syncBannerLaunchCount.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
     val accountNamePref by rememberPreference(AccountNameKey, "")
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
-
+    val normalizedAccountName = remember(accountName) { accountName.lowercase() }
     val irideStart = 20.dp
     val irideListItemStart = 20.dp
     val irideGridItemStart = 20.dp
@@ -507,18 +584,47 @@ private fun HomeScreenContent(
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
     val currentGridHeight = currentGridThumbnailHeight()
+    val monthlyDrop = rememberCurrentMonthlyDrop()
+    val showMonthlyDrop = monthlyDrop != null
 
     val lazyListState = rememberLazyListState()
-    val homeReducedMotion = rememberReducedMotion()
-    val moodContent by
-        viewModel.homeMoodContent.collectDeferredHomeState(
-            "mood",
-            identity = { it.params },
-            hasContent = { !it.items.isNullOrEmpty() },
-            mergeWhileVisible = { current, incoming ->
-                current.copy(posters = current.posters + incoming.posters)
-            },
-        )
+    val similarShelves = remember(similarRecommendations) {
+        similarRecommendations.orEmpty().mapNotNull { recommendation ->
+            val items =
+                recommendation.items
+                    .distinctBy { it.id }
+                    .filter { item ->
+                        item is SongItem && !item.isVideoSong ||
+                            item is AlbumItem ||
+                            item is ArtistItem ||
+                            item is PlaylistItem
+                    }
+                    .sortedBy { item -> item is ArtistItem }
+            if (
+                items.size < 2 ||
+                    recommendation.title !is Artist && recommendation.thumbnailUrl.isNullOrBlank()
+            ) {
+                null
+            } else {
+                recommendation to items
+            }
+        }
+    }
+    val lightweightFolioMode by rememberLightweightFolioMode()
+    val homeReducedMotion = rememberReducedMotion() || lightweightFolioMode
+    val moodContentState =
+        if (HOME_MOOD_SECTION_ENABLED) {
+            viewModel.homeMoodContent.collectDeferredHomeState(
+                "mood",
+                identity = { it.params },
+                hasContent = { !it.items.isNullOrEmpty() },
+            )
+        } else {
+            remember {
+                mutableStateOf(HomeViewModel.HomeMoodContent(null, null))
+            }
+        }
+    val moodContent by moodContentState
     val moodMixItems = moodContent.items
     val testPlaylist = if (SHOW_HOME_TEST_PLAYLIST) {
         moodMixItems?.firstOrNull()
@@ -531,19 +637,8 @@ private fun HomeScreenContent(
     } else {
         null
     }
-    val testPlaylistTrackThumbnails by
-        viewModel.testPlaylistTrackThumbnails.collectAsStateWithLifecycle()
-    if (SHOW_HOME_TEST_PLAYLIST) {
-        LaunchedEffect(testPlaylist?.id) {
-            testPlaylist?.let { viewModel.loadTestPlaylistArtwork(it.id) }
-        }
-    }
-    val moodPosterUrls = moodContent.posters
-    val moodPosterSize =
-        with(LocalDensity.current) { currentGridHeight.roundToPx() }.coerceIn(128, 768)
     val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
     val isMoodError by viewModel.isMoodError.collectAsStateWithLifecycle()
-    val loadedMoodParams = moodContent.params
     val preferredMoodParams by viewModel.preferredMoodParams.collectAsStateWithLifecycle()
     val isMoodPreferenceReady by viewModel.isMoodPreferenceReady.collectAsStateWithLifecycle()
     var selectedMoodCategory by remember {
@@ -577,76 +672,79 @@ private fun HomeScreenContent(
     val moodMixesState = rememberLazyListState()
     val moodLifecycleOwner = LocalLifecycleOwner.current
     val moodContext = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(
-        moodLifecycleOwner,
-        selectedMoodCategory,
-        hideExplicit,
-        hideVideoSongs,
-        hideYoutubeShorts,
-        moodPosterSize,
-    ) {
-        moodLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            if (selectedMoodCategory != null) {
-                viewModel.loadMoodPage(
-                    selectedMoodCategory?.endpoint?.params,
-                    selectedMoodCategory?.title,
-                    hideExplicit,
-                    hideVideoSongs,
-                    hideYoutubeShorts,
-                    moodPosterSize,
-                    forceReload = false,
-                )
-            }
-            viewModel.isMoodError.collectLatest { failed ->
-                while (failed && viewModel.isMoodError.value) {
-                    delay(30_000)
-                    if (isInternetAvailable(moodContext)) {
-                        viewModel.loadMoodPage(
-                            selectedMoodCategory?.endpoint?.params,
-                            selectedMoodCategory?.title,
-                            hideExplicit,
-                            hideVideoSongs,
-                            hideYoutubeShorts,
-                            moodPosterSize,
-                            forceReload = true,
-                        )
+    if (HOME_MOOD_SECTION_ENABLED) {
+        LaunchedEffect(
+            moodLifecycleOwner,
+            selectedMoodCategory,
+            hideExplicit,
+            hideVideoSongs,
+            hideYoutubeShorts,
+        ) {
+            moodLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                if (selectedMoodCategory != null) {
+                    viewModel.loadMoodPage(
+                        selectedMoodCategory?.endpoint?.params,
+                        selectedMoodCategory?.title,
+                        hideExplicit,
+                        hideVideoSongs,
+                        hideYoutubeShorts,
+                        forceReload = false,
+                    )
+                }
+                viewModel.isMoodError.collectLatest { failed ->
+                    while (failed && viewModel.isMoodError.value) {
+                        delay(30_000)
+                        if (isInternetAvailable(moodContext)) {
+                            viewModel.loadMoodPage(
+                                selectedMoodCategory?.endpoint?.params,
+                                selectedMoodCategory?.title,
+                                hideExplicit,
+                                hideVideoSongs,
+                                hideYoutubeShorts,
+                                forceReload = true,
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
-    LaunchedEffect(moodChips, isMoodPreferenceReady) {
-        if (isMoodPreferenceReady && moodChips.isNotEmpty()) {
-            val current =
-                moodChips
-                    .firstOrNull {
-                        it.first.title.equals(selectedMoodCategory?.title, ignoreCase = true)
-                    }
-                    ?.first
-            selectedMoodCategory =
-                current
-                    ?: moodChips
-                        .firstOrNull { it.first.endpoint?.params == preferredMoodParams }
+        LaunchedEffect(moodChips, isMoodPreferenceReady) {
+            if (isMoodPreferenceReady && moodChips.isNotEmpty()) {
+                val current =
+                    moodChips
+                        .firstOrNull {
+                            it.first.title.equals(selectedMoodCategory?.title, ignoreCase = true)
+                        }
                         ?.first
-                    ?: moodChips.first().first
+                selectedMoodCategory =
+                    current
+                        ?: moodChips
+                            .firstOrNull { it.first.endpoint?.params == preferredMoodParams }
+                            ?.first
+                        ?: moodChips.first().first
+            }
+        }
+        LaunchedEffect(selectedMoodCategory) {
+            moodMixesState.scrollToItem(0)
         }
     }
-    LaunchedEffect(selectedMoodCategory) {
-        moodMixesState.scrollToItem(0)
-    }
 
+    val homeAlreadyRevealed = remember { IrideTabEntrance.wasRevealed("home") }
     val screenProgress =
-        if (IrideTabEntrance.wasRevealed("home")) {
-            1f
+        if (homeAlreadyRevealed || lightweightFolioMode) {
+            rememberUpdatedState(1f)
         } else {
-            rememberEnterProgress(
+            rememberEnterProgressState(
                     play = true,
                     durationMillis = IrideMotion.Short,
                     easing = IrideMotion.EaseOutQuart,
                 )
-                .also { if (it >= 1f) IrideTabEntrance.markRevealed("home") }
         }
+    LaunchedEffect(screenProgress) {
+        snapshotFlow { screenProgress.value >= 1f }.first { it }
+        IrideTabEntrance.markRevealed("home")
+    }
     val scope = rememberCoroutineScope()
     val backStackEntry = LocalViewModelStoreOwner.current as? NavBackStackEntry
     val scrollToTop =
@@ -667,7 +765,11 @@ private fun HomeScreenContent(
 
     val orderedFeedSections =
         remember(homePage?.sections) {
-            val sections = homePage?.sections.orEmpty()
+            val sections = homePage?.sections.orEmpty().filterNot { section ->
+                val title = section.title.lowercase()
+                val label = section.label.orEmpty().lowercase()
+                title.contains("top 100") && (title.contains("video") || label.contains("video"))
+            }
             val selectedTrendingIndex =
                 sections
                     .withIndex()
@@ -707,10 +809,13 @@ private fun HomeScreenContent(
                 }
                 .sortedBy { indexed ->
                     val title = indexed.value.title.lowercase()
+                    val label = indexed.value.label.orEmpty().lowercase()
                     when {
                         title.contains("trending") || title.contains("top 100") -> 0
-                        title.contains("new release") || title.contains("nuove uscite") -> 1
-                        else -> 2
+                        title.contains("similar to") || title.contains("simile a") ||
+                            label.contains("similar to") || label.contains("simile a") -> 1
+                        title.contains("new release") || title.contains("nuove uscite") -> 2
+                        else -> 3
                     }
                 }
         }
@@ -722,8 +827,9 @@ private fun HomeScreenContent(
                 .distinctBy { it.id }
         }
 
-    val homeColorScheme =
-        MaterialTheme.colorScheme.let { colors ->
+    val colors = MaterialTheme.colorScheme
+    val homeColorScheme = remember(colors) {
+        colors.let { colors ->
             colors.copy(
                 primary = colors.onSurface,
                 onPrimary = colors.surface,
@@ -740,7 +846,9 @@ private fun HomeScreenContent(
                 onTertiaryContainer = colors.onSurface,
             )
         }
-    MaterialTheme(colorScheme = homeColorScheme, typography = irideFolioShelfTypography()) {
+    }
+    val homeTypography = irideFolioShelfTypography()
+    MaterialTheme(colorScheme = homeColorScheme, typography = homeTypography) {
         IrideFolioDisplayHeadings(menuState = menuState) {
             Scaffold(
                 modifier = Modifier,
@@ -752,6 +860,7 @@ private fun HomeScreenContent(
                         CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                             YouTubeGridItem(
                                 item = item,
+                                showStarredAlbumInTitle = true,
                                 isActive =
                                     item.id in
                                         listOf(
@@ -880,10 +989,7 @@ private fun HomeScreenContent(
                                 showDivider = false,
                                 trailingContent = {
                                     SongMenuIconButton(onClick = showSongMenu) {
-                                        Icon(
-                                            painterResource(R.drawable.more_vert),
-                                            stringResource(R.string.more_options),
-                                        )
+                                        TrackOverflowIcon()
                                     }
                                 },
                                 modifier =
@@ -911,10 +1017,10 @@ private fun HomeScreenContent(
                         }
                     }
 
-                    val forYouBoxScale = 1.35f
                     val forYouCellGap = IrideFolio.ShelfMosaicGap
-                    val forYouBoxSize = currentGridHeight * forYouBoxScale
-                    val forYouCellSize = (forYouBoxSize - forYouCellGap) / 2
+                    // Match regular album and artist shelf artwork dimensions.
+                    val forYouCellSize = currentGridHeight
+                    val forYouBoxSize = forYouCellSize * 2 + forYouCellGap
                     val forYouOnClick: (LocalItem) -> Unit = { cell ->
                         when (cell) {
                             is Song -> {
@@ -932,7 +1038,7 @@ private fun HomeScreenContent(
                         }
                     }
                     val forYouMiniTile: @Composable (LocalItem) -> Unit = { cell ->
-                        val tileShape = if (cell is Artist) CircleShape else FolioShape(6.dp)
+                        val tileShape = if (cell is Artist) CircleShape else if (cell is Album || cell is Playlist) CollectionArtworkShape else FolioShape(6.dp)
                         val collectionTile = if (cell is Album) {
                             rememberCollectionExpansionTile(
                                 CollectionExpansionKind.Album, cell.id, artworkUrl = cell.thumbnailUrl, title = cell.title,
@@ -943,6 +1049,8 @@ private fun HomeScreenContent(
                                 rememberArtistThumbnail(cell.id, cell.title, cell.thumbnailUrl)
                             } else cell.thumbnailUrl
                         val portraitNavigation = LocalArtistPortraitNavigation.current
+                        val portraitLoader = rememberArtistArtworkLoader()
+                        val portraitBackdrop = LocalIrideExpansionBackdrop.current
                         val portraitKey = rememberSaveable { UUID.randomUUID().toString() }
                         var portraitBounds by remember { mutableStateOf(Rect.Zero) }
                         val portrait =
@@ -961,28 +1069,30 @@ private fun HomeScreenContent(
                                     .value
                             } else null
                         val portraitScope = LocalAnimatedVisibilityScope.current
+                        val portraitBorderColor = MaterialTheme.colorScheme.strokeCard
                         val portraitInFlight =
                             cell is Artist && LocalArtistPortraitTransitionActive.current &&
                                 portraitScope != null && !homeReducedMotion &&
                                 portraitNavigation?.seed?.sourceKey == portraitKey
-                        val homePortraitProgress = if (portraitInFlight) {
-                            val progress by portraitScope!!.transition.animateFloat(
+                        if (portraitInFlight) {
+                            portraitScope!!.transition.animateFloat(
                                 transitionSpec = { tween(ArtistPortraitMotion.Duration, easing = ArtistPortraitMotion.Easing) },
                                 label = "homePortraitVisibility",
                             ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
-                            progress
-                        } else 1f
-                        // These tiles render at roughly half the real grid size, so the outline
-                        // uses thinner weights than standard items to keep the same visual weight.
+                        }
                         Box(
                             modifier =
                                 Modifier.size(forYouCellSize)
                                     .then(collectionTile.first)
-                                    .then(collectionTile.second)
                                     .clip(tileShape)
                                     .irideFolioCombinedClickable(
                                         onClick = {
                                             if (cell is Artist && portrait != null) {
+                                                prefetchArtistPage(cell.id)
+                                                portraitLoader.prefetchHighResolution(ArtistArtworkRequest(
+                                                    cell.id, cell.title, thumbnail, cell.artist.channelId,
+                                                    !cell.artist.isLocal && !cell.artist.isPodcastChannel && !cell.artist.isPrivatelyOwnedArtist,
+                                                ))
                                                 portraitNavigation?.select(
                                                     portraitKey,
                                                     cell.id,
@@ -990,6 +1100,7 @@ private fun HomeScreenContent(
                                                     portrait,
                                                     thumbnail,
                                                     portraitBounds,
+                                                    portraitBorderColor,
                                                 )
                                                 navController.navigate(
                                                     "artist/${cell.id}?portraitSource=$portraitKey"
@@ -1029,39 +1140,57 @@ private fun HomeScreenContent(
                                             }
                                         },
                                     )
-                                    .border(
-                                        width = 0.5.dp,
-                                        color =
-                                            if (cell is Song) MaterialTheme.colorScheme.strokeItemSoft
-                                            else MaterialTheme.colorScheme.strokeCard,
-                                        shape = tileShape,
-                                    )
                         ) {
-                            if (cell is Artist && portrait != null) {
-                                val displayedPortrait = portraitNavigation?.seed?.takeIf { it.sourceKey == portraitKey }?.artwork ?: portrait
-                                Image(
-                                    bitmap = remember(displayedPortrait.bitmap) { displayedPortrait.bitmap.asImageBitmap() },
-                                    contentDescription = cell.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier.fillMaxSize()
-                                            .onGloballyPositioned { portraitBounds = it.boundsInWindow() }
-                                            .alpha(if (portraitInFlight && homePortraitProgress < 1f) 0f else 1f)
-                                            .clip(tileShape),
+                            // Keep the cover recording inside the press layer, as on artist and library cards.
+                            Box(Modifier.fillMaxSize().then(collectionTile.second)) {
+                                val border = Modifier.border(
+                                    width = 0.5.dp,
+                                    color =
+                                        if (cell is Song) MaterialTheme.colorScheme.strokeItemSoft
+                                        else MaterialTheme.colorScheme.strokeCard,
+                                    shape = tileShape,
                                 )
-                            } else {
-                                AsyncImage(
-                                    model =
-                                        ImageRequest.Builder(LocalContext.current)
+                                if (cell is Artist && portrait != null) {
+                                    val displayedPortrait = portraitNavigation?.seed?.takeIf { it.sourceKey == portraitKey }?.artwork ?: portrait
+                                    Image(
+                                        bitmap = remember(displayedPortrait.bitmap) { displayedPortrait.bitmap.asImageBitmap() },
+                                        contentDescription = cell.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier =
+                                            Modifier.fillMaxSize()
+                                                .then(border)
+                                                .onGloballyPositioned { portraitBounds = it.boundsInWindow() }
+                                                .drawWithContent {
+                                                    if (!portraitInFlight || portraitBackdrop?.artworkInFlight != true) drawContent()
+                                                }
+                                                .clip(tileShape),
+                                    )
+                                } else if (cell is Artist) {
+                                    ItemThumbnail(
+                                        thumbnailUrl = thumbnail,
+                                        isActive = false,
+                                        isPlaying = false,
+                                        shape = tileShape,
+                                        artistArtwork = true,
+                                        modifier = Modifier.fillMaxSize().then(border),
+                                    )
+                                } else {
+                                    val context = LocalContext.current
+                                    val thumbnailRequest = remember(context, thumbnail) {
+                                        ImageRequest.Builder(context)
                                             .data(thumbnail?.resize(300, 300))
                                             .memoryCachePolicy(CachePolicy.ENABLED)
                                             .diskCachePolicy(CachePolicy.ENABLED)
                                             .networkCachePolicy(CachePolicy.ENABLED)
-                                            .build(),
-                                    contentDescription = cell.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize().clip(tileShape),
-                                )
+                                            .build()
+                                    }
+                                    AsyncImage(
+                                        model = thumbnailRequest,
+                                        contentDescription = cell.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().then(border).clip(tileShape),
+                                    )
+                                }
                             }
                         }
                     }
@@ -1073,26 +1202,20 @@ private fun HomeScreenContent(
                                 val collectionTile = rememberCollectionExpansionTile(
                                     CollectionExpansionKind.Album, album.id, artworkUrl = album.thumbnail, title = album.title,
                                 )
-                                AsyncImage(
-                                    model =
-                                        ImageRequest.Builder(LocalContext.current)
-                                            .data(album.thumbnail?.resize(300, 300))
-                                            .memoryCachePolicy(CachePolicy.ENABLED)
-                                            .diskCachePolicy(CachePolicy.ENABLED)
-                                            .networkCachePolicy(CachePolicy.ENABLED)
-                                            .build(),
-                                    contentDescription = album.title,
-                                    contentScale = ContentScale.Crop,
+                                val context = LocalContext.current
+                                val thumbnailRequest = remember(context, album.thumbnail) {
+                                    ImageRequest.Builder(context)
+                                        .data(album.thumbnail?.resize(300, 300))
+                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .networkCachePolicy(CachePolicy.ENABLED)
+                                        .build()
+                                }
+                                Box(
                                     modifier =
                                         Modifier.size(forYouCellSize)
                                             .then(collectionTile.first)
-                                            .then(collectionTile.second)
-                                            .irideArtworkOverlayBorder(
-                                                IrideSoftBorderWidth,
-                                                MaterialTheme.colorScheme.strokeCard,
-                                                FolioShape(6.dp),
-                                            )
-                                            .clip(FolioShape(6.dp))
+                                            .clip(CollectionArtworkShape)
                                             .irideFolioCombinedClickable(
                                                 onClick = { navController.navigate("album/${album.id}") },
                                                 onLongClick = {
@@ -1105,7 +1228,20 @@ private fun HomeScreenContent(
                                                     }
                                                 },
                                             ),
-                                )
+                                ) {
+                                    Box(Modifier.fillMaxSize().then(collectionTile.second)) {
+                                        AsyncImage(
+                                            model = thumbnailRequest,
+                                            contentDescription = album.title,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize().irideArtworkOverlayBorder(
+                                                IrideSoftBorderWidth,
+                                                MaterialTheme.colorScheme.strokeCard,
+                                                CollectionArtworkShape,
+                                            ),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1142,27 +1278,25 @@ private fun HomeScreenContent(
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
+                                textAlign = TextAlign.Start,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
                     val forYouLoading = isForYouLoading && forYouShelves.isEmpty()
                     val forYouSection: LazyListScope.(HomeShelfOrder) -> Unit = { shelfOrder ->
-                        if (forYouLoading || forYouShelves.isNotEmpty()) {
+                        if (forYouLoading || forYouShelves.isNotEmpty() || showMonthlyDrop) {
                             shelfOrder.added(hasFourRows = false)
-                            item(key = "for_you_section") {
+                            item(key = "for_you_section", contentType = "home_mosaic_shelf") {
                                 IrideFolioSection(
                                     modifier =
                                         Modifier.animateItem(
                                             fadeInSpec = null,
-                                            placementSpec =
-                                                if (homeReducedMotion) null
-                                                else IrideMotion.PlacementSpec,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                             fadeOutSpec = null,
                                         ),
                                     sectionKey = "for_you_section",
-                                    ready = !forYouLoading,
+                                    ready = !forYouLoading || showMonthlyDrop,
                                     artwork =
                                         forYouShelves.take(2).flatMap { shelf ->
                                             listOf(shelf.artist.thumbnailUrl?.resize(300, 300)) +
@@ -1180,22 +1314,70 @@ private fun HomeScreenContent(
                                     },
                                 ) {
                                     IrideFolioShelfHeader(
-                                        title = stringResource(R.string.for_you_artists_title),
+                                        title =
+                                            stringResource(
+                                                if (showMonthlyDrop && forYouShelves.isEmpty()) {
+                                                    R.string.iride_monthly_drop_home_title
+                                                } else {
+                                                    R.string.for_you_artists_title
+                                                },
+                                            ),
                                         showNavigationArrow = false,
                                     )
 
                                     val shelves = forYouShelves
-                                    val forYouState = rememberLazyListState()
-                                    LaunchedEffect(forYouState, shelves.size, isForYouLoading) {
+                                    val firstShelf = shelves.firstOrNull()
+                                    val forYouState = key(firstShelf?.artist?.id, firstShelf?.tiles?.map { it.id }) {
+                                        rememberLazyListState()
+                                    }
+                                    val forYouContext = LocalContext.current
+                                    val prefetchedForYouArtwork = remember(forYouState) { mutableSetOf<String>() }
+                                    LaunchedEffect(forYouState, shelves, isForYouLoading, showMonthlyDrop) {
                                         snapshotFlow {
                                             forYouState.layoutInfo.visibleItemsInfo
                                                 .lastOrNull()
                                                 ?.index
                                         }
                                             .collect { lastVisible ->
+                                                if (lastVisible != null) {
+                                                    val lastVisibleShelfIndex =
+                                                        lastVisible - if (showMonthlyDrop) 1 else 0
+                                                    val upcomingShelves =
+                                                        shelves
+                                                            .drop((lastVisibleShelfIndex + 1).coerceAtLeast(0))
+                                                            .take(2)
+                                                    val upcomingArtwork = upcomingShelves.flatMap { shelf ->
+                                                        buildList {
+                                                            shelf.artist.thumbnailUrl?.resize(300, 300)?.let(::add)
+                                                            shelf.tiles.forEach { tile ->
+                                                                val thumbnail = when (tile) {
+                                                                    is ForYouShelfTile.Local -> tile.item.thumbnailUrl
+                                                                    is ForYouShelfTile.RecommendedAlbum -> tile.item.thumbnail
+                                                                }
+                                                                thumbnail?.resize(300, 300)?.let(::add)
+                                                            }
+                                                        }
+                                                    }
+                                                    upcomingArtwork.distinct().forEach { url ->
+                                                        if (prefetchedForYouArtwork.add(url)) {
+                                                            forYouContext.imageLoader.enqueue(
+                                                                ImageRequest.Builder(forYouContext)
+                                                                    .data(url)
+                                                                    .size(300, 300)
+                                                                    .precision(Precision.INEXACT)
+                                                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                                                    .networkCachePolicy(CachePolicy.ENABLED)
+                                                                    .build(),
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                                 if (
                                                     lastVisible != null &&
-                                                        lastVisible >= shelves.size - 3 &&
+                                                        shelves.isNotEmpty() &&
+                                                        (lastVisible - (if (showMonthlyDrop) 1 else 0)) >=
+                                                            shelves.size - 3 &&
                                                         viewModel.forYouShelves.value.size <=
                                                             shelves.size
                                                 ) {
@@ -1216,12 +1398,24 @@ private fun HomeScreenContent(
                                                 forYouState,
                                             ),
                                     ) {
-                                        itemsIndexed(
+                                        if (monthlyDrop != null) {
+                                            item(
+                                                key = "iride_monthly_drop_${monthlyDrop.month}",
+                                                contentType = "iride_monthly_drop",
+                                            ) {
+                                                IrideMonthlyDropHomeCard(
+                                                    drop = monthlyDrop,
+                                                    artworkSize = forYouBoxSize,
+                                                    onClick = {
+                                                        navController.navigate(IrideMonthlyDropRoute)
+                                                    },
+                                                )
+                                            }
+                                        }
+                                            items(
                                             shelves,
-                                            key = { index, shelf ->
-                                                "for_you_${index}_${shelf.artist.id}"
-                                            },
-                                        ) { _, shelf ->
+                                                key = { shelf -> "for_you_${shelf.artist.id}" },
+                                            ) { shelf ->
                                             forYouBlock(shelf)
                                         }
                                     }
@@ -1234,12 +1428,31 @@ private fun HomeScreenContent(
                         title = homePageTitle(),
                         state = lazyListState,
                         reducedMotion = homeReducedMotion,
+                        showTopBar = true,
+                        actions = {
+                            IconButton(onClick = { navController.navigate(Screens.Account.route) }) {
+                                if (!accountImageUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = accountImageUrl,
+                                        contentDescription = stringResource(Screens.Account.titleId),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(32.dp).clip(CircleShape),
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(Screens.Account.iconIdInactive),
+                                        contentDescription = stringResource(Screens.Account.titleId),
+                                    )
+                                }
+                            }
+                        },
                         bottomPadding =
                             LocalPlayerAwareWindowInsets.current
                                 .asPaddingValues()
                                 .calculateBottomPadding(),
                         listModifier =
-                            Modifier.irideDepthEnter({ screenProgress }, intensity = 0.4f),
+                            Modifier.irideDepthEnter({ screenProgress.value }, intensity = 0.4f),
+                         frostBlurScale = if (lightweightFolioMode) 0f else 0.5f,
                         overlay = {
                             if (
                                 isLoggedIn &&
@@ -1266,70 +1479,59 @@ private fun HomeScreenContent(
                             }
                         },
                     ) {
-                        val shelfOrder = HomeShelfOrder()
-                        if (isHeroCarouselEnabled) {
-                            item(key = "hero_carousel") {
-                                val radioItems =
-                                    heroCarouselItems.filterIsInstance<
-                                        HeroCarouselItem.ArtistRadio
-                                    >()
-                                if (radioItems.isNotEmpty() || isHeroCarouselLoading) {
-                                    IrideFolioSection(
-                                        modifier =
-                                            Modifier.animateItem(
-                                                fadeInSpec = null,
-                                                placementSpec =
-                                                    if (homeReducedMotion) null
-                                                    else IrideMotion.PlacementSpec,
-                                                fadeOutSpec = null,
-                                            ),
-                                        sectionKey = "hero_carousel",
-                                        ready = radioItems.isNotEmpty(),
-                                        artwork = radioItems.take(1).map { it.coverUrl },
-                                        placeholder = {
-                                            IrideFolioSectionSkeleton(
-                                                currentGridHeight,
-                                                hero = true,
-                                            )
-                                        },
-                                    ) {
-                                        HeroCarouselSection(
-                                            items = radioItems,
-                                            onCoverError = viewModel::repairHeroRadioCover,
-                                            onArtistClick = { artistId ->
-                                                navController.navigate("artist/$artistId")
-                                            },
-                                            onArtistLongClick = { artist ->
-                                                menuState.show(anchored = true) {
-                                                    YouTubeArtistMenu(
-                                                        artist =
-                                                            ArtistItem(
-                                                                id = artist.artistId,
-                                                                title = artist.artistName,
-                                                                thumbnail = artist.coverUrl,
-                                                                shuffleEndpoint = null,
-                                                                radioEndpoint = null,
-                                                            ),
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-                                }
+                        if (updateVersion != null) {
+                            item(key = "home_update_banner", contentType = "home_update_banner") {
+                                HomeUpdateBanner(
+                                    version = updateVersion,
+                                    downloadState = updateDownloadState,
+                                    onUpdateClick = onUpdateClick,
+                                )
                             }
                         }
-
-                        if (quickPicks == null || pickedSongs.isNotEmpty()) {
-                            shelfOrder.added(hasFourRows = true)
-                            item(key = "picked_for_you_section") {
+                        val shelfOrder = HomeShelfOrder()
+                        if (isHeroCarouselEnabled && (heroVideos.isNotEmpty() || isHeroCarouselLoading)) {
+                            item(key = "hero_carousel", contentType = "home_hero_carousel") {
+                                val radioItems = heroVideos
                                 IrideFolioSection(
                                     modifier =
                                         Modifier.animateItem(
                                             fadeInSpec = null,
-                                            placementSpec =
-                                                if (homeReducedMotion) null
-                                                else IrideMotion.PlacementSpec,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
+                                            fadeOutSpec = null,
+                                        ),
+                                    sectionKey = "hero_carousel",
+                                    ready = radioItems.isNotEmpty(),
+                                    artwork = radioItems.take(1).map { it.coverUrl },
+                                    placeholder = { HeroCarouselSkeleton() },
+                                ) {
+                                    HeroCarouselSection(
+                                        items = radioItems,
+                                        lowPowerMode = lightweightFolioMode,
+                                        onCoverError = viewModel::removeHeroVideo,
+                                        onVideoClick = { video ->
+                                            navController.navigate("artist/${video.artistId}")
+                                        },
+                                        onVideoLongClick = { video ->
+                                            menuState.show(anchored = true) {
+                                                YouTubeSongMenu(
+                                                    song = video.song,
+                                                    navController = navController,
+                                                    onDismiss = menuState::dismiss,
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+
+                        shelfOrder.added(hasFourRows = true)
+                        item(key = "picked_for_you_section", contentType = "home_song_shelf") {
+                                IrideFolioSection(
+                                    modifier =
+                                        Modifier.animateItem(
+                                            fadeInSpec = null,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                             fadeOutSpec = null,
                                         ),
                                     sectionKey = "picked_for_you_section",
@@ -1352,7 +1554,7 @@ private fun HomeScreenContent(
                                         loading = quickPicks == null,
                                         contentPadding = irideListItemStart - 4.dp,
                                         usePager = true,
-                                        minimumRows = 1,
+                                        minimumRows = 4,
                                         modifier = Modifier,
                                     ) { originalSong, itemWidth ->
                                         val song by
@@ -1384,16 +1586,7 @@ private fun HomeScreenContent(
                                                             }
                                                         }
                                                     ) {
-                                                        Icon(
-                                                            painter =
-                                                                painterResource(
-                                                                    R.drawable.more_vert
-                                                                ),
-                                                            contentDescription =
-                                                                stringResource(
-                                                                    R.string.more_options
-                                                                ),
-                                                        )
+                                                        TrackOverflowIcon()
                                                     }
                                                 },
                                                 modifier =
@@ -1439,12 +1632,8 @@ private fun HomeScreenContent(
                                         }
                                     }
                                 }
-                            }
                         }
 
-                        val knownArtistIds = forYouShelves.map { it.artist.id }.toSet()
-                        val knownArtistNames =
-                            forYouShelves.map { it.artist.artist.name.lowercase() }.toSet()
                         val addFeedSection:
                             LazyListScope.(
                                 IndexedValue<com.metrolist.innertube.pages.HomePage.Section>
@@ -1462,24 +1651,30 @@ private fun HomeScreenContent(
                                 val isTrending =
                                     title.contains("trending") || title.contains("top 100")
                                 val isNewRelease =
-                                    title.contains("new release") || title.contains("nuove uscite")
+                                    listOf(
+                                        "new release",
+                                        "new album",
+                                        "nuove uscite",
+                                        "nuova uscita",
+                                        "nuovi album",
+                                        "nuovo album",
+                                    ).any { it in title || it in label }
                                 val isVideoSection =
                                     title.contains("video") ||
                                         label.contains("video") ||
                                         section.items.isNotEmpty() &&
                                             section.items.all { it is SongItem && it.isVideoSong }
-                                if (!isTrending && !isNewRelease && !isSimilar && !isVideoSection)
+                                if (isNewRelease || !isTrending && !isSimilar && !isVideoSection)
                                     return@feedSection
                                 if (
                                     title.contains("listen again") ||
                                         label.contains("listen again") ||
                                         title.contains("long listens") ||
-                                        title == accountName.lowercase() ||
+                                        title == normalizedAccountName ||
                                         title.contains("picked for you") ||
                                         title.contains("picked 4u") ||
                                         title.contains("quick picks") ||
-                                        label.contains("picked for you") ||
-                                        (label.isBlank() && title in knownArtistNames)
+                                        label.contains("picked for you")
                                 )
                                     return@feedSection
 
@@ -1491,17 +1686,7 @@ private fun HomeScreenContent(
                                                 item is SongItem ||
                                                     item is AlbumItem ||
                                                     item is ArtistItem
-                                            isMusicItem &&
-                                                (isVideoSection ||
-                                                    !isNewRelease ||
-                                                    item is AlbumItem &&
-                                                        item.albumType?.lowercase() !in
-                                                            setOf("single", "singolo") &&
-                                                        item.artists.orEmpty().any { artist ->
-                                                            artist.id?.let {
-                                                                it in knownArtistIds
-                                                            } == true
-                                                        })
+                                            isMusicItem
                                         }
                                 if (
                                     label.isBlank() &&
@@ -1599,6 +1784,38 @@ private fun HomeScreenContent(
                                             }
                                             .firstOrNull { it.name.equals(name, ignoreCase = true) }
                                             ?.id
+                                val similarArtistItem =
+                                    if (isSimilar && !isAlbumSource) {
+                                        matchedArtist
+                                            ?: sourceArtistId?.let { artistId ->
+                                                ArtistItem(
+                                                    id = artistId,
+                                                    title = name,
+                                                    thumbnail = sourceThumbnail,
+                                                    channelId = artistId.takeIf { it.startsWith("UC") },
+                                                    shuffleEndpoint = null,
+                                                    radioEndpoint = null,
+                                                )
+                                            }
+                                    } else null
+                                val similarAlbumItem =
+                                    if (isSimilar && isAlbumSource) {
+                                        matchedAlbum
+                                            ?: sectionItems.asSequence()
+                                                .filterIsInstance<SongItem>()
+                                                .firstNotNullOfOrNull { item ->
+                                                    val album = item.album
+                                                        ?.takeIf { it.name.equals(name, ignoreCase = true) }
+                                                        ?: return@firstNotNullOfOrNull null
+                                                    AlbumItem(
+                                                        browseId = album.id,
+                                                        playlistId = album.id,
+                                                        title = album.name,
+                                                        artists = item.artists,
+                                                        thumbnail = sourceThumbnail ?: item.thumbnail,
+                                                    )
+                                                }
+                                    } else null
                                 if (
                                     isSimilar &&
                                         (name.isBlank() ||
@@ -1625,14 +1842,12 @@ private fun HomeScreenContent(
                                             Unit
                                         }
                                     }
-                                item(key = "home_section_$index") {
+                                item(key = "home_section_$index", contentType = "home_feed_shelf") {
                                     IrideFolioSection(
                                         modifier =
                                             Modifier.animateItem(
                                                 fadeInSpec = null,
-                                                placementSpec =
-                                                    if (homeReducedMotion) null
-                                                    else IrideMotion.PlacementSpec,
+                                                placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                                 fadeOutSpec = null,
                                             ),
                                         sectionKey = "home_section_$index",
@@ -1655,8 +1870,41 @@ private fun HomeScreenContent(
                                                 name = name,
                                                 thumbnailUrl = sourceThumbnail,
                                                 artistId = sourceArtistId,
+                                                albumId = similarAlbumItem?.id,
                                                 isArtist = !isAlbumSource,
-                                                onClick = onSectionClick,
+                                                onClick = when {
+                                                    similarArtistItem != null -> {
+                                                        { navController.navigate("artist/${similarArtistItem.id}") }
+                                                    }
+                                                    similarAlbumItem != null -> {
+                                                        { navController.navigate("album/${similarAlbumItem.id}") }
+                                                    }
+                                                    else -> onSectionClick
+                                                },
+                                                onLongClick = when {
+                                                    similarArtistItem != null -> {
+                                                        {
+                                                            menuState.show(anchored = true) {
+                                                                YouTubeArtistMenu(
+                                                                    artist = similarArtistItem,
+                                                                    onDismiss = menuState::dismiss,
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                    similarAlbumItem != null -> {
+                                                        {
+                                                            menuState.show(anchored = true) {
+                                                                YouTubeAlbumMenu(
+                                                                    albumItem = similarAlbumItem,
+                                                                    navController = navController,
+                                                                    onDismiss = menuState::dismiss,
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                    else -> null
+                                                },
                                             )
                                         } else {
                                             IrideFolioShelfHeader(
@@ -1691,16 +1939,14 @@ private fun HomeScreenContent(
                                     }
                                 }
                             }
-                        if (isLoggedIn) {
+                        if (HOME_MOOD_SECTION_ENABLED) {
                             shelfOrder.added(hasFourRows = false)
-                            item(key = "your_mood_section") {
+                            item(key = "your_mood_section", contentType = "home_mood_shelf") {
                                 IrideFolioSection(
                                     modifier =
                                         Modifier.animateItem(
                                             fadeInSpec = null,
-                                            placementSpec =
-                                                if (homeReducedMotion) null
-                                                else IrideMotion.PlacementSpec,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                             fadeOutSpec = null,
                                         ),
                                     sectionKey = "your_mood_section",
@@ -1730,7 +1976,6 @@ private fun HomeScreenContent(
                                                             hideExplicit,
                                                             hideVideoSongs,
                                                             hideYoutubeShorts,
-                                                            moodPosterSize,
                                                             forceReload = true,
                                                         )
                                                     } else selectedMoodCategory = chip
@@ -1765,31 +2010,6 @@ private fun HomeScreenContent(
                                                 items(mixItems, key = { it.id }) { mix ->
                                                     YouTubeGridItem(
                                                         item = mix,
-                                                        thumbnailUrlOverride =
-                                                            moodPosterUrls[mix.id] ?: mix.thumbnail,
-                                                        thumbnailImageLoader =
-                                                            if (moodPosterUrls[mix.id] != null)
-                                                                viewModel.moodPosterImageLoader
-                                                            else null,
-                                                        useThumbnailOverride = true,
-                                                        thumbnailPlaceholder = {
-                                                            MixPosterPlaceholder(
-                                                                title = mix.title,
-                                                                mood =
-                                                                    MixMood.fromMixTitle(mix.title)
-                                                                        ?: MixMood.fromChip(
-                                                                            moodChips
-                                                                                .firstOrNull {
-                                                                                    it.first
-                                                                                        .endpoint
-                                                                                        ?.params ==
-                                                                                        loadedMoodParams
-                                                                                }
-                                                                                ?.second
-                                                                        )
-                                                                        ?: MixMood.CHILL,
-                                                            )
-                                                        },
                                                         isActive =
                                                             mix.id ==
                                                                 mediaMetadataState.value?.album?.id,
@@ -1861,7 +2081,6 @@ private fun HomeScreenContent(
                                                                         hideExplicit,
                                                                         hideVideoSongs,
                                                                         hideYoutubeShorts,
-                                                                        moodPosterSize,
                                                                         forceReload = true,
                                                                     )
                                                                 }
@@ -1893,12 +2112,11 @@ private fun HomeScreenContent(
                             }
                         }
                         if (SHOW_HOME_TEST_PLAYLIST) testPlaylist?.let { playlist ->
-                                item(key = "home_test_playlist_section") {
+                                item(key = "home_test_playlist_section", contentType = "home_artwork_shelf") {
                                     IrideFolioSection(
                                         modifier = Modifier.animateItem(
                                             fadeInSpec = null,
-                                            placementSpec = if (homeReducedMotion) null
-                                                else IrideMotion.PlacementSpec,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                             fadeOutSpec = null,
                                         ),
                                         sectionKey = "home_test_playlist_section",
@@ -1915,10 +2133,9 @@ private fun HomeScreenContent(
                                             modifier = Modifier.fillMaxWidth(),
                                         ) {
                                             item(key = "home_test_playlist_${playlist.id}") {
-                                                val artwork = testPlaylistTrackThumbnails
                                                 val collectionTile = rememberCollectionExpansionTile(
                                                     CollectionExpansionKind.Playlist, playlist.id,
-                                                    artworkUrl = artwork.firstOrNull() ?: playlist.thumbnail, title = playlist.title,
+                                                    artworkUrl = playlist.thumbnail, title = playlist.title,
                                                 )
                                                 Column(
                                                     modifier = Modifier.width(currentGridHeight)
@@ -1929,100 +2146,13 @@ private fun HomeScreenContent(
                                                             },
                                                         ),
                                                 ) {
-                                                    Box(
-                                                        modifier = Modifier.size(currentGridHeight)
-                                                            .then(collectionTile.second)
-                                                            .clip(FolioShape(8.dp)),
-                                                    ) {
-                                                        if (artwork.isEmpty()) {
-                                                            AsyncImage(
-                                                                model = playlist.thumbnail,
-                                                                contentDescription = null,
-                                                                contentScale = ContentScale.Crop,
-                                                                modifier = Modifier.fillMaxSize(),
-                                                            )
-                                                        } else {
-                                                            Column(Modifier.fillMaxSize()) {
-                                                                Row(Modifier.weight(1f).fillMaxWidth()) {
-                                                                    AsyncImage(
-                                                                        model = artwork[0],
-                                                                        contentDescription = null,
-                                                                        contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                                                    )
-                                                                    AsyncImage(
-                                                                        model = artwork.getOrElse(1) { artwork[0] },
-                                                                        contentDescription = null,
-                                                                        contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                                                    )
-                                                                }
-                                                                Row(Modifier.weight(1f).fillMaxWidth()) {
-                                                                    AsyncImage(
-                                                                        model = artwork.getOrElse(2) { artwork[0] },
-                                                                        contentDescription = null,
-                                                                        contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                                                    )
-                                                                    AsyncImage(
-                                                                        model = artwork.getOrElse(3) { artwork[0] },
-                                                                        contentDescription = null,
-                                                                        contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                                                    )
-                                                                }
-                                                            }
-                                                        }
-                                                        Box(
-                                                            modifier = Modifier.fillMaxSize()
-                                                                .background(Color.Black.copy(alpha = 0.34f)),
-                                                            contentAlignment = Alignment.Center,
-                                                        ) {
-                                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                                Text(
-                                                                    text = stringResource(R.string.home_test_mood_label),
-                                                                    color = Color.White,
-                                                                    fontFamily = SatoshiFontFamily,
-                                                                    fontWeight = FontWeight.Black,
-                                                                    fontSize = 24.sp * IrideFolio.SatoshiTextHeightScale,
-                                                                    letterSpacing = (-0.6).sp,
-                                                                    textAlign = TextAlign.Center,
-                                                                    maxLines = 1,
-                                                                )
-                                                                Text(
-                                                                    text = stringResource(R.string.home_test_mood_type),
-                                                                    color = Color.White.copy(alpha = 0.92f),
-                                                                    fontFamily = SatoshiFontFamily,
-                                                                    fontWeight = FontWeight.SemiBold,
-                                                                    fontSize = 10.sp * IrideFolio.SatoshiTextHeightScale,
-                                                                    letterSpacing = 3.sp,
-                                                                    textAlign = TextAlign.Center,
-                                                                )
-                                                            }
-                                                        }
-                                                        Row(
-                                                            modifier = Modifier.align(Alignment.TopEnd)
-                                                                .padding(top = 4.dp, end = 5.dp),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                                        ) {
-                                                            Image(
-                                                                painter = painterResource(R.drawable.ic_logo),
-                                                                contentDescription = null,
-                                                                colorFilter = ColorFilter.tint(Color.White),
-                                                                modifier = Modifier.size(14.dp),
-                                                            )
-                                                            Text(
-                                                                text = stringResource(R.string.home_test_brand_label),
-                                                                color = Color.White,
-                                                                fontFamily = SatoshiFontFamily,
-                                                                fontWeight = FontWeight.SemiBold,
-                                                                fontSize = 10.sp * IrideFolio.SatoshiTextHeightScale,
-                                                                letterSpacing = 0.2.sp,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                    }
+                                                    PlaylistArtwork(
+                                                        title = playlist.title,
+                                                        thumbnailUrl = playlist.thumbnail,
+                                                        playlistId = playlist.id,
+                                                        modifier = Modifier.size(currentGridHeight).then(collectionTile.second),
+                                                        showBadge = false,
+                                                    )
                                                     Text(
                                                         text = playlist.title,
                                                         style = MaterialTheme.typography.bodyMedium,
@@ -2039,7 +2169,7 @@ private fun HomeScreenContent(
 
                         forYouSection(shelfOrder)
                         if (homePage?.sections.isNullOrEmpty()) {
-                            item(key = "home_feed_status") {
+                            item(key = "home_feed_status", contentType = "home_feed_status") {
                                 if (isHomeFeedLoading) {
                                     HomeFeedLoadingShelf(currentGridHeight)
                                 } else {
@@ -2059,16 +2189,14 @@ private fun HomeScreenContent(
                                 }
                             }
                         }
-                        if (isLoggedIn) shelfOrder.added(hasFourRows = false)
-                        if (isLoggedIn)
-                            item(key = "home_personal_mixes_section") {
+                        if (HOME_FAVORITES_DISCOVERIES_SECTION_ENABLED) {
+                            shelfOrder.added(hasFourRows = false)
+                            item(key = "home_personal_mixes_section", contentType = "home_artwork_shelf") {
                                 IrideFolioSection(
                                     modifier =
                                         Modifier.animateItem(
                                             fadeInSpec = null,
-                                            placementSpec =
-                                                if (homeReducedMotion) null
-                                                else IrideMotion.PlacementSpec,
+                                            placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                             fadeOutSpec = null,
                                         ),
                                     sectionKey = "home_personal_mixes_section",
@@ -2087,7 +2215,7 @@ private fun HomeScreenContent(
                                     val personalMixesState = rememberLazyListState()
                                     val starredPlaylistName = stringResource(R.string.starred)
                                     val starredPlaylist =
-                                        remember(starredPlaylistName, starredPlaylistThumbnails) {
+                                        remember(starredPlaylistName) {
                                             Playlist(
                                                 playlist =
                                                     PlaylistEntity(
@@ -2095,7 +2223,7 @@ private fun HomeScreenContent(
                                                         name = starredPlaylistName,
                                                     ),
                                                 songCount = 0,
-                                                songThumbnails = starredPlaylistThumbnails,
+                                                songThumbnails = emptyList(),
                                             )
                                         }
                                     LazyRow(
@@ -2144,6 +2272,7 @@ private fun HomeScreenContent(
                                     }
                                 }
                             }
+                        }
                         val feedSection: LazyListScope.() -> Unit = {
                             orderedFeedSections.forEach { addFeedSection(it) }
                         }
@@ -2154,14 +2283,12 @@ private fun HomeScreenContent(
                                 ?.takeIf { it.isNotEmpty() }
                                 ?.let { discoverList ->
                                     shelfOrder.added(hasFourRows = false)
-                                    item(key = "daily_discover_section") {
+                                    item(key = "daily_discover_section", contentType = "home_song_shelf") {
                                         IrideFolioSection(
                                             modifier =
                                                 Modifier.animateItem(
                                                     fadeInSpec = null,
-                                                    placementSpec =
-                                                        if (homeReducedMotion) null
-                                                        else IrideMotion.PlacementSpec,
+                                                    placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                                     fadeOutSpec = null,
                                                 ),
                                             sectionKey = "daily_discover_section",
@@ -2206,14 +2333,12 @@ private fun HomeScreenContent(
                                 ?.takeIf { it.isNotEmpty() }
                                 ?.let { playlists ->
                                     shelfOrder.added(hasFourRows = false)
-                                    item(key = "community_playlists_section") {
+                                    item(key = "community_playlists_section", contentType = "home_artwork_shelf") {
                                         IrideFolioSection(
                                             modifier =
                                                 Modifier.animateItem(
                                                     fadeInSpec = null,
-                                                    placementSpec =
-                                                        if (homeReducedMotion) null
-                                                        else IrideMotion.PlacementSpec,
+                                                    placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                                     fadeOutSpec = null,
                                                 ),
                                             sectionKey = "community_playlists_section",
@@ -2300,31 +2425,50 @@ private fun HomeScreenContent(
                         }
 
                         val similarSection: LazyListScope.() -> Unit = {
-                            similarRecommendations?.forEachIndexed { index, rec ->
-                                val similarItems =
-                                    rec.items
-                                        .distinctBy { it.id }
-                                        .filter { item ->
-                                            item is SongItem && !item.isVideoSong ||
-                                                item is AlbumItem ||
-                                                item is ArtistItem ||
-                                                item is PlaylistItem
-                                        }
-                                        .sortedBy { item -> item is ArtistItem }
-                                if (
-                                    similarItems.size < 2 ||
-                                        rec.title !is Artist && rec.thumbnailUrl.isNullOrBlank()
-                                )
-                                    return@forEachIndexed
+                            similarShelves.forEachIndexed { index, shelf ->
+                                val (rec, similarItems) = shelf
+                                val similarArtistItem = (rec.title as? Artist)?.let { artist ->
+                                    ArtistItem(
+                                        id = artist.id,
+                                        title = artist.title,
+                                        thumbnail = rec.thumbnailUrl ?: artist.thumbnailUrl,
+                                        channelId = artist.artist.channelId,
+                                        shuffleEndpoint = null,
+                                        radioEndpoint = null,
+                                    )
+                                }
+                                val similarAlbumItem = when (val title = rec.title) {
+                                    is Album -> AlbumItem(
+                                        browseId = title.id,
+                                        playlistId = title.album.playlistId ?: title.id,
+                                        title = title.title,
+                                        artists = title.artists.map {
+                                            com.metrolist.innertube.models.Artist(it.name, it.id)
+                                        },
+                                        year = title.album.year,
+                                        thumbnail = rec.thumbnailUrl ?: title.thumbnailUrl.orEmpty(),
+                                    )
+                                    is Song -> title.album?.let { album ->
+                                        AlbumItem(
+                                            browseId = album.id,
+                                            playlistId = album.playlistId ?: album.id,
+                                            title = album.title,
+                                            artists = title.orderedArtists.map {
+                                                com.metrolist.innertube.models.Artist(it.name, it.id)
+                                            },
+                                            year = album.year,
+                                            thumbnail = rec.thumbnailUrl ?: album.thumbnailUrl ?: title.thumbnailUrl.orEmpty(),
+                                        )
+                                    }
+                                    else -> null
+                                }
                                 shelfOrder.added(hasFourRows = false)
-                                item(key = "similar_to_${rec.title.id}") {
+                                item(key = "similar_to_${rec.title.id}", contentType = "home_song_shelf") {
                                     IrideFolioSection(
                                         modifier =
                                             Modifier.animateItem(
                                                 fadeInSpec = null,
-                                                placementSpec =
-                                                    if (homeReducedMotion) null
-                                                    else IrideMotion.PlacementSpec,
+                                                placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                                 fadeOutSpec = null,
                                             ),
                                         sectionKey = "similar_to_${rec.title.id}",
@@ -2346,7 +2490,32 @@ private fun HomeScreenContent(
                                             name = rec.title.title,
                                             thumbnailUrl = rec.thumbnailUrl,
                                             artistId = (rec.title as? Artist)?.id,
+                                            albumId = similarAlbumItem?.id,
                                             isArtist = rec.title is Artist,
+                                            onLongClick = when {
+                                                similarArtistItem != null -> {
+                                                    {
+                                                        menuState.show(anchored = true) {
+                                                            YouTubeArtistMenu(
+                                                                artist = similarArtistItem,
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                similarAlbumItem != null -> {
+                                                    {
+                                                        menuState.show(anchored = true) {
+                                                            YouTubeAlbumMenu(
+                                                                albumItem = similarAlbumItem,
+                                                                navController = navController,
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                else -> null
+                                            },
                                             onClick = {
                                                 when (rec.title) {
                                                     is Song ->
@@ -2386,14 +2555,12 @@ private fun HomeScreenContent(
                                 ?.takeIf { it.isNotEmpty() }
                                 ?.let { playlists ->
                                     shelfOrder.added(hasFourRows = false)
-                                    item(key = "account_playlists_section") {
+                                    item(key = "account_playlists_section", contentType = "home_artwork_shelf") {
                                         IrideFolioSection(
                                             modifier =
                                                 Modifier.animateItem(
                                                     fadeInSpec = null,
-                                                    placementSpec =
-                                                        if (homeReducedMotion) null
-                                                        else IrideMotion.PlacementSpec,
+                                                    placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                                     fadeOutSpec = null,
                                                 ),
                                             sectionKey = "account_playlists_section",
@@ -2431,23 +2598,11 @@ private fun HomeScreenContent(
 
                         val addFollowedReleases: LazyListScope.() -> Unit = {
                             shelfOrder.added(hasFourRows = true)
-                            item(key = "home_followed_releases") {
-                                val isVisible by
-                                    remember(lazyListState) {
-                                        derivedStateOf {
-                                            val layout = lazyListState.layoutInfo
-                                            layout.visibleItemsInfo.any {
-                                                it.key == "home_followed_releases" &&
-                                                    it.offset + it.size >
-                                                        layout.viewportStartOffset &&
-                                                    it.offset < layout.viewportEndOffset
-                                            }
-                                        }
-                                    }
+                            item(key = "home_followed_releases", contentType = "home_release_shelf") {
                                 HomeFollowedReleases(
                                     navController = navController,
                                     snackbarHostState = snackbarHostState,
-                                    isVisible = isVisible && phase1Complete,
+                                    viewModel = followedReleasesViewModel,
                                 )
                             }
                         }
@@ -2455,9 +2610,9 @@ private fun HomeScreenContent(
                         val sectionReadiness =
                             listOf(
                                 true,
+                                similarComplete || !similarRecommendations.isNullOrEmpty(),
                                 dailyDiscoverComplete || !dailyDiscover.isNullOrEmpty(),
                                 communityComplete || !communityPlaylists.isNullOrEmpty(),
-                                similarComplete || !similarRecommendations.isNullOrEmpty(),
                                 !isLoggedIn ||
                                     !isAccountPlaylistsLoading ||
                                     !accountPlaylists.isNullOrEmpty(),
@@ -2465,22 +2620,22 @@ private fun HomeScreenContent(
                         for ((index, section) in
                             listOf(
                                     feedSection,
+                                    similarSection,
                                     dailySection,
                                     communitySection,
-                                    similarSection,
                                     accountSection,
                                 )
                                 .withIndex()) {
                             section()
                             if (!sectionReadiness[index]) {
-                                item(key = "home_pending_section_$index") {
+                                item(key = "home_pending_section_$index", contentType = "home_pending_section") {
                                     IrideFolioSection(
                                         sectionKey = "home_pending_section_$index",
                                         ready = false,
                                         placeholder = {
                                             IrideFolioSectionSkeleton(
                                                 currentGridHeight,
-                                                songs = index == 1 || index == 3,
+                                                songs = index == 1 || index == 2,
                                             )
                                         },
                                     ) {}
@@ -2488,6 +2643,7 @@ private fun HomeScreenContent(
                             }
                             if (
                                 !followedReleasesAdded &&
+                                    followedReleaseTracks.isNotEmpty() &&
                                     index + 1 >= followedReleasesPosition &&
                                     shelfOrder.canAdd(hasFourRows = true)
                             ) {
@@ -2496,22 +2652,17 @@ private fun HomeScreenContent(
                             }
                         }
 
-                        if (!followedReleasesAdded) {
+                        if (!followedReleasesAdded && followedReleaseTracks.isNotEmpty()) {
                             shelfOrder.added(hasFourRows = false)
                             addFollowedReleases()
                         }
-                        item(key = "home_charts") {
-                            NewReleaseChartsShelf(navController, chartViewModel, preload = false)
-                        }
-                        item(key = "reverie_section") {
+                        if (false) item(key = "reverie_section", contentType = "home_reverie_shelf") {
                             IrideFolioSection(
                                 sectionKey = "reverie_section",
                                 modifier =
                                     Modifier.animateItem(
                                         fadeInSpec = null,
-                                        placementSpec =
-                                            if (homeReducedMotion) null
-                                            else IrideMotion.PlacementSpec,
+                                        placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                         fadeOutSpec = null,
                                     ),
                             ) {
@@ -2558,15 +2709,13 @@ private fun HomeScreenContent(
                                 }
                             }
                         }
-                        item(key = "iride_features_section") {
+                        if (false) item(key = "iride_features_section", contentType = "home_features_shelf") {
                             IrideFolioSection(
                                 sectionKey = "iride_features_section",
                                 modifier =
                                     Modifier.animateItem(
                                         fadeInSpec = null,
-                                        placementSpec =
-                                            if (homeReducedMotion) null
-                                            else IrideMotion.PlacementSpec,
+                                        placementSpec = if (homeReducedMotion) null else IrideMotion.PlacementSpec,
                                         fadeOutSpec = null,
                                     ),
                             ) {
@@ -2628,8 +2777,89 @@ private fun HomeScreenContent(
                                 }
                             }
                         }
+                        item(key = "home_branding_footer", contentType = "home_branding_footer") {
+                            Column(
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .padding(top = 20.dp, bottom = 28.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.iride_wordmark),
+                                    contentDescription = stringResource(R.string.app_name),
+                                    contentScale = ContentScale.Fit,
+                                    colorFilter =
+                                        ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+                                    modifier = Modifier.width(108.dp).height(24.dp),
+                                )
+                                Text(
+                                    text =
+                                        stringResource(
+                                            R.string.home_app_version,
+                                            BuildConfig.VERSION_NAME,
+                                        ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = SatoshiFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeUpdateBanner(
+    version: String,
+    downloadState: UpdateDownloadState,
+    onUpdateClick: () -> Unit,
+) {
+    val isReady = downloadState is UpdateDownloadState.ReadyToInstall
+    val isDownloading = downloadState is UpdateDownloadState.Downloading
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = IrideFolio.HorizontalPadding, vertical = 8.dp),
+        shape = FolioShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.update_home_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.update_home_version, version),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (isDownloading) {
+                val percent = (downloadState as UpdateDownloadState.Downloading).progressPercent
+                LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+            }
+            IrideFolioPrimaryButton(
+                onClick = onUpdateClick,
+                enabled = !isDownloading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(
+                        when {
+                            isReady -> R.string.update_action_install
+                            isDownloading -> R.string.update_home_downloading
+                            downloadState is UpdateDownloadState.Failed -> R.string.update_action_retry
+                            else -> R.string.update_action_download
+                        },
+                    ),
+                )
             }
         }
     }
@@ -2645,12 +2875,13 @@ private fun HomeFeedLoadingShelf(thumbnailSize: Dp) {
 }
 
 @Composable
-private fun IrideFeatureCard(
+fun IrideFeatureCard(
     title: String,
     subtitle: String,
     iconRes: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    iconTint: Color? = null,
 ) {
     Surface(
         onClick = onClick,
@@ -2680,7 +2911,7 @@ private fun IrideFeatureCard(
                 Icon(
                     painter = painterResource(iconRes),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.textPrimary,
+                    tint = iconTint ?: MaterialTheme.colorScheme.textPrimary,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -2701,10 +2932,10 @@ private fun IrideFeatureCard(
                 )
             }
             Icon(
-                painter = painterResource(R.drawable.arrow_forward),
+                painter = painterResource(R.drawable.navigate_next),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.textSecondary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }

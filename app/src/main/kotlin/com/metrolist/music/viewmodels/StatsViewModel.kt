@@ -291,7 +291,7 @@ constructor(
                             .album(album.id)
                             .onSuccess { albumPage ->
                                 database.query {
-                                    update(album.album, albumPage, album.artists)
+                                    update(album.album, albumPage)
                                 }
                             }.onFailure {
                                 reportException(it)

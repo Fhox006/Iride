@@ -70,6 +70,7 @@ fun NavigationTitle(
     prominentTitle: Boolean = false,
     titleMaxLines: Int = 1,
     trailingContent: (@Composable () -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val displayHeading = LocalFolioDisplayHeadings.current?.shelf
     val headerInteractionSource = remember { MutableInteractionSource() }
@@ -90,14 +91,23 @@ fun NavigationTitle(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier.fillMaxWidth()
-                    .pressScale(headerInteractionSource)
-                    .clickable(
-                        enabled = onClick != null,
-                        interactionSource = headerInteractionSource,
-                        indication = null,
-                    ) {
-                        onClick?.invoke()
-                    }
+                    .then(
+                        if (onLongClick != null) {
+                            Modifier.irideFolioCombinedClickable(
+                                onClick = { onClick?.invoke() },
+                                onLongClick = onLongClick,
+                            )
+                        } else {
+                            Modifier.pressScale(headerInteractionSource)
+                                .clickable(
+                                    enabled = onClick != null,
+                                    interactionSource = headerInteractionSource,
+                                    indication = null,
+                                ) {
+                                    onClick?.invoke()
+                                }
+                        }
+                    )
                     .padding(
                         start = if (useIrideStyle) 20.dp else 12.dp,
                         end = if (useIrideStyle) 20.dp else 12.dp,
@@ -279,11 +289,12 @@ fun NavigationTitle(
                 )
             } else if (showNavigationArrow && onClick != null) {
                 Icon(
-                    painter = painterResource(R.drawable.arrow_forward),
+                    painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
                     tint =
                         if (useIrideStyle) MaterialTheme.colorScheme.textSecondary
                         else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }

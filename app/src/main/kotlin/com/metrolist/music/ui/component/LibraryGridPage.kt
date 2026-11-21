@@ -30,6 +30,7 @@ fun LibraryGridPage(
     bottomPadding: androidx.compose.ui.unit.Dp,
     onNavigateUp: () -> Unit,
     modifier: Modifier = Modifier,
+    titleSuffix: String = "",
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(12.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(8.dp),
     controls: (@Composable () -> Unit)? = null,
@@ -39,7 +40,7 @@ fun LibraryGridPage(
 ) {
     val pageModifier = modifier
     IridePageLayout(
-        titleRes = titleRes,
+        title = stringResource(titleRes).lowercase().replaceFirstChar { it.titlecase() } + titleSuffix,
         modifier = pageModifier,
         columns = columns,
         state = state,

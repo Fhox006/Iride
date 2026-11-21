@@ -101,4 +101,19 @@ class IrideFolioMenuPolicyTest {
         assertFalse(entries.any { folioActionOrder(it.id).first == 0 })
         assertEquals(listOf(R.string.share), entries.map { it.id })
     }
+    @Test
+    fun destructiveActionsAlwaysGetFinalSeparateSection() {
+        val entries = ordered(Entry(R.string.delete, 0), Entry(R.string.share, 99), Entry(R.string.playlist_set_image, 4))
+        assertEquals(R.string.delete, entries.last().id)
+        assertEquals(Int.MAX_VALUE, folioActionSection(R.string.delete, 0))
+        assertFalse(folioActionSection(R.string.share, 99) == folioActionSection(R.string.delete, 0))
+    }
+
+    @Test
+    fun onlyPlaylistDeletionIsDestructiveImageRemovalStaysNeutral() {
+        assertEquals(true, isDestructiveFolioAction(R.string.delete))
+        assertEquals(true, isDestructiveFolioAction(R.string.delete_uploaded_songs))
+        assertFalse(isDestructiveFolioAction(R.string.remove_custom_image))
+    }
+
 }

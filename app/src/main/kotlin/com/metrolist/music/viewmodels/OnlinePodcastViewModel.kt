@@ -1,5 +1,6 @@
 package com.metrolist.music.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,10 +8,12 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.R
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +30,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class OnlinePodcastViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     val database: MusicDatabase,
     private val syncUtils: SyncUtils,
@@ -65,7 +69,7 @@ class OnlinePodcastViewModel @Inject constructor(
                     _isLoading.value = false
                 }.onFailure { throwable ->
                     Timber.e(throwable, "Failed to load podcast: ${throwable.message}")
-                    _error.value = throwable.message ?: "Failed to load podcast"
+                    _error.value = throwable.message ?: context.getString(R.string.podcast_load_failed)
                     _isLoading.value = false
                     reportException(throwable)
                 }

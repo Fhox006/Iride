@@ -75,6 +75,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -337,7 +338,7 @@ fun OnlinePodcastScreen(
                                             }
                                         }
                                     ) {
-                                        Icon(painterResource(R.drawable.more_vert), null)
+                                        TrackOverflowIcon()
                                     }
                                 },
                             )

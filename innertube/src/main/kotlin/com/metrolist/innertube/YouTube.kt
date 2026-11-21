@@ -359,9 +359,16 @@ object YouTube {
 
             return@runCatching AlbumPage(
                 album = albumItem,
-                songs = if (withSongs) albumSongs(
-                    playlistId, albumItem
-                ).getOrThrow() else emptyList(),
+                songs = if (!withSongs) {
+                    emptyList()
+                } else {
+                    val pageSongs = AlbumPage.getSongs(response, albumItem)
+                    if (pageSongs.isNotEmpty() && !AlbumPage.hasSongsContinuation(response)) {
+                        pageSongs
+                    } else {
+                        albumSongs(playlistId, albumItem).getOrThrow()
+                    }
+                },
                 otherVersions = shelves.first,
                 similarAlbums = shelves.second,
             )

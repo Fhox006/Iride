@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.component
 
+import androidx.compose.ui.res.stringResource
+import com.metrolist.music.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -168,6 +170,8 @@ private fun SearchBarInputField(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     focusRequester: FocusRequester = remember { FocusRequester() },
 ) {
+    val searchDescription = stringResource(R.string.search)
+    val suggestionsDescription = stringResource(R.string.search_suggestions_available)
     val focused = interactionSource.collectIsFocusedAsState().value
     val textColor =
         LocalTextStyle.current.color.takeOrElse {
@@ -199,9 +203,9 @@ private fun SearchBarInputField(
                         }
                     }
                     .semantics {
-                        contentDescription = "Search"
+                        contentDescription = searchDescription
                         if (active) {
-                            stateDescription = "Suggestions available"
+                            stateDescription = suggestionsDescription
                         }
                     }
                     .onKeyEvent {

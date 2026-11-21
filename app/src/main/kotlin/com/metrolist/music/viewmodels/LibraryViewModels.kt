@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.utils.needsPreciseAlbumReleaseDate
 import com.metrolist.innertube.utils.completed
 import com.metrolist.music.constants.AlbumSortDescendingKey
 import com.metrolist.music.constants.AlbumSortType
@@ -36,8 +37,6 @@ import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
-import com.metrolist.music.constants.SongFilter
-import com.metrolist.music.constants.SongFilterKey
 import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
@@ -50,7 +49,7 @@ import com.metrolist.music.constants.DismissedSuggestedFollowArtistsKey
 import com.metrolist.music.constants.RecentlySuggestedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.data.remote.MusicBrainzRepository
+import com.metrolist.music.data.remote.AlbumReleaseDateRepository
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
 import com.metrolist.music.db.entities.PlaylistEntity
@@ -61,7 +60,6 @@ import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.filterYoutubeShorts
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
-import com.metrolist.music.extensions.parseAlbumReleaseDate
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.playback.DownloadUtil
@@ -86,18 +84,21 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import javax.inject.Inject
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 
 @HiltViewModel
 class LibrarySongsViewModel
@@ -110,6 +111,8 @@ constructor(
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
+    private val _allSongsLoaded = MutableStateFlow(false)
+    val allSongsLoaded = _allSongsLoaded.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
@@ -122,23 +125,16 @@ constructor(
         context.dataStore.data
             .map {
                 Triple(
-                    Triple(
-                        it[SongFilterKey].toEnum(SongFilter.LIKED),
-                        it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
-                        (it[SongSortDescendingKey] ?: true),
-                    ),
-                    it[HideExplicitKey] ?: false,
-                    it[HideVideoSongsKey] ?: false
+                    it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
+                    it[SongSortDescendingKey] ?: true,
+                    (it[HideExplicitKey] ?: false) to (it[HideVideoSongsKey] ?: false),
                 )
             }.distinctUntilChanged()
-            .flatMapLatest { (filterSort, hideExplicit, hideVideoSongs) ->
-                val (filter, sortType, descending) = filterSort
-                when (filter) {
-                    SongFilter.LIBRARY -> database.songs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.LIKED -> database.likedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                }
+            .flatMapLatest { (sortType, descending, filters) ->
+                database.songs(sortType, descending)
+                    .map { it.filterExplicit(filters.first).filterVideoSongs(filters.second) }
+                    .onStart { _allSongsLoaded.value = false }
+                    .onEach { _allSongsLoaded.value = true }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val downloadedSongs =
@@ -328,7 +324,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
-    private val musicBrainzRepository: MusicBrainzRepository,
+    private val releaseDateRepository: AlbumReleaseDateRepository,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -350,6 +346,7 @@ constructor(
                 )
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideExplicit) ->
+                // The year menu shows newest releases first, including on installs with an old ascending preference.
                 database.albumsLiked(sortType, sortType == AlbumSortType.YEAR || descending)
                     .map { it.filterExplicitAlbums(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -369,37 +366,25 @@ constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val attemptedReleaseDates = mutableSetOf<String>()
+            val attempted = mutableSetOf<Triple<String, Int?, String?>>()
             context.dataStore.data
                 .map { it[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE) == AlbumSortType.YEAR }
                 .distinctUntilChanged()
-                .flatMapLatest { byYear ->
-                    if (byYear) {
+                .flatMapLatest { byReleaseDate ->
+                    if (byReleaseDate) {
                         combine(allAlbums, downloadedAlbums) { saved, downloaded ->
                             (saved + downloaded).distinctBy { it.id }
                         }
                     } else {
                         flowOf(emptyList())
                     }
-                }.collect { albums ->
+                }.collectLatest { albums ->
                     for (album in albums) {
-                        val currentSort = context.dataStore.data.first()[AlbumSortTypeKey]
-                            .toEnum(AlbumSortType.CREATE_DATE)
-                        if (currentSort != AlbumSortType.YEAR) break
-                        val previousDate = album.album.releaseDate
-                        if (previousDate?.length == 10 && parseAlbumReleaseDate(previousDate) != null) continue
-                        val artistName = album.artists.firstOrNull()?.name ?: continue
-                        if (!attemptedReleaseDates.add(album.id)) continue
-                        val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
-                            albumTitle = album.title,
-                            artistName = artistName,
-                            year = album.album.year,
-                        ) ?: continue
-                        val parsedDate = parseAlbumReleaseDate(releaseDate) ?: continue
-                        if (album.album.year != null && parsedDate.year != album.album.year) continue
-                        val hasUsableDate = parseAlbumReleaseDate(previousDate) != null
-                        if (hasUsableDate && releaseDate.length <= (previousDate?.length ?: 0)) continue
-                        database.updateAlbumReleaseDate(album.id, releaseDate, previousDate)
+                        if (!needsPreciseAlbumReleaseDate(album.album.releaseDate, album.album.year)) continue
+                        val key = Triple(album.id, album.album.year, album.album.releaseDate)
+                        if (key in attempted) continue
+                        releaseDateRepository.enrich(album)
+                        attempted.add(key)
                     }
                 }
         }
@@ -416,20 +401,20 @@ constructor(
             val albums = allAlbums.value
             if (albums.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
+                    Toast.makeText(
                         context,
                         com.metrolist.music.R.string.no_favorite_albums_to_download,
-                        android.widget.Toast.LENGTH_SHORT,
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
                 return@launch
             }
             _isProcessingDownloads.value = true
             withContext(Dispatchers.Main) {
-                android.widget.Toast.makeText(
+                Toast.makeText(
                     context,
                     com.metrolist.music.R.string.download_all_favorite_albums_started,
-                    android.widget.Toast.LENGTH_SHORT,
+                    Toast.LENGTH_SHORT,
                 ).show()
             }
             try {
@@ -446,7 +431,7 @@ constructor(
                                     if (current == null) {
                                         insert(albumPage)
                                     } else {
-                                        update(current.album, albumPage, current.artists)
+                                        update(current.album, albumPage)
                                     }
                                 }
                                 songs = database.albumSongs(album.id).first()
@@ -694,7 +679,7 @@ constructor(
                             .album(album.id)
                             .onSuccess { albumPage ->
                                 database.query {
-                                    update(album.album, albumPage, album.artists)
+                                    update(album.album, albumPage)
                                 }
                             }.onFailure {
                                 reportException(it)
@@ -749,7 +734,10 @@ constructor(
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val lastLikedThumbnails = database.lastLikedSongThumbnails()
+    val likedSongCount = database.likedSongsCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val likedSongThumbnails = database.lastLikedSongThumbnails()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun sync() {
@@ -922,6 +910,8 @@ constructor(
 
     val lastLikedDate = database.lastLikedSongDate()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val likedSongCount = database.likedSongsCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val lastLikedThumbnails = database.lastLikedSongThumbnails()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -936,7 +926,7 @@ constructor(
                             .album(album.id)
                             .onSuccess { albumPage ->
                                 database.query {
-                                    update(album.album, albumPage, album.artists)
+                                    update(album.album, albumPage)
                                 }
                             }.onFailure {
                                 reportException(it)

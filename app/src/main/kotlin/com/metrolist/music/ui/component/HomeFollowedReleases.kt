@@ -1,8 +1,5 @@
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,9 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -36,17 +31,29 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
+fun PreloadHomeFollowedReleases(
+    viewModel: FollowedReleasesViewModel = hiltViewModel(),
+) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, viewModel) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                viewModel.refresh()
+                delay(NewReleaseSchedule.nextCheckDelayMillis())
+            }
+        }
+    }
+}
+
+@Composable
 fun HomeFollowedReleases(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
-    isVisible: Boolean,
     viewModel: FollowedReleasesViewModel = hiltViewModel(),
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    val initialLoadComplete by viewModel.initialLoadComplete.collectAsStateWithLifecycle()
     val resolvingId by viewModel.resolvingId.collectAsStateWithLifecycle()
     val resolvedSongIds by viewModel.resolvedSongIds.collectAsStateWithLifecycle()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val menuState = LocalMenuState.current
     val player = LocalPlayerConnection.current
     val listenTogether = LocalListenTogetherManager.current
@@ -55,16 +62,6 @@ fun HomeFollowedReleases(
     var openJob by remember { mutableStateOf<Job?>(null) }
     val unavailable = stringResource(R.string.new_releases_unavailable)
     val connectionError = stringResource(R.string.new_releases_connection_error)
-
-    LaunchedEffect(lifecycle, viewModel, isVisible) {
-        if (!isVisible) return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                viewModel.refresh()
-                delay(NewReleaseSchedule.nextCheckDelayMillis())
-            }
-        }
-    }
 
     val open: (NewRelease, Boolean) -> Unit = { release, showMenu ->
         if (showMenu || !isGuest) {
@@ -108,12 +105,10 @@ fun HomeFollowedReleases(
         }
     }
 
-    if (tracks.isNotEmpty() || !initialLoadComplete) {
+    if (tracks.isNotEmpty()) {
         IrideFolioSection(
             sectionKey = "home_followed_releases",
-            ready = tracks.isNotEmpty(),
             artwork = tracks.take(4).map { it.artworkUrl },
-            placeholder = { IrideFolioSectionSkeleton(currentGridThumbnailHeight(), songs = true) },
         ) {
             SharedHomeSectionTitle(stringResource(R.string.home_new_tracks_for_you))
             IrideFolioReleaseShelf(
@@ -125,8 +120,5 @@ fun HomeFollowedReleases(
                 minimumRows = 1,
             )
         }
-    } else {
-        // Keep an empty shelf measurable so visibility can trigger its first load.
-        Spacer(Modifier.fillMaxWidth().height(1.dp))
     }
 }

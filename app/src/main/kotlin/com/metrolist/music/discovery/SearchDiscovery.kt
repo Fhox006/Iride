@@ -1,6 +1,9 @@
 package com.metrolist.music.discovery
 
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.Artist
+import com.metrolist.music.utils.TitleFeaturingParser
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import java.text.Normalizer
@@ -20,6 +23,25 @@ internal object SearchDiscovery {
             .replace(separators, " ")
             .trim()
 
+    fun cleanTitle(title: String): String = TitleFeaturingParser.extract(title)?.first ?: title
+
+    fun songKey(song: SongItem): String =
+        "${normalize(cleanTitle(song.title))}:${normalize(song.artists.firstOrNull()?.name.orEmpty())}"
+
+    fun credits(seed: SongItem, matches: List<SongItem>, known: List<ArtistItem>): List<Artist> {
+        val names = TitleFeaturingParser.extract(seed.title)?.second.orEmpty()
+        val matching = matches.filter { songKey(it) == songKey(seed) }.flatMap { it.artists }
+        val familiar = known.filter { artist -> names.any { normalize(it) == normalize(artist.title) } }
+            .map { Artist(it.title, it.id) }
+        return (seed.artists + matching + familiar).filter { it.id?.startsWith("UC") == true }
+            .distinctBy { it.id }
+    }
+
+    fun missingCredits(seed: SongItem, credits: List<Artist>): List<String> =
+        TitleFeaturingParser.extract(seed.title)?.second.orEmpty().filter { name ->
+            credits.none { normalize(it.name) == normalize(name) }
+        }.distinct()
+
     fun recognizeSong(query: String, songs: List<SongItem>, topItem: YTItem?): SongItem? {
         val normalizedQuery = normalize(query)
         if (normalizedQuery.isBlank()) return null
@@ -33,6 +55,12 @@ internal object SearchDiscovery {
                     normalize("${artist.name} ${song.title}") == normalizedQuery
             }
         }?.let { return it }
+        if (topItem is SongItem && normalizedQuery.length >= 5 && normalizedQuery.contains(' ')) {
+            tracks.singleOrNull { song ->
+                normalize(song.title).startsWith("$normalizedQuery ") &&
+                    normalize(song.title) == normalize(topItem.title)
+            }?.let { return it }
+        }
         // A broad search's first result alone does not establish song intent.
         return null
     }
@@ -54,4 +82,10 @@ internal object SearchDiscovery {
         artists.filter { !it.isProfile && it.id !in creditedIds }
             .distinctBy { it.id }
             .take(MAX_ARTISTS)
+
+    fun artists(credited: List<ArtistItem>, related: List<ArtistItem>, results: List<ArtistItem>): List<ArtistItem> =
+        (credited + related + results).filter { !it.isProfile }.distinctBy { it.id }.take(MAX_ARTISTS)
+
+    fun playlists(related: List<PlaylistItem>, results: List<PlaylistItem>): List<PlaylistItem> =
+        (related + results).distinctBy { it.id }.take(20)
 }

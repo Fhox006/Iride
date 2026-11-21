@@ -7,7 +7,7 @@ package com.metrolist.music.utils
 
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get

@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import com.metrolist.music.ui.theme.FolioShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -229,7 +228,6 @@ private fun ReadyContent(
         modifier =
             Modifier.fillMaxSize()
                 .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 32.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

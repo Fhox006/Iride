@@ -89,7 +89,7 @@ fun CsvColumnMappingDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "Preview",
+                        text = stringResource(R.string.preview),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

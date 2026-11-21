@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_continue_anyway">Yine de devam et</string>
+    <string name="navigation_choice_title">Emin misin?</string>
+    <string name="navigation_choice_heart">Bir tasarımcı tarafından yürekten yapıldı.</string>
+    <string name="navigation_choice_motion">Bazı hareket ve ayrıntılar jestlere ihtiyaç duyar.</string>
+    <string name="navigation_choice_support">Düğme navigasyonunun desteği sınırlıdır.</string>
+    <string name="navigation_choice_alternatives">İsterseniz ücretsiz alternatifler.</string>
+    <string name="navigation_choice_confirm">Hala Iride\'ı kullanmak istiyorum</string>
+    <string name="navigation_choice_close">Kapat</string>
+    <string name="navigation_choice_save_failed">Kaydedilemedi. Lütfen tekrar deneyin.</string>
+    <string name="navigation_choice_browser_failed">Tarayıcı yok.</string>
+    <string name="navigation_choice_open_repository">GitHub\'da %1$s\'yi açın</string>
+</resources>

@@ -13,7 +13,7 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.widget.Toast
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -41,6 +41,7 @@ import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,6 +80,7 @@ import androidx.core.net.toUri
 import kotlinx.coroutines.delay
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.BuildConfig
@@ -89,16 +92,19 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.ui.component.IrideFolioMenuAction
 import com.metrolist.music.ui.component.IrideFolioSettingsNavigationGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.IrideIconTile
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,6 +114,29 @@ fun SettingsScreen(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val isSettingsRoot = currentBackStackEntry?.destination?.route == Screens.Account.route
+    val pageBackProgress = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    val returnToHome = {
+        navController.navigate(Screens.Home.route) {
+            popUpTo(Screens.Account.route) { inclusive = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+    PredictiveBackHandler(enabled = isSettingsRoot) {
+        pageBackProgress.snapTo(1f)
+        try {
+            it.collect { event -> pageBackProgress.snapTo(1f - event.progress) }
+            returnToHome()
+        } catch (cancelled: CancellationException) {
+            coroutineScope.launch {
+                pageBackProgress.animateTo(1f, animationSpec = tween(120))
+            }
+            throw cancelled
+        }
+    }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -118,7 +147,7 @@ fun SettingsScreen(
         } catch (e: Exception) { false }
     }
 
-    val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
     val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
     val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
@@ -137,19 +166,17 @@ fun SettingsScreen(
     IridePageLayout(
         titleRes = R.string.account,
         state = settingsListState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = pageBackProgress.value },
+        navigationIcon = if (gestureNavigationEnabled()) null else ({
+            IconButton(onClick = returnToHome) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_back),
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
+        }),
+        showTopBar = !gestureNavigationEnabled(),
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-        menuSections = listOf(
-            listOf(
-                IrideFolioMenuAction(
-                    label = stringResource(
-                        if (advancedMode) R.string.disable_advanced_settings
-                        else R.string.enable_advanced_settings,
-                    ),
-                    onClick = { onAdvancedModeChange(!advancedMode) },
-                ),
-            ),
-        ),
     ) {
         item(key = "settings_content") {
             Column(
@@ -246,7 +273,7 @@ fun SettingsScreen(
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
-                    iconContainerColor = Color(0xFF47766D),
+                    iconContainerColor = Color(0xFF8A6247),
                     title = { Text(stringResource(R.string.interface_settings)) },
                     description = { Text(stringResource(R.string.settings_appearance_interface_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
@@ -261,11 +288,11 @@ fun SettingsScreen(
             items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.storage),
-                    iconContainerColor = Color(0xFF806247),
-                    title = { Text(stringResource(R.string.app_management_backup)) },
+                    iconContainerColor = Color(0xFF47766D),
+                    title = { Text(stringResource(R.string.settings_storage_title)) },
                     description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/backup_restore") }
+                    onClick = { navController.navigate("settings/storage") }
                 ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
@@ -279,7 +306,6 @@ fun SettingsScreen(
                     iconContainerColor = Color(0xFF62666B),
                     title = { Text(stringResource(R.string.about)) },
                     description = { Text(stringResource(R.string.settings_system_desc), style = MaterialTheme.typography.bodySmall) },
-                    showBadge = BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME,
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/about") }
                 )
@@ -420,9 +446,7 @@ private fun AccountProfileHeader(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.login),
-                    )
+                    Text(text = stringResource(R.string.login))
                 }
             }
         }

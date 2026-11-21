@@ -84,7 +84,7 @@ fun PlaybackErrorBanner(
             }) {
                 Icon(
                     painter = painterResource(R.drawable.content_copy),
-                    contentDescription = "Copy debug info",
+                    contentDescription = stringResource(R.string.diagnostic_copy_log),
                     tint = MaterialTheme.colorScheme.onErrorContainer,
                 )
             }

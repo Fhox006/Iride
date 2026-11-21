@@ -66,6 +66,7 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
@@ -411,10 +412,7 @@ fun HistoryScreen(
                                             }
                                         }
                                     ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
-                                        )
+                                        TrackOverflowIcon()
                                     }
                                 },
                                 modifier =
@@ -493,10 +491,7 @@ fun HistoryScreen(
                                                 }
                                             }
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
-                                            )
+                                            TrackOverflowIcon()
                                         }
                                     }
                                 },

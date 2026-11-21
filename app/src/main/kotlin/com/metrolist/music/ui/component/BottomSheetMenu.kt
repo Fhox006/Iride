@@ -176,10 +176,11 @@ fun BottomSheetMenu(
     if (state.anchored) {
         val motion = state.popupMotion
         val reducedMotion = rememberReducedMotion()
-        LaunchedEffect(motion, state.isVisible, motion?.panelReady, reducedMotion) {
+        val lightweightMode by rememberLightweightFolioMode()
+        LaunchedEffect(motion, state.isVisible, motion?.panelReady, reducedMotion, lightweightMode) {
             // Begin the shared pop only once the panel has real geometry to draw from.
             if (!state.isVisible || motion?.panelReady == true) {
-                motion?.present(state.isVisible, reducedMotion)
+                motion?.present(state.isVisible, reducedMotion, lightweightMode)
             }
         }
         if (state.isVisible || motion?.retainMenu == true) {

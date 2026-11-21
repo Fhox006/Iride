@@ -5,10 +5,13 @@
 
 package com.metrolist.music.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.pages.ChartsPage
+import com.metrolist.music.R
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +19,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ChartsViewModel @Inject constructor() : ViewModel() {
+class ChartsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+) : ViewModel() {
     private val _chartsPage = MutableStateFlow<ChartsPage?>(null)
     val chartsPage = _chartsPage.asStateFlow()
 
@@ -35,7 +40,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
                     _chartsPage.value = page
                 }
                 .onFailure { e ->
-                    _error.value = "Failed to load charts: ${e.message}"
+                    _error.value = context.getString(R.string.charts_load_failed, e.message ?: "")
                 }
             _isLoading.value = false
         }
@@ -53,7 +58,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
                         )
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to load more: ${e.message}"
+                        _error.value = context.getString(R.string.charts_load_more_failed, e.message ?: "")
                     }
                 _isLoading.value = false
             }

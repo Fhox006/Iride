@@ -295,6 +295,16 @@ class PlayerConnection(
         }
     }
 
+    fun setShuffleModeEnabled(enabled: Boolean) {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
+        try {
+            service.setShuffleModeEnabled(enabled)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in setShuffleModeEnabled")
+            throw e
+        }
+    }
+
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
     fun playNext(items: List<MediaItem>) {
@@ -688,6 +698,10 @@ class PlayerConnection(
 
     override fun onPlayerErrorChanged(playbackError: PlaybackException?) {
         if (playbackError != null) {
+            if (service.shouldSuppressPlaybackError()) {
+                error.value = null
+                return
+            }
             reportException(playbackError)
         }
         error.value = playbackError

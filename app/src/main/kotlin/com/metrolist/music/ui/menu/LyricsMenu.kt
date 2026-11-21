@@ -3,7 +3,7 @@ package com.metrolist.music.ui.menu
 
 import android.app.SearchManager
 import android.content.Intent
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

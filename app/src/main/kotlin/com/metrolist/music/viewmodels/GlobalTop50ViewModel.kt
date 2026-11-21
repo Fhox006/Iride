@@ -14,6 +14,7 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.constants.GlobalTop50CacheKey
 import com.metrolist.music.constants.GlobalTop50LastUpdateKey
 import com.metrolist.music.repository.GlobalTop50Repository
+import com.metrolist.music.R
 import com.metrolist.music.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -114,11 +115,11 @@ class GlobalTop50ViewModel @Inject constructor(
                     }
                     Timber.d("GlobalTop50: Cache updated")
                 } else if (_songs.value.isEmpty()) {
-                    _error.value = "Failed to fetch top 50 global"
+                    _error.value = context.getString(R.string.global_top_50_load_failed)
                 }
             } catch (e: Exception) {
                 Timber.e(e, "GlobalTop50: Fetch failed")
-                _error.value = e.message ?: "Unknown error"
+                _error.value = e.message ?: context.getString(R.string.error_unknown)
             } finally {
                 _isLoading.value = false
             }

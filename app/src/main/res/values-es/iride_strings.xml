@@ -1,20 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="local_history">Local</string>
+    <string name="local_history">locales</string>
     <string name="remote_history">Remoto</string>
-
     <string name="charts">Listas de éxitos</string>
     <string name="back_button_desc">Atrás</string>
     <string name="album_cover_desc">Portada del álbum</string>
     <string name="top_music_videos">Top vídeos musicales</string>
     <string name="trending">Tendencias</string>
     <string name="parsed_from_link">Obtenido del enlace</string>
-
     <string name="weeks">Semanas</string>
     <string name="months">Meses</string>
     <string name="years">Años</string>
     <string name="continuous">Continuo</string>
-
     <string name="liked">Canciones que me gustan</string>
     <string name="starred">Canciones favoritas</string>
     <string name="offline">Descargado</string>
@@ -40,19 +37,14 @@
     <string name="text_color">Color del texto</string>
     <string name="secondary_text_color">Color del texto secundario</string>
     <string name="background_color">Color de fondo</string>
-
     <string name="remove_from_cache">Eliminar de la caché</string>
-
-    <!-- Artist discography -->
     <string name="view_discography">Ver discografía</string>
     <string name="discography">Discografía</string>
     <string name="discography_from_artist">Del artista</string>
     <string name="discography_appears_on">Aparece en</string>
     <string name="discography_singles">Sencillos</string>
-    <string name="discography_eps">EPs</string>
+    <string name="discography_eps">EP</string>
     <string name="discography_empty">Nada más que mostrar</string>
-
-    <!-- Artist about section -->
     <string name="about_artist">Acerca de</string>
     <string name="show_more">Mostrar más</string>
     <string name="show_less">Mostrar menos</string>
@@ -60,8 +52,6 @@
     <string name="show_artist_description">Mostrar descripción del artista</string>
     <string name="show_artist_subscriber_count">Ver numero de suscriptores</string>
     <string name="show_artist_monthly_listeners">Ver oyentes mensuales</string>
-
-    <!-- Menu descriptions -->
     <string name="download_playlist_desc">Descargar todas las canciones para reproducirlas sin conexión</string>
     <string name="remove_download_playlist_desc">Eliminar todas las canciones descargadas de esta lista de reproducción</string>
     <string name="download_in_progress_desc">La descarga está en proceso</string>
@@ -79,29 +69,23 @@
     <string name="link_copied">Enlace copiado al portapapeles</string>
     <string name="starting_radio">Iniciando radio</string>
     <string name="now_playing">Reproduciendo</string>
-
     <string name="lyrics">Letra</string>
     <string name="close">Cerrar</string>
     <string name="hide_player_thumbnail">Ocultar miniatura del reproductor</string>
     <string name="hide_player_thumbnail_desc">Reemplazar la carátula del álbum con el logotipo de la aplicación en el reproductor</string>
     <string name="crop_album_art">Recortar portada del álbum</string>
     <string name="crop_album_art_desc">Forzar una relación de aspecto cuadrada recortando miniaturas de vídeo</string>
-
     <string name="already_in_playlist">Ya está en la lista de reproducción:</string>
-
-        <plurals name="n_time">
+    <plurals name="n_time">
         <item quantity="one">%d vez</item>
         <item quantity="few">%d de veces</item>
         <item quantity="other">%d veces</item>
     </plurals>
-
     <string name="seek_forward_dynamic">+%1$d segundos hacia adelante</string>
     <string name="seek_backward_dynamic">-%1$d segundos hacia atrás</string>
     <string name="seek_seconds_addup">Búsqueda progresiva</string>
     <string name="seek_seconds_addup_description">Si está habilitado, agrega 5 segundos adicionales de forma incremental en cada salto de búsqueda</string>
-
     <string name="similar_content">Contenido similar</string>
-
     <string name="share_as_image">Compartir como imagen</string>
     <string name="copy_as_image">Copiar como imagen</string>
     <string name="player_background_style">Estilo de fondo del reproductor</string>
@@ -145,7 +129,7 @@
     <string name="lyrics_animation_fade">Desvanecimiento</string>
     <string name="lyrics_animation_glow">Resplandor</string>
     <string name="lyrics_animation_slide">Deslizamiento</string>
-    <string name="lyrics_animation_karaoke">Karaoke</string>
+    <string name="lyrics_animation_karaoke">karaoke</string>
     <string name="lyrics_animation_apple">Estilo Apple Music</string>
     <string name="lyrics_text_size">Tamaño del texto de la letra</string>
     <string name="lyrics_line_spacing">Interlineado de la letra</string>
@@ -183,7 +167,6 @@
     <string name="skip_silence_desc">Avanzar rápidamente por las partes silenciosas de las canciones</string>
     <string name="skip_silence_instant">Saltar el silencio al instante</string>
     <string name="skip_silence_instant_desc">Salta hacia adelante durante los momentos de silencio en lugar de acelerar la reproducción</string>
-
     <string name="advanced_login">Iniciar sesión con token</string>
     <string name="token_hidden">Toca para mostrar el token</string>
     <string name="token_shown">Toca de nuevo para copiar o editar</string>
@@ -194,20 +177,15 @@
     <string name="more_content">Más contenido</string>
     <string name="other_content">Otro contenido</string>
     <string name="show_token">Mostrar token</string>
-
     <string name="sort_ascending">Orden ascendente</string>
     <string name="sort_descending">Orden descendente</string>
-
-    <!-- Playlist cover edit -->
     <string name="edit_playlist_cover">Editar la portada de la lista de reproducción</string>
     <string name="edit_playlist_cover_note">Nota: Tu cuenta debe estar vinculada a un número de teléfono y verificada en YouTube Music para cambiar la portada de la lista de reproducción.</string>
     <string name="edit_playlist_cover_note_wait">Después de seleccionar una imagen, espera un momento hasta que la nueva portada aparezca en la lista de reproducción.</string>
     <string name="choose_from_library">Elija de la biblioteca</string>
     <string name="remove_custom_image">Eliminar imagen personalizada</string>
-
-    <!-- General -->
-    <string name="general">General</string>
-    <string name="proxy">Proxy</string>
+    <string name="general">generales</string>
+    <string name="proxy">apoderado</string>
     <string name="default_lib_chips">Cambiar chip de biblioteca predeterminado</string>
     <string name="set_quick_picks">Establecer selecciones rápidas</string>
     <string name="last_song_listened">Basado en la última canción escuchada</string>
@@ -224,7 +202,6 @@
     <string name="enable_authentication">Habilitar autenticación</string>
     <string name="discord_use_details">Usar detalles en lugar de estado</string>
     <string name="discord_use_details_description">Mostrar el título de la canción de forma destacada en lugar de los nombres de los artistas</string>
-
     <string name="enable_similar_content">Habilitar contenido similar</string>
     <string name="similar_content_desc">Añadir automáticamente más canciones similares cuando se alcance el final de la cola</string>
     <string name="persistent_shuffle_title">Aleatorio persistente</string>
@@ -232,7 +209,6 @@
     <string name="remember_shuffle_and_repeat">Recuerda mezclar y repetir</string>
     <string name="remember_shuffle_and_repeat_desc">Recuerda el modo aleatorio y repetir al reiniciar la aplicación</string>
     <string name="percentage_format">%d%%</string>
-
     <string name="import_online">Importar listas de reproducción M3U</string>
     <string name="import_csv">Importar listas de reproducción CSV</string>
     <string name="playlist_add_local_to_synced_note">Nota: No se permite agregar canciones locales a listas de reproducción sincronizadas o remotas. Cualquier otra combinación es válida</string>
@@ -243,21 +219,15 @@
     <string name="export_failed">No se pudo exportar la lista de reproducción</string>
     <string name="export_option_share">Compartir</string>
     <string name="export_option_save">Guardar en Documentos</string>
-
     <string name="auto_download_on_like">Descargar automáticamente al dar me gusta</string>
     <string name="auto_download_on_like_desc">Descargar canciones automáticamente al darle a me gusta</string>
-
     <string name="swipe_sensitivity">Sensibilidad al deslizar el mini reproductor</string>
     <string name="sensitivity_percentage">%1$d%%</string>
-
     <string name="clear_song_cache_dialog">¿Estás seguro de que quieres borrar todas las canciones en caché?</string>
     <string name="clear_image_cache_dialog">¿Estás seguro de que deseas borrar todas las imágenes almacenadas en caché?</string>
     <string name="clear_downloads_dialog">¿Estás seguro de que quieres borrar todas las descargas?</string>
-
     <string name="disable">Deshabilitar</string>
-
     <string name="not_logged_in_youtube">No has iniciado sesión en YouTube</string>
-
     <string name="default_links">Abrir enlaces compatibles</string>
     <string name="open_app_settings_error">No se pudieron abrir los ajustes de la aplicación</string>
     <string name="changelog_empty">No hay registros de cambios disponibles</string>
@@ -291,7 +261,6 @@
     <string name="update_download_error_no_space">Espacio libre insuficiente</string>
     <string name="update_download_error_connection">Error de conexión</string>
     <string name="update_download_notification_description">Descargando la nueva versión…</string>
-
     <string name="all_time">Desde siempre</string>
     <string name="past_24_hours">Últimas 24 horas</string>
     <string name="past_week">Semana pasada</string>
@@ -308,13 +277,11 @@
     <string name="dislikes">No me gustas</string>
     <string name="subscribe">Suscribirme</string>
     <string name="subscribed">Suscrito</string>
-        <plurals name="seconds">
+    <plurals name="seconds">
         <item quantity="one">1 segundo</item>
         <item quantity="few">%d de segundos</item>
         <item quantity="other">%d segundos</item>
     </plurals>
-
-    <!-- Sleep timer -->
     <string name="set_as_default">Establecer como predeterminado</string>
     <string name="sleep_timer_default_set">Temporizador de apagado predeterminado establecido en %d min</string>
     <string name="enable_automatic_sleeptimer">Activar temporizador de apagado automático</string>
@@ -339,15 +306,13 @@
     <string name="sleep_timer_stop_after_current_song_description">Detiene el temporizador de apagado al finalizar la canción que se está reproduciendo</string>
     <string name="sleep_timer_fade_out_title">Desvanecer</string>
     <string name="sleep_timer_fade_out_description">Reduce el volumen gradualmente durante el último minuto</string>
-
-    <!-- Alarm -->
     <string name="alarm">Alarma</string>
     <string name="alarm_enabled">Activar alarma</string>
     <string name="alarm_time">Hora de la alarma</string>
     <string name="alarm_playlist">Lista de reproducción</string>
     <string name="alarm_select_playlist">Seleccionar lista de reproducción</string>
     <string name="alarm_no_playlists">No se encontraron listas de reproducción</string>
-        <plurals name="alarm_playlist_song_count">
+    <plurals name="alarm_playlist_song_count">
         <item quantity="one">%d canción</item>
         <item quantity="other">%d canciones</item>
     </plurals>
@@ -375,14 +340,11 @@
     <string name="alarm_battery_optimization_desc">Desactiva la optimización de batería para que la alarma funcione de forma más fiable en segundo plano</string>
     <string name="open_settings">Configuración</string>
     <string name="lastfm_api_not_configured">LastFM no está configurado en esta compilación</string>
-
-    <!-- Player Settings -->
     <string name="disable_load_more_when_repeat_all">Deshabilitar cargar más al repetir todo</string>
     <string name="disable_load_more_when_repeat_all_desc">No cargar automáticamente más canciones ni contenido similar cuando el modo repetir todo esté habilitado</string>
     <string name="pause_music_when_media_is_muted">Pausar la música cuando se silencia el medio</string>
     <string name="resume_on_bluetooth_connect">Reanudar al conectar Bluetooth</string>
     <string name="keep_screen_on_when_player_is_expanded">Mantener la pantalla encendida cuando el reproductor está expandido</string>
-
     <string name="crossfade">Transición suave</string>
     <string name="crossfade_desc">Transición suave entre canciones</string>
     <string name="crossfade_duration">Duración de la transición suave</string>
@@ -393,8 +355,6 @@
     <string name="skip_fade">Fundido al cambiar de canción</string>
     <string name="skip_fade_desc">La siguiente canción empieza de inmediato; la anterior se desvanece brevemente en segundo plano</string>
     <string name="skip_fade_duration">Duración del fundido al cambiar de canción</string>
-
-    <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">Cirílico</string>
     <string name="lyrics_romanize_title">Romanización</string>
     <string name="lyrics_romanization">Romanización de letras</string>
@@ -414,18 +374,12 @@
     <string name="line_by_line_dialog_title">¿Está seguro?</string>
     <string name="line_by_line_dialog_desc">Esta función es experimental y puede tener sus fallos.\n\nPor defecto, el idioma se determina a partir de la canción completa, pero con esta opción activada, se determinará línea por línea. Esto permitirá que las canciones multilingües funcionen, PERO el idioma podría no ser siempre correcto (por ejemplo, si hay una letra en ucraniano que no contiene letras específicas del idioma, podría romanizarse al ruso).\n\nSi no tienes problemas, se recomienda desactivar esta opción.</string>
     <string name="romanize_current_track">Romanizar la pista actual</string>
-
-    <!-- Japanese dictionary on-demand download -->
     <string name="lyrics_romanize_japanese_dict_title">¿Descargar el diccionario de japonés?</string>
     <string name="lyrics_romanize_japanese_dict_message">Romanizar letras en japonés requiere un diccionario de japonés (~13 MB), que se descarga una sola vez a través de tu conexión a Internet.</string>
     <string name="lyrics_romanize_japanese_dict_downloading">Descargando el diccionario de japonés… %d%%</string>
     <string name="lyrics_romanize_japanese_dict_failed">Error al descargar. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="lyrics_romanize_japanese_dict_download">Descargar</string>
-
-    <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">Desfase de la letra</string>
-
-    <!-- Material 3 Settings Sections -->
     <string name="settings_section_ui">Interfaz</string>
     <string name="settings_section_privacy">Privacidad y seguridad</string>
     <string name="settings_section_player_content">Reproductor y contenido</string>
@@ -444,44 +398,31 @@
     <string name="settings_section_display">Pantalla</string>
     <string name="settings_section_lab">Laboratorio</string>
     <string name="settings_section_system_short">Sistema</string>
-
-    <!-- Updater -->
     <string name="updater">Actualizador</string>
     <string name="check_for_updates">Buscar actualizaciones automáticamente</string>
     <string name="update_notifications">Habilitar notificaciones de actualización</string>
     <string name="update_available_title">Actualización disponible</string>
     <string name="update_channel_name">Actualizaciones de la app</string>
     <string name="update_channel_desc">Notificaciones sobre nuevas versiones</string>
-
-    <!-- Offload -->
     <string name="audio_offload">Activar descarga (offload)</string>
     <string name="audio_offload_description">Usa la ruta de descarga de audio (offload) para la reproducción. Desactivar esta opción podría aumentar el consumo de energía, pero puede ser útil si experimentas problemas con la reproducción o el posprocesamiento de audio</string>
     <string name="audio_offload_disabled_by_crossfade">Desactivado porque la transición suave está activa</string>
-
-    <!-- Varispeed -->
     <string name="speed">Velocidad de reproducción</string>
     <string name="varispeed">Activar varispeed</string>
     <string name="varispeed_description">Vincula el tono a la velocidad de reproducción, produciendo efectos de aceleración y desaceleración tipo cinta</string>
-
-    <!-- Google Cast -->
     <string name="google_cast">Transmitir con Google Cast</string>
     <string name="google_cast_description">Habilitar la transmisión de audio a Chromecast y otros dispositivos compatibles con Cast</string>
-
     <string name="lyrics_romanize_macedonian">Romanizar letras en macedonio</string>
     <string name="lyrics_romanize_as_main">Mostrar letras romanizadas como principales</string>
-
     <string name="integrations">Integraciones</string>
     <string name="username">Nombre de usuario</string>
     <string name="password">Contraseña</string>
-
-    <!-- Last.fm -->
     <string name="lastfm_integration">Integración con Last.fm</string>
     <string name="enable_scrobbling">Habilitar scrobbling</string>
     <string name="lastfm_now_playing">Enviar Reproduciendo ahora</string>
     <string name="last_fm_send_likes">Enviar Me gusta/No me gusta</string>
     <string name="last_fm_send_likes_description">Marcar como Me gusta o No me gusta las canciones en Last.fm cuando aparecen marcadas como Me gusta o No me gusta en Iride</string>
     <string name="logging_in">Iniciando sesión…</string>
-
     <string name="scrobbling_configuration">Configuración de scrobbling</string>
     <string name="scrobble_min_track_duration">Scrobble a canciones más largas que</string>
     <string name="scrobble_delay_percent">Porcentaje de retraso de Scrobble</string>
@@ -490,7 +431,6 @@
     <string name="square_video_thumbnail">Miniaturas de video cuadradas</string>
     <string name="square_video_thumbnail_desc">Recorta las miniaturas de video a una relación de aspecto cuadrada</string>
     <string name="hide_youtube_shorts">Ocultar YouTube Shorts</string>
-
     <string name="details_desc">Ver la información de la canción</string>
     <string name="edit_desc">Cambiar el título o el artista</string>
     <string name="start_radio_desc">Crea una estación basada en este elemento</string>
@@ -520,13 +460,12 @@
     <string name="cache_size_warning_title">¡Espera!</string>
     <string name="cache_size_warning_message">Has elegido un límite de tamaño de caché menor que el que usa la aplicación (%1$s). Si continúas, la aplicación podría eliminar algunos %2$s de la caché para que coincidan con el nuevo límite. ¿Continuar de todos modos?</string>
     <string name="cache_size_warning_confirm">Continuar</string>
-
     <string name="lyrics_animation_style_title">Estilo de animación palabra por palabra</string>
     <string name="none">Ninguno</string>
     <string name="fade">Difuminar</string>
     <string name="glow">Brillar</string>
     <string name="slide">Deslizar</string>
-    <string name="karaoke">Karaoke</string>
+    <string name="karaoke">karaoke</string>
     <string name="apple_music_style">Estilo Apple Music</string>
     <string name="album_art_for">Carátula del álbum de %s</string>
     <string name="wrapped_total_albums_title">Ya has escuchado</string>
@@ -550,7 +489,7 @@
     <string name="wrapped_total_artists_subtitle">artistas únicos</string>
     <string name="wrapped_total_songs_title">Escuchaste</string>
     <string name="wrapped_total_songs_subtitle">canciones únicas</string>
-    <string name="wrapped_intro_title">IRIDE</string>
+    <string name="wrapped_intro_title">irida</string>
     <string name="wrapped_intro_subtitle">Es hora de ver lo que has estado escuchando</string>
     <string name="wrapped_intro_button">¡vamos!</string>
     <string name="wrapped_logo_content_description">Logo de Iride</string>
@@ -563,9 +502,7 @@
     <string name="wrapped_playlist_title">Tu Recap %s</string>
     <string name="wrapped_create_playlist">Crear lista de reproducción</string>
     <string name="wrapped_playlist_saved">Lista de reproducción guardada</string>
-
-    <!-- Equalizer UI -->
-        <plurals name="profiles_count">
+    <plurals name="profiles_count">
         <item quantity="one">%d Perfil</item>
         <item quantity="few">%d Perfiles</item>
         <item quantity="other">%d Perfiles</item>
@@ -575,7 +512,7 @@
     <string name="import_profile">Importar perfil</string>
     <string name="system_equalizer">Ecualizador del sistema</string>
     <string name="eq_disabled">Deshabilitado</string>
-        <plurals name="band_count">
+    <plurals name="band_count">
         <item quantity="one">%d banda</item>
         <item quantity="few">%d de bandas</item>
         <item quantity="other">%d bandas</item>
@@ -585,43 +522,39 @@
     <string name="error_file_read">No se pudo leer el archivo</string>
     <string name="error_file_open">No se pudo abrir el archivo: %1$s</string>
     <string name="import_error_title">Error de Importación</string>
-    <string name="error_title">Error</string>
+    <string name="error_title">error</string>
     <string name="error_eq_apply_failed">Error al aplicar el perfil de ecualización: %1$s</string>
-
-    <!-- Parametric equalizer editor -->
     <string name="eq_editor_subtitle">Shape the sound for every output device</string>
-    <string name="eq_master_enable">Enable equalizer</string>
-    <string name="eq_output_source">Output</string>
-    <string name="eq_device_speaker">Phone speaker</string>
-    <string name="eq_device_wired">Wired headphones</string>
-    <string name="eq_device_unknown">Audio output</string>
-    <string name="eq_save_for_device">Save for this device</string>
-    <string name="eq_saved_for_device">Linked to %1$s</string>
-    <string name="eq_manage_devices">Saved devices</string>
-    <string name="eq_no_saved_devices">No linked devices yet</string>
-    <string name="eq_unbind_device">Remove link</string>
-    <string name="eq_unbind_done">Device link removed</string>
-    <string name="eq_preset_balanced">Balanced</string>
-    <string name="eq_preset_more_bass">More bass</string>
-    <string name="eq_preset_more_treble">More treble</string>
-    <string name="eq_preset_voice">Vocal</string>
-    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
-    <string name="eq_frequency">Frequency</string>
-    <string name="eq_q_factor">Q</string>
-    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_master_enable">Habilitar ecualizador</string>
+    <string name="eq_output_source">Salida</string>
+    <string name="eq_device_speaker">Altavoz del teléfono</string>
+    <string name="eq_device_wired">Auriculares con cable</string>
+    <string name="eq_device_unknown">Salida de audio</string>
+    <string name="eq_save_for_device">Guardar para este dispositivo</string>
+    <string name="eq_saved_for_device">Vinculado a %1$s</string>
+    <string name="eq_manage_devices">Dispositivos guardados</string>
+    <string name="eq_no_saved_devices">Aún no hay dispositivos vinculados</string>
+    <string name="eq_unbind_device">Quitar enlace</string>
+    <string name="eq_unbind_done">Enlace del dispositivo eliminado</string>
+    <string name="eq_preset_balanced">equilibrado</string>
+    <string name="eq_preset_more_bass">Más graves</string>
+    <string name="eq_preset_more_treble">Más agudos</string>
+    <string name="eq_preset_voice">voz</string>
+    <string name="eq_selected_band_label">Banda %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frecuencia</string>
+    <string name="eq_q_factor">q</string>
+    <string name="eq_bass_enhance">Mejora de graves</string>
     <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
-    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_title">Duración</string>
     <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
-    <string name="eq_advanced_options">Advanced options</string>
-    <string name="eq_exact_gain_title">Exact gain</string>
-    <string name="eq_reset_band">Reset band</string>
-    <string name="eq_profile_saved">Equalizer saved</string>
-    <string name="queue_empty">Queue is empty</string>
-    <string name="queue_history_title">History</string>
+    <string name="eq_advanced_options">Opciones avanzadas</string>
+    <string name="eq_exact_gain_title">ganancia exacta</string>
+    <string name="eq_reset_band">Restablecer banda</string>
+    <string name="eq_profile_saved">Ecualizador guardado</string>
+    <string name="queue_empty">La cola está vacía.</string>
+    <string name="queue_history_title">Historia</string>
     <string name="queue_radio_section_title">Radio</string>
-    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
-
-    <!-- Hardcoded strings -->
+    <string name="queue_radio_section_subtitle">Estas canciones vienen de la radio.</string>
     <string name="found_in_settings_content">Se encuentra en Ajustes &gt; Contenido</string>
     <string name="your_daily_discover">Tu descubrimiento diario</string>
     <string name="plays">reproducciones</string>
@@ -634,16 +567,12 @@
     <string name="copied_artist">Artista copiado</string>
     <string name="error_playing">Error al reproducir</string>
     <string name="failed_to_parse_proxy">Error al analizar la URL del proxy.</string>
-
-    <!-- Playback errors -->
     <string name="error_playback_failed">Reproducción fallida</string>
     <string name="error_episode_save">No se pudo guardar el episodio</string>
     <string name="error_episode_remove">No se pudo eliminar el episodio</string>
     <string name="error_podcast_subscribe">Error al suscribirse al pódcast</string>
     <string name="error_podcast_unsubscribe">Error al cancelar la suscripción al pódcast</string>
     <string name="view_channel">Ver canal</string>
-
-    <!-- Widget strings -->
     <string name="album_art">Portada del álbum</string>
     <string name="no_song_playing">No se reproduce ninguna canción</string>
     <string name="tap_to_open">Toca para abrir Iride</string>
@@ -657,8 +586,6 @@
     <string name="turntable_widget_description">Widget musical circular con controles de reproducir y me gusta</string>
     <string name="widget_music_player">Reproductor de música</string>
     <string name="widget_turntable">Tocadiscos</string>
-
-    <!-- Music Recognizer Widget strings -->
     <string name="widget_recognizer_name">Identificador de música</string>
     <string name="widget_recognizer_description">Identifica canciones que suenan a tu alrededor directamente desde tu pantalla de inicio</string>
     <string name="widget_recognizer_tap_to_search">Toca para identificar la canción</string>
@@ -673,12 +600,6 @@
     <string name="widget_recognizer_channel_name">Identificación de música</string>
     <string name="widget_recognizer_channel_desc">Muestra una notificación mientras se identifica una canción desde el widget</string>
     <string name="widget_recognizer_notification_text">Grabando audio para identificar la canción…</string>
-
-    <!-- Player Client Settings -->
-
-    <!-- Decryption Library Settings -->
-
-    <!-- Listen Together -->
     <string name="together">Juntos</string>
     <string name="listen_together">Escuchar juntos</string>
     <string name="listen_together_server_url">URL del servidor</string>
@@ -770,8 +691,6 @@
     <string name="listen_together_no_blocked_users">No hay usuarios bloqueados</string>
     <string name="unblock">Desbloquear</string>
     <string name="user_blocked_by_host">Usuario bloqueado por el anfitrión</string>
-
-    <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">Traducción de letras con IA</string>
     <string name="ai_translating_lyrics">Traduciendo letras...</string>
     <string name="ai_lyrics_translated">Letras traducidas</string>
@@ -812,8 +731,6 @@
     <string name="ai_system_prompt_placeholder">Usa {lineCount} como marcador de posición para el número de líneas a traducir</string>
     <string name="ai_system_prompt_default">Predeterminado</string>
     <string name="ai_system_prompt_reset">Restablecer valor predeterminado</string>
-
-    <!-- Crash Handler -->
     <string name="crash_title">La app falló</string>
     <string name="crash_description">Ocurrió un error inesperado. Por favor comparte el informe de fallos para ayudarnos a solucionar el problema.</string>
     <string name="crash_share_logs">Compartir registros</string>
@@ -821,8 +738,6 @@
     <string name="crash_report_subject">Informe de fallos de Iride</string>
     <string name="crash_close">Cerrar</string>
     <string name="crash_no_log">No hay registro de fallos disponible</string>
-
-    <!-- Theme Palette Names -->
     <string name="palette_dynamic">Dinámico</string>
     <string name="palette_crimson">Carmesí</string>
     <string name="palette_rose">Rosa</string>
@@ -843,13 +758,9 @@
     <string name="palette_brown">Marrón</string>
     <string name="palette_grey">Gris</string>
     <string name="palette_blue_grey">Gris azulado</string>
-
-    <!-- Theme Mode Selector -->
     <string name="theme_mode_light">Claro</string>
     <string name="theme_mode_dark">Oscuro</string>
     <string name="theme_mode_system">Sistema</string>
-
-    <!-- Theme Content Descriptions -->
     <string name="cd_back">Atrás</string>
     <string name="cd_pure_black_mode">Modo negro puro</string>
     <string name="cd_light_mode">Modo claro</string>
@@ -859,17 +770,12 @@
     <string name="play_all">Reproducir todo</string>
     <string name="mp3_panel_lyrics">LETRA</string>
     <string name="mp3_panel_up_next">A CONTINUACIÓN</string>
-
-    <!-- Library Albums screen sections -->
     <string name="continue_listening">Continuar escuchando</string>
     <string name="remove_from_continue_listening">Quitar de Continuar escuchando</string>
     <string name="favorite_albums">Favoritos</string>
     <string name="remove_suggested_follow_artist">Quitar sugerencia</string>
-
     <string name="enable_high_refresh_rate">Habilitar alta frecuencia de actualización</string>
     <string name="enable_high_refresh_rate_desc">Forzar a la pantalla a funcionar a la frecuencia de actualización más alta permitida (p. ej., 120Hz)</string>
-
-    <!-- Music Recognition -->
     <string name="recognize_music">Identificar música</string>
     <string name="tap_to_recognize">Toca para identificar</string>
     <string name="listening">Escuchando…</string>
@@ -892,8 +798,6 @@
     <string name="recognition_notification_no_match">No se encontró ninguna coincidencia</string>
     <string name="recognition_notification_failed">Error de reconocimiento</string>
     <string name="listen_on_metrolist">Escuchar en Iride</string>
-
-    <!-- CSV Import Strings -->
     <string name="map_csv_columns">Mapear columnas CSV</string>
     <string name="first_row_is_header">La primera fila es el encabezado</string>
     <string name="artist_name_column">Columna de nombre del artista</string>
@@ -902,13 +806,10 @@
     <string name="continue_action">Continuar</string>
     <string name="importing_csv">Importando CSV</string>
     <string name="importing_playlist">Importando lista de reproducción</string>
-
     <string name="recently_converted">Recientemente convertidos</string>
     <string name="column_label">Col %d</string>
-
-    <!-- Discord Integration -->
-    <string name="discord_status">Status</string>
-    <string name="discord_status_online">Online</string>
+    <string name="discord_status">Estado</string>
+    <string name="discord_status_online">En línea</string>
     <string name="discord_status_idle">Ausente</string>
     <string name="discord_status_dnd">No molestar</string>
     <string name="discord_buttons">Botones</string>
@@ -921,7 +822,7 @@
     <string name="discord_activity_listening">Escuchando</string>
     <string name="discord_activity_watching">Viendo</string>
     <string name="discord_activity_competing">Compitiendo</string>
-    <string name="discord_button_text_variables">Variables: {song_name}, {artist_name}, {album_name}</string>
+    <string name="discord_button_text_variables">Variables: {nombre_canción}, {nombre_artista}, {nombre_álbum}</string>
     <string name="discord_rpc_preview">Vista previa de Rich Presence</string>
     <string name="discord_presence">Presencia</string>
     <string name="discord_connect_description">Inicia sesión con Discord para compartir lo que estás escuchando</string>
@@ -941,33 +842,25 @@
     <string name="randomize_home_order_desc">Reordenar aleatoriamente las secciones de la pantalla de inicio según prioridades ponderadas</string>
     <string name="hero_carousel_title">Carrusel principal</string>
     <string name="hero_carousel_desc">Un banner rotativo con nuevos lanzamientos y selecciones para ti</string>
-
-    <!-- Smart boot -->
     <string name="smart_boot">Inicio inteligente</string>
     <string name="smart_boot_desc">Inicio más rápido: Destacados se carga al instante, las secciones conservan su lugar durante la carga y hay menos descargas duplicadas. Desactívala para restaurar el comportamiento original (reinicia para aplicarla por completo)</string>
-
-    <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">Suena como %1$s</string>
     <string name="daily_discover_because_you_listen_to">Porque escuchas a %1$s</string>
     <string name="daily_discover_similar_to">Similar a %1$s</string>
     <string name="daily_discover_based_on">Basado en %1$s</string>
     <string name="daily_discover_for_fans_of">Para fans de %1$s</string>
     <string name="from_the_community">De la comunidad</string>
-
-    <!-- Logout dialog -->
     <string name="logout_dialog_title">¿Conservar los datos de la biblioteca?</string>
     <string name="logout_dialog_message">¿Quieres conservar tus listas de reproducción y los datos de tu biblioteca? Las canciones descargadas se conservarán igualmente.</string>
     <string name="logout_keep">Conservar</string>
     <string name="logout_clear">Borrar</string>
-
-    <!-- Credits / About Screen -->
     <string name="credits_lead_developer">Desarrollador principal</string>
     <string name="about_creator_role">Creador de Iride</string>
     <string name="about_release_badge">Primer lanzamiento próximamente</string>
     <string name="credits_special_thanks">Agradecimientos especiales</string>
     <string name="credits_collaborator">Colaborador</string>
     <string name="credits_collaborators_section">Colaboradores</string>
-    <string name="credits_license_name">GNU General Public License v3.0</string>
+    <string name="credits_license_name">Licencia pública general GNU v3.0</string>
     <string name="credits_license_desc">Software libre y de código abierto. Puedes usarlo, estudiarlo, compartirlo y mejorarlo.</string>
     <string name="credits_donations">Donaciones</string>
     <string name="credits_donations_desc">Apoya el proyecto en Ko-fi</string>
@@ -981,13 +874,11 @@
     <string name="like_what_i_do">¿Te gusta lo que hago?</string>
     <string name="buy_mo_a_coffee">Invítame un café</string>
     <string name="community_and_info">Comunidad e información</string>
-    <string name="metrolist">IRIDE</string>
+    <string name="metrolist">irida</string>
     <string name="wanna_play_favorite_song">¿Quieres reproducir su canción favorita?</string>
     <string name="yeah">Sí</string>
     <string name="stands_with_palestine">Este proyecto apoya a Palestina 🇵🇸</string>
-
-    <!-- Podcasts -->
-    <string name="filter_podcasts">Podcasts</string>
+    <string name="filter_podcasts">Pódcasts</string>
     <string name="view_podcast">Ver podcast</string>
     <string name="podcast_channels">Canales de podcast</string>
     <string name="latest_episodes">Últimos episodios</string>
@@ -998,7 +889,7 @@
     <string name="save_episode_for_later_desc">Añadir a tu lista de Episodios para más tarde</string>
     <string name="remove_episode_from_saved">Quitar de guardados</string>
     <string name="subscribe_to_podcast">Guardar podcast en la biblioteca</string>
-        <plurals name="n_episode">
+    <plurals name="n_episode">
         <item quantity="one">%d episodio</item>
         <item quantity="few">%d episodios</item>
         <item quantity="other">%d episodios</item>
@@ -1011,23 +902,17 @@
     <string name="downloaded_episodes">Episodios descargados</string>
     <string name="no_subscribed_channels">No hay canales suscritos</string>
     <string name="no_downloaded_episodes">No hay episodios descargados</string>
-        <plurals name="n_channel">
+    <plurals name="n_channel">
         <item quantity="one">%d canal</item>
         <item quantity="few">%d canales</item>
         <item quantity="other">%d canales</item>
     </plurals>
-
-    <!-- Restore confirmation dialog -->
     <string name="restore_confirm_title">¿Restaurar copia de seguridad?</string>
     <string name="restore_confirm_message">Esto restaurará los datos de la aplicación desde la copia de seguridad.</string>
     <string name="restore_account_warning">Deberás iniciar sesión de nuevo tras la restauración. Se cerrará la sesión de la siguiente cuenta:</string>
     <string name="restore">Restaurar</string>
     <string name="checking_previous_account">Buscando una cuenta anterior…</string>
     <string name="no_account_found">No se encontró ninguna cuenta</string>
-
-    <!-- Cache settings -->
-
-    <!-- Upload songs -->
     <string name="upload_songs">Subir canciones</string>
     <string name="uploading">Subiendo…</string>
     <string name="upload_progress">%1$d de %2$d</string>
@@ -1043,8 +928,6 @@
     <string name="delete_uploaded_songs_confirm">¿Seguro que quieres eliminar %1$d canciones subidas? Esta acción no se puede deshacer.</string>
     <string name="deleted_n_songs">Se eliminaron %1$d canciones</string>
     <string name="deleting">Eliminando…</string>
-
-    <!-- Android Auto settings -->
     <string name="android_auto">Android Auto</string>
     <string name="android_auto_visible_sections">Secciones visibles</string>
     <string name="android_auto_reorder_hint">Toca una sección para activarla o desactivarla.\nMantén pulsado el controlador de arrastre para reordenar. La primera sección se mostrará de forma predeterminada</string>
@@ -1055,8 +938,6 @@
     <string name="android_auto_target_playlist_auto">Sin establecer</string>
     <string name="added_to_playlist">Se añadió a la lista de reproducción</string>
     <string name="android_auto_target_playlist_not_set">No hay ninguna lista seleccionada. Elige una en la configuración de Android Auto</string>
-
-    <!-- Stats time transfer -->
     <string name="time_transfer_title">Transferencia de tiempo</string>
     <string name="time_transfer_warning">ADVERTENCIA: No es posible revertir esta acción una vez completada. Se recomienda crear una copia de seguridad antes de continuar. Solo se pueden seleccionar canciones que tengan al menos un evento o reproducción registrada.</string>
     <string name="time_transfer_source_song">Canción de origen</string>
@@ -1064,8 +945,6 @@
     <string name="time_transfer_listen_time_label">Tiempo de reproducción:</string>
     <string name="time_transfer_convert">Convertir</string>
     <string name="song_dropdown_more_results">Escribe más para acotar los resultados (quedan %d más)</string>
-
-    <!-- Accessibility -->
     <string name="back">Atrás</string>
     <string name="clear_search">Borrar búsqueda</string>
     <string name="close_chip">Cerrar</string>
@@ -1073,8 +952,6 @@
     <string name="switch_to_grid_view">Cambiar a vista de cuadrícula</string>
     <string name="switch_to_wide_grid_view">Cambiar a vista de cuadrícula amplia</string>
     <string name="more_options">Más opciones</string>
-
-    <!-- Settings hub descriptions -->
     <string name="music_settings">Ajustes de música</string>
     <string name="music_settings_desc">Apariencia, reproducción y contenido</string>
     <string name="settings_appearance_desc">Tema, pantalla de inicio, reproductor y letras</string>
@@ -1109,23 +986,18 @@
     <string name="resume_album_track_progress">Pista %1$d de %2$d</string>
     <string name="muzza_player_logic">Motor de reproducción rápida</string>
     <string name="muzza_player_logic_desc">Carga las canciones más rápido mediante un método de transmisión alternativo.</string>
-
-    <!-- News screen -->
     <string name="compact_top_navigation_bar">Barra superior compacta</string>
     <string name="compact_top_navigation_bar_desc">Inicio y Biblioteca como texto a la izquierda, y Búsqueda y tu foto de perfil como iconos a la derecha. Desactívala para volver a la barra clásica, donde cada pestaña muestra su nombre completo</string>
     <string name="iride_animations">Animaciones de Iride</string>
     <string name="iride_animations_desc">Títulos con efecto de máquina de escribir, parallax y transiciones de entrada. Desactívala si la aplicación va con tirones</string>
     <string name="player_auto_hide_top_panel">Ocultar automáticamente el panel de retorno</string>
     <string name="player_auto_hide_top_panel_desc">Desvanece el panel superior de retorno a la aplicación tras 5 s de inactividad en el reproductor expandido. Al deslizar hacia abajo vuelve a aparecer</string>
-
-    <string name="better_library_beta">Better Library BETA</string>
+    <string name="better_library_beta">Mejor biblioteca BETA</string>
     <string name="better_library_beta_desc">Activa la Biblioteca refactorizada con Material 3 (barra de aplicaciones superior, FAB y correcciones de interfaz)</string>
     <string name="upload">Subir</string>
     <string name="new_playlist">Nueva lista de reproducción</string>
     <string name="toggle_view_type">Alternar tipo de vista</string>
     <string name="navigate_back">Volver</string>
-
-    <!-- Comments -->
     <string name="comments">Comentarios</string>
     <string name="comments_count">%s comentarios</string>
     <string name="comments_empty">Aún no hay comentarios</string>
@@ -1139,15 +1011,11 @@
     <string name="comments_reply_count">%d respuestas</string>
     <string name="enable_comments">Activar comentarios</string>
     <string name="enable_comments_desc">Muestra los comentarios de YouTube de las canciones en el reproductor (experimental; es posible que no siempre se carguen)</string>
-
-    <!-- Song menu redesign -->
     <string name="add_note">Añadir notas, valoraciones o ideas…</string>
     <string name="note_title_placeholder">Título</string>
     <string name="note_description_placeholder">Añadir una descripción…</string>
     <string name="view_ep">Ver EP</string>
     <string name="view_single">Ver sencillo</string>
-
-    <!-- Notes screen -->
     <string name="notes_screen_title">Notas</string>
     <string name="notes_screen_desc">Tus reseñas de álbumes y pistas</string>
     <string name="notes_tab_albums">Álbum</string>
@@ -1156,41 +1024,28 @@
     <string name="notes_empty_tracks">Aún no hay notas de pistas</string>
     <string name="notes_delete_title">¿Eliminar la nota?</string>
     <string name="notes_delete_message">Esto elimina el título, la valoración y el texto que escribiste para este elemento.</string>
-
-    <!-- Download all favorite albums -->
     <string name="download_all_favorite_albums">Descargar todos los álbumes favoritos</string>
     <string name="download_all_favorite_albums_started">Descargando todos los álbumes favoritos…</string>
     <string name="all_favorite_albums_downloaded">Todos los álbumes favoritos descargados</string>
     <string name="remove_all_favorite_albums_confirm">¿Seguro que quieres quitar todos los álbumes favoritos de las descargas?</string>
     <string name="no_favorite_albums_to_download">No hay álbumes favoritos para descargar</string>
-
-    <!-- Onboarding -->
-    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
-    <string name="onboarding_get_started">Get Started</string>
-    <string name="onboarding_notifications_title">Stay Updated</string>
-    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
-    <string name="onboarding_notifications_enable">Enable Notifications</string>
-    <string name="onboarding_notifications_skip">No Thanks</string>
-    <string name="onboarding_login_title">Connect Your Account</string>
-    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
-    <string name="onboarding_login_cta">Sign in with YouTube</string>
-    <string name="onboarding_login_skip">Continue Without Account</string>
-
-    <!-- Update announcement interstitial -->
-    <string name="update_interstitial_title">New update ready</string>
-    <string name="update_interstitial_version">Version %1$s</string>
-    <string name="update_interstitial_update_now">Update now</string>
-    <string name="update_interstitial_not_now">Not now</string>
-    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
-    <string name="update_interstitial_enable_install">Allow installation</string>
-    <string name="update_interstitial_preparing">Finishing preparation…</string>
-
-    <!-- About -->
-    <string name="about_check_updates">Check for updates</string>
-
-    <!-- Extra keys -->
-<string name="new_player_design">Nuevo diseño del reproductor</string>
-<string name="new_mini_player_design">Nuevo diseño del mini reproductor</string>
+    <string name="onboarding_welcome_tagline">Música que puedes sentir y ver.\nUna experiencia sensorial completa: no solo sonido, sino emoción visual.</string>
+    <string name="onboarding_get_started">Empezar</string>
+    <string name="onboarding_notifications_title">Manténgase actualizado</string>
+    <string name="onboarding_notifications_desc">Las notificaciones te permiten saber cuándo se está reproduciendo música y controlar el reproductor directamente desde la pantalla de bloqueo.</string>
+    <string name="onboarding_notifications_enable">Habilitar notificaciones</string>
+    <string name="onboarding_notifications_skip">No gracias</string>
+    <string name="onboarding_login_title">Conecte su cuenta</string>
+    <string name="onboarding_login_desc">Inicia sesión con tu cuenta de YouTube para sincronizar listas de reproducción, canciones que te gustan y el historial de escucha.</string>
+    <string name="onboarding_login_cta">Iniciar sesión con YouTube</string>
+    <string name="onboarding_login_skip">Continuar sin cuenta</string>
+    <string name="update_interstitial_title">Nueva actualización lista</string>
+    <string name="update_interstitial_version">Versión %1$s</string>
+    <string name="update_interstitial_update_now">Actualizar ahora</string>
+    <string name="update_interstitial_not_now">Ahora no</string>
+    <string name="update_interstitial_enable_install">Permitir instalación</string>
+    <string name="update_interstitial_preparing">Terminando la preparación…</string>
+    <string name="about_check_updates">Buscar actualizaciones</string>
     <string name="featured_for_you">Destacado para ti</string>
     <string name="trending_artist_subtitle">En auge en tu feed</string>
     <string name="artist_radio_subtitle">Mezcla infinita inspirada en este artista</string>
@@ -1201,4 +1056,116 @@
     <string name="syncing_your_library">Sincronizando tu biblioteca…</string>
     <string name="collapse_section">Contraer sección</string>
     <string name="expand_section">Expandir sección</string>
-    </resources>
+    <string name="recently_added">Agregado recientemente</string>
+    <string name="recently_downloaded">Descargado recientemente</string>
+    <string name="artist_page_load_error">No se pudo cargar la página del artista.</string>
+    <string name="update_download_ready_title">¡Actualización lista! Iride %1$s</string>
+    <string name="update_download_ready_description">Iride se reiniciará para instalarlo.</string>
+    <string name="update_ready_toast">¡Actualización lista! Iride se reiniciará para instalarlo.</string>
+    <string name="update_permission_required_toast">¡Actualización lista! Permita que Iride instale actualizaciones en la configuración de Android.</string>
+    <string name="update_size_unknown">Tamaño no disponible</string>
+    <string name="update_roaming_title">Actualización disponible</string>
+    <string name="update_roaming_message">Iride %1$s está disponible (%2$s). Su teléfono utiliza datos móviles fuera de su país habitual, lo que puede tener un coste adicional.</string>
+    <string name="update_roaming_question">¿Descargarlo ahora?</string>
+    <string name="update_roaming_download_now">Descargar ahora</string>
+    <string name="update_roaming_wait_wifi">Espera a que haya wifi</string>
+    <string name="update_home_title">Nueva versión encontrada</string>
+    <string name="update_home_version">Iride %s está disponible</string>
+    <string name="update_home_downloading">Descargando…</string>
+    <string name="iride_backup_screen_title">copias iridiscentes</string>
+    <string name="iride_save_copy">Guarde una copia de Iride</string>
+    <string name="iride_load_copy">Cargar una copia guardada</string>
+    <string name="iride_backup_notice">La transferencia del teléfono necesita una copia de seguridad del dispositivo Android.</string>
+    <string name="iride_choose_backup">Elija una copia guardada</string>
+    <string name="iride_choose_file">Encuentra una copia guardada</string>
+    <string name="iride_no_backups">No se encontraron copias guardadas en este dispositivo.</string>
+    <string name="track_favorite_saved">Favorito</string>
+    <string name="track_favorite_not_saved">No es un favorito</string>
+    <string name="track_download_status_not_downloaded">No descargado</string>
+    <string name="track_download_status_queued">Descarga en cola</string>
+    <string name="track_download_status_downloading">Descargando</string>
+    <string name="track_download_status_downloaded">Descargado</string>
+    <string name="track_download_status_failed">Descarga fallida</string>
+    <string name="track_download_status_removing">Eliminando descarga</string>
+    <string name="eq_preset_standard">Piso</string>
+    <string name="eq_preset_custom">personalizado</string>
+    <string name="eq_desc_standard">Sonido neutro, sin coloración.</string>
+    <string name="eq_desc_balanced">Bajos más completos y máximos más brillantes, mantenidos suaves</string>
+    <string name="eq_desc_more_bass">Graves fuertes, pegada extra</string>
+    <string name="eq_desc_more_treble">Agudos más brillantes, detalles más limpios</string>
+    <string name="eq_desc_voice">Voces al frente, claras.</string>
+    <string name="eq_desc_custom">Tu propia curva</string>
+    <string name="eq_preset_modified">modificado</string>
+    <string name="eq_help_title">como funciona</string>
+    <string name="eq_help_drag">Arrastre un control deslizante hacia arriba o hacia abajo para subir o bajar esa parte del sonido. Toque el número encima de un control deslizante para escribir un valor exacto.</string>
+    <string name="eq_help_exact">\"Reset band\" devuelve la banda seleccionada a cero: frecuencia original, Q y ganancia.</string>
+    <string name="eq_help_q">Q establece qué tan ancha es una banda: lo ancho también afecta a las frecuencias cercanas, los objetivos estrechos con precisión.</string>
+    <string name="eq_help_reset_style">Toque el estilo seleccionado nuevamente para restaurar todo a sus valores base.</string>
+    <string name="reconnect">Reconectar</string>
+    <string name="diagnostic_copy_log">Copiar registro de diagnóstico</string>
+    <string name="ai_fast_integration_title">Configuración rápida de Géminis</string>
+    <string name="ai_fast_integration_body">Utilice Gemini para traducciones y otras funciones de IA. Google ofrece una cuota gratuita con límites de uso que pueden cambiar.</string>
+    <string name="ai_fast_integration_step_1">Abra Google AI Studio e inicie sesión.</string>
+    <string name="ai_fast_integration_step_2">Elija o cree un proyecto, luego seleccione "Crear clave API".</string>
+    <string name="ai_fast_integration_step_3">Copie la clave y péguela a continuación.</string>
+    <string name="ai_fast_integration_open_google">Abra Google AI Studio</string>
+    <string name="ai_fast_integration_key_label">Clave API de Géminis</string>
+    <string name="ai_fast_integration_key_placeholder">Pega tu clave aquí</string>
+    <string name="ai_fast_integration_key_hint">Este código le permite a Iride usar Gemini a través de su proyecto de Google seleccionado.</string>
+    <string name="ai_fast_integration_checking">Comprobando clave…</string>
+    <string name="ai_fast_integration_connected">Géminis conectado</string>
+    <string name="ai_fast_integration_verified">Conectado · modelo %1$s</string>
+    <string name="ai_fast_integration_failed">La clave no es válida o no se puede acceder al servicio. Verifique la clave e inténtelo nuevamente.</string>
+    <string name="ai_fast_integration_retry">Reintentar</string>
+    <string name="ai_advanced_settings">Configuraciones avanzadas</string>
+    <string name="ai_hide_advanced_settings">Ocultar configuración avanzada</string>
+    <string name="crash_restarting">Reiniciando Iride...</string>
+    <string name="crash_report_copied">Informe de fallo copiado</string>
+    <string name="home_app_version">Versión de la aplicación %1$s</string>
+    <string name="clear_search_on_open">Borrar búsqueda</string>
+    <string name="settings_storage_title">Almacenamiento y memoria</string>
+    <string name="sync_youtube_account">Sincronizar cuenta de YouTube</string>
+    <string name="spotify_import_playlists">Importar listas de reproducción desde Spotify</string>
+    <string name="reduced_folio_mode">Modo de bajo consumo</string>
+    <string name="reduced_folio_mode_desc">Utiliza desvanecimientos simples, elimina el desenfoque del fondo de inicio, limita la precarga de la portada y oscurece la apertura del MP3.</string>
+    <string name="reduced_folio_mode_low_end_desc">Recomendado para este dispositivo. Apágalo bajo tu propia responsabilidad; Los efectos visuales pueden tartamudear.</string>
+    <string name="update_interstitial_whats_new">¿Qué hay de nuevo?</string>
+    <string name="adv_home_settings_title">Inicio avanzado</string>
+    <string name="adv_home_settings_desc">Un hogar más tranquilo y sencillo con un disparador del estado de ánimo y una elección diaria. Apágalo para volver al hogar clásico.</string>
+    <string name="adv_feelings_question">¿Cómo te va?</string>
+    <string name="adv_feeling_energy">Energía</string>
+    <string name="adv_feeling_chill">relajarse</string>
+    <string name="adv_feeling_focus">Enfoque</string>
+    <string name="adv_feeling_nostalgia">Nostalgia</string>
+    <string name="adv_feeling_party">fiesta</string>
+    <string name="adv_feeling_surprise">sorpréndeme</string>
+    <string name="adv_thread_section">sigue adelante</string>
+    <string name="adv_daily_pick">selección diaria</string>
+    <string name="adv_all_news">Todos los nuevos lanzamientos</string>
+    <string name="adv_badge_new">Nuevo</string>
+    <string name="adv_badge_rotation">En repetición</string>
+    <string name="adv_badge_foryou">para ti</string>
+    <string name="adv_badge_trending">Tendencia</string>
+    <string name="adv_badge_radio">Radio</string>
+    <string name="iride_monthly_drop_home_title">¡Nueva actualización de Iride!</string>
+    <string name="iride_monthly_drop_title">Novedades de %1$s</string>
+    <plurals name="iride_monthly_drop_changes">
+        <item quantity="one">Cambio %d</item>
+        <item quantity="other">Cambios %d</item>
+    </plurals>
+    <string name="iride_monthly_drop_tap_to_read">Ver que hay de nuevo</string>
+    <string name="iride_monthly_drop_settings_section">Actualizaciones mensuales</string>
+    <string name="iride_monthly_drop_guide_title">Cómo funcionan las actualizaciones mensuales</string>
+    <string name="iride_monthly_drop_guide_subtitle">Actualizaciones mensuales, explicadas</string>
+    <string name="iride_monthly_drop_guide_schedule_title">Cuando aparecen nuevas funciones</string>
+    <string name="iride_monthly_drop_guide_schedule">Las funciones mensuales se pueden incluir en una actualización antes del día del lanzamiento. Están disponibles a las 00:00 del primer día del mes, según la hora local de tu teléfono.</string>
+    <string name="iride_monthly_drop_guide_fixes_title">Soluciones urgentes</string>
+    <string name="iride_monthly_drop_guide_fixes">Se pueden publicar correcciones de seguridad y errores importantes tan pronto como estén listas.</string>
+    <string name="iride_monthly_drop_guide_download_title">Descargando actualizaciones</string>
+    <string name="iride_monthly_drop_guide_download">Iride descarga actualizaciones automáticamente mediante Wi-Fi o datos móviles en tu país habitual. Si los datos móviles parecen estar en roaming, Iride pregunta antes de descargarlos.</string>
+    <string name="iride_monthly_drop_guide_install">Cuando la descarga esté lista, es posible que Android le solicite que confirme la instalación. Iride se reinicia mientras se instala la actualización.</string>
+    <string name="playlist_set_image">Establecer imagen</string>
+    <string name="playlist_change_image">Cambiar imagen</string>
+    <string name="playlist_image_failed">No se puede importar esta imagen. Por favor elige otra foto.</string>
+    <string name="iride_search_top_results">Mejores resultados</string>
+</resources>

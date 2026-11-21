@@ -4,7 +4,7 @@ package com.metrolist.music.ui.menu
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -95,6 +95,7 @@ fun YouTubePlaylistMenu(
     selectAction: () -> Unit = {},
     canSelect: Boolean = false,
     showPageControls: Boolean = true,
+    showDownloadAction: Boolean = false,
 ) {
     var menuSongs by remember(playlist.id, songs) { mutableStateOf(songs) }
     var songsLoadFailed by remember(playlist.id, songs) { mutableStateOf(false) }
@@ -324,6 +325,7 @@ fun YouTubePlaylistMenu(
     }
 
     IrideFolioContextMenu(
+        playlistId = playlist.id,
         items =
             buildList {
                     if (playlist.isEditable && !isGuest) {
@@ -461,7 +463,7 @@ fun YouTubePlaylistMenu(
                                             icon = {
                                                 Icon(
                                                     painter =
-                                                        painterResource(R.drawable.offline),
+                                                        painterResource(R.drawable.track_downloaded),
                                                     contentDescription = null,
                                                 )
                                             },
@@ -509,7 +511,7 @@ fun YouTubePlaylistMenu(
                                             icon = {
                                                 Icon(
                                                     painter =
-                                                        painterResource(R.drawable.download),
+                                                        painterResource(R.drawable.track_download),
                                                     contentDescription = null,
                                                 )
                                             },
@@ -674,12 +676,12 @@ fun YouTubePlaylistMenu(
                                                     "[PODCAST_SAVE] savePodcast API failed for ${playlist.id}",
                                                 )
                                                 withContext(Dispatchers.Main) {
-                                                    android.widget.Toast.makeText(
+                                                    Toast.makeText(
                                                             context,
                                                             if (isCurrentlySaved)
                                                                 R.string.error_podcast_unsubscribe
                                                             else R.string.error_podcast_subscribe,
-                                                            android.widget.Toast.LENGTH_SHORT,
+                                                            Toast.LENGTH_SHORT,
                                                         )
                                                         .show()
                                                 }
@@ -692,6 +694,13 @@ fun YouTubePlaylistMenu(
                 }
                 .filter {
                     showPageControls ||
+                        (showDownloadAction &&
+                            it.actionId in
+                                setOf(
+                                    R.string.action_download,
+                                    R.string.remove_download,
+                                    R.string.downloading,
+                                )) ||
                         it.actionId !in
                             setOf(
                                 R.string.action_download,

@@ -128,6 +128,8 @@ fun DiscordSettings(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
 ) {
+    val defaultYoutubeLabel = stringResource(R.string.discord_listen_on_youtube)
+    val defaultVisitLabel = stringResource(R.string.discord_visit_iride)
     val playerConnection = LocalPlayerConnection.current ?: return
     val song by playerConnection.currentSong.collectAsState(null)
     val playbackState by playerConnection.playbackState.collectAsState()
@@ -139,6 +141,7 @@ fun DiscordSettings(
 
     val coroutineScope = rememberCoroutineScope()
     val loginSuccessfulStr = stringResource(R.string.login_successful)
+    val invalidTokenLabel = stringResource(R.string.discord_invalid_token)
 
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var discordUsername by rememberPreference(DiscordUsernameKey, "")
@@ -240,7 +243,7 @@ fun DiscordSettings(
                             snackbarHostState.showSnackbar(loginSuccessfulStr)
                         }
                         .onFailure {
-                            error = "Invalid token"
+                            error = invalidTokenLabel
                             isVerifying = false
                         }
                 }
@@ -755,7 +758,7 @@ fun DiscordSettings(
                                     Material3SettingsItem(
                                         title = { Text(stringResource(R.string.discord_button_1)) },
                                         description = {
-                                            Text(button1Text.ifEmpty { "Listen on YouTube Music" })
+                                            Text(button1Text.ifEmpty { defaultYoutubeLabel })
                                         },
                                         trailingContent = {
                                             IrideSwitch(
@@ -782,7 +785,7 @@ fun DiscordSettings(
                                     Material3SettingsItem(
                                         title = { Text(stringResource(R.string.discord_button_2)) },
                                         description = {
-                                            Text(button2Text.ifEmpty { "Visit Metrolist" })
+                                            Text(button2Text.ifEmpty { defaultVisitLabel })
                                         },
                                         trailingContent = {
                                             IrideSwitch(
@@ -877,6 +880,8 @@ fun RichPresence(
     button2Text: String = "",
     button2Visible: Boolean = true,
 ) {
+    val defaultYoutubeLabel = stringResource(R.string.discord_listen_on_youtube)
+    val defaultVisitLabel = stringResource(R.string.discord_visit_iride)
     val context = LocalContext.current
 
     val activityLabel =
@@ -951,7 +956,7 @@ fun RichPresence(
 
                 Column(modifier = Modifier.weight(1f).padding(horizontal = 6.dp)) {
                     Text(
-                        text = song?.song?.title ?: "Song Title",
+                        text = song?.song?.title ?: stringResource(R.string.song_title),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -992,11 +997,11 @@ fun RichPresence(
                 val resolvedButton1 =
                     if (song != null) {
                         DiscordRPC.resolveVariables(
-                            button1Text.ifEmpty { "Listen on YouTube Music" },
+                            button1Text.ifEmpty { defaultYoutubeLabel },
                             song,
                         )
                     } else {
-                        button1Text.ifEmpty { "Listen on YouTube Music" }
+                        button1Text.ifEmpty { defaultYoutubeLabel }
                     }
                 IrideFolioSecondaryButton(
                     enabled = song != null,
@@ -1018,11 +1023,11 @@ fun RichPresence(
                 val resolvedButton2 =
                     if (song != null) {
                         DiscordRPC.resolveVariables(
-                            button2Text.ifEmpty { "Visit Metrolist" },
+                            button2Text.ifEmpty { defaultVisitLabel },
                             song,
                         )
                     } else {
-                        button2Text.ifEmpty { "Visit Metrolist" }
+                        button2Text.ifEmpty { defaultVisitLabel }
                     }
                 IrideFolioSecondaryButton(
                     onClick = {

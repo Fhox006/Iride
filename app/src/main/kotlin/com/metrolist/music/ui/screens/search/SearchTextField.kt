@@ -44,7 +44,7 @@ internal fun SearchTextField(
     val reducedMotion = rememberReducedMotion()
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     var cursorVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(editing, state.text.toString(), state.selection, reducedMotion) {
+    LaunchedEffect(editing, reducedMotion) {
         cursorVisible = editing
         if (reducedMotion) return@LaunchedEffect
         if (editing) {

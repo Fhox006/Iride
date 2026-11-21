@@ -1,13 +1,20 @@
 package com.metrolist.music.ui.component
 
 /** A separable, edge-clamped box pass keeps opaque portraits opaque without dark borders. */
-internal fun artistBoxBlur(pixels: IntArray, width: Int, height: Int, horizontal: Boolean, radius: Int): IntArray {
+internal fun artistBoxBlur(
+    pixels: IntArray,
+    width: Int,
+    height: Int,
+    horizontal: Boolean,
+    radius: Int,
+    result: IntArray = IntArray(pixels.size),
+): IntArray {
     require(width > 0 && height > 0 && pixels.size == width * height && radius >= 0)
+    require(result.size == pixels.size && result !== pixels)
     val count = radius * 2 + 1
     val length = if (horizontal) width else height
     val lines = if (horizontal) height else width
     val stride = if (horizontal) 1 else width
-    val result = IntArray(pixels.size)
     repeat(lines) { line ->
         val start = if (horizontal) line * width else line
         var alpha = 0

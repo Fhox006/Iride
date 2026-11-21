@@ -16,6 +16,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -62,11 +63,16 @@ internal fun SongMenuIconButton(
 ) {
     val state = LocalMenuState.current
     val anchor = remember { SongMenuAnchor() }
+    val expanded = state.isVisible && state.anchored && state.popupAnchor == anchor.bounds
     IrideFolioMenuButton(
-        expanded = state.isVisible && state.anchored && state.popupAnchor == anchor.bounds,
+        expanded = expanded,
         onClick = {
-            state.pointerAnchor = anchor.bounds
-            onClick()
+            if (expanded) {
+                state.dismiss()
+            } else {
+                state.pointerAnchor = anchor.bounds
+                onClick()
+            }
         },
         modifier = modifier.onGloballyPositioned { anchor.bounds = it.boundsInWindow() },
         enabled = enabled,
@@ -132,11 +138,12 @@ internal fun IrideAnchoredSongMenu(
     val menuWidth = with(density) { IrideFolio.MenuWidth.roundToPx() }.coerceAtMost(viewport.width)
     val placement = songMenuPlacement(menuAnchor, viewport, IntSize(menuWidth, contentHeight), gap, direction)
     val motion = state.popupMotion
-    val reducedMotion = rememberReducedMotion()
+    val lightweightMode by rememberLightweightFolioMode()
+    val reducedMotion = rememberReducedMotion() || lightweightMode
     val blurRadius = with(density) { IrideFolioContextMotionSpec.PanelBlurRadius.toPx() }
     val blurEffects = remember(blurRadius) { ArtistPhotoBlurEffects(blurRadius, TileMode.Decal) }
     // Transparent space belongs to the filtered layer, so the silhouette can soften outward.
-    val blurBleed = IrideFolioContextMotionSpec.PanelBlurRadius * 3f
+    val blurBleed = if (reducedMotion) 0.dp else IrideFolioContextMotionSpec.PanelBlurRadius * 3f
     val blurBleedPx = with(density) { blurBleed.roundToPx() }
     val origin = motion?.touchPoint ?: Offset(menuAnchor.center.x.toFloat(), menuAnchor.center.y.toFloat())
     val maximumTravel = with(density) { IrideFolioContextMotionSpec.PanelMaximumTravel.toPx() }

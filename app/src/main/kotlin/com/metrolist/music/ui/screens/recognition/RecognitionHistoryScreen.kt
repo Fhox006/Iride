@@ -1,6 +1,8 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.recognition
 
+import java.time.format.FormatStyle
+import androidx.compose.ui.platform.LocalConfiguration
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
@@ -209,7 +211,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No recognition history",
+                                text = stringResource(R.string.recognition_history_empty),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -245,7 +247,10 @@ private fun RecognitionHistoryItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm") }
+    val locale = LocalConfiguration.current.locales[0]
+    val dateFormatter = remember(locale) {
+        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale)
+    }
 
     Card(
         modifier =

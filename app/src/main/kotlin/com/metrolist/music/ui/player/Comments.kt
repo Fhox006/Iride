@@ -9,19 +9,23 @@ package com.metrolist.music.ui.player
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -38,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,16 +64,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.pages.CommentItem
 import com.metrolist.innertube.pages.CommentSortOrder
-import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.R
-import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.viewmodels.CommentsStatus
 import com.metrolist.music.viewmodels.CommentsViewModel
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.LocalArtworkContentColor
 import com.metrolist.music.ui.component.IrideFolioPrimaryIconButton
 import com.metrolist.music.ui.component.IrideFolioChoiceButton
+import com.metrolist.music.ui.component.NowPlayingStaticHeader
 import com.metrolist.music.ui.component.irideFolioGestures
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
@@ -89,22 +93,17 @@ fun CommentsPanel(
     val status by commentsViewModel.status.collectAsStateWithLifecycle()
     val comments by commentsViewModel.comments.collectAsStateWithLifecycle()
     val isLoadingMore by commentsViewModel.isLoadingMore.collectAsStateWithLifecycle()
-    val isPosting by commentsViewModel.isPosting.collectAsStateWithLifecycle()
-    val postError by commentsViewModel.postError.collectAsStateWithLifecycle()
-    val createCommentParams by commentsViewModel.createCommentParams.collectAsStateWithLifecycle()
-    val count by commentsViewModel.commentsCountText.collectAsStateWithLifecycle()
     val sortOrder by commentsViewModel.sortOrder.collectAsStateWithLifecycle()
     val moreFailed by commentsViewModel.moreFailed.collectAsStateWithLifecycle()
     val replies by commentsViewModel.replies.collectAsStateWithLifecycle()
     val availableSortOrders by commentsViewModel.availableSortOrders.collectAsStateWithLifecycle()
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState()
+        ?: remember { mutableStateOf(null) }
 
-    val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
-    val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
-
-    var commentText by rememberSaveable(mediaId) { mutableStateOf("") }
     val lazyListState = rememberLazyListState()
 
-    LaunchedEffect(mediaId, innerTubeCookie) {
+    LaunchedEffect(mediaId) {
         mediaId?.let { commentsViewModel.loadComments(it, force = true) }
     }
     LaunchedEffect(mediaId, sortOrder) { lazyListState.scrollToItem(0) }
@@ -134,13 +133,7 @@ fun CommentsPanel(
             )
         ) {
             Column(modifier = modifier.fillMaxSize().imePadding()) {
-                IridePlayerPanelHeader(
-                    title = stringResource(R.string.comments),
-                    subtitle = count,
-                    onClose = onClose,
-                    textColor = textButtonColor,
-                    textScale = textScale,
-                )
+                IridePlayerPanelHeader(stringResource(R.string.comments), onClose, textColor = textButtonColor, textScale = textScale)
                 if (availableSortOrders.isNotEmpty() &&
                     (status == CommentsStatus.Loaded || status == CommentsStatus.Empty)) {
                     val sortScroll = rememberScrollState()
@@ -204,12 +197,14 @@ fun CommentsPanel(
                         }
 
                         else -> {
-                            LazyColumn(
-                                state = lazyListState,
-                                modifier = Modifier.fillMaxSize().irideFolioGestures(lazyListState),
-                                overscrollEffect = null,
-                                contentPadding = PaddingValues(vertical = 4.dp * textScale),
-                            ) {
+                            Box(Modifier.fillMaxSize()) {
+                                LazyColumn(
+                                    state = lazyListState,
+                                    modifier = Modifier.fillMaxSize().padding(end = 8.dp * textScale)
+                                        .irideFolioGestures(lazyListState),
+                                    overscrollEffect = null,
+                                    contentPadding = PaddingValues(vertical = 4.dp * textScale),
+                                ) {
                                 items(comments, key = { it.id }) { comment ->
                                     CommentRow(
                                         comment = comment,
@@ -270,47 +265,34 @@ fun CommentsPanel(
                                         )
                                     }
                                 }
+                                }
+                                BoxWithConstraints(
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                        .width(3.dp * textScale).fillMaxHeight()
+                                        .padding(vertical = 6.dp * textScale),
+                                ) {
+                                    val layoutInfo = lazyListState.layoutInfo
+                                    val totalItems = layoutInfo.totalItemsCount
+                                    val visibleItems = layoutInfo.visibleItemsInfo.size
+                                    val scrollableItems = (totalItems - visibleItems).coerceAtLeast(0)
+                                    if (scrollableItems > 0) {
+                                        val thumbFraction = (visibleItems.toFloat() / totalItems)
+                                            .coerceIn(.06f, 1f)
+                                        val scrollFraction = (lazyListState.firstVisibleItemIndex.toFloat() /
+                                            scrollableItems).coerceIn(0f, 1f)
+                                        Box(
+                                            Modifier.fillMaxWidth()
+                                                .fillMaxHeight(thumbFraction)
+                                                .offset(y = maxHeight * (1f - thumbFraction) * scrollFraction)
+                                                .background(textButtonColor.copy(alpha = .6f), CircleShape),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                if (mediaId != null && isLoggedIn && createCommentParams != null &&
-                    (status == CommentsStatus.Loaded || status == CommentsStatus.Empty)) {
-                    CommentComposeBar(
-                        text = commentText,
-                        onTextChange = { commentText = it },
-                        onSend = {
-                            commentsViewModel.postComment(commentText) {
-                                commentText = ""
-                            }
-                        },
-                        isPosting = isPosting,
-                        textButtonColor = textButtonColor,
-                        iconButtonColor = iconButtonColor,
-                        textScale = textScale,
-                    )
-                    if (postError) {
-                        Text(
-                            text = stringResource(id = R.string.comments_post_failed),
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = (11 * textScale).sp,
-                            lineHeight = (15 * textScale).sp,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                        )
-                    }
-                } else if (!isLoggedIn) {
-                    Text(
-                        text = stringResource(id = R.string.comments_sign_in_to_comment),
-                        color = textButtonColor.copy(alpha = 0.6f),
-                        fontSize = (11 * textScale).sp,
-                        lineHeight = (15 * textScale).sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp * textScale, vertical = 8.dp * textScale),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
             }
         }
     }

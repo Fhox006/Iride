@@ -6,6 +6,7 @@ internal class DeferredHomeContent<T>(
     private val hasContent: (T) -> Boolean,
     private val identity: (T) -> Any? = { Unit },
     private val mergeWhileVisible: (T, T) -> T = { current, _ -> current },
+    private val applyPendingWhenHidden: Boolean = true,
 ) {
     var displayed: T = initial
         private set
@@ -24,7 +25,7 @@ internal class DeferredHomeContent<T>(
 
     fun setVisible(value: Boolean): T {
         visible = value
-        if (!visible) displayed = pending
+        if (!visible && applyPendingWhenHidden) displayed = pending
         return displayed
     }
 }

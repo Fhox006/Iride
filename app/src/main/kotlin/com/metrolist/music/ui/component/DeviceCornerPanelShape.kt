@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.R
 import android.os.Build
 import android.content.res.Resources
 import android.graphics.Point
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -419,20 +421,34 @@ fun DeviceCornerDebugPanel(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    "device BL: ${cornerInfo.bottomLeftRadiusPx.toInt()}px  BR: ${cornerInfo.bottomRightRadiusPx.toInt()}px",
+                    stringResource(
+                        R.string.device_corner_radius_info,
+                        cornerInfo.bottomLeftRadiusPx.toInt(),
+                        cornerInfo.bottomRightRadiusPx.toInt(),
+                    ),
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
-                    "effective BL: ${blEff.toInt()}px  BR: ${brEff.toInt()}px",
+                    stringResource(
+                        R.string.device_corner_effective_radius_info,
+                        blEff.toInt(),
+                        brEff.toInt(),
+                    ),
                     color = Color.Green,
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
-        Text("H padding: ${hPadSlider.toInt()}dp", style = MaterialTheme.typography.labelSmall)
+        Text(
+            stringResource(R.string.device_corner_horizontal_padding, hPadSlider.toInt()),
+            style = MaterialTheme.typography.labelSmall,
+        )
         Slider(value = hPadSlider, onValueChange = { hPadSlider = it }, valueRange = 0f..64f)
-        Text("B spacing: ${bSpaceSlider.toInt()}dp", style = MaterialTheme.typography.labelSmall)
+        Text(
+            stringResource(R.string.device_corner_bottom_spacing, bSpaceSlider.toInt()),
+            style = MaterialTheme.typography.labelSmall,
+        )
         Slider(value = bSpaceSlider, onValueChange = { bSpaceSlider = it }, valueRange = 0f..64f)
     }
 }

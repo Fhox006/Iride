@@ -1,6 +1,7 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.wrapped
 
+import androidx.compose.ui.platform.LocalResources
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -167,9 +168,11 @@ fun WrappedScreenContent(navController: NavController) {
     val pagerState = rememberPagerState(pageCount = { screens.size })
     val state by manager.state.collectAsState()
     val isMuted by audioService.isMuted.collectAsState()
+    val resources = LocalResources.current
+    val locale = resources.configuration.locales[0]
     val messagePair =
-        rememberSaveable(state.totalMinutes, saver = messagePairSaver) {
-            WrappedRepository.getMessage(state.totalMinutes)
+        rememberSaveable(state.totalMinutes, locale, saver = messagePairSaver) {
+            WrappedRepository.getMessage(state.totalMinutes, resources)
         }
 
     LaunchedEffect(Unit) {
@@ -188,7 +191,7 @@ fun WrappedScreenContent(navController: NavController) {
     }
 
     IridePageHeaderLayout(
-        title = "Wrapped",
+        title = stringResource(R.string.wrapped_title),
         scrollState = pagerState,
         scrollOffset = {
             ((pagerState.currentPage + pagerState.currentPageOffsetFraction) *

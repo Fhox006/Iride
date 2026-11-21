@@ -17,6 +17,8 @@ import timber.log.Timber
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.security.MessageDigest
+import java.util.UUID
 import kotlin.system.exitProcess
 
 class CrashHandler private constructor(
@@ -33,6 +35,8 @@ class CrashHandler private constructor(
             saveCrashReportToFile(crashLog)
             val intent = Intent(applicationContext, CrashActivity::class.java).apply {
                 putExtra(EXTRA_CRASH_LOG, crashLog)
+                putExtra(EXTRA_CRASH_SIGNATURE, crashSignature(throwable))
+                putExtra(EXTRA_CRASH_ID, UUID.randomUUID().toString())
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
             applicationContext.startActivity(intent)
@@ -72,7 +76,7 @@ class CrashHandler private constructor(
         }.toString()
 
         return buildString {
-            appendLine("Metrolist Crash Report")
+            appendLine("IRIDE CRASH REPORT")
             appendLine("=".repeat(50))
             appendLine()
             appendLine("Manufacturer: ${Build.MANUFACTURER}")
@@ -94,8 +98,41 @@ class CrashHandler private constructor(
         }
     }
 
+    private fun crashSignature(throwable: Throwable): String {
+        val identity =
+            generateSequence(throwable) { it.cause }
+                .take(5)
+                .joinToString("\n") { error ->
+                    val relevantFrames =
+                        error.stackTrace
+                            .asSequence()
+                            .filterNot { frame ->
+                                listOf(
+                                    "android.",
+                                    "androidx.",
+                                    "com.android.",
+                                    "com.google.",
+                                    "dalvik.",
+                                    "java.",
+                                    "javax.",
+                                    "kotlin.",
+                                    "kotlinx.",
+                                    "org.jetbrains.",
+                                ).any(frame.className::startsWith)
+                            }
+                            .take(3)
+                            .joinToString("\n") { frame -> "${frame.className}#${frame.methodName}" }
+                    "${error.javaClass.name}:${error.message.orEmpty()}\n$relevantFrames"
+                }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
+
     companion object {
         const val EXTRA_CRASH_LOG = "crash_log"
+        const val EXTRA_CRASH_SIGNATURE = "crash_signature"
+        const val EXTRA_CRASH_ID = "crash_id"
 
         fun install(context: Context) {
             val handler = CrashHandler(context.applicationContext)

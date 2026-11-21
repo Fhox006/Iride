@@ -4,7 +4,7 @@ package com.metrolist.music.ui.menu
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.R
+import com.metrolist.music.constants.PlaylistSongSortType
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.Song
@@ -48,12 +49,16 @@ fun LocalPlaylistMenu(
     songs: List<PlaylistSong>,
     context: Context,
     downloadState: Int,
-    onEdit: () -> Unit,
     onDelete: () -> Unit,
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onDismiss: () -> Unit,
     onReorder: (() -> Unit)? = null,
+    sortType: PlaylistSongSortType? = null,
+    onSortTypeChange: (PlaylistSongSortType) -> Unit = {},
+    sortDescending: Boolean = true,
+    onSortDescendingChange: (Boolean) -> Unit = {},
+    showSortDescending: Boolean = true,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -71,7 +76,7 @@ fun LocalPlaylistMenu(
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.offline),
+                            painter = painterResource(R.drawable.track_downloaded),
                             contentDescription = null,
                         )
                     },
@@ -108,7 +113,7 @@ fun LocalPlaylistMenu(
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.download),
+                            painter = painterResource(R.drawable.track_download),
                             contentDescription = null,
                         )
                     },
@@ -123,21 +128,6 @@ fun LocalPlaylistMenu(
     val isYouTubePlaylist = playlist.playlist.browseId != null
 
     val menuItems = buildList {
-        add(
-            Material3MenuItemData(
-                actionId = R.string.edit,
-                title = { Text(stringResource(R.string.folio_rename)) },
-                description = { Text(stringResource(R.string.edit_playlist)) },
-                icon = {
-                    Icon(painter = painterResource(R.drawable.edit), contentDescription = null)
-                },
-                onClick = {
-                    onEdit()
-                    onDismiss()
-                },
-            )
-        )
-
         if (onReorder != null) {
             add(
                 Material3MenuItemData(
@@ -230,9 +220,57 @@ fun LocalPlaylistMenu(
                 },
             )
         )
+
+        if (sortType != null) {
+            listOf(
+                PlaylistSongSortType.CUSTOM to R.string.sort_by_custom,
+                PlaylistSongSortType.CREATE_DATE to R.string.sort_by_create_date,
+                PlaylistSongSortType.NAME to R.string.sort_by_name,
+                PlaylistSongSortType.ARTIST to R.string.sort_by_artist,
+                PlaylistSongSortType.PLAY_TIME to R.string.sort_by_play_time,
+            ).forEach { (type, labelRes) ->
+                add(
+                    Material3MenuItemData(
+                        actionId = labelRes,
+                        title = { Text(stringResource(labelRes)) },
+                        icon = {
+                            Icon(painter = painterResource(R.drawable.library_filter_lines), contentDescription = null)
+                        },
+                        onClick = {
+                            onSortTypeChange(type)
+                            onDismiss()
+                        },
+                        selected = type == sortType,
+                        section = 1000,
+                    ),
+                )
+            }
+            if (showSortDescending) {
+                listOf(
+                    R.string.sort_ascending to false,
+                    R.string.sort_descending to true,
+                ).forEach { (labelRes, descending) ->
+                    add(
+                        Material3MenuItemData(
+                            actionId = labelRes,
+                            title = { Text(stringResource(labelRes)) },
+                            icon = { Icon(painter = painterResource(R.drawable.arrow_downward), contentDescription = null) },
+                            onClick = {
+                                onSortDescendingChange(descending)
+                                onDismiss()
+                            },
+                            selected = sortDescending == descending,
+                            section = 1000,
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     IrideFolioContextMenu(
+        playlistId = playlist.playlist.browseId ?: playlist.id,
+        legacyCustomImage = com.metrolist.music.db.entities.isCustomPlaylistImage(playlist.playlist.thumbnailUrl),
         items =
             menuItems.filter {
                 it.actionId !in
@@ -355,6 +393,7 @@ fun AutoPlaylistMenu(
     playlistName: String = "Playlist",
     onReorder: (() -> Unit)? = null,
     exportOnly: Boolean = false,
+    playlistId: String? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -372,7 +411,7 @@ fun AutoPlaylistMenu(
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.offline),
+                            painter = painterResource(R.drawable.track_downloaded),
                             contentDescription = null,
                         )
                     },
@@ -409,7 +448,7 @@ fun AutoPlaylistMenu(
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.download),
+                            painter = painterResource(R.drawable.track_download),
                             contentDescription = null,
                         )
                     },
@@ -423,6 +462,7 @@ fun AutoPlaylistMenu(
 
     if (!exportOnly) {
         IrideFolioContextMenu(
+            playlistId = playlistId,
             items =
                 listOfNotNull(
                         if (!isGuest) {
@@ -614,8 +654,10 @@ fun TopPlaylistMenu(
     onDismiss: () -> Unit,
     songs: List<Song> = emptyList(),
     playlistName: String = "Playlist",
+    playlistId: String? = null,
 ) {
     AutoPlaylistMenu(
+        playlistId = playlistId,
         downloadState = downloadState,
         onQueue = onQueue,
         onDownload = onDownload,
@@ -712,7 +754,7 @@ fun CachePlaylistMenu(
                     description = { Text(stringResource(R.string.remove_download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.offline),
+                            painter = painterResource(R.drawable.track_downloaded),
                             contentDescription = null,
                         )
                     },
@@ -749,7 +791,7 @@ fun CachePlaylistMenu(
                     description = { Text(stringResource(R.string.download_playlist_desc)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.download),
+                            painter = painterResource(R.drawable.track_download),
                             contentDescription = null,
                         )
                     },
@@ -762,6 +804,7 @@ fun CachePlaylistMenu(
         }
 
     IrideFolioContextMenu(
+        playlistId = "cached",
         items =
             listOfNotNull(
                 if (!isGuest) {

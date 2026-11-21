@@ -6,7 +6,9 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.BrowseEndpoint
 import com.metrolist.innertube.pages.ArtistPage
 import com.metrolist.innertube.pages.ArtistSection
+import com.metrolist.innertube.pages.latestNativeRelease
 import com.metrolist.innertube.pages.withCatalogAlbums
+import com.metrolist.innertube.pages.sortedByReleaseDate
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
@@ -20,6 +22,41 @@ class ArtistAlbumCatalogTest {
         albumType = type, year = year, thumbnail = "",
     )
     private fun page(vararg sections: ArtistSection) = ArtistPage(artist, sections.toList(), null, null)
+
+    @Test fun catalogOrdersJulyBeforeJuneRegardlessOfTitle() {
+        val june = album("june", "A June album", year = 2026).copy(releaseDate = "2026-06-30")
+        val july = album("july", "Z July album", year = 2026).copy(releaseDate = "2026-07-01")
+        assertEquals(listOf(july, june), listOf(june, july).sortedByReleaseDate())
+    }
+
+    @Test fun catalogFallsBackToYearForInvalidDatesAndKeepsUnknownDatesLast() {
+        val invalid = album("invalid", "Invalid", year = 2026).copy(releaseDate = "2026-13-01")
+        val older = album("older", "Older", year = 2025).copy(releaseDate = "2025-12-31")
+        val unknown = album("unknown", "Unknown").copy(year = null, releaseDate = "invalid")
+        assertEquals(listOf(invalid, older, unknown), listOf(unknown, older, invalid).sortedByReleaseDate())
+    }
+
+    @Test fun latestNativeReleaseUsesPreciseDateAndIgnoresCatalogOnlyAndAppearsOnRows() {
+        val older = album("MPREolder", "Older", year = 2026).copy(releaseDate = "2026-04-10")
+        val latest = album("MPRElatest", "Latest", type = "Single", year = 2026).copy(releaseDate = "2026-09-03")
+        val unconfirmed = album("itunes:it:9", "Catalog-only", year = 2027)
+            .copy(releaseDate = "2027-01-01")
+        val featured = album("MPREfeatured", "Featured", year = 2028)
+
+        val selected = page(
+            ArtistSection("Albums", listOf(older, unconfirmed), null),
+            ArtistSection("Singles", listOf(latest), null),
+            ArtistSection("Appears on albums", listOf(featured), null),
+        ).latestNativeRelease()
+
+        assertEquals("MPRElatest", selected?.second?.id)
+        assertEquals("Singles", selected?.first?.title)
+    }
+
+    @Test fun latestNativeReleaseReturnsNullWhenOnlyUnconfirmedCatalogRowsExist() {
+        val catalogOnly = album("itunes:it:9", "Catalog-only", year = 2027)
+        assertNull(page(ArtistSection("Albums", listOf(catalogOnly), null)).latestNativeRelease())
+    }
 
     @Test fun insertsMissingAlbumAndDeduplicatesNativeCardsWithoutCredits() {
         val native = album("MPREnative", "First", year = 2022).copy(artists = null)

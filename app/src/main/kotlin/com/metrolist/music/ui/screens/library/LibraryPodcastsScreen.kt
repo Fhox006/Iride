@@ -99,6 +99,7 @@ import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
@@ -124,9 +125,9 @@ fun LibraryPodcastsScreen(
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
 
     var podcastFilter by rememberEnumPreference(PodcastFilterKey, PodcastFilter.EPISODES)
 
@@ -492,10 +493,7 @@ fun LibraryPodcastsScreen(
                                         }
                                     },
                                 ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = stringResource(R.string.more_options),
-                                )
+                                TrackOverflowIcon()
                                 }
                             },
                             modifier =
@@ -503,9 +501,9 @@ fun LibraryPodcastsScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         if (episode.id == mediaMetadata?.id) {
-                                            playerConnection.togglePlayPause()
+                                            playerConnection?.togglePlayPause()
                                         } else {
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     title = downloadedEpisodesStr,
                                                     items = downloadedEpisodes.map { it.toMediaItem() },
@@ -542,7 +540,7 @@ fun LibraryPodcastsScreen(
                     lazyListState = lazyListState,
                     icon = R.drawable.shuffle,
                     onClick = {
-                        playerConnection.playQueue(
+                        playerConnection?.playQueue(
                             ListQueue(
                                 title = downloadedEpisodesStr,
                                 items = downloadedEpisodes.shuffled().map { it.toMediaItem() },
@@ -730,7 +728,7 @@ private fun PodcastEpisodePlaylistMenu(
         items =
             listOf(
                 Material3MenuItemData(
-                    title = { Text(text = stringResource(R.string.iride_remove_star)) },
+                    title = { Text(text = stringResource(R.string.iride_star)) },
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.delete),

@@ -6,9 +6,20 @@
 package com.metrolist.music.models
 
 import kotlinx.serialization.Serializable
+import com.metrolist.innertube.models.SongItem
 
 @Serializable
 sealed class HeroCarouselItem {
+    @Serializable
+    data class MusicVideo(
+        val artistId: String,
+        val artistName: String,
+        val artistThumbnail: String?,
+        val song: SongItem,
+    ) : HeroCarouselItem() {
+        val coverUrl: String get() = song.thumbnail
+    }
+
     @Serializable
     data class NewRelease(
         val albumId: String,
@@ -58,6 +69,7 @@ sealed class HeroCarouselItem {
 }
 
 fun HeroCarouselItem.stableKey(): String = when (this) {
+    is HeroCarouselItem.MusicVideo -> "hero_video_${song.id}"
     is HeroCarouselItem.NewRelease -> "hero_new_$albumId"
     is HeroCarouselItem.InRotation -> "hero_rotation_$albumId"
     is HeroCarouselItem.RecommendedAlbum -> "hero_reco_$albumId"

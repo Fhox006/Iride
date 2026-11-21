@@ -1,7 +1,7 @@
 package com.metrolist.music.ui.menu
 
 import android.content.Intent
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +10,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -31,6 +32,8 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun albumScreenMenuSections(
     albumWithSongs: AlbumWithSongs?,
+    downloadState: Int,
+    onDownload: () -> Unit,
     onRefetch: () -> Unit,
 ): List<List<IrideFolioMenuAction>> {
     val album = albumWithSongs ?: return emptyList()
@@ -131,6 +134,24 @@ internal fun albumScreenMenuSections(
                             label = stringResource(R.string.add_to_playlist),
                             icon = R.drawable.playlist_add,
                             onClick = { showPlaylistDialog = true },
+                        )
+                    )
+                    add(
+                        IrideFolioMenuAction(
+                            label = stringResource(
+                                when (downloadState) {
+                                    Download.STATE_COMPLETED -> R.string.remove_download
+                                    Download.STATE_DOWNLOADING,
+                                    Download.STATE_QUEUED -> R.string.folio_cancel_download
+                                    else -> R.string.action_download
+                                },
+                            ),
+                            icon = if (downloadState == Download.STATE_COMPLETED) {
+                                R.drawable.track_downloaded
+                            } else {
+                                R.drawable.track_download
+                            },
+                            onClick = onDownload,
                         )
                     )
                 }

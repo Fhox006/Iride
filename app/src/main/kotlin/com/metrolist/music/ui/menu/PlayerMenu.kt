@@ -4,7 +4,7 @@ package com.metrolist.music.ui.menu
 import androidx.compose.foundation.shape.CircleShape
 
 import android.content.Context
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -410,7 +410,7 @@ fun PlayerMenu(
                                     },
                                     icon = {
                                         Icon(
-                                            painter = painterResource(R.drawable.offline),
+                                            painter = painterResource(R.drawable.track_downloaded),
                                             contentDescription = null,
                                             modifier = Modifier.size(24.dp),
                                         )
@@ -457,7 +457,7 @@ fun PlayerMenu(
                                     },
                                     icon = {
                                         Icon(
-                                            painter = painterResource(R.drawable.download),
+                                            painter = painterResource(R.drawable.track_download),
                                             contentDescription = null,
                                             modifier = Modifier.size(24.dp),
                                         )
@@ -573,31 +573,6 @@ fun PlayerMenu(
                             .copy(selected = repeatMode == Player.REPEAT_MODE_ONE)
                     )
                 }
-                if (onShowComments != null)
-                    add(
-                        folioMenuAction(
-                            R.string.comments,
-                            R.drawable.comment,
-                            { onShowComments(); onDismiss() },
-                        )
-                    )
-                if (listenTogetherManager != null)
-                    add(
-                        folioMenuAction(
-                            R.string.listen_together,
-                            R.drawable.group,
-                            {
-                                if (onShowListenTogether != null) {
-                                    onShowListenTogether()
-                                    onDismiss()
-                                } else {
-                                    navController.navigate("listen_together") { launchSingleTop = true }
-                                    playerBottomSheetState.collapseSoft()
-                                    onDismiss()
-                                }
-                            },
-                        )
-                    )
                 addAll(
                     buildList {
                         add(
@@ -1248,7 +1223,7 @@ fun ListenTogetherDialog(visible: Boolean, mediaMetadata: MediaMetadata?, onDism
                                 onClick = { listenTogetherManager.forceReconnect() },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("Reconnect")
+                                Text(stringResource(R.string.reconnect))
                             }
                         }
                     }

@@ -14,6 +14,7 @@
     <string name="what_new">What\'s New</string>
     <string name="songs">Songs</string>
     <string name="all_tracks">All Tracks</string>
+    <string name="all_tracks_offline">All Tracks</string>
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>
     <string name="playlists">Playlists</string>
@@ -386,15 +387,21 @@
 
     <string name="storage">Storage</string>
     <string name="cache">Cache</string>
-    <string name="image_cache">Image Cache</string>
-    <string name="song_cache">Song Cache</string>
+    <string name="image_cache">Images</string>
+    <string name="song_cache">Temporary songs</string>
+    <string name="images">Images</string>
+    <string name="temporary_songs">Temporary songs</string>
+    <string name="free_up_space">Free up space</string>
+    <string name="delete_downloads">Delete downloaded songs</string>
+    <string name="clear_temporary_songs">Clear temporary songs</string>
+    <string name="space_used">%s used</string>
     <string name="max_cache_size">Max cache size</string>
     <string name="unlimited">Unlimited</string>
     <string name="clear_all_downloads">Clear all downloads</string>
-    <string name="max_image_cache_size">Max image cache size</string>
-    <string name="clear_image_cache">Clear image cache</string>
-    <string name="max_song_cache_size">Max song cache size</string>
-    <string name="clear_song_cache">Clear song cache</string>
+    <string name="max_image_cache_size">Image storage limit</string>
+    <string name="clear_image_cache">Clear images</string>
+    <string name="max_song_cache_size">Temporary song limit</string>
+    <string name="clear_song_cache">Clear temporary songs</string>
     <string name="size_used">%s used</string>
 
     <string name="privacy">Privacy</string>
@@ -459,10 +466,10 @@
     <string name="hide_video_only_results_desc">Hide tracks that only have a video version available (when resolution fails)</string>
     <string name="hide_videos_in_library">Hide videos in library/playlists</string>
     <string name="hide_videos_in_library_desc">Apply video hiding logic to your library and created playlists</string>
-    <string name="resolved_track_cache">Resolved Track Cache</string>
-    <string name="max_resolved_track_cache_size">Max cache size</string>
-    <string name="clear_resolved_track_cache">Clear resolved track cache</string>
-    <string name="clear_resolved_track_cache_dialog">Do you really want to clear the resolved track cache? This will force the app to re-search for audio versions of videos.</string>
+    <string name="resolved_track_cache">Resolved tracks</string>
+    <string name="max_resolved_track_cache_size">Maximum saved tracks</string>
+    <string name="clear_resolved_track_cache">Clear saved track data</string>
+    <string name="clear_resolved_track_cache_dialog">Clear saved track data? The app will search again for audio versions of videos.</string>
     <string name="searching_synced_lyrics">Searching for synced lyrics…</string>
 
     <string name="main_top_gradient">Top gradient on main screens</string>

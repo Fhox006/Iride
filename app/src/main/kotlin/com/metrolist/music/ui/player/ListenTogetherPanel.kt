@@ -333,9 +333,7 @@ internal fun ListenTogetherPanel(
 @Composable
 private fun PanelCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(FolioShape(8.dp))
-            .background(Color.White.copy(alpha = .04f))
-            .border(.5.dp, Color.White.copy(alpha = .12f), FolioShape(8.dp))
+        Modifier.fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp), content = content,
     )
@@ -343,9 +341,21 @@ private fun PanelCard(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun PanelAction(label: Int, onClick: () -> Unit, enabled: Boolean = true) {
-    IrideFolioChoiceButton(selected = false, onClick = onClick, enabled = enabled, compact = true,
-        modifier = Modifier.semantics { role = Role.Button }) {
-        Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val icon = when (label) {
+        R.string.approve -> R.drawable.check
+        R.string.reject -> R.drawable.close
+        R.string.settings -> R.drawable.settings
+        R.string.resync -> R.drawable.refresh
+        R.string.listen_together_create_room -> R.drawable.add
+        R.string.listen_together_join_room -> R.drawable.login
+        R.string.connect -> R.drawable.link
+        R.string.disconnect, R.string.leave_room -> R.drawable.logout
+        else -> R.drawable.close
+    }
+    IconButton(onClick = onClick, enabled = enabled,
+        modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize)) {
+        Icon(painterResource(icon), stringResource(label),
+            modifier = Modifier.size(IrideFolio.PlayerActionIconSize))
     }
 }
 

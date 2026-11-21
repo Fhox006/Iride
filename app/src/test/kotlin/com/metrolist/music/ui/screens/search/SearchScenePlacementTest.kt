@@ -69,12 +69,14 @@ class SearchScenePlacementTest {
         initialTop: Float = 120f,
         height: Float = 800f,
         resultHeight: Float = 52f,
-    ) = searchScenePlacement(height, initialTop, editing, result, keyboard, fallback, 52f, resultHeight, 24f)
+        resultTop: Float = 40f,
+    ) = searchScenePlacement(height, initialTop, editing, result, keyboard, fallback, 52f, resultHeight, 24f, resultTop)
 
     @Test
-    fun submittedTitleStaysAtScreenCentreDuringKeyboardDismissal() {
+    fun submittedTitleStaysAlignedWithPageHeaderDuringKeyboardDismissal() {
         for (keyboard in listOf(320, 240, 160, 80, 0)) {
-            assertEquals(400f, placement(keyboard = keyboard).fieldTop + 26f, 0f)
+            assertEquals(40f, placement(keyboard = keyboard).fieldTop, 0f)
+            assertEquals(116f, placement(keyboard = keyboard).resultsTop, 0f)
         }
     }
 
@@ -120,7 +122,7 @@ class SearchScenePlacementTest {
     @Test
     fun editorWaitsForKeyboardDestinationWithoutMovingToAFallbackFirst() {
         assertEquals(120f, placement(editing = true, result = false).fieldTop, 0f)
-        assertEquals(374f, placement(editing = true).fieldTop, 0f)
+        assertEquals(40f, placement(editing = true).fieldTop, 0f)
         assertEquals(404f, placement(editing = true, keyboard = 320).fieldTop, 0f)
     }
 
@@ -139,7 +141,8 @@ class SearchScenePlacementTest {
     @Test
     fun hardwareKeyboardFallbackAndLargeTitlesStayWithinViewport() {
         assertEquals(436f, placement(editing = true, fallback = true).fieldTop, 0f)
-        assertEquals(400f, placement(resultHeight = 82f).fieldTop + 41f, 0f)
+        assertEquals(40f, placement(resultHeight = 82f).fieldTop, 0f)
+        assertEquals(146f, placement(resultHeight = 82f).resultsTop, 0f)
         assertEquals(0f, placement(editing = true, keyboard = 320, height = 340f).fieldTop, 0f)
     }
 }

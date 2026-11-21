@@ -46,15 +46,21 @@ internal fun rememberFloatingPanelAppearance(
     backdrop: FrostBackdrop?,
 ): FloatingPanelAppearance {
     val reducedMotion = rememberReducedMotion()
+    val lightweightMode by rememberLightweightFolioMode()
     val targetContent = pageAppearance.contentColor ?: Color.White
     val targetBackground = pageAppearance.backgroundColor
+    val panelBackground = if (lightweightMode) {
+        pageAppearance.lowPerformanceSurfaceColor ?: FolioLowPerformanceSurfaceColor
+    } else {
+        IrideFolio.frostedSurfaceColor(targetContent, targetBackground)
+    }
     val content by animateColorAsState(
         targetContent,
         animationSpec = if (reducedMotion) snap() else tween(IrideMotion.Medium, easing = IrideMotion.EaseOutQuart),
         label = "floatingPanelContent",
     )
     val background by animateColorAsState(
-        IrideFolio.frostedSurfaceColor(targetContent, targetBackground),
+        panelBackground,
         animationSpec = if (reducedMotion) snap() else tween(IrideMotion.Medium, easing = IrideMotion.EaseOutQuart),
         label = "floatingPanelBackground",
     )
@@ -66,16 +72,28 @@ internal fun rememberFloatingPanelAppearance(
     return FloatingPanelAppearance(content, background, surfaceAlpha)
 }
 
-private data class PagePanelColors(val background: Color, val content: Color)
+private data class PagePanelColors(
+    val background: Color,
+    val content: Color,
+    val lowPerformanceSurfaceColor: Color?,
+)
 
 internal class PageNavigationAppearance(private val entryId: String?) {
     private var colors by mutableStateOf<PagePanelColors?>(null)
     val contentColor: Color? get() = colors?.content
     val backgroundColor: Color? get() = colors?.background
+    val lowPerformanceSurfaceColor: Color? get() = colors?.lowPerformanceSurfaceColor
 
-    fun updateColors(pageEntryId: String?, background: Color, content: Color) {
+    fun updateColors(
+        pageEntryId: String?,
+        background: Color,
+        content: Color,
+        lowPerformanceSurfaceColor: Color? = null,
+    ) {
         // Outgoing pages remain composed during transitions and must not recolor the new page.
-        if (pageEntryId == entryId) colors = PagePanelColors(background, content)
+        if (pageEntryId == entryId) {
+            colors = PagePanelColors(background, content, lowPerformanceSurfaceColor)
+        }
     }
 }
 
@@ -86,12 +104,20 @@ internal fun IrideArtworkSurface(
     modifier: Modifier = Modifier,
     paintBackground: Boolean = true,
     contentColor: Color? = null,
+    lowPerformanceSurfaceColor: Color? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val ink = contentColor ?: if (artworkUsesDarkInk(backgroundColor.toArgb())) Color.Black else Color.White
     val navigationAppearance = LocalPageNavigationAppearance.current
     val pageEntryId = (LocalViewModelStoreOwner.current as? NavBackStackEntry)?.id
-    SideEffect { navigationAppearance?.updateColors(pageEntryId, backgroundColor, ink) }
+    SideEffect {
+        navigationAppearance?.updateColors(
+            pageEntryId,
+            backgroundColor,
+            ink,
+            lowPerformanceSurfaceColor,
+        )
+    }
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
             primary = ink, secondary = ink, tertiary = ink,

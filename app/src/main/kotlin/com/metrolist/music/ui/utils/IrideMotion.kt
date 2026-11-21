@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -77,6 +78,7 @@ object IrideMotion {
     const val Short = 240
     const val Medium = 300
     const val Long = 420
+    const val PageEntrance = 520
     const val Fullscreen = 520
 
     /** Gap between siblings in a cascade. Short enough to read as one gesture, not a queue. */
@@ -197,9 +199,10 @@ fun rememberEnterProgress(
 ): Float {
     val sourceEntryId = LocalCollectionSourceEntry.current
     val backdrop = LocalIrideExpansionBackdrop.current
-    val restoredSource = remember(sourceEntryId) {
-        sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
-    }
+    // `returning` changes only after the pop starts. Cache this by entry ID and a
+    // re-composed source page can miss that lifecycle transition, replaying its
+    // entrance from the top while the predictive-back artwork is still flying.
+    val restoredSource = sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
     if (LocalCollectionExpansionProgress.current != null || restoredSource) return if (play) 1f else 0f
     val reducedMotion = rememberReducedMotion()
     if (reducedMotion) return if (play) 1f else 0f
@@ -222,9 +225,8 @@ fun rememberEnterProgressState(
 ): State<Float> {
     val sourceEntryId = LocalCollectionSourceEntry.current
     val backdrop = LocalIrideExpansionBackdrop.current
-    val restoredSource = remember(sourceEntryId) {
-        sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
-    }
+    // Read live navigation state so a restored source skips its page entrance.
+    val restoredSource = sourceEntryId != null && backdrop?.returning == true && backdrop.entryId == sourceEntryId
     if (LocalCollectionExpansionProgress.current != null || restoredSource) return rememberUpdatedState(if (play) 1f else 0f)
     val reducedMotion = rememberReducedMotion()
     if (reducedMotion) return rememberUpdatedState(if (play) 1f else 0f)
@@ -287,7 +289,11 @@ fun Modifier.irideEnter(
 }
 
 /** A raised sheet recedes into its resting plane; Y stays fixed throughout the entrance. */
-fun Modifier.irideDepthEnter(progress: () -> Float, intensity: Float = 1f): Modifier = graphicsLayer {
+fun Modifier.irideDepthEnter(
+    progress: () -> Float,
+    intensity: Float = 1f,
+    effect: (() -> RenderEffect?)? = null,
+): Modifier = graphicsLayer {
     val p = progress().coerceIn(0f, 1f)
     val lift = (1f - p) * intensity
     alpha = p
@@ -297,6 +303,7 @@ fun Modifier.irideDepthEnter(progress: () -> Float, intensity: Float = 1f): Modi
     val perspectiveScale = 1f + IrideMotion.SectionEntranceDepthScale * lift
     scaleX = perspectiveScale
     scaleY = perspectiveScale
+    renderEffect = effect?.invoke()
 }
 
 /**

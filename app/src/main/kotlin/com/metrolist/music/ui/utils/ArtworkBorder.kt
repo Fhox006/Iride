@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
@@ -36,13 +37,16 @@ fun Modifier.irideArtworkOverlayBorder(
     shape: Shape,
 ): Modifier = drawWithContent {
     drawContent()
-    val strokePx = width.toPx()
-    if (strokePx <= 0f || size.width <= strokePx || size.height <= strokePx) return@drawWithContent
+    drawIrideArtworkBorder(width.toPx(), color, shape, size)
+}
+
+internal fun DrawScope.drawIrideArtworkBorder(strokePx: Float, color: Color, shape: Shape, bounds: Size) {
+    if (strokePx <= 0f || bounds.width <= strokePx || bounds.height <= strokePx) return
 
     // Shrink the outline by the stroke width and offset by half of it so the whole
     // stroke sits inside the bounds instead of straddling the edge.
     val insetOutline = shape.createOutline(
-        size = Size(size.width - strokePx, size.height - strokePx),
+        size = Size(bounds.width - strokePx, bounds.height - strokePx),
         layoutDirection = layoutDirection,
         density = this,
     )
@@ -54,7 +58,11 @@ fun Modifier.irideArtworkOverlayBorder(
                 color,
                 style = Stroke(strokePx),
             )
-            is Outline.Rectangle -> drawRect(color, style = Stroke(strokePx))
+            is Outline.Rectangle -> drawRect(
+                color,
+                size = Size(bounds.width - strokePx, bounds.height - strokePx),
+                style = Stroke(strokePx),
+            )
         }
     }
 }

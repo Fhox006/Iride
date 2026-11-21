@@ -1,11 +1,43 @@
 package com.metrolist.music.playback
 
 import com.metrolist.music.ui.player.IrideMp3QueueOrder
+import com.metrolist.music.ui.player.queueHistoryOldestFirst
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class IrideMp3QueueHistoryTest {
+    @Test
+    fun latestListenIsImmediatelyAboveTheQueue() {
+        assertEquals(
+            listOf("oldest", "middle", "latest"),
+            queueHistoryOldestFirst(listOf("latest", "middle", "oldest"), emptyList()),
+        )
+    }
+
+    @Test
+    fun newlyFinishedSongsStayBesideQueueAfterManualReordering() {
+        assertEquals(
+            listOf("middle", "oldest", "latest", "just-finished"),
+            queueHistoryOldestFirst(
+                listOf("just-finished", "latest", "middle", "oldest"),
+                listOf("middle", "oldest", "latest"),
+            ),
+        )
+    }
+
+    @Test
+    fun historyRefreshDropsMissingSongsWithoutChangingManualOrder() {
+        assertEquals(
+            listOf("middle", "latest"),
+            queueHistoryOldestFirst(
+                listOf("latest", "middle"),
+                listOf("middle", "removed", "latest"),
+            ),
+        )
+        assertEquals(emptyList<String>(), queueHistoryOldestFirst(emptyList(), listOf("removed")))
+    }
+
     @Test
     fun historyDropPositionSurvivesMoodChangesAndPlaybackProgression() {
         val order = IrideMp3QueueOrder<String>()

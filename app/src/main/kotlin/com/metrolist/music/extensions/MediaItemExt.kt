@@ -17,6 +17,23 @@ import com.metrolist.music.models.toMediaMetadata
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
 
+private const val MANUAL_QUEUE_EXTRA = "com.metrolist.music.MANUAL_QUEUE"
+
+val MediaItem.isManualQueueItem: Boolean
+    get() = mediaMetadata.extras?.getBoolean(MANUAL_QUEUE_EXTRA) == true
+
+fun MediaItem.withManualQueueItem(manual: Boolean): MediaItem {
+    if (isManualQueueItem == manual) return this
+
+    val currentMetadata = mediaMetadata
+    val extras = Bundle(currentMetadata.extras ?: Bundle.EMPTY).apply {
+        if (manual) putBoolean(MANUAL_QUEUE_EXTRA, true) else remove(MANUAL_QUEUE_EXTRA)
+    }
+    return buildUpon()
+        .setMediaMetadata(currentMetadata.buildUpon().setExtras(extras).build())
+        .build()
+}
+
 fun Song.toMediaItem() = MediaItem.Builder()
     .setMediaId(song.id)
     .setUri(song.id)

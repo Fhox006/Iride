@@ -3,7 +3,6 @@ package com.metrolist.music.ui.component
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -21,14 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -36,6 +34,7 @@ import kotlinx.coroutines.flow.filterNotNull
 internal data class IrideArtistArtwork(
     val bitmap: Bitmap,
     val tint: Color,
+    val sourceUrl: String? = null,
 )
 
 @Composable
@@ -61,7 +60,7 @@ internal fun rememberIrideArtistArtwork(
     }
     var resumeGeneration by remember(artistId) { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (highResolution) resumeGeneration++
+        resumeGeneration++
     }
     val selectedUrl = selected.value?.url
     DisposableEffect(artistId, selectedUrl) {
@@ -70,7 +69,7 @@ internal fun rememberIrideArtistArtwork(
     }
     LaunchedEffect(request, highResolution, resumeGeneration) {
         coroutineScope {
-            launch {
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 loader.selectionUpdates.collect { key ->
                     if (key == request.id) {
                         val cached = loader.cachedForDisplay(request)
@@ -120,22 +119,15 @@ internal fun IrideArtistArtworkImage(
     contentScale: ContentScale = ContentScale.Fit,
     backingColor: Color? = null,
 ) {
-    val image = remember(artwork.bitmap) { artwork.bitmap.asImageBitmap() }
-    val motion = artistArtworkMotionModifier(scrollOffset, blurProgress, pullOffset, pagePullOffset)
+    val motion = artistArtworkMotionModifier(scrollOffset, { 0f }, pullOffset, pagePullOffset)
     Box(modifier) {
         Box(motion) {
-            if (backingColor != null) {
-                Canvas(Modifier.fillMaxSize()) {
-                    drawRect(backingColor)
-                }
-            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Image(
-                    image, null, contentScale = contentScale,
-                    filterQuality = FilterQuality.High,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                ArtistCachedBlurredPhoto(artwork.bitmap, blurProgress, contentScale, backingColor)
             } else {
+                if (backingColor != null) {
+                    Canvas(Modifier.fillMaxSize()) { drawRect(backingColor) }
+                }
                 ArtistCompatBlurredPhoto(artwork.bitmap, blurProgress, contentScale)
             }
         }

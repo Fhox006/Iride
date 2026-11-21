@@ -20,6 +20,10 @@ internal data class SearchSessionState(
 
     fun dismiss(): SearchSessionState = copy(event = event.dismiss(submittedQuery.isNotBlank()))
 
+    fun leaveForSection(): SearchSessionState = SearchSessionState(
+        event = SearchSceneEvent(revision = event.revision + 1),
+    )
+
     fun reset(): SearchSessionState = if (event.returnsToRoot) this else copy(
         event = if (event.mode == SearchSceneMode.Landing) event.submit(false) else event.reset(),
     )

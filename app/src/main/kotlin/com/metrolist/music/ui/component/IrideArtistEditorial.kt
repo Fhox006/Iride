@@ -38,6 +38,9 @@ import coil3.request.allowHardware
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.rememberReducedMotion
 
+// Re-enable after Apple Music motion artwork reaches acceptable visual quality.
+internal const val ARTIST_EDITORIAL_MOTION_VIDEO_ENABLED = false
+
 @Composable
 internal fun rememberIrideArtistEditorialArtwork(
     artistId: String,
@@ -45,11 +48,13 @@ internal fun rememberIrideArtistEditorialArtwork(
     previewUrl: String?,
 ): State<IrideArtistArtwork?> {
     val loader = rememberArtistArtworkLoader()
-    val artwork = remember(artistId, videoUrl, previewUrl) {
-        mutableStateOf(videoUrl?.let(loader::cachedEditorial))
+    val artwork = remember(artistId, videoUrl, previewUrl, ARTIST_EDITORIAL_MOTION_VIDEO_ENABLED) {
+        mutableStateOf(videoUrl?.let { loader.cachedEditorial(it, ARTIST_EDITORIAL_MOTION_VIDEO_ENABLED) })
     }
-    LaunchedEffect(artistId, videoUrl, previewUrl) {
-        artwork.value = videoUrl?.let { loader.loadEditorial(it, previewUrl) }
+    LaunchedEffect(artistId, videoUrl, previewUrl, ARTIST_EDITORIAL_MOTION_VIDEO_ENABLED) {
+        artwork.value = videoUrl?.let {
+            loader.loadEditorial(it, previewUrl, ARTIST_EDITORIAL_MOTION_VIDEO_ENABLED)
+        }
     }
     return artwork
 }

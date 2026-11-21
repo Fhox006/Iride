@@ -21,13 +21,21 @@ import androidx.compose.foundation.pager.rememberPagerState
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
+import coil3.imageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.size.Precision
 
 @Composable
 fun SharedHomeSectionTitle(
@@ -171,9 +179,36 @@ fun <T> SharedYouTubePlaylistRow(
     key: (T) -> Any,
     contentPadding: Dp,
     modifier: Modifier = Modifier,
+    prefetchArtwork: ((T) -> String?)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val prefetchedArtwork = remember(items) { mutableSetOf<String>() }
+    LaunchedEffect(listState, items, prefetchArtwork) {
+        val artworkUrl = prefetchArtwork ?: return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex == null) return@collect
+                val firstUpcomingIndex = lastVisibleIndex + 1
+                val lastUpcomingIndex = minOf(lastVisibleIndex + 3, items.lastIndex)
+                for (index in firstUpcomingIndex..lastUpcomingIndex) {
+                    val url = artworkUrl(items[index]) ?: continue
+                    if (prefetchedArtwork.add(url)) {
+                        context.imageLoader.enqueue(
+                            ImageRequest.Builder(context)
+                                .data(url)
+                                .size(448, 448)
+                                .precision(Precision.INEXACT)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .networkCachePolicy(CachePolicy.ENABLED)
+                                .build(),
+                        )
+                    }
+                }
+            }
+    }
     LazyRow(
         state = listState,
         contentPadding = PaddingValues(horizontal = contentPadding),

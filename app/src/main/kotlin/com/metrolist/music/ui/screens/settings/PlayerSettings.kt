@@ -63,7 +63,6 @@ import com.metrolist.music.constants.ScratchBufferKey
 import com.metrolist.music.constants.ScratchBufferSize
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.ShufflePlaylistFirstKey
-import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.SkipFadeKey
 import com.metrolist.music.constants.SleepTimerCustomDaysKey
 import com.metrolist.music.constants.SleepTimerDayTimesKey
@@ -93,6 +92,8 @@ import com.metrolist.music.utils.rememberPreference
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 
+private const val SHOW_EQUALIZER_SETTINGS_ENTRY = false
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSettings(navController: NavController) {
@@ -104,7 +105,7 @@ fun PlayerSettings(navController: NavController) {
             defaultValue = AudioQuality.AUTO,
         )
     val (videoQuality, onVideoQualityChange) =
-        rememberEnumPreference(VideoQualityKey, defaultValue = VideoQuality.P720)
+        rememberEnumPreference(VideoQualityKey, defaultValue = VideoQuality.P1080)
     val (crossfadeEnabled, onCrossfadeEnabledChange) =
         rememberPreference(
             CrossfadeEnabledKey,
@@ -118,12 +119,7 @@ fun PlayerSettings(navController: NavController) {
     val (skipFade, onSkipFadeChange) =
         rememberPreference(
             SkipFadeKey,
-            defaultValue = true,
-        )
-    val (skipFadeDuration, onSkipFadeDurationChange) =
-        rememberPreference(
-            SkipFadeDurationKey,
-            defaultValue = 3.5f,
+            defaultValue = false,
         )
     val (audioNormalization, onAudioNormalizationChange) =
         rememberPreference(
@@ -269,8 +265,15 @@ fun PlayerSettings(navController: NavController) {
             },
             title = stringResource(R.string.video_quality),
             current = videoQuality,
-            values = VideoQuality.entries.toList(),
-            valueText = { "${it.maxHeight}p" + if (it == VideoQuality.P2160) " · 4K" else "" },
+            values = listOf(VideoQuality.P360, VideoQuality.P720, VideoQuality.P1080, VideoQuality.P2160),
+            valueText = {
+                when {
+                    it.maxHeight <= 480 -> "Low"
+                    it.maxHeight <= 720 -> "Medium"
+                    it.maxHeight <= 1080 -> "High"
+                    else -> "Maximum"
+                }
+            },
         )
     }
 
@@ -408,20 +411,29 @@ fun PlayerSettings(navController: NavController) {
                                     icon = painterResource(R.drawable.slow_motion_video),
                                     title = { Text(stringResource(R.string.video_quality)) },
                                     description = {
-                                        Text(stringResource(R.string.video_quality_description, videoQuality.maxHeight))
+                                        Text(
+                                            when {
+                                                videoQuality.maxHeight <= 480 -> "Low"
+                                                videoQuality.maxHeight <= 720 -> "Medium"
+                                                videoQuality.maxHeight <= 1080 -> "High"
+                                                else -> "Maximum"
+                                            },
+                                        )
                                     },
                                     onClick = { showVideoQualityDialog = true },
                                 )
                             )
 
-                            add(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.equalizer),
-                                    title = { Text(stringResource(R.string.equalizer_header)) },
-                                    description = { Text(stringResource(R.string.equalizer_desc)) },
-                                    onClick = { navController.navigate("settings/equalizer") },
+                            if (SHOW_EQUALIZER_SETTINGS_ENTRY) {
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.equalizer),
+                                        title = { Text(stringResource(R.string.equalizer_header)) },
+                                        description = { Text(stringResource(R.string.equalizer_desc)) },
+                                        onClick = { navController.navigate("settings/equalizer") },
+                                    )
                                 )
-                            )
+                            }
 
                             if (advancedMode)
                                 add(
@@ -450,7 +462,6 @@ fun PlayerSettings(navController: NavController) {
                                                         androidx.compose.animation.fadeOut(),
                                             ) {
                                                 Column {
-                                                    Text(stringResource(R.string.crossfade_duration))
                                                     Text(
                                                         pluralStringResource(
                                                             R.plurals.seconds,
@@ -464,20 +475,6 @@ fun PlayerSettings(navController: NavController) {
                                                         valueRange = 1f..15f,
                                                         steps = 14,
                                                     )
-                                                    Text(stringResource(R.string.skip_fade_duration))
-                                                    Text(
-                                                        pluralStringResource(
-                                                            R.plurals.seconds,
-                                                            skipFadeDuration.toInt(),
-                                                            skipFadeDuration.toInt(),
-                                                        )
-                                                    )
-                                                    IrideSlider(
-                                                        value = skipFadeDuration,
-                                                        onValueChange = onSkipFadeDurationChange,
-                                                        valueRange = 1f..8f,
-                                                        steps = 7,
-                                                    )
                                                 }
                                             }
                                         }
@@ -487,7 +484,7 @@ fun PlayerSettings(navController: NavController) {
                                             checked = crossfadeEnabled || skipFade,
                                             onCheckedChange = { enabled ->
                                                 onCrossfadeEnabledChange(enabled)
-                                                onSkipFadeChange(enabled)
+                                            onSkipFadeChange(enabled)
                                             },
                                             thumbContent = {
                                                 Icon(

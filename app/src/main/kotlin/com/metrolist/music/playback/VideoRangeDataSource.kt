@@ -6,13 +6,13 @@ import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 
-/** Keeps an adaptive YouTube file continuous across bounded HTTP range requests. */
+/** Keeps a progressive YouTube stream continuous across bounded HTTP range requests. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class VideoRangeDataSource(
     private val upstream: HttpDataSource,
-    private val resolve: () -> Stream,
+    private val resolve: (DataSpec) -> Stream?,
 ) : BaseDataSource(true) {
-    data class Stream(val url: String, val length: Long?, val userAgent: String)
+    data class Stream(val url: String, val length: Long?, val userAgent: String? = null)
 
     private lateinit var original: DataSpec
     private lateinit var stream: Stream
@@ -22,8 +22,16 @@ internal class VideoRangeDataSource(
 
     override fun open(dataSpec: DataSpec): Long {
         transferInitializing(dataSpec)
+        val resolved = resolve(dataSpec)
+        if (resolved == null) {
+            upstreamOpen = true
+            val length = upstream.open(dataSpec)
+            opened = true
+            transferStarted(dataSpec)
+            return length
+        }
         original = dataSpec
-        stream = resolve()
+        stream = resolved
         val available = stream.length?.let { (it - dataSpec.position).coerceAtLeast(0) } ?: C.LENGTH_UNSET.toLong()
         val remaining = when {
             dataSpec.length != C.LENGTH_UNSET.toLong() && available >= 0 -> minOf(dataSpec.length, available)
@@ -36,7 +44,8 @@ internal class VideoRangeDataSource(
             openRange = { position, size ->
                 upstreamOpen = true
                 upstream.open(original.buildUpon().setUri(stream.url).setPosition(position).setLength(size)
-                    .setHttpRequestHeaders(original.httpRequestHeaders + ("User-Agent" to stream.userAgent)).build())
+                    .setHttpRequestHeaders(stream.userAgent?.let { original.httpRequestHeaders + ("User-Agent" to it) }
+                        ?: original.httpRequestHeaders).build())
             },
             readRange = upstream::read,
             closeRange = { upstreamOpen = false; upstream.close() },
@@ -46,7 +55,7 @@ internal class VideoRangeDataSource(
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-        val count = checkNotNull(reader).read(buffer, offset, length)
+        val count = reader?.read(buffer, offset, length) ?: upstream.read(buffer, offset, length)
         if (count > 0) bytesTransferred(count)
         return count
     }
@@ -56,7 +65,9 @@ internal class VideoRangeDataSource(
 
     override fun close() {
         try {
-            reader?.close()
+            val activeReader = reader
+            if (activeReader != null) activeReader.close()
+            else if (upstreamOpen) upstream.close()
         } finally {
             upstreamOpen = false
             reader = null

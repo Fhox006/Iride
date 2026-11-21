@@ -9,7 +9,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,12 +39,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
@@ -71,17 +68,13 @@ data class CategoryFilterState(
 @Composable
 fun CategoryPillsRow(
     state: CategoryFilterState,
-    onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(20.dp),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp),
+        contentPadding = PaddingValues(horizontal = IrideFolio.TrackArtworkInset),
         modifier = modifier,
     ) {
-        item(key = "add_category_pill") {
-            AddCategoryPill(onClick = onAddClick)
-        }
         items(state.categories, key = { it.category.id }) { entry ->
             CategoryPill(
                 name = entry.category.name,
@@ -91,47 +84,6 @@ fun CategoryPillsRow(
                 modifier = Modifier.animateItem(),
             )
         }
-    }
-}
-
-@Composable
-private fun AddCategoryPill(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .widthIn(min = 48.dp)
-            .pressScale(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-            ) { onClick() }
-            .padding(horizontal = 8.dp),
-    ) {
-        Text(
-            text = "+",
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = IBMPlexMonoFontFamily,
-                letterSpacing = 0.5.sp,
-            ),
-            color = MaterialTheme.colorScheme.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = stringResource(R.string.category_add),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = IBMPlexMonoFontFamily,
-                letterSpacing = 0.5.sp,
-            ),
-            color = MaterialTheme.colorScheme.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-        )
     }
 }
 

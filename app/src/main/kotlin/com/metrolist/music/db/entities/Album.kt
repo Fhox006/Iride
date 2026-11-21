@@ -44,6 +44,7 @@ fun AlbumItem.toAlbumEntity() = Album(
         playlistId = playlistId.takeIf(String::isNotBlank),
         title = title,
         year = year,
+        releaseDate = releaseDate,
         albumType = albumType,
         thumbnailUrl = thumbnail,
         explicit = explicit,

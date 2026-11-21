@@ -86,8 +86,11 @@ internal fun deviceExperiencePanel(
     onboardingCompleted: Boolean,
     tutorialCompleted: Boolean,
     mode: SystemNavigationMode,
+    buttonNavigationAccepted: Boolean = false,
 ): DeviceExperiencePanel = when {
-    needsAndroid14Acknowledgement(sdk, currentBuild, acceptedBuild) -> DeviceExperiencePanel.Android14
+    onboardingCompleted && needsAndroid14Acknowledgement(sdk, currentBuild, acceptedBuild) -> DeviceExperiencePanel.Android14
+    // Remember the declined setup warning without consuming a future gesture welcome.
+    buttonNavigationAccepted && mode != SystemNavigationMode.Gestures -> DeviceExperiencePanel.None
     onboardingCompleted && (needsNavigationSetup(mode) || !tutorialCompleted) -> DeviceExperiencePanel.Navigation
     else -> DeviceExperiencePanel.None
 }

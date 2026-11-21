@@ -84,11 +84,14 @@ import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
-import com.metrolist.music.ui.component.collectionExpansionTarget
+import com.metrolist.music.ui.component.rememberCollectionArtworkRequest
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.PlaylistPageCapabilities
+import com.metrolist.music.ui.component.playlistPageSections
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
@@ -101,7 +104,7 @@ import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.TopPlaylistViewModel
-import sv.lib.squircleshape.SquircleShape
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +200,8 @@ fun TopPlaylistScreen(
 
     val sortType by viewModel.topPeriod.collectAsState()
     val name = stringResource(R.string.my_top) + " $maxSize"
+    val queueTitle by playerConnection.queueTitle.collectAsState()
+    val topPlaylistItems = remember(songs) { songs.orEmpty().map { it.toMediaItem() } }
 
     val downloadUtil = LocalDownloadUtil.current
     var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
@@ -352,7 +357,7 @@ fun TopPlaylistScreen(
                             onClick = {
                                 menuState.show(anchored = true) {
                                     TopPlaylistMenu(
-                                        songs = songs.orEmpty(),
+                                        playlistId = "top_playlist/$maxSize",                                        songs = songs.orEmpty(),
                                         playlistName = name,
                                         downloadState = downloadState,
                                         onQueue = {
@@ -428,9 +433,8 @@ fun TopPlaylistScreen(
                         item(key = "empty_playlist_title") {
                             com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader(
                                 title = name,
-                                thumbnails = emptyList(),
                                 metadataLine = pluralStringResource(R.plurals.n_song, 0, 0),
-                                badgeIcon = R.drawable.trending_up,
+                                playlistId = "top_playlist/$maxSize",
                             )
                         }
 
@@ -443,7 +447,6 @@ fun TopPlaylistScreen(
                                 onFocusChanged = { if (it.isFocused) isSearching = true },
                                 onSearch = {},
                                 onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                             )
                         }
                         item(key = "empty_placeholder") {
@@ -453,68 +456,93 @@ fun TopPlaylistScreen(
                             )
                         }
                     } else {
-                        if (!isSearching) {
-                            item(key = "playlist_header") {
+                        playlistPageSections(
+                            capabilities = PlaylistPageCapabilities(
+                                showHeader = !isSearching,
+                                showPlaybackControls = !isSearching,
+                                showSearch = true,
+                                showSecondaryControls = true,
+                                showFilters = true,
+                            ),
+                            header = {
                                 TopPlaylistHeader(
                                     sourceRoute = "top_playlist/$maxSize",
                                     name = name,
                                     songs = songs!!,
                                     likeLength = likeLength,
-                                    downloadState = downloadState,
-                                    onShowRemoveDownloadDialog = {
-                                        showRemoveDownloadDialog = true
-                                    },
-                                    menuState = menuState,
                                     modifier = Modifier.animateItem(),
                                 )
-                            }
-                        }
-
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-
-                        item(key = "songs_header") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(start = 8.dp),
-                            ) {
-                                LibrarySortRow(
-                                    sortOptions =
-                                        listOf(
-                                            MyTopFilter.ALL_TIME to
-                                                stringResource(R.string.all_time),
-                                            MyTopFilter.DAY to
-                                                stringResource(R.string.past_24_hours),
-                                            MyTopFilter.WEEK to stringResource(R.string.past_week),
-                                            MyTopFilter.MONTH to
-                                                stringResource(R.string.past_month),
-                                            MyTopFilter.YEAR to stringResource(R.string.past_year),
-                                        ),
-                                    currentSort = sortType,
-                                    onSortChange = { viewModel.topPeriod.value = it },
-                                    sortDescending = false,
-                                    onSortDescendingChange = {},
-                                    showDescending = false,
-                                    availableViewTypes =
-                                        listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
-                                    modifier = Modifier.weight(1f),
+                            },
+                            playbackControls = {
+                                IridePlaylistControlPanel(
+                                    onShuffleClick = {
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                sourceRoute = "top_playlist/$maxSize",
+                                                title = name,
+                                                items = topPlaylistItems.shuffled(),
+                                            )
+                                        )
+                                    },
+                                    onPlayClick = {
+                                        if (queueTitle == name) {
+                                            playerConnection.togglePlayPause()
+                                        } else {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    sourceRoute = "top_playlist/$maxSize",
+                                                    title = name,
+                                                    items = topPlaylistItems,
+                                                )
+                                            )
+                                        }
+                                    },
+                                    isPlaying = isPlaying && queueTitle == name,
+                                    modifier = Modifier.padding(bottom = 20.dp),
                                 )
-                            }
-                        }
-
-                        item(key = "genre_pills") {
-                            GenrePillsRow(state = genreFilter)
-                        }
+                            },
+                            search = {
+                                IrideFolioCollectionSearchBox(
+                                    query = query,
+                                    onQueryChange = { query = it },
+                                    placeholderText = stringResource(R.string.search_playlists),
+                                    focusRequester = focusRequester,
+                                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                                    onSearch = {},
+                                    onClear = { query = TextFieldValue() },
+                                )
+                            },
+                            secondaryControls = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                ) {
+                                    LibrarySortRow(
+                                        sortOptions =
+                                            listOf(
+                                                MyTopFilter.ALL_TIME to
+                                                    stringResource(R.string.all_time),
+                                                MyTopFilter.DAY to
+                                                    stringResource(R.string.past_24_hours),
+                                                MyTopFilter.WEEK to stringResource(R.string.past_week),
+                                                MyTopFilter.MONTH to
+                                                    stringResource(R.string.past_month),
+                                                MyTopFilter.YEAR to stringResource(R.string.past_year),
+                                            ),
+                                        currentSort = sortType,
+                                        onSortChange = { viewModel.topPeriod.value = it },
+                                        sortDescending = false,
+                                        onSortDescendingChange = {},
+                                        showDescending = false,
+                                        availableViewTypes =
+                                            listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            },
+                            filters = { GenrePillsRow(state = genreFilter) },
+                            secondaryControlsKey = "songs_header",
+                        )
                     }
 
                     if (filteredSongs.isNotEmpty()) {
@@ -553,10 +581,7 @@ fun TopPlaylistScreen(
                                                 }
                                             }
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
-                                            )
+                                            TrackOverflowIcon()
                                         }
                                     }
                                 },
@@ -633,7 +658,6 @@ fun TopPlaylistScreen(
                             onFocusChanged = { if (it.isFocused) isSearching = true },
                             onSearch = {},
                             onClear = { query = TextFieldValue() },
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -648,41 +672,23 @@ private fun TopPlaylistHeader(
     name: String,
     songs: List<Song>,
     likeLength: Int,
-    downloadState: Int,
-    onShowRemoveDownloadDialog: () -> Unit,
-    menuState: com.metrolist.music.ui.component.MenuState,
     modifier: Modifier = Modifier,
 ) {
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val queueTitle by playerConnection.queueTitle.collectAsState()
-    val context = LocalContext.current
-    val thumbnail = songs.firstOrNull()?.thumbnailUrl
-    var coverLoaded by remember(thumbnail) { mutableStateOf(thumbnail == null) }
     Column(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)) {
-            androidx.compose.material3.Surface(
-                modifier =
-                    Modifier.size(240.dp).collectionExpansionTarget(ready = coverLoaded)
-                        .shadow(
-                            elevation = 24.dp,
-                            shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        ),
-                shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
-            ) {
-                AsyncImage(
-                    model = thumbnail,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    onSuccess = { coverLoaded = true },
-                    onError = { coverLoaded = true },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            com.metrolist.music.ui.component.PlaylistArtwork(
+                title = name,
+                playlistId = sourceRoute,
+                modifier = Modifier.size(240.dp).shadow(
+                    elevation = 24.dp,
+                    shape = CollectionArtworkShape,
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                ),
+                expansionTarget = true,
+            )
         }
 
         Text(
@@ -710,64 +716,5 @@ private fun TopPlaylistHeader(
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        IridePlaylistControlPanel(
-            onShuffleClick = {
-                playerConnection.playQueue(
-                    ListQueue(
-                        sourceRoute = sourceRoute,
-                        title = name,
-                        items = songs.shuffled().map { it.toMediaItem() },
-                    )
-                )
-            },
-            onPlayClick = {
-                if (queueTitle == name) {
-                    playerConnection.togglePlayPause()
-                } else {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            sourceRoute = sourceRoute,
-                            title = name,
-                            items = songs.map { it.toMediaItem() },
-                        )
-                    )
-                }
-            },
-            onDownloadClick = {
-                when (downloadState) {
-                    Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
-                    Download.STATE_DOWNLOADING,
-                    Download.STATE_QUEUED -> {
-                        songs.forEach { song ->
-                            DownloadService.sendRemoveDownload(
-                                context,
-                                ExoDownloadService::class.java,
-                                song.id,
-                                false,
-                            )
-                        }
-                    }
-                    else -> {
-                        songs.forEach { song ->
-                            val downloadRequest =
-                                DownloadRequest.Builder(song.id, song.id.toUri())
-                                    .setCustomCacheKey(song.id)
-                                    .setData(song.title.toByteArray())
-                                    .build()
-                            DownloadService.sendAddDownload(
-                                context,
-                                ExoDownloadService::class.java,
-                                downloadRequest,
-                                false,
-                            )
-                        }
-                    }
-                }
-            },
-            downloadState = downloadState,
-            isPlaying = isPlaying && queueTitle == name,
-        )
     }
 }

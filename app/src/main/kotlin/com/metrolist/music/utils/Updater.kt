@@ -269,9 +269,9 @@ object Updater {
             runCatching {
                 val releases = getAllReleases(forceRefresh = forceRefresh).getOrThrow()
                 releases
-                    .filter { it.assets.isNotEmpty() }
+                    .filter { getDownloadUrlForCurrentVariant(it) != null }
                     .maxWithOrNull { a, b -> compareVersions(a.tagName, b.tagName) }
-                    ?: throw IllegalStateException("No valid release with APK assets found")
+                    ?: throw IllegalStateException("No compatible Iride APK found")
             }
         }
 
@@ -283,7 +283,7 @@ object Updater {
                 val releaseInfo =
                     if (!shouldFetch && cachedAllReleases.isNotEmpty()) {
                         cachedAllReleases
-                            .filter { it.assets.isNotEmpty() }
+                            .filter { getDownloadUrlForCurrentVariant(it) != null }
                             .maxWithOrNull { a, b -> compareVersions(a.tagName, b.tagName) }
                     } else {
                         getLatestAvailableReleaseIncludingPrerelease(forceRefresh = true).getOrThrow()

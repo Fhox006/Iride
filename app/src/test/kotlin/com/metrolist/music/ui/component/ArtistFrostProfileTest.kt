@@ -2,10 +2,45 @@ package com.metrolist.music.ui.component
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArtistFrostProfileTest {
+    @Test
+    fun reusedBuffersMatchFreshPassesAcrossChangingRadiiWithoutMutatingTheSource() {
+        val width = 7
+        val height = 5
+        val original = IntArray(width * height) { index -> index * 0x1020304 }
+        val source = original.copyOf()
+        val horizontal = IntArray(source.size)
+        val vertical = IntArray(source.size)
+        for (radius in listOf(0, 1, 12, 2, 0, 12)) {
+            var expected = source
+            var actual = source
+            repeat(3) {
+                expected = artistBoxBlur(expected, width, height, true, radius)
+                expected = artistBoxBlur(expected, width, height, false, radius)
+                assertSame(horizontal, artistBoxBlur(actual, width, height, true, radius, horizontal))
+                actual = artistBoxBlur(horizontal, width, height, false, radius, vertical)
+                assertSame(vertical, actual)
+            }
+            assertArrayEquals(expected, actual)
+            assertArrayEquals(original, source)
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsOverlappingSourceAndDestination() {
+        val pixels = IntArray(9)
+        artistBoxBlur(pixels, 3, 3, true, 2, pixels)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsIncorrectDestinationSize() {
+        artistBoxBlur(IntArray(9), 3, 3, true, 2, IntArray(8))
+    }
+
     @Test
     fun repeatedBlurPreservesSolidColorAndOpaqueEdgesEvenOnSmallImages() {
         val original = IntArray(7 * 5) { 0xFF2468AC.toInt() }

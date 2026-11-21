@@ -27,6 +27,7 @@ fun IrideFolioSectionSkeleton(
     mosaic: Boolean = false,
     controls: Boolean = false,
     hero: Boolean = false,
+    songRows: Int = 4,
 ) {
     Column(Modifier.fillMaxWidth()) {
         ShimmerHost(showGradient = false) {
@@ -56,7 +57,7 @@ fun IrideFolioSectionSkeleton(
             }
             if (controls) Spacer(Modifier.height(40.dp))
             if (songs) {
-                repeat(4) {
+                repeat(songRows.coerceIn(1, 4)) {
                     ListItemPlaceHolder(
                         Modifier.padding(horizontal = IrideFolio.HorizontalPadding - 4.dp)
                     )

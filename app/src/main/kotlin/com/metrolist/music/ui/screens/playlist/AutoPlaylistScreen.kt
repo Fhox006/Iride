@@ -6,7 +6,7 @@ import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.net.Uri
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,7 +68,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachReversed
-import androidx.compose.ui.util.fastSumBy
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
@@ -87,7 +86,7 @@ import com.metrolist.music.constants.AutoPlaylistSongSortDescendingKey
 import com.metrolist.music.constants.AutoPlaylistSongSortType
 import com.metrolist.music.constants.AutoPlaylistSongSortTypeKey
 import com.metrolist.music.constants.HideExplicitKey
-import com.metrolist.music.constants.LibraryViewType
+import com.metrolist.music.constants.CONTENT_TYPE_SONG
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.YtmSyncKey
@@ -101,14 +100,20 @@ import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
+import com.metrolist.music.ui.component.GlassPlaylistCover
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.playlistExpansionTarget
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
 import com.metrolist.music.ui.component.IrideFolioMenuAction
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.PlaylistPageCapabilities
+import com.metrolist.music.ui.component.playlistPageSections
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
-import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
@@ -129,6 +134,7 @@ import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AutoPlaylistViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -136,6 +142,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun AutoPlaylistScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: AutoPlaylistViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -147,19 +154,28 @@ fun AutoPlaylistScreen(
     val uploadFailedStr = stringResource(R.string.upload_failed)
     val uploadCompleteStr = stringResource(R.string.upload_complete)
     val focusManager = LocalFocusManager.current
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val queueTitle by playerConnection.queueTitle.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
+    val queueTitle = playerConnection?.queueTitle?.collectAsState()?.value
     val playlist =
         when (viewModel.playlist) {
+            "all_tracks" -> stringResource(R.string.all_tracks)
+            "local_songs" -> stringResource(R.string.local_songs)
             "liked" -> stringResource(R.string.starred)
+            "downloaded" -> stringResource(R.string.downloaded_songs)
             "uploaded" -> stringResource(R.string.uploaded_playlist)
             "starred" -> stringResource(R.string.starred)
             else -> stringResource(R.string.offline)
         }
 
     val songs by viewModel.likedSongs.collectAsState(null)
+    val playlistSongCount by viewModel.playlistSongCount.collectAsState()
+    val favoriteCoverThumbnails by viewModel.favoriteCoverThumbnails.collectAsState()
+    val playlistGradientSong = songs?.firstOrNull()
+    val playlistGradientThumbnail =
+        (playlistGradientSong?.song?.thumbnailUrl ?: favoriteCoverThumbnails?.firstOrNull())
+            ?.takeIf { it.isNotBlank() }
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by
         rememberEnumPreference(
@@ -167,14 +183,14 @@ fun AutoPlaylistScreen(
             defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
         )
     val playlistGradientMediaMetadata =
-        remember(viewModel.playlist, songs?.firstOrNull()?.song?.thumbnailUrl) {
-            songs?.firstOrNull()?.let {
+        remember(viewModel.playlist, playlist, playlistGradientSong?.song?.title, playlistGradientThumbnail) {
+            playlistGradientThumbnail?.let { thumbnail ->
                 MediaMetadata(
                     id = viewModel.playlist,
-                    title = it.song.title,
+                    title = playlistGradientSong?.song?.title ?: playlist,
                     artists = emptyList(),
                     duration = 0,
-                    thumbnailUrl = it.song.thumbnailUrl,
+                    thumbnailUrl = thumbnail,
                 )
             }
         }
@@ -188,10 +204,7 @@ fun AutoPlaylistScreen(
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
-    val likeLength =
-        remember(songs) {
-            songs?.fastSumBy { it.song.duration } ?: 0
-        }
+    val likeLength by viewModel.playlistDuration.collectAsState()
 
     val playlistId = viewModel.playlist
     val playlistType =
@@ -246,6 +259,7 @@ fun AutoPlaylistScreen(
     }
 
     val scope = rememberCoroutineScope()
+    var isPlaylistPlaybackPending by remember(playlistId) { mutableStateOf(false) }
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableFloatStateOf(0f) }
@@ -469,28 +483,38 @@ fun AutoPlaylistScreen(
         }
     }
 
+    val supportsGenreFilter = playlistId != "all_tracks"
     val genreFilter =
         rememberGenreFilter(
-            remember(songs) {
-                songs?.map { GenreSongInfo(it.id, it.song.title, it.artists.firstOrNull()?.name) }
-                    ?: emptyList()
+            remember(songs, supportsGenreFilter) {
+                if (supportsGenreFilter) {
+                    songs?.map { GenreSongInfo(it.id, it.song.title, it.artists.firstOrNull()?.name) }
+                        ?: emptyList()
+                } else {
+                    emptyList()
+                }
             },
             cacheKey = "auto_${viewModel.playlist}",
         )
 
-    val filteredSongs =
-        remember(songs, query, genreFilter.selectedGenre, genreFilter.genreBySongId) {
-            val base =
-                if (query.text.isEmpty()) {
-                    songs ?: emptyList()
-                } else {
-                    songs?.filter { song ->
-                        song.song.title.contains(query.text, true) ||
-                            song.artists.any { it.name.contains(query.text, true) }
-                    } ?: emptyList()
+    var filteredSongs by remember(playlistId) { mutableStateOf(emptyList<Song>()) }
+    LaunchedEffect(songs, query.text, genreFilter.selectedGenre, genreFilter.genreBySongId) {
+        val sourceSongs = songs.orEmpty()
+        val queryText = query.text
+        val selectedGenre = genreFilter.selectedGenre
+        val genresBySongId = genreFilter.genreBySongId
+        filteredSongs = withContext(Dispatchers.Default) {
+            sourceSongs.asSequence()
+                .filter { song ->
+                    queryText.isEmpty() || song.song.title.contains(queryText, true) ||
+                        song.artists.any { it.name.contains(queryText, true) }
                 }
-            base.filter { genreFilter.matches(it.id) }
+                .filter { song ->
+                    selectedGenre == null || genresBySongId[song.id]?.contains(selectedGenre) == true
+                }
+                .toList()
         }
+    }
 
     LaunchedEffect(filteredSongs) {
         selection.fastForEachReversed { songId ->
@@ -507,68 +531,56 @@ fun AutoPlaylistScreen(
     }
 
     LaunchedEffect(filteredSongs) {
-        prefetchThumbnails(context, filteredSongs.map { it.song.thumbnailUrl })
+        prefetchThumbnails(
+            context,
+            filteredSongs.asSequence().take(20).map { it.song.thumbnailUrl }.toList(),
+        )
     }
 
     val state = rememberLazyListState()
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullRefreshState = rememberPullToRefreshState()
-    val canRefresh = playlistType == PlaylistType.LIKE || playlistType == PlaylistType.UPLOADED
+    val canRefresh = playlistType == PlaylistType.LIKE || playlistType == PlaylistType.UPLOADED ||
+        (playlistType == PlaylistType.STARRED && !isOffline)
 
-    val onTopBarShuffleClick: () -> Unit = {
-        playerConnection.playQueue(
-            ListQueue(
-                sourceRoute = "auto_playlist/$playlistId",
-                title = playlist,
-                items = songs.orEmpty().shuffled().map { it.toMediaItem() },
+    fun queuePlaylist(shuffle: Boolean) {
+        if (playerConnection == null) return
+        fun playSongs(playlistSongs: List<Song>) {
+            if (playlistSongs.isEmpty()) return
+            playerConnection.playQueue(
+                ListQueue(
+                    sourceRoute = "auto_playlist/$playlistId?offline=$isOffline",
+                    title = playlist,
+                    items = (if (shuffle) playlistSongs.shuffled() else playlistSongs)
+                        .map { it.toMediaItem() },
+                )
             )
-        )
+        }
+
+        val currentSongs = songs
+        if (currentSongs != null) {
+            playSongs(currentSongs)
+        } else if (!isPlaylistPlaybackPending) {
+            isPlaylistPlaybackPending = true
+            scope.launch {
+                try {
+                    playSongs(viewModel.likedSongs.first { it != null }.orEmpty())
+                } finally {
+                    isPlaylistPlaybackPending = false
+                }
+            }
+        }
     }
+
+    val onTopBarShuffleClick: () -> Unit = { queuePlaylist(shuffle = true) }
     val isThisPlaylistQueueLoaded = queueTitle == playlist
     val isThisPlaylistPlaying = isPlaying && isThisPlaylistQueueLoaded
     val onTopBarPlaylistPlayClick: () -> Unit = {
         if (isThisPlaylistQueueLoaded) {
-            playerConnection.togglePlayPause()
+            playerConnection?.togglePlayPause()
         } else {
-            playerConnection.playQueue(
-                ListQueue(
-                    sourceRoute = "auto_playlist/$playlistId",
-                    title = playlist,
-                    items = songs.orEmpty().map { it.toMediaItem() },
-                )
-            )
-        }
-    }
-    val onTopBarPlaylistDownloadClick: () -> Unit = {
-        when (downloadState) {
-            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-            Download.STATE_DOWNLOADING,
-            Download.STATE_QUEUED -> {
-                songs?.forEach { song ->
-                    DownloadService.sendRemoveDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        song.song.id,
-                        false,
-                    )
-                }
-            }
-            else -> {
-                songs?.forEach { song ->
-                    val downloadRequest =
-                        DownloadRequest.Builder(song.song.id, song.song.id.toUri())
-                            .setCustomCacheKey(song.song.id)
-                            .setData(song.song.title.toByteArray())
-                            .build()
-                    DownloadService.sendAddDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        downloadRequest,
-                        false,
-                    )
-                }
-            }
+            queuePlaylist(shuffle = false)
         }
     }
     val controlPanelProgress =
@@ -678,6 +690,14 @@ fun AutoPlaylistScreen(
                     }
                 }
             }
+            val playlistSortOptions =
+                listOf(
+                    AutoPlaylistSongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+                    AutoPlaylistSongSortType.NAME to stringResource(R.string.sort_by_name),
+                    AutoPlaylistSongSortType.ARTIST to stringResource(R.string.sort_by_artist),
+                    AutoPlaylistSongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
+                )
+            val imageMenuActions = com.metrolist.music.ui.component.playlistImageHeaderActions(viewModel.playlist)
             val playlistMenuSections =
                 if (isSearching || inSelectMode) emptyList()
                 else {
@@ -688,8 +708,25 @@ fun AutoPlaylistScreen(
                                 label = stringResource(R.string.add_to_queue),
                                 icon = R.drawable.queue_music,
                                 onClick = {
-                                    playerConnection.addToQueue(songs.orEmpty().map { it.toMediaItem() })
+                                    playerConnection?.addToQueue(songs.orEmpty().map { it.toMediaItem() })
                                 },
+                            ),
+                            if (songs.isNullOrEmpty()) null
+                            else IrideFolioMenuAction(
+                                label = stringResource(
+                                    when (downloadState) {
+                                        Download.STATE_COMPLETED -> R.string.remove_download
+                                        Download.STATE_DOWNLOADING,
+                                        Download.STATE_QUEUED -> R.string.folio_cancel_download
+                                        else -> R.string.action_download
+                                    },
+                                ),
+                                icon = if (downloadState == Download.STATE_COMPLETED) {
+                                    R.drawable.track_downloaded
+                                } else {
+                                    R.drawable.track_download
+                                },
+                                onClick = onDownloadPlaylist,
                             ),
                             if (songs.isNullOrEmpty()) null
                             else IrideFolioMenuAction(
@@ -710,13 +747,35 @@ fun AutoPlaylistScreen(
                                 },
                             ),
                         ),
-                        emptyList(),
+                        playlistSortOptions.map { (type, label) ->
+                            IrideFolioMenuAction(
+                                label = label,
+                                selected = type == sortType,
+                                onClick = { onSortTypeChange(type) },
+                            )
+                        } + listOf(
+                            IrideFolioMenuAction(
+                                label = stringResource(R.string.sort_ascending),
+                                selected = !sortDescending,
+                                onClick = { onSortDescendingChange(false) },
+                            ),
+                            IrideFolioMenuAction(
+                                label = stringResource(R.string.sort_descending),
+                                selected = sortDescending,
+                                onClick = { onSortDescendingChange(true) },
+                            ),
+                        ),
                     )
                 }
             IrideCollectionPageLayout(
                 mediaMetadata = playlistGradientMediaMetadata,
                 playerBackground = playerBackgroundStyle,
                 gradientEnabled = albumTopGradientEnabled,
+                artworkTint = if (playlistId == "liked" || playlistId == "starred") {
+                    Color(0xFF30323B)
+                } else {
+                    null
+                },
                 title = playlist,
                 state = state,
                 showTopBar = true,
@@ -727,7 +786,7 @@ fun AutoPlaylistScreen(
                 actions = {
                     topBarActions()
                 },
-                menuSections = playlistMenuSections,
+                menuSections = if (isSearching || inSelectMode) playlistMenuSections else playlistMenuSections + listOf(imageMenuActions),
                 topBarContent =
                     if (inSelectMode)
                         ({
@@ -745,220 +804,36 @@ fun AutoPlaylistScreen(
                         })
                     else null,
             ) {
-                if (songs != null) {
-                    if (songs!!.isEmpty()) {
-                        item(key = "empty_playlist_title") {
-                            AutoPlaylistHeader(
-                                name = playlist,
-                                songs = songs.orEmpty(),
-                                likeLength = likeLength,
-                                playlistType = playlistType,
-                            )
-                        }
-
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue("") },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-                        item(key = "empty_placeholder") {
-                            EmptyPlaceholder(
-                                icon = R.drawable.music_note,
-                                text = stringResource(R.string.playlist_is_empty),
-                            )
-                        }
-                    } else {
-                        if (!isSearching) {
-                            item(key = "playlist_header") {
-                                AutoPlaylistHeader(
-                                    name = playlist,
-                                    songs = songs!!,
-                                    likeLength = likeLength,
-                                    playlistType = playlistType,
-                                )
-                            }
-                        }
-
-                        if (!isSearching) {
-                            item(key = "control_panel") {
-                                IridePlaylistControlPanel(
-                                    onShuffleClick = onTopBarShuffleClick,
-                                    onPlayClick = onTopBarPlaylistPlayClick,
-                                    onDownloadClick = onTopBarPlaylistDownloadClick,
-                                    downloadState = downloadState,
-                                    isPlaying = isThisPlaylistPlaying,
-                                    modifier =
-                                        Modifier.padding(bottom = 12.dp)
-                                            .irideEnterScale(controlPanelProgress),
-                                )
-                            }
-                        }
-
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue("") },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-
-                        item(key = "songs_header") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier =
-                                    Modifier.padding(
-                                        start = 12.dp,
-                                        end = 12.dp,
-                                    ),
-                            ) {
-                                LibrarySortRow(
-                                    sortOptions =
-                                        listOf(
-                                            AutoPlaylistSongSortType.CREATE_DATE to
-                                                stringResource(R.string.sort_by_create_date),
-                                            AutoPlaylistSongSortType.NAME to
-                                                stringResource(R.string.sort_by_name),
-                                            AutoPlaylistSongSortType.ARTIST to
-                                                stringResource(R.string.sort_by_artist),
-                                            AutoPlaylistSongSortType.PLAY_TIME to
-                                                stringResource(R.string.sort_by_play_time),
-                                        ),
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
-                                    sortDescending = sortDescending,
-                                    onSortDescendingChange = onSortDescendingChange,
-                                    availableViewTypes =
-                                        listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-
-                        item(key = "genre_pills") {
-                            GenrePillsRow(state = genreFilter)
-                        }
-                    }
-
-                    if (filteredSongs.isNotEmpty()) {
-                        itemsIndexed(
-                            items = filteredSongs,
-                            key = { _, song -> song.id },
-                        ) { index, song ->
-                            val onCheckedChange: (Boolean) -> Unit = {
-                                if (it) {
-                                    selection.add(song.id)
-                                } else {
-                                    selection.remove(song.id)
-                                }
-                            }
-
-                            SongListItem(
-                                song = song,
-                                subtitleColor = Color.Unspecified,
-                                isActive = song.song.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                trailingContent = {
-                                    if (inSelectMode) {
-                                        SelectionIndicator(
-                                            selected = song.id in selection,
-                                            onClick = { onCheckedChange(song.id !in selection) },
-                                        )
-                                    } else {
-                                        SongMenuIconButton(
-                                            onClick = {
-                                                menuState.show(anchored = true) {
-                                                    SongMenu(
-                                                        originalSong = song,
-                                                        navController = navController,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = stringResource(R.string.menu),
-                                            )
-                                        }
-                                    }
-                                },
-                                modifier =
-                                    Modifier.fillMaxWidth()
-                                        .irideFolioCombinedClickable(
-                                            onClick = {
-                                                if (inSelectMode) {
-                                                    onCheckedChange(song.id !in selection)
-                                                } else if (song.song.id == mediaMetadata?.id) {
-                                                    playerConnection.togglePlayPause()
-                                                } else {
-                                                    playerConnection.playQueue(
-                                                        ListQueue(
-                                                            sourceRoute = "auto_playlist/$playlistId",
-                                                            title = playlist,
-                                                            items =
-                                                                songs!!.map { it.toMediaItem() },
-                                                            startIndex =
-                                                                songs!!.indexOfFirst {
-                                                                    it.id == song.id
-                                                                },
-                                                        )
-                                                    )
-                                                }
-                                            },
-                                            onLongClick = {
-                                                if (inSelectMode) {
-                                                    val anchorIndex =
-                                                        selectionAnchorSongId?.let { anchorSongId ->
-                                                            filteredSongs.indexOfFirst {
-                                                                it.id == anchorSongId
-                                                            }
-                                                        } ?: -1
-
-                                                    if (anchorIndex == -1) {
-                                                        onCheckedChange(true)
-                                                        selectionAnchorSongId = song.id
-                                                    } else {
-                                                        val range =
-                                                            if (anchorIndex <= index)
-                                                                anchorIndex..index
-                                                            else index..anchorIndex
-                                                        for (rangeIndex in range) {
-                                                            val rangeSongId =
-                                                                filteredSongs[rangeIndex].id
-                                                            if (rangeSongId !in selection) {
-                                                                selection.add(rangeSongId)
-                                                            }
-                                                        }
-                                                    }
-                                                } else {
-                                                    menuState.show(anchored = true) {
-                                                        SongMenu(
-                                                            originalSong = song,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                        )
-                                        .animateItem(),
-                            )
-                        }
-                    }
-                } else {
-                    item(key = "search_bar") {
+                val playlistIsEmpty = songs?.isEmpty() ?: (playlistSongCount == 0)
+                playlistPageSections(
+                    capabilities = PlaylistPageCapabilities(
+                        showHeader = playlistIsEmpty || !isSearching,
+                        showPlaybackControls = !playlistIsEmpty && !isSearching,
+                        showSearch = true,
+                        showFilters = !playlistIsEmpty && supportsGenreFilter,
+                    ),
+                    header = {
+                        AutoPlaylistHeader(
+                            playlistId = playlistId,
+                            isOffline = isOffline,
+                            name = playlist,
+                            songCount = playlistSongCount ?: songs?.size,
+                            likeLength = likeLength,
+                            favoriteCoverThumbnails = favoriteCoverThumbnails,
+                            songs = songs,
+                        )
+                    },
+                    playbackControls = {
+                        IridePlaylistControlPanel(
+                            onShuffleClick = onTopBarShuffleClick,
+                            onPlayClick = onTopBarPlaylistPlayClick,
+                            isPlaying = isThisPlaylistPlaying,
+                            modifier =
+                                Modifier.padding(bottom = 12.dp)
+                                    .irideEnterScale(controlPanelProgress),
+                        )
+                    },
+                    search = {
                         IrideFolioCollectionSearchBox(
                             query = query,
                             onQueryChange = { query = it },
@@ -967,7 +842,129 @@ fun AutoPlaylistScreen(
                             onFocusChanged = { if (it.isFocused) isSearching = true },
                             onSearch = {},
                             onClear = { query = TextFieldValue("") },
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    },
+                    filters = {
+                        GenrePillsRow(
+                            state = genreFilter,
+                            showLoadingPlaceholder = songs == null,
+                        )
+                    }
+                )
+
+                if (playlistIsEmpty) {
+                    item(key = "empty_placeholder") {
+                        EmptyPlaceholder(
+                            icon = R.drawable.music_note,
+                            text = stringResource(R.string.playlist_is_empty),
+                        )
+                    }
+                }
+
+                if (songs != null && filteredSongs.isNotEmpty()) {
+                    itemsIndexed(
+                        items = filteredSongs,
+                        key = { _, song -> song.id },
+                        contentType = { _, _ -> CONTENT_TYPE_SONG },
+                    ) { index, song ->
+                        val onCheckedChange: (Boolean) -> Unit = {
+                            if (it) {
+                                selection.add(song.id)
+                            } else {
+                                selection.remove(song.id)
+                            }
+                        }
+
+                        SongListItem(
+                            song = song,
+                            subtitleColor = Color.Unspecified,
+                            isActive = song.song.id == mediaMetadata?.id,
+                            isPlaying = isPlaying,
+                            trailingContent = {
+                                if (inSelectMode) {
+                                    SelectionIndicator(
+                                        selected = song.id in selection,
+                                        onClick = { onCheckedChange(song.id !in selection) },
+                                    )
+                                } else {
+                                    SongMenuIconButton(
+                                        onClick = {
+                                            menuState.show(anchored = true) {
+                                                SongMenu(
+                                                    originalSong = song,
+                                                    navController = navController,
+                                                    onDismiss = menuState::dismiss,
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        TrackOverflowIcon(contentDescription = stringResource(R.string.menu))
+                                    }
+                                }
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .irideFolioCombinedClickable(
+                                        onClick = {
+                                            if (inSelectMode) {
+                                                onCheckedChange(song.id !in selection)
+                                            } else if (song.song.id == mediaMetadata?.id) {
+                                                playerConnection?.togglePlayPause()
+                                            } else {
+                                                playerConnection?.playQueue(
+                                                    ListQueue(
+                                                        sourceRoute = "auto_playlist/$playlistId?offline=$isOffline",
+                                                        title = playlist,
+                                                        items =
+                                                            songs!!.map { it.toMediaItem() },
+                                                        startIndex =
+                                                            songs!!.indexOfFirst {
+                                                                it.id == song.id
+                                                            },
+                                                    )
+                                                )
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (inSelectMode) {
+                                                val anchorIndex =
+                                                    selectionAnchorSongId?.let { anchorSongId ->
+                                                        filteredSongs.indexOfFirst {
+                                                            it.id == anchorSongId
+                                                        }
+                                                    } ?: -1
+
+                                                if (anchorIndex == -1) {
+                                                    onCheckedChange(true)
+                                                    selectionAnchorSongId = song.id
+                                                } else {
+                                                    val range =
+                                                        if (anchorIndex <= index)
+                                                            anchorIndex..index
+                                                        else index..anchorIndex
+                                                    for (rangeIndex in range) {
+                                                        val rangeSongId =
+                                                            filteredSongs[rangeIndex].id
+                                                        if (rangeSongId !in selection) {
+                                                            selection.add(rangeSongId)
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                menuState.show(anchored = true) {
+                                                    SongMenu(
+                                                        originalSong = song,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            }
+                                        },
+                                    )
+                                    .then(
+                                        if (playlistId == "all_tracks") Modifier
+                                        else Modifier.animateItem(),
+                                    ),
                         )
                     }
                 }
@@ -1024,31 +1021,65 @@ fun AutoPlaylistScreen(
 
 @Composable
 private fun AutoPlaylistHeader(
+    playlistId: String,
+    isOffline: Boolean,
     name: String,
-    songs: List<Song>,
-    likeLength: Int,
-    playlistType: PlaylistType,
+    songCount: Int?,
+    likeLength: Int?,
+    favoriteCoverThumbnails: List<String>?,
+    songs: List<Song>?,
     modifier: Modifier = Modifier,
 ) {
     val metadataLine = buildString {
-        append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
-        if (likeLength > 0) {
-            append(" \u2022 ")
+        songCount?.let { append(pluralStringResource(R.plurals.n_song, it, it)) }
+        if (likeLength != null && likeLength > 0) {
+            if (isNotEmpty()) append(" \u2022 ")
             append(makeTimeString(likeLength * 1000L))
         }
     }
+    val artworkIcon = when (playlistId) {
+        "liked", "starred" -> R.drawable.star
+        "all_tracks" -> if (isOffline) R.drawable.track_downloaded else R.drawable.music_note
+        "downloaded" -> R.drawable.track_downloaded
+        "uploaded" -> R.drawable.upload
+        "local_songs" -> R.drawable.storage
+        else -> null
+    }
+    val artworkThumbnails = remember(playlistId, favoriteCoverThumbnails, songs) {
+        if (playlistId == "liked" || playlistId == "starred") {
+            favoriteCoverThumbnails.orEmpty()
+        } else {
+            songs.orEmpty().asSequence()
+                .mapNotNull { it.song.thumbnailUrl }
+                .distinct()
+                .take(4)
+                .toList()
+        }
+    }
     IrideGeneratedPlaylistHeader(
+        playlistId = playlistId,
         title = name,
-        thumbnails = remember(songs) { songs.mapNotNull { it.song.thumbnailUrl } },
-        metadataLine = metadataLine,
-        badgeIcon = when (playlistType) {
-            PlaylistType.LIKE -> R.drawable.star
-            PlaylistType.STARRED -> R.drawable.bookmark_filled
-            PlaylistType.DOWNLOAD -> R.drawable.offline
-            PlaylistType.UPLOADED -> R.drawable.backup
-            else -> null
-        },
+        metadataLine = metadataLine.ifEmpty { " " },
         modifier = modifier,
+        artwork = if (artworkIcon != null) {
+            { coverModifier ->
+                GlassPlaylistCover(
+                    thumbnails = artworkThumbnails,
+                    icon = artworkIcon,
+                    size = IrideFolio.GeneratedPlaylistArtworkSize,
+                    shape = CollectionArtworkShape,
+                    modifier = coverModifier.playlistExpansionTarget(
+                        ready = if (playlistId == "liked" || playlistId == "starred") {
+                            favoriteCoverThumbnails != null
+                        } else {
+                            songs != null
+                        },
+                    ),
+                )
+            }
+        } else {
+            null
+        },
     )
 }
 

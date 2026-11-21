@@ -33,8 +33,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.TextFieldState
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.navigation.NavController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +68,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -83,7 +84,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
@@ -95,7 +95,15 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.component.IridePageTopBar
+import com.metrolist.music.ui.component.irideFolioControlSurface
+import com.metrolist.music.ui.component.FrostBackdrop
+import com.metrolist.music.ui.component.LocalScreenFrostBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.rememberIrideFolioFade
+import com.metrolist.music.ui.component.rememberLightweightFolioMode
 import com.metrolist.music.ui.component.IrideArtistArtwork
 import com.metrolist.music.ui.component.ArtistPhotoBlurEffects
 import com.metrolist.music.ui.component.RubberBandPull
@@ -104,14 +112,11 @@ import com.metrolist.music.ui.component.artistPhotoBlurProgress
 import com.metrolist.music.ui.component.LocalIrideFolioScrimColor
 import com.metrolist.music.ui.component.LocalIridePageOverscrollPull
 import com.metrolist.music.ui.component.LocalIridePageTitleVisible
+import com.metrolist.music.ui.component.LocalIridePageFrostBackdrop
 import com.metrolist.music.ui.component.iridePageTitleTextStyle
 import com.metrolist.music.ui.component.rememberRubberBandPull
-import com.metrolist.music.ui.component.rememberArtistArtworkLoader
-import com.metrolist.music.ui.component.ArtistArtworkRequest
-import com.metrolist.innertube.models.ArtistItem
-import com.metrolist.music.ui.utils.resize
+import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
-import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.rememberReducedMotion
@@ -124,6 +129,7 @@ import kotlinx.coroutines.flow.first
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun SearchScene(
+    navController: NavController,
     query: TextFieldValue,
     submittedQuery: String,
     event: SearchSceneEvent,
@@ -132,7 +138,6 @@ internal fun SearchScene(
     landingColor: Color,
     landingInk: Color,
     landingSecondary: Color,
-    landingFieldColor: Color,
     resultsReady: Boolean,
     textState: TextFieldState,
     searchSource: SearchSource,
@@ -143,18 +148,25 @@ internal fun SearchScene(
     onSubmit: (String) -> Unit,
     onComplete: (String, Boolean) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onOpenAlbum: (String) -> Unit,
+    onOpenItem: (YTItem) -> Unit,
     artistArtwork: IrideArtistArtwork? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
+    landingContent: (@Composable (header: @Composable () -> Unit) -> Unit)? = null,
     content: @Composable (header: @Composable () -> Unit) -> Unit,
 ) {
     val editing = event.mode == SearchSceneMode.Editing
     val density = LocalDensity.current
     val reducedMotion = rememberReducedMotion()
+    val lightweightMode by rememberLightweightFolioMode()
+    val simpleSearchRendering = lightweightMode || reducedMotion
+    val fieldBackdrop = rememberFrostBackdrop(
+        background = LocalScreenFrostBackground.current, backgroundColor = Color.Black, blurredScale = 0.5f,
+    )
     val titleStyle = iridePageTitleTextStyle()
     val title = stringResource(R.string.search).lowercase().replaceFirstChar { it.titlecase() }
     val artworkInk = MaterialTheme.colorScheme.textPrimary
     val artworkSecondary = MaterialTheme.colorScheme.textSecondary
-    val artworkFieldColor = MaterialTheme.colorScheme.fillSubtle
     val result = searchSceneHasResult(event, submittedQuery)
     val pagePull = rememberRubberBandPull()
     val interactions = remember { MutableInteractionSource() }
@@ -168,9 +180,9 @@ internal fun SearchScene(
         }
     }
     var confirmationCursorVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(event.revision, reducedMotion) {
+    LaunchedEffect(event.revision, simpleSearchRendering) {
         confirmationCursorVisible = false
-        if (event.confirmsSearch && !reducedMotion) {
+        if (event.confirmsSearch && !simpleSearchRendering) {
             repeat(3) {
                 confirmationCursorVisible = true
                 delay(IrideTypewriterCursorBlinkMillis)
@@ -199,10 +211,11 @@ internal fun SearchScene(
     val windowHeight = LocalWindowInfo.current.containerSize.height
     val visibleHeader = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "search_header" }
     val headerVisible = visibleHeader != null
-    val headerStart = listState.layoutInfo.beforeContentPadding.takeIf { it > 0 }?.toFloat()
-        ?: with(density) {
-            (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IrideFolio.TitleAfterControls).toPx()
-        }
+    val headerStart = with(density) {
+        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        listState.layoutInfo.beforeContentPadding.takeIf { it > 0 }?.toFloat()
+            ?: (statusTop + if (gestureNavigationEnabled()) IrideFolio.TitleTopSpacing else IrideFolio.TitleAfterControls).toPx()
+    }
     // Page motion is immediate and never changes the animation's destination.
     val pageOffset = searchArtworkPageOffset(
         visibleHeader?.offset,
@@ -210,9 +223,13 @@ internal fun SearchScene(
         listState.firstVisibleItemIndex,
     )
     val fullHeight = (windowHeight - sceneTop).coerceAtLeast(0f)
+    val stickyTop = with(density) {
+        (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IrideFolio.ControlsTopSpacing +
+            (IrideFolio.ControlsHeight - IrideFolio.ControlSurfaceSize) / 2).toPx()
+    }
     val titleHeight = with(density) { titleStyle.lineHeight.toDp() }
     val titleGap = titleHeight + IridePageLayoutDefaults.TitleBottomSpacing
-    val resultHeight = titleHeight.coerceAtLeast(52.dp) + 24.dp
+    val resultHeight = IrideFolio.ControlSurfaceSize
     val resultHeightPx = with(density) { resultHeight.toPx() }
     val marginPx = with(density) { 20.dp.toPx() }
     val titleGapPx = with(density) { titleGap.toPx() }
@@ -226,16 +243,22 @@ internal fun SearchScene(
     val placement = searchScenePlacement(
         viewportHeight = fullHeight,
         initialFieldTop = headerStart + titleGapPx,
-        editing = editing,
+        editing = editing && !lightweightMode,
         hasResult = result,
         keyboardTargetBottom = imeTargetBottom.takeIf { it > 0 } ?: knownKeyboardBottom,
-        keyboardFallbackReady = true,
+        keyboardFallbackReady = false,
         fieldHeight = with(density) { 52.dp.toPx() },
-        resultHeight = resultHeightPx,
-        gap = with(density) { 24.dp.toPx() },
+        resultHeight = if (lightweightMode) editorHeightPx else resultHeightPx,
+        gap = with(density) { (if (lightweightMode) 0.dp else 24.dp).toPx() },
+        resultTitleTop = when {
+            lightweightMode -> headerStart + titleGapPx
+            gestureNavigationEnabled() -> stickyTop
+            else -> headerStart
+        },
     )
     val restingTop = if (result) placement.resultTop else headerStart + titleGapPx
-    val restingHeightPx = if (result) resultHeightPx else editorHeightPx
+    val restingHeightPx = if (result && !lightweightMode) resultHeightPx else editorHeightPx
+    val restingScrollOffset = if (result) pageOffset.coerceAtLeast(stickyTop - restingTop) else pageOffset
     val targetPose = SearchScenePose(
         centerY = if (editing) placement.fieldTop + editorHeightPx * 0.5f else restingTop + restingHeightPx * 0.5f,
         lift = if (editing) 1f else 0f,
@@ -259,16 +282,16 @@ internal fun SearchScene(
     }
     var settledRevision by remember { mutableIntStateOf(-1) }
     val pageReveal = remember(event.revision) {
-        Animatable(if (confirming && !resultsReady && !reducedMotion) 0f else 1f)
+        Animatable(if (confirming && !resultsReady && !simpleSearchRendering) 0f else 1f)
     }
-    LaunchedEffect(pageReveal, resultsReady, reducedMotion, event.returnsToRoot) {
+    LaunchedEffect(pageReveal, resultsReady, simpleSearchRendering, event.returnsToRoot) {
         if (!confirming || resultsReady) {
-            if (reducedMotion) pageReveal.snapTo(1f) else pageReveal.animateTo(
+            if (simpleSearchRendering) pageReveal.snapTo(1f) else pageReveal.animateTo(
                 1f, tween(240, easing = LinearOutSlowInEasing),
             )
         }
     }
-    val restingCenter = targetPose.centerY + pageOffset + pagePull.offset
+    val restingCenter = targetPose.centerY + restingScrollOffset + pagePull.offset
     val currentRestingCenter = rememberUpdatedState(restingCenter)
     val destinationCenter = when {
         !editing && settledRevision == event.revision -> motion.value.centerY
@@ -279,11 +302,13 @@ internal fun SearchScene(
         ) + restingHeightPx * 0.5f
     }
     val redirectVelocity = remember(motion, destinationCenter) { motion.velocity }
-    LaunchedEffect(motion, reducedMotion, destinationCenter) {
+    LaunchedEffect(motion, simpleSearchRendering, destinationCenter) {
         if (!editing && settledRevision == event.revision) return@LaunchedEffect
         val destination = SearchSceneFrame(destinationCenter, 1f)
-        if (reducedMotion) {
-            motion.snapTo(destination)
+        if (simpleSearchRendering) {
+            // Reduced motion still communicates a return through a short crossfade.
+            if (event.returnsToRoot) motion.animateTo(destination, tween(180))
+            else motion.snapTo(destination)
             return@LaunchedEffect
         }
         // The same spring owns position and visual progress. A late first IME target redirects
@@ -305,21 +330,25 @@ internal fun SearchScene(
     val resultProgress = pose.result
     val renderedArtwork = remember { SearchSceneArtworkSnapshot(artistArtwork) }
     val previousArtwork = remember(event.revision) { renderedArtwork.artwork }
-    val sceneArtwork = artistArtwork ?: previousArtwork?.takeIf { targetPose.result == 0f && resultProgress > 0f }
+    val sceneArtwork = if (simpleSearchRendering) null else {
+        artistArtwork ?: previousArtwork?.takeIf { targetPose.result == 0f && resultProgress > 0f }
+    }
     SideEffect { renderedArtwork.artwork = sceneArtwork }
     val primary = lerpColor(landingInk, artworkInk, resultProgress)
     val secondary = lerpColor(landingSecondary, artworkSecondary, resultProgress)
-    val fieldColor = lerpColor(landingFieldColor, artworkFieldColor, resultProgress)
     val funnel = pose.funnel
-    val collapsed = resultProgress * (1f - lift)
+    val collapsed = if (lightweightMode) 0f else resultProgress * (1f - lift)
+    val compact = collapsed
     val fieldHeightPx = with(density) { lerp(52.dp.toPx(), resultHeight.toPx(), collapsed) }
     val anchorTop = headerStart + (pageOffset + pagePull.offset) * (1f - lift)
     val resultRowsTop = placement.resultsTop
     val controlsBottom = with(density) {
         (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IrideFolio.ControlsTopSpacing + IrideFolio.ControlsHeight).toPx()
     }
+    val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+    val fieldSurfaceProgress = rememberIrideFolioFade(1f, reducedMotion)
     val artworkBlur = with(density) {
-        artistPhotoBlurProgress(
+        if (simpleSearchRendering) 0f else artistPhotoBlurProgress(
             if (headerVisible) placement.resultTop + pageOffset else if (listState.firstVisibleItemIndex > 0) Float.NEGATIVE_INFINITY else placement.resultTop,
             placement.resultTop,
             controlsBottom,
@@ -327,34 +356,25 @@ internal fun SearchScene(
             IrideFolio.TopScrimFadeHeight.toPx(),
         )
     }
-    val initialHeaderHeight = titleGap + 52.dp + IridePageLayoutDefaults.TitleBottomSpacing
-    val headerHeight = with(density) {
-        lerp(initialHeaderHeight.toPx(), (resultRowsTop - headerStart).coerceAtLeast(0f), resultProgress).toDp()
-    }
+    val initialHeaderHeight = titleGap + 52.dp
+    // Moving the editor must not remeasure the complete results list on every animation frame.
+    val headerHeight = if (submittedQuery.isNotBlank() || result) {
+        with(density) { (resultRowsTop - headerStart).coerceAtLeast(0f).toDp() }
+    } else initialHeaderHeight
     val currentHeaderHeight = rememberUpdatedState(headerHeight)
     val currentContent = rememberUpdatedState(content)
+    val currentLandingContent = rememberUpdatedState(landingContent)
     val centerY = if (!editing && settledRevision == event.revision) {
-        restingTop + restingHeightPx * 0.5f + pageOffset + pagePull.offset
+        restingTop + restingHeightPx * 0.5f + restingScrollOffset + pagePull.offset
     } else motion.value.centerY
     val proposedFieldTop = centerY - fieldHeightPx * 0.5f
-    val fieldInset = marginPx
-    val fieldWidth = (sceneSize.width - fieldInset * 2f).coerceAtLeast(1f)
+    val fieldInset = lerp(marginPx, with(density) { (if (navigationIcon != null) 80.dp else 20.dp).toPx() }, compact)
+    val fieldEndInset = lerp(marginPx, with(density) { 80.dp.toPx() }, collapsed)
+    val fieldWidth = (sceneSize.width - fieldInset - fieldEndInset).coerceAtLeast(1f)
     val iconAlpha = ((funnel - 0.48f) / 0.52f).coerceIn(0f, 1f)
-    val fieldInk = lerpColor(primary, Color.White, lift)
-    val fieldSecondary = lerpColor(secondary, Color.White.copy(alpha = 0.72f), lift)
-    val textMeasurer = rememberTextMeasurer()
-    val titleQueryStyle = remember(titleStyle.fontSize) {
-        TextStyle(fontFamily = IBMPlexMonoFontFamily, fontSize = titleStyle.fontSize, fontWeight = FontWeight.Bold)
-    }
-    val queryWidth = remember(query.text, titleQueryStyle, textMeasurer) {
-        textMeasurer.measure(query.text.ifEmpty { " " }, titleQueryStyle, maxLines = 1, softWrap = false).size.width.toFloat()
-    }
-    // Reserve the leading icon, trailing gutter and block cursor before fitting the title.
-    val titleWidth = (fieldWidth - with(density) { 76.dp.toPx() } -
-        with(density) { titleStyle.fontSize.toPx() }).coerceAtLeast(1f)
-    val fittedTitleSize = (titleStyle.fontSize.value * (titleWidth / queryWidth.coerceAtLeast(1f)))
-        .coerceIn(15f, titleStyle.fontSize.value.coerceAtLeast(15f))
-    val fontSize = lerp(15f, fittedTitleSize, collapsed)
+    val fieldInk = Color.White
+    val fieldSecondary = Color.White.copy(alpha = 0.72f)
+    val fontSize = 15f
     val queryStyle = TextStyle(
         color = fieldInk.copy(alpha = fieldInk.alpha * if (event.returnsToRoot) 1f - progress else 1f),
         fontFamily = IBMPlexMonoFontFamily,
@@ -362,11 +382,10 @@ internal fun SearchScene(
         fontWeight = FontWeight(lerp(400f, 700f, collapsed).roundToInt()),
         textAlign = TextAlign.Start,
     )
-    val fittedQueryWidth = queryWidth * fittedTitleSize / titleStyle.fontSize.value
-    val titleTextLeft = ((fieldWidth - fittedQueryWidth) * 0.5f).coerceAtLeast(with(density) { 52.dp.toPx() })
+    val titleTextLeft = with(density) { 52.dp.toPx() }
     val textStart = lerp(with(density) { (16.dp + 36.dp * iconAlpha).toPx() }, titleTextLeft, collapsed)
     val impact = if (confirming) searchScenePressure(progress) else 0f
-    val fieldScale = pose.scale
+    val fieldScale = if (simpleSearchRendering) 1f else pose.scale
     // Insets are read at placement time, not from the previous composition frame.
     fun safeFieldTop(): Float = searchSceneKeyboardSafeTop(
         proposedFieldTop,
@@ -402,26 +421,11 @@ internal fun SearchScene(
     val suggestionsModel: OnlineSearchSuggestionViewModel =
         hiltViewModel(key = "searchSceneSuggestions")
     val suggestions by suggestionsModel.viewState.collectAsState()
-    val artworkLoader = rememberArtistArtworkLoader()
-    val predictedArtist = remember(query.text, suggestions.items, editing) {
-        if (!editing || query.text.isBlank() || searchGenreArtworkName(query.text) != null) null else suggestions.items.filterIsInstance<ArtistItem>()
-            .mapNotNull { artist -> searchPredictionScore(query.text, artist.title)?.let { it to artist } }
-            .minByOrNull { it.first }?.second
-    }
-    LaunchedEffect(predictedArtist?.id) {
-        predictedArtist?.let {
-            artworkLoader.prefetch(
-                ArtistArtworkRequest(
-                    it.id, it.title, it.thumbnail?.resize(1200, 1200), it.channelId,
-                    it.id.startsWith("UC") && !it.isProfile,
-                ),
-            )
-        }
-    }
     LaunchedEffect(query.text, editing, searchSource) {
         suggestionsModel.previewResultsEnabled = editing && searchSource == SearchSource.ONLINE
         suggestionsModel.query.value = if (suggestionsModel.previewResultsEnabled) query.text else ""
     }
+    val activeSuggestions = suggestions.takeIf { it.query == query.text }
 
     Box(
         Modifier.fillMaxSize().background(landingColor)
@@ -431,11 +435,21 @@ internal fun SearchScene(
         SearchScenePage(
             sceneArtwork, pageOffset, artworkBlur, pagePull, editing, motion,
             motionFrom.lift, targetPose.lift, motionFrom.result, targetPose.result,
-            event.returnsToRoot && submittedQuery.isNotBlank(), pageReveal, currentHeaderHeight, currentContent,
+            event.returnsToRoot && submittedQuery.isNotBlank(), simpleSearchRendering,
+            pageReveal, currentHeaderHeight, currentContent,
+            if (lightweightMode) null else fieldBackdrop, currentLandingContent, initialHeaderHeight,
         )
         if (lift > 0f || editing || frost > 0f) {
             Box(
-                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.20f * frost))
+                Modifier.fillMaxSize().background(
+                    Color.Black.copy(
+                        alpha = when {
+                            lightweightMode -> frost
+                            simpleSearchRendering -> 0.55f * frost
+                            else -> 0.20f * frost
+                        },
+                    ),
+                )
                     .clickable(
                         enabled = editing,
                         interactionSource = remember { MutableInteractionSource() },
@@ -446,15 +460,19 @@ internal fun SearchScene(
         }
         if (navigationIcon != null) {
             Box(Modifier.graphicsLayer { alpha = resultProgress }) {
-                IridePageTopBar(title = title, progress = 0f, navigationIcon = navigationIcon)
+                IridePageTopBar(
+                    title = if (lightweightMode) "" else title,
+                    progress = 0f,
+                    navigationIcon = navigationIcon,
+                )
             }
         }
         // Both resting headers follow the page; only the open editor detaches from it.
         // Keep the native field and FocusRequester attached even when its lazy header is recycled.
         Box(Modifier.fillMaxSize().graphicsLayer {
-            alpha = if (headerVisible || editing || lift > 0f || motion.isRunning || progress < 1f) 1f else 0f
+            alpha = if (result || headerVisible || editing || lift > 0f || motion.isRunning || progress < 1f) 1f else 0f
         }) {
-            Text(
+            if (!lightweightMode) Text(
                 text = title,
                 style = titleStyle,
                 color = primary,
@@ -464,12 +482,16 @@ internal fun SearchScene(
                         lerp(anchorTop, iconTop + with(density) { 4.dp.toPx() }, titleConvergence)
                             .roundToInt(),
                     )
-                }.blur((3f * titleConvergence).dp).graphicsLayer {
+                }.then(if (simpleSearchRendering) Modifier else Modifier.blur((3f * titleConvergence).dp)).graphicsLayer {
                     transformOrigin = TransformOrigin(0.12f, 0.5f)
-                    scaleX = titleScale
-                    scaleY = titleScale * (1f - 0.3f * titleConvergence)
+                    scaleX = if (simpleSearchRendering) 1f else titleScale
+                    scaleY = if (simpleSearchRendering) 1f else titleScale * (1f - 0.3f * titleConvergence)
                     alpha = 1f - titleConvergence
                 }.drawWithContent {
+                    if (simpleSearchRendering) {
+                        drawContent()
+                        return@drawWithContent
+                    }
                     val throat = size.width * (1f - 0.88f * titleConvergence)
                     val funnelPath = Path().apply {
                         moveTo(0f, 0f)
@@ -502,22 +524,16 @@ internal fun SearchScene(
                         translationY = safeFieldTop().let { it - it.roundToInt() }
                         scaleX = fieldScale
                         scaleY = fieldScale
-                        shadowElevation = with(density) { 38.dp.toPx() } * lift
-                        ambientShadowColor = Color.Black.copy(alpha = 0.7f)
-                        spotShadowColor = Color.Black.copy(alpha = 0.8f)
-                        shape = FolioShape(18.dp)
+                        shape = IrideFolio.ControlsShape
                         clip = false
-                    }.background(Color.Black.copy(alpha = 0.72f * lift), FolioShape(18.dp))
-                    .background(fieldColor, FolioShape(18.dp))
+                    }.irideFolioControlSurface(
+                        progress = fieldSurfaceProgress,
+                        backdrop = fieldBackdrop,
+                        forceArtworkSurface = false,
+                        shape = IrideFolio.ControlsShape,
+                    )
                     .drawWithContent {
                         drawContent()
-                        if (lift > 0f) {
-                            drawFolioRoundRect(
-                                color = primary.copy(alpha = 0.06f * lift),
-                                cornerRadius = CornerRadius(18.dp.toPx()),
-                                style = Stroke(1.dp.toPx()),
-                            )
-                        }
                         if (impact > 0f) {
                             drawFolioRoundRect(
                                 color = Color.Black.copy(alpha = 0.05f * impact),
@@ -543,32 +559,28 @@ internal fun SearchScene(
                     modifier = Modifier.fillMaxWidth()
                         .padding(
                             start = with(density) { textStart.toDp() },
-                            end = 52.dp - 28.dp * collapsed,
+                            end = if (editing) 52.dp else 16.dp,
                         )
                         .focusRequester(focusRequester)
                         .focusProperties { canFocus = editing && keyboardRequestRevision == event.revision }
                         .then(if (result && !editing) Modifier.semantics { heading() } else Modifier),
                 )
+                if (editing && textState.text.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            textState.edit { replace(0, length, ""); selection = TextRange.Zero }
+                            focusRequester.requestFocus()
+                        },
+                        modifier = Modifier.align(Alignment.CenterEnd).size(48.dp),
+                    ) {
+                        Icon(painterResource(R.drawable.close), stringResource(R.string.iride_clear_search),
+                            tint = fieldInk, modifier = Modifier.size(22.dp))
+                    }
+                }
                 if (!editing) {
                     Box(Modifier.matchParentSize().clickable(
                         interactionSource = interactions, indication = null, onClick = onOpen,
                     ))
-                }
-                val arrowAlpha = searchSceneArrowAlpha(lift) * (1f - collapsed)
-                if (arrowAlpha > 0.001f) {
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).size(48.dp)
-                            .graphicsLayer { alpha = arrowAlpha }.clickable(
-                            enabled = editing,
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            role = Role.Button,
-                            onClick = { onSubmit(textState.text.toString()) },
-                        ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(painterResource(R.drawable.arrow_forward), title, tint = fieldInk)
-                    }
                 }
             }
             Box(
@@ -597,23 +609,40 @@ internal fun SearchScene(
                 )
             }
             if (editing && searchSource == SearchSource.ONLINE && lift > 0.65f) {
-                val recallGapPx = with(density) { 12.dp.toPx() }
-                val availableRecallHeight = (fieldTop - headerStart - recallGapPx * 2f).coerceAtLeast(0f)
+                val recallGapPx = with(density) { (if (lightweightMode) 0.dp else 12.dp).toPx() }
+                val recallKeyboardBottom = if (imeTargetBottom > 0 || imeVisibleBottom > 0) {
+                    maxOf(imeTargetBottom, imeVisibleBottom)
+                } else 0
+                val recallTop: Float
+                val availableRecallHeight: Float
+                if (lightweightMode) {
+                    recallTop = fieldTop + fieldHeightPx + recallGapPx
+                    val keyboardTop = fullHeight - recallKeyboardBottom
+                    availableRecallHeight = (keyboardTop - recallTop - recallGapPx).coerceAtLeast(0f)
+                } else {
+                    availableRecallHeight = (fieldTop - headerStart - recallGapPx * 2f).coerceAtLeast(0f)
+                    recallTop = fieldTop - recallGapPx - availableRecallHeight
+                }
                 Box(
                     Modifier.offset {
-                        IntOffset(0, (fieldTop - recallGapPx - availableRecallHeight).roundToInt())
+                        IntOffset(0, recallTop.roundToInt())
                     }.fillMaxWidth().height(with(density) { availableRecallHeight.toDp() })
                         .graphicsLayer { alpha = ((lift - 0.65f) / 0.35f).coerceIn(0f, 1f) },
                 ) {
                     SearchRecallPanel(
+                        navController = navController,
                         query = query.text,
                         submittedQuery = submittedQuery,
-                        suggestions = suggestions.suggestions,
-                        predictionItems = suggestions.items,
+                        suggestions = activeSuggestions?.suggestions.orEmpty(),
+                        recommendedItems = activeSuggestions?.recommendedItems.orEmpty(),
                         availableHeight = availableRecallHeight,
                         onComplete = onComplete,
                         onOpenArtist = onOpenArtist,
-                        modifier = Modifier.align(Alignment.BottomCenter),
+                        onOpenAlbum = onOpenAlbum,
+                        onOpenItem = onOpenItem,
+                        modifier = Modifier.align(
+                            if (lightweightMode) Alignment.TopCenter else Alignment.BottomCenter,
+                        ),
                     )
                 }
             }
@@ -638,21 +667,29 @@ private fun SearchScenePage(
     fromResult: Float,
     toResult: Float,
     returningToRoot: Boolean,
+    lightweightMode: Boolean,
     pageReveal: Animatable<Float, *>,
     headerHeight: State<Dp>,
     content: State<@Composable (header: @Composable () -> Unit) -> Unit>,
+    backdrop: FrostBackdrop?,
+    landingContent: State<(@Composable (header: @Composable () -> Unit) -> Unit)?>,
+    landingHeaderHeight: Dp,
 ) {
     val density = LocalDensity.current
-    val effects = remember(density) { ArtistPhotoBlurEffects(with(density) { 28.dp.toPx() }) }
+    val pageBlurEffects = remember(density) {
+        ArtistPhotoBlurEffects(with(density) { 28.dp.toPx() })
+    }
+    val pageLift = lerp(fromLift, toLift, motion.value.progress.coerceIn(0f, 1f))
+    val pageBlur = searchSceneBlurRadius(editing, pageLift)
     val header = remember(headerHeight) {
         @Composable { Spacer(Modifier.fillMaxWidth().height(headerHeight.value)) }
     }
     Box(
         Modifier.fillMaxSize().graphicsLayer {
             val lift = lerp(fromLift, toLift, motion.value.progress.coerceIn(0f, 1f))
-            renderEffect = effects.at(searchSceneBlurRadius(editing, lift) / 28f)
+            renderEffect = if (lightweightMode) null else pageBlurEffects.at(pageBlur / 28f)
             alpha = 1f - 0.28f * lift
-            scaleX = 1f - 0.025f * lift
+            scaleX = if (lightweightMode) 1f else 1f - 0.025f * lift
             scaleY = scaleX
         }.then(if (editing) Modifier.clearAndSetSemantics {} else Modifier),
     ) {
@@ -663,16 +700,24 @@ private fun SearchScenePage(
         }
         CompositionLocalProvider(
             LocalIridePageTitleVisible provides false,
+            LocalIridePageFrostBackdrop provides backdrop,
             LocalIridePageOverscrollPull provides pagePull,
             LocalIrideFolioScrimColor provides (artwork?.tint ?: Color.Black),
         ) {
             Box(Modifier.fillMaxSize().graphicsLayer {
-                alpha = pageReveal.value * if (returningToRoot) {
+                alpha = if (returningToRoot) {
                     1f - motion.value.progress.coerceIn(0f, 1f)
                 } else 1f
-                translationY = with(density) { 10.dp.toPx() } * (1f - pageReveal.value)
             }) {
                 content.value(header)
+            }
+            if (returningToRoot) {
+                Box(Modifier.fillMaxSize().graphicsLayer {
+                    alpha = motion.value.progress.coerceIn(0f, 1f)
+                    translationY = if (lightweightMode) 0f else with(density) { 12.dp.toPx() } * (1f - alpha)
+                }) {
+                    landingContent.value?.invoke { Spacer(Modifier.fillMaxWidth().height(landingHeaderHeight)) }
+                }
             }
         }
     }

@@ -11,7 +11,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +22,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 
@@ -41,6 +45,8 @@ internal fun folioMenuAction(
     icon: Int,
     onClick: () -> Unit,
     text: String? = null,
+    selected: Boolean = false,
+    section: Int? = null,
 ): Material3MenuItemData =
     Material3MenuItemData(
         actionId = label,
@@ -51,6 +57,8 @@ internal fun folioMenuAction(
             androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(icon), null)
         },
         onClick = onClick,
+        selected = selected,
+        section = section,
     )
 
 @Composable
@@ -59,7 +67,7 @@ internal fun folioLibraryAction(saved: Boolean, onClick: () -> Unit): Material3M
         label = R.string.add_to_library,
         icon = if (saved) R.drawable.favorite else R.drawable.favorite_border,
         onClick = onClick,
-        text = stringResource(if (saved) R.string.iride_remove_star else R.string.iride_star),
+        text = stringResource(R.string.iride_star),
     )
 
 /**
@@ -68,16 +76,20 @@ internal fun folioLibraryAction(saved: Boolean, onClick: () -> Unit): Material3M
 @Composable
 internal fun IrideFolioContextMenu(
     items: List<Material3MenuItemData>,
+    header: (@Composable () -> Unit)? = null,
     visible: Boolean = true,
     onDismiss: () -> Unit,
     retainOpenActions: Set<Int> = emptySet(),
     popupOverride: MenuState? = null,
     anchorOverride: androidx.compose.ui.geometry.Rect? = null,
     focusable: Boolean = true,
+    playlistId: String? = null,
+    legacyCustomImage: Boolean = false,
 ) {
-    val actions = folioContextActions(items)
+    val imageActions = if (playlistId != null) playlistImageActions(playlistId, legacyCustomImage) else emptyList()
+    val actions = folioContextActions(items + imageActions)
     val sections =
-        actions.groupBy { it.section ?: folioActionOrder(it.actionId).first }.values.toList()
+        actions.groupBy { folioActionSection(it.actionId, it.section) }.values.toList()
     val scrollState = rememberScrollState()
     val overscrollPull = rememberRubberBandPull()
     val density = LocalDensity.current
@@ -104,6 +116,7 @@ internal fun IrideFolioContextMenu(
                         vertical = IrideFolio.MenuVerticalPadding,
                     ),
             ) {
+                header?.invoke()
                 sections.forEachIndexed { index, section ->
                     if (index > 0) IrideFolioMenuDivider()
                     section.forEach { action ->
@@ -134,10 +147,11 @@ internal fun IrideFolioContextMenu(
         val popup = popupOverride ?: LocalSongMenuPopupState.current
         if (popup != null) {
             val motion = popup.popupMotion
+            val lightweightMode by rememberLightweightFolioMode()
             val reducedMotion = com.metrolist.music.ui.utils.rememberReducedMotion()
-            LaunchedEffect(popupOverride, motion, popup.isVisible, reducedMotion) {
+            LaunchedEffect(popupOverride, motion, popup.isVisible, reducedMotion, lightweightMode) {
                 if (popupOverride != null && motion != null) {
-                    motion.present(popup.isVisible, reducedMotion)
+                    motion.present(popup.isVisible, reducedMotion, lightweightMode)
                 }
             }
             IrideAnchoredSongMenu(

@@ -1,23 +1,16 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.PlaylistArtwork
 import com.metrolist.music.ui.component.SongMenuIconButton
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.Intent
-import android.graphics.Bitmap
-import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +29,6 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,11 +40,12 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,24 +54,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -86,11 +75,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
-import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.fastSumBy
-import androidx.compose.ui.util.lerp
-import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
@@ -98,9 +84,6 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
-import coil3.decode.DataSource
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
@@ -110,9 +93,6 @@ import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.AlbumTopGradientKey
-import com.metrolist.music.constants.DarkModeKey
-import com.metrolist.music.constants.IrideBaseBorderWidth
-import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlaylistSongSortDescendingKey
@@ -126,43 +106,35 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
-import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.CategoryFilterState
 import com.metrolist.music.ui.component.CategoryPillsRow
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.CreatePlaylistDialog
-import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
+import com.metrolist.music.ui.component.EditableCollectionTitle
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
-import com.metrolist.music.ui.component.collectionExpansionTarget
 import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.PlaylistPageCapabilities
+import com.metrolist.music.ui.component.playlistPageSections
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
-import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.OverlayEditButton
 import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SongRowReorderButton
-import com.metrolist.music.ui.component.TextFieldDialog
-import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.theme.FolioShape
 import com.metrolist.music.ui.component.rememberGenreFilter
-import com.metrolist.music.ui.menu.CustomThumbnailMenu
 import com.metrolist.music.ui.menu.LocalPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
-import com.metrolist.music.ui.screens.settings.DarkMode
-import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
-import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
-import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.prefetchThumbnails
@@ -172,24 +144,20 @@ import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.utils.reportException
 import com.metrolist.music.viewmodels.LocalPlaylistViewModel
-import com.yalantis.ucrop.UCrop
-import io.ktor.client.plugins.ClientRequestException
 import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import sv.lib.squircleshape.SquircleShape
 
 @SuppressLint("RememberReturnType")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LocalPlaylistScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: LocalPlaylistViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -238,7 +206,6 @@ fun LocalPlaylistScreen(
             durationMillis = IrideMotion.Short,
             easing = IrideMotion.EaseOutQuart,
         )
-    val controlsRowProgress = rememberSectionEnter("playlist_controls", revealedSections)
     val genrePillsProgress = rememberSectionEnter("playlist_genre_pills", revealedSections)
     val controlPanelProgress = rememberSectionEnter("playlist_control_panel", revealedSections)
     val songsSectionProgress = rememberSectionEnter("playlist_songs", revealedSections)
@@ -394,49 +361,12 @@ fun LocalPlaylistScreen(
         }
     }
 
-    var showEditDialog by remember {
-        mutableStateOf(false)
-    }
-
     var showAddMusic by rememberSaveable { mutableStateOf(false) }
     if (showAddMusic) {
         playlist?.playlist?.let { target ->
             CreatePlaylistDialog(
                 onDismiss = { showAddMusic = false },
                 targetPlaylist = target,
-            )
-        }
-    }
-
-    if (showEditDialog) {
-        playlist?.playlist?.let { playlistEntity ->
-            TextFieldDialog(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.edit),
-                        contentDescription = null,
-                    )
-                },
-                title = { Text(text = stringResource(R.string.edit_playlist)) },
-                onDismiss = { showEditDialog = false },
-                initialTextFieldValue =
-                    TextFieldValue(
-                        playlistEntity.name,
-                        TextRange(playlistEntity.name.length),
-                    ),
-                onDone = { name ->
-                    database.query {
-                        update(
-                            playlistEntity.copy(
-                                name = name,
-                                lastUpdateTime = LocalDateTime.now(),
-                            )
-                        )
-                    }
-                    viewModel.viewModelScope.launch(Dispatchers.IO) {
-                        playlistEntity.browseId?.let { YouTube.renamePlaylist(it, name) }
-                    }
-                },
             )
         }
     }
@@ -630,37 +560,6 @@ fun LocalPlaylistScreen(
             }
         }
     }
-    val onTopBarPlaylistDownloadClick: () -> Unit = {
-        when (downloadState) {
-            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-            Download.STATE_DOWNLOADING,
-            Download.STATE_QUEUED -> {
-                songs.forEach { song ->
-                    DownloadService.sendRemoveDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        song.song.id,
-                        false,
-                    )
-                }
-            }
-            else -> {
-                songs.forEach { song ->
-                    val downloadRequest =
-                        DownloadRequest.Builder(song.song.id, song.song.id.toUri())
-                            .setCustomCacheKey(song.song.id)
-                            .setData(song.song.song.title.toByteArray())
-                            .build()
-                    DownloadService.sendAddDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        downloadRequest,
-                        false,
-                    )
-                }
-            }
-        }
-    }
     val onTopBarLikeClick: () -> Unit = {
         playlist?.let { current ->
             database.query {
@@ -748,7 +647,6 @@ fun LocalPlaylistScreen(
                                         songs = songs,
                                         context = context,
                                         downloadState = downloadState,
-                                        onEdit = { showEditDialog = true },
                                         onDelete = { showDeletePlaylistDialog = true },
                                         onReorder =
                                             if (editable) {
@@ -759,6 +657,11 @@ fun LocalPlaylistScreen(
                                             } else {
                                                 null
                                             },
+                                        sortType = sortType,
+                                        onSortTypeChange = onSortTypeChange,
+                                        sortDescending = sortDescending,
+                                        onSortDescendingChange = onSortDescendingChange,
+                                        showSortDescending = sortType != PlaylistSongSortType.CUSTOM,
                                         onDownload = {
                                             when (downloadState) {
                                                 Download.STATE_COMPLETED ->
@@ -817,7 +720,7 @@ fun LocalPlaylistScreen(
                 mediaMetadata = playlistGradientMediaMetadata,
                 playerBackground = playerBackgroundStyle,
                 gradientEnabled = albumTopGradientEnabled,
-                title = playlist?.playlist?.name.orEmpty(),
+                title = playlistTitle ?: playlist?.playlist?.name.orEmpty(),
                 state = lazyListState,
                 showTopBar = true,
                 showPageTitle = false,
@@ -826,18 +729,22 @@ fun LocalPlaylistScreen(
                         .union(WindowInsets.ime)
                         .asPaddingValues()
                         .calculateBottomPadding(),
-                navigationIcon = if (gestureNavigationEnabled() && !(inSelectMode || !locked || isSearching)) null else topBarNavigationIcon,
+                navigationIcon = if (gestureNavigationEnabled() && (!locked || !(inSelectMode || isSearching))) null else topBarNavigationIcon,
+                detachedAction = if (
+                    !inSelectMode && locked && !isSearching && playlist?.playlist?.isEditable == true
+                ) {
+                    {
+                        IrideOutlineIconButton(
+                            onClick = { showAddMusic = true },
+                            icon = R.drawable.add_bold,
+                            contentDescription = stringResource(R.string.playlist_draft_add_music),
+                            size = 40.dp,
+                            iconSize = 18.dp,
+                        )
+                    }
+                } else null,
                 actions = {
                     if (!inSelectMode && locked && !isSearching) {
-                        if (playlist?.playlist?.isEditable == true) {
-                            IrideOutlineIconButton(
-                                onClick = { showAddMusic = true },
-                                icon = R.drawable.add,
-                                contentDescription = stringResource(R.string.playlist_draft_add_music),
-                                size = 40.dp,
-                                iconSize = 20.dp,
-                            )
-                        }
                         playlist?.let { current ->
                             IrideOutlineIconButton(
                                 onClick = onTopBarLikeClick,
@@ -866,7 +773,7 @@ fun LocalPlaylistScreen(
                     topBarActions()
                 },
                 topBarContent =
-                    if (inSelectMode || !locked)
+                    if (inSelectMode || (!locked && !gestureNavigationEnabled()))
                         ({
                             Text(
                                 when {
@@ -886,8 +793,15 @@ fun LocalPlaylistScreen(
                 playlist?.let { playlist ->
                     if (playlist.songCount == 0 && (playlist.playlist.remoteSongCount ?: 0) == 0) {
                         item(key = "empty_playlist_title") {
-                            IrideCollectionTitle(
-                                title = playlist.playlist.name,
+                            EditableCollectionTitle(
+                                title = playlistTitle ?: playlist.playlist.name,
+                                onSave = { name ->
+                                    val entity = playlist.playlist
+                                    database.query { update(entity.copy(name = name, lastUpdateTime = LocalDateTime.now())) }
+                                    viewModel.viewModelScope.launch(Dispatchers.IO) {
+                                        entity.browseId?.let { YouTube.renamePlaylist(it, name) }
+                                    }
+                                },
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                             )
                         }
@@ -905,12 +819,25 @@ fun LocalPlaylistScreen(
                             }
                         }
                     } else {
-                        if (!isSearching) {
-                            item(key = "playlist_header") {
+                        playlistPageSections(
+                            capabilities = PlaylistPageCapabilities(
+                                showHeader = !isSearching,
+                                showPlaybackControls = !isSearching,
+                                showSearch = true,
+                                showFilters = true,
+                            ),
+                            header = {
                                 LocalPlaylistHeader(
                                     playlist = playlist,
                                     songs = songs,
-                                    onShowEditDialog = { showEditDialog = true },
+                                    isOffline = isOffline,
+                                    onRename = { name ->
+                                        val entity = playlist.playlist
+                                        database.query { update(entity.copy(name = name, lastUpdateTime = LocalDateTime.now())) }
+                                        viewModel.viewModelScope.launch(Dispatchers.IO) {
+                                            entity.browseId?.let { YouTube.renamePlaylist(it, name) }
+                                        }
+                                    },
                                     onShowRemoveDownloadDialog = {
                                         showRemoveDownloadDialog = true
                                     },
@@ -922,80 +849,36 @@ fun LocalPlaylistScreen(
                                     headerRevealed = headerRevealed,
                                     titleTypingMs = titleTypingMs,
                                 )
-                            }
-                        }
-
-                        if (!isSearching) {
-                            item(key = "control_panel") {
+                            },
+                            playbackControls = {
                                 IridePlaylistControlPanel(
                                     onShuffleClick = onTopBarShuffleClick,
                                     onPlayClick = onTopBarPlaylistPlayClick,
-                                    onDownloadClick = onTopBarPlaylistDownloadClick,
-                                    downloadState = downloadState,
                                     isPlaying = isThisPlaylistPlaying,
                                     modifier =
                                         Modifier.padding(bottom = 12.dp)
                                             .irideEnterScale(controlPanelProgress),
                                 )
-                            }
-                        }
-
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-
-                        item(key = "controls_row") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier =
-                                    Modifier.padding(
-                                            start = 12.dp,
-                                            end = 12.dp,
-                                        )
-                                        .irideEnter(controlsRowProgress, 6.dp),
-                            ) {
-                                LibrarySortRow(
-                                    sortOptions =
-                                        listOf(
-                                            PlaylistSongSortType.CUSTOM to
-                                                stringResource(R.string.sort_by_custom),
-                                            PlaylistSongSortType.CREATE_DATE to
-                                                stringResource(R.string.sort_by_create_date),
-                                            PlaylistSongSortType.NAME to
-                                                stringResource(R.string.sort_by_name),
-                                            PlaylistSongSortType.ARTIST to
-                                                stringResource(R.string.sort_by_artist),
-                                            PlaylistSongSortType.PLAY_TIME to
-                                                stringResource(R.string.sort_by_play_time),
-                                        ),
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
-                                    sortDescending = sortDescending,
-                                    onSortDescendingChange = onSortDescendingChange,
-                                    showDescending = sortType != PlaylistSongSortType.CUSTOM,
-                                    availableViewTypes =
-                                        listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
-                                    modifier = Modifier.weight(1f),
+                            },
+                            search = {
+                                IrideFolioCollectionSearchBox(
+                                    query = query,
+                                    onQueryChange = { query = it },
+                                    placeholderText = stringResource(R.string.search_playlists),
+                                    focusRequester = focusRequester,
+                                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                                    onSearch = {},
+                                    onClear = { query = TextFieldValue() },
                                 )
-                            }
-                        }
-
-                        item(key = "category_pills") {
-                            CategoryPillsRow(
-                                state = categoryFilter,
-                                onAddClick = { inSelectMode = true },
-                                modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
-                            )
-                        }
+                            },
+                            filters = {
+                                CategoryPillsRow(
+                                    state = categoryFilter,
+                                    modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
+                                )
+                            },
+                            filterKey = "category_pills",
+                        )
                     }
                 }
                     ?: run {
@@ -1008,7 +891,6 @@ fun LocalPlaylistScreen(
                                 onFocusChanged = { if (it.isFocused) isSearching = true },
                                 onSearch = {},
                                 onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                             )
                         }
                     }
@@ -1020,7 +902,7 @@ fun LocalPlaylistScreen(
                     ReorderableItem(
                         state = reorderableState,
                         key = song.map.id,
-                    ) {
+                    ) { isDragging ->
                         val currentItem by rememberUpdatedState(song)
 
                         fun deleteFromPlaylist() {
@@ -1133,7 +1015,7 @@ fun LocalPlaylistScreen(
                                                 } else {
                                                     playerConnection.playQueue(
                                                         ListQueue(
-                                                            sourceRoute = "local_playlist/${viewModel.playlistId}",
+                                                            sourceRoute = "local_playlist/${viewModel.playlistId}?offline=$isOffline",
                                                             title = playlist!!.playlist.name,
                                                             items =
                                                                 songs.map { it.song.toMediaItem() },
@@ -1243,7 +1125,8 @@ fun LocalPlaylistScreen(
 fun LocalPlaylistHeader(
     playlist: Playlist,
     songs: List<PlaylistSong>,
-    onShowEditDialog: () -> Unit,
+    isOffline: Boolean = false,
+    onRename: (String) -> Unit,
     onShowRemoveDownloadDialog: () -> Unit,
     onshowDeletePlaylistDialog: () -> Unit,
     onStartSearch: () -> Unit,
@@ -1274,117 +1157,6 @@ fun LocalPlaylistHeader(
     val liked = playlist.playlist.bookmarkedAt != null
     val editable: Boolean = playlist.playlist.isEditable
 
-    val overrideThumbnail = remember { mutableStateOf<String?>(null) }
-    var isCustomThumbnail: Boolean =
-        playlist.thumbnails.firstOrNull()?.let {
-            it.contains("studio_square_thumbnail") || it.contains("content://com.metrolist.music")
-        } ?: false
-
-    val result = remember { mutableStateOf<Uri?>(null) }
-    var pendingCropDestUri by remember { mutableStateOf<Uri?>(null) }
-    var showEditNoteDialog by remember { mutableStateOf(false) }
-
-    val cropLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
-            if (res.resultCode == android.app.Activity.RESULT_OK) {
-                val output = res.data?.let { UCrop.getOutput(it) } ?: pendingCropDestUri
-                if (output != null) result.value = output
-            }
-        }
-
-    val (darkMode, _) =
-        rememberEnumPreference(
-            DarkModeKey,
-            defaultValue = DarkMode.AUTO,
-        )
-
-    val cropColor = MaterialTheme.colorScheme
-    val darkTheme =
-        ForceDarkTheme ||
-            (darkMode == DarkMode.ON || (darkMode == DarkMode.AUTO && isSystemInDarkTheme()))
-
-    val pickLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { sourceUri ->
-                val destFile =
-                    java.io.File(
-                        context.cacheDir,
-                        "playlist_cover_crop_${System.currentTimeMillis()}.jpg",
-                    )
-                val destUri =
-                    FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.FileProvider",
-                        destFile,
-                    )
-                pendingCropDestUri = destUri
-
-                val options =
-                    UCrop.Options().apply {
-                        setCompressionFormat(Bitmap.CompressFormat.JPEG)
-                        setCompressionQuality(90)
-                        setHideBottomControls(true)
-                        setToolbarTitle(editPlaylistCoverStr)
-
-                        setStatusBarLight(!darkTheme)
-
-                        setToolbarColor(cropColor.surface.toArgb())
-                        setToolbarWidgetColor(cropColor.inverseSurface.toArgb())
-                        setRootViewBackgroundColor(cropColor.surface.toArgb())
-                        setLogoColor(cropColor.surface.toArgb())
-                    }
-
-                val intent =
-                    UCrop.of(sourceUri, destUri)
-                        .withAspectRatio(1f, 1f)
-                        .withOptions(options)
-                        .getIntent(context)
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                cropLauncher.launch(intent)
-            }
-        }
-
-    LaunchedEffect(result.value) {
-        val uri = result.value ?: return@LaunchedEffect
-        withContext(Dispatchers.IO) {
-            when {
-                playlist.playlist.browseId == null -> {
-                    overrideThumbnail.value = uri.toString()
-                    isCustomThumbnail = true
-
-                    database.query {
-                        update(playlist.playlist.copy(thumbnailUrl = uri.toString()))
-                    }
-                }
-
-                else -> {
-                    val bytes = uriToByteArray(context, uri)
-                    YouTube.uploadCustomThumbnailLink(
-                            playlist.playlist.browseId,
-                            bytes!!,
-                        )
-                        .onSuccess { newThumbnailUrl ->
-                            overrideThumbnail.value = newThumbnailUrl
-                            isCustomThumbnail = true
-
-                            database.query {
-                                update(playlist.playlist.copy(thumbnailUrl = newThumbnailUrl))
-                            }
-                        }
-                        .onFailure {
-                            if (it is ClientRequestException) {
-                                snackbarHostState.showSnackbar(
-                                    "${it.response.status.value} ${it.response.status.description}"
-                                )
-                            }
-                            reportException(it)
-                        }
-                }
-            }
-        }
-    }
-
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect
         downloadUtil.downloads.collect { downloads ->
@@ -1409,288 +1181,6 @@ fun LocalPlaylistHeader(
         modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (showEditNoteDialog) {
-            ActionPromptDialog(
-                title = stringResource(R.string.edit_playlist_cover),
-                onDismiss = { showEditNoteDialog = false },
-                onConfirm = {
-                    showEditNoteDialog = false
-                    pickLauncher.launch(
-                        PickVisualMediaRequest(
-                            mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                },
-                onCancel = { showEditNoteDialog = false },
-            ) {
-                if (playlist.playlist.browseId != null) {
-                    Text(
-                        text = stringResource(R.string.edit_playlist_cover_note),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                Text(
-                    text = stringResource(R.string.edit_playlist_cover_note_wait),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                )
-            }
-        }
-        val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
-        var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
-        var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
-        val animatedCoverProgress =
-            rememberEnterProgress(
-                play = coverLoaded,
-                durationMillis = 420,
-                easing = IrideMotion.EaseOutQuart,
-            )
-        val coverProgress =
-            when {
-                skipCoverEnterAnim || LocalCollectionExpansionProgress.current != null -> 1f
-                else -> animatedCoverProgress
-            }
-
-        val playlistCoverArt: @Composable (Dp) -> Unit = { coverSize ->
-            Box {
-                when (playlist.thumbnails.size) {
-                    0 -> {
-                        Surface(
-                            modifier =
-                                Modifier.size(coverSize)
-                                    .irideArtworkOverlayBorder(
-                                        IrideBaseBorderWidth,
-                                        MaterialTheme.colorScheme.strokeCard,
-                                        playlistCoverSquircle,
-                                    )
-                                    .shadow(
-                                        elevation = 16.dp,
-                                        shape = playlistCoverSquircle,
-                                    ),
-                            shape = playlistCoverSquircle,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.queue_music),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(coverSize * 0.33f),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-
-                    1 -> {
-                        Surface(
-                            modifier =
-                                Modifier.size(coverSize)
-                                    .graphicsLayer {
-                                        alpha = coverProgress
-                                        val s = lerp(0.94f, 1f, coverProgress)
-                                        scaleX = s
-                                        scaleY = s
-                                    }
-                                    .irideArtworkOverlayBorder(
-                                        IrideBaseBorderWidth,
-                                        MaterialTheme.colorScheme.strokeCard,
-                                        playlistCoverSquircle,
-                                    )
-                                    .shadow(
-                                        elevation = 24.dp,
-                                        shape = playlistCoverSquircle,
-                                        spotColor =
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                    ),
-                            shape = playlistCoverSquircle,
-                        ) {
-                            AsyncImage(
-                                model = overrideThumbnail.value ?: playlist.thumbnails[0],
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                onState = { state ->
-                                    if (state is AsyncImagePainter.State.Success) {
-                                        if (state.result.dataSource == DataSource.MEMORY_CACHE) {
-                                            skipCoverEnterAnim = true
-                                        }
-                                        coverLoaded = true
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                        if (editable) {
-                            OverlayEditButton(
-                                visible = true,
-                                alignment = Alignment.BottomEnd,
-                                onClick = {
-                                    if (isCustomThumbnail) {
-                                        menuState.show(anchored = false, content = {
-                                            CustomThumbnailMenu(
-                                                onEdit = {
-                                                    pickLauncher.launch(
-                                                        PickVisualMediaRequest(
-                                                            mediaType =
-                                                                ActivityResultContracts
-                                                                    .PickVisualMedia
-                                                                    .ImageOnly
-                                                        )
-                                                    )
-                                                },
-                                                onRemove = {
-                                                    when {
-                                                        playlist.playlist.browseId == null -> {
-                                                            overrideThumbnail.value = null
-                                                            database.query {
-                                                                update(
-                                                                    playlist.playlist.copy(
-                                                                        thumbnailUrl = null
-                                                                    )
-                                                                )
-                                                            }
-                                                        }
-
-                                                        else -> {
-                                                            scope.launch(Dispatchers.IO) {
-                                                                YouTube.removeThumbnailPlaylist(
-                                                                        playlist.playlist.browseId
-                                                                    )
-                                                                    .onSuccess { newThumbnailUrl ->
-                                                                        overrideThumbnail.value =
-                                                                            newThumbnailUrl
-                                                                        database.query {
-                                                                            update(
-                                                                                playlist.playlist
-                                                                                    .copy(
-                                                                                        thumbnailUrl =
-                                                                                            newThumbnailUrl
-                                                                                    )
-                                                                            )
-                                                                        }
-                                                                    }
-                                                            }
-                                                        }
-                                                    }
-                                                    isCustomThumbnail = false
-                                                },
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        })
-                                    } else {
-                                        showEditNoteDialog = true
-                                    }
-                                },
-                            )
-                        }
-                    }
-
-                    else -> {
-                        Surface(
-                            modifier =
-                                Modifier.size(coverSize)
-                                    .irideArtworkOverlayBorder(
-                                        IrideBaseBorderWidth,
-                                        MaterialTheme.colorScheme.strokeCard,
-                                        playlistCoverSquircle,
-                                    )
-                                    .shadow(
-                                        elevation = 24.dp,
-                                        shape = playlistCoverSquircle,
-                                        spotColor =
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                    ),
-                            shape = playlistCoverSquircle,
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                listOf(
-                                        Alignment.TopStart,
-                                        Alignment.TopEnd,
-                                        Alignment.BottomStart,
-                                        Alignment.BottomEnd,
-                                    )
-                                    .fastForEachIndexed { index, alignment ->
-                                        AsyncImage(
-                                            model = playlist.thumbnails.getOrNull(index),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier =
-                                                Modifier.align(alignment).size(coverSize / 2),
-                                        )
-                                    }
-                            }
-                        }
-                        if (editable) {
-                            OverlayEditButton(
-                                visible = true,
-                                alignment = Alignment.BottomEnd,
-                                onClick = {
-                                    if (isCustomThumbnail) {
-                                        menuState.show(anchored = false, content = {
-                                            CustomThumbnailMenu(
-                                                onEdit = {
-                                                    pickLauncher.launch(
-                                                        PickVisualMediaRequest(
-                                                            mediaType =
-                                                                ActivityResultContracts
-                                                                    .PickVisualMedia
-                                                                    .ImageOnly
-                                                        )
-                                                    )
-                                                },
-                                                onRemove = {
-                                                    when {
-                                                        playlist.playlist.browseId == null -> {
-                                                            overrideThumbnail.value = null
-                                                            database.query {
-                                                                update(
-                                                                    playlist.playlist.copy(
-                                                                        thumbnailUrl = null
-                                                                    )
-                                                                )
-                                                            }
-                                                        }
-
-                                                        else -> {
-                                                            scope.launch(Dispatchers.IO) {
-                                                                YouTube.removeThumbnailPlaylist(
-                                                                        playlist.playlist.browseId
-                                                                    )
-                                                                    .onSuccess { newThumbnailUrl ->
-                                                                        overrideThumbnail.value =
-                                                                            newThumbnailUrl
-                                                                        database.query {
-                                                                            update(
-                                                                                playlist.playlist
-                                                                                    .copy(
-                                                                                        thumbnailUrl =
-                                                                                            newThumbnailUrl
-                                                                                    )
-                                                                            )
-                                                                        }
-                                                                    }
-                                                            }
-                                                        }
-                                                    }
-                                                    isCustomThumbnail = false
-                                                },
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        })
-                                    } else {
-                                        showEditNoteDialog = true
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         val songCount =
             if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
                 playlist.playlist.remoteSongCount
@@ -1757,14 +1247,21 @@ fun LocalPlaylistHeader(
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(240.dp).collectionExpansionTarget(ready = playlist.thumbnails.size != 1 || coverLoaded)) {
-                    playlistCoverArt(240.dp)
-                }
+                PlaylistArtwork(
+                    title = playlist.title,
+                    thumbnailUrl = playlist.playlist.thumbnailUrl,
+                    playlistId = playlist.playlist.browseId ?: playlist.id,
+                    modifier = Modifier.size(240.dp),
+                    expansionTarget = true,
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            IrideCollectionTitle(title = playlist.playlist.name)
+            EditableCollectionTitle(
+                title = playlist.playlist.name,
+                onSave = onRename,
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1817,13 +1314,3 @@ private fun MetadataChip(
         }
     }
 }
-
-fun uriToByteArray(
-    context: Context,
-    uri: Uri,
-): ByteArray? =
-    try {
-        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-    } catch (_: SecurityException) {
-        null
-    }

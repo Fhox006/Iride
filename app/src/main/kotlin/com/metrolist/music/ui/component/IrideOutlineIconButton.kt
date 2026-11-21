@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -90,6 +91,7 @@ fun IrideOutlineIconButton(
     pressEffect: IridePressEffect = IridePressEffect.None,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
+    iconOffsetY: Dp = 0.dp,
 ) {
     val reducedMotion = rememberReducedMotion()
     val animated = pressEffect != IridePressEffect.None && !reducedMotion
@@ -153,6 +155,7 @@ fun IrideOutlineIconButton(
                 tint = tint,
                 modifier = Modifier
                     .size(iconSize)
+                    .offset(y = iconOffsetY)
                     .then(
                         if (!animated) {
                             Modifier
@@ -167,7 +170,12 @@ fun IrideOutlineIconButton(
                                         scaleY = s
                                     }
 
-                                    IridePressEffect.Spin -> rotationZ = 360f * t
+                                    IridePressEffect.Spin -> {
+                                        rotationZ = 360f * t
+                                        val scale = 1f - sin(2f * PI.toFloat() * t) * 0.12f
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
 
                                     IridePressEffect.Shake ->
                                         rotationZ = sin(t * PI.toFloat() * 3f) * 6f * (1f - t)

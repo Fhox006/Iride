@@ -1,5 +1,11 @@
 package com.metrolist.music.ui.player
 
+/** History sits above the queue, so the latest listen must be nearest its lower edge. */
+internal fun <K> queueHistoryOldestFirst(newestFirst: List<K>, manualOrder: List<K>): List<K> {
+    val ranks = manualOrder.withIndex().associate { it.value to it.index }
+    return newestFirst.asReversed().sortedBy { ranks[it] ?: Int.MAX_VALUE }
+}
+
 /** Remembers manual order independently of temporary mood priorities and timeline indices. */
 internal class IrideMp3QueueOrder<K> {
     private val baseline = mutableListOf<K>()

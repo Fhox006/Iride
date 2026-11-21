@@ -30,19 +30,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.datastore.preferences.core.edit
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
 import com.metrolist.music.constants.Android14AcknowledgedBuildKey
+import com.metrolist.music.constants.ButtonNavigationAcceptedKey
 import com.metrolist.music.constants.GestureSetupRequiredKey
 import com.metrolist.music.constants.GestureTutorialCompletedKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.component.rememberFolioDeviceProfile
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.rememberReducedMotion
@@ -58,16 +59,14 @@ internal fun DeviceExperienceGate(mode: SystemNavigationMode) {
     val onboardingCompleted by rememberPreference(OnboardingCompletedKey, false)
     val tutorialCompleted by rememberPreference(GestureTutorialCompletedKey, false)
     val acceptedBuild by rememberPreference(Android14AcknowledgedBuildKey, "")
+    val buttonNavigationAccepted by rememberPreference(ButtonNavigationAcceptedKey, false)
     val scope = rememberCoroutineScope()
-    val buildIdentity = remember(context) {
-        // lastUpdateTime also catches an installed update that reuses the same version code.
-        val installedAt = context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
-        "${BuildConfig.VERSION_CODE}:$installedAt"
-    }
+    val buildIdentity = remember(context) { deviceExperienceBuildIdentity(context) }
     var accepting by remember { mutableStateOf(false) }
     var acceptanceFailed by remember { mutableStateOf(false) }
     val panel = deviceExperiencePanel(
         Build.VERSION.SDK_INT, buildIdentity, acceptedBuild, onboardingCompleted, tutorialCompleted, mode,
+        buttonNavigationAccepted,
     )
     LaunchedEffect(mode) {
         if (needsNavigationSetup(mode)) {
@@ -88,11 +87,14 @@ internal fun DeviceExperienceGate(mode: SystemNavigationMode) {
             ),
         ) {
             if (panel == DeviceExperiencePanel.Android14) {
-                Android14Warning(
-                    accepting = accepting,
+                var fullMotionPreview by rememberSaveable { mutableStateOf(false) }
+                DevicePerformancePage(
+                    device = rememberFolioDeviceProfile(),
+                    fullMotion = fullMotionPreview,
+                    onFullMotionChange = { fullMotionPreview = it },
+                    continueEnabled = !accepting,
                     saveFailed = acceptanceFailed,
-                    onExit = { context.experienceActivity()?.finishAndRemoveTask() },
-                    onAccept = {
+                    onNext = {
                         if (!accepting) {
                             accepting = true
                             scope.launch {
@@ -114,24 +116,15 @@ internal fun DeviceExperienceGate(mode: SystemNavigationMode) {
     }
 }
 
+internal fun deviceExperienceBuildIdentity(context: Context): String {
+    val installedAt = context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
+    return "${BuildConfig.VERSION_CODE}:$installedAt"
+}
+
 private tailrec fun Context.experienceActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.experienceActivity()
     else -> null
-}
-
-@Composable
-private fun Android14Warning(accepting: Boolean, saveFailed: Boolean, onExit: () -> Unit, onAccept: () -> Unit) {
-    ExperiencePage(
-        title = stringResource(R.string.experience_android14_title),
-        description = stringResource(R.string.experience_android14_body),
-        illustration = { NavigationMotionIllustration(NavigationDemo.Compatibility) },
-        actions = {
-            ExperienceButton(stringResource(R.string.experience_exit), onExit)
-            ExperienceButton(stringResource(R.string.experience_android14_continue), onAccept, secondary = true, enabled = !accepting)
-            if (saveFailed) ExperienceBody(stringResource(R.string.experience_save_failed))
-        },
-    )
 }
 
 @Composable
@@ -158,7 +151,7 @@ internal fun GestureNavigationFlow(
         label = "gesture setup to tutorial",
     ) { gesturesEnabled ->
         if (!gesturesEnabled) {
-            GestureSetupPage(applyInsets = applyInsets)
+            GestureSetupPage(applyInsets = applyInsets, onContinueWithoutGestures = onComplete)
         } else {
             GestureTutorialPage(
                 applyInsets = applyInsets,
@@ -189,10 +182,23 @@ internal fun GestureNavigationFlow(
 }
 
 @Composable
-internal fun GestureSetupPage(applyInsets: Boolean = true) {
+internal fun GestureSetupPage(
+    applyInsets: Boolean = true,
+    onContinueWithoutGestures: suspend () -> Unit = {},
+) {
     val context = LocalContext.current
     val guide = remember { navigationSettingsGuide(Build.MANUFACTURER, Build.BRAND, Build.VERSION.SDK_INT) }
     var destination by rememberSaveable { mutableStateOf<NavigationSettingsDestination?>(null) }
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    if (confirming && LocalExperienceVisible.current) {
+        ButtonNavigationConfirmation(
+            onDismiss = { confirming = false },
+            onContinue = {
+                onContinueWithoutGestures()
+                confirming = false
+            },
+        )
+    }
     val directSettings = remember(context) { canOpenNavigationSettings(context) }
     val showPath = !directSettings || (destination != null && destination != NavigationSettingsDestination.Navigation)
     val path = if (guide.verifiedFamily) {
@@ -215,6 +221,7 @@ internal fun GestureSetupPage(applyInsets: Boolean = true) {
                 stringResource(R.string.experience_open_settings),
                 onClick = { destination = openNavigationSettings(context) },
             )
+            ExperienceButton(stringResource(R.string.navigation_continue_anyway), { confirming = true }, secondary = true)
         },
     )
 }
@@ -249,7 +256,6 @@ internal fun ExperiencePage(
     description: String? = null,
     illustration: @Composable () -> Unit,
     applyInsets: Boolean = true,
-    illustrationMaxHeight: Dp? = null,
     details: @Composable ColumnScope.() -> Unit = {},
     actions: @Composable ColumnScope.() -> Unit,
 ) {
@@ -257,7 +263,8 @@ internal fun ExperiencePage(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .then(if (applyInsets) Modifier.safeDrawingPadding() else Modifier),
     ) {
-        val compact = maxHeight < 640.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+        val compact = maxHeight < 640.dp ||
+            androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
         val illustrationHeight = (maxHeight * 0.42f).coerceIn(270.dp, 350.dp)
         Column(
             Modifier.widthIn(max = 520.dp).fillMaxSize().align(Alignment.TopCenter)
@@ -272,8 +279,7 @@ internal fun ExperiencePage(
             )
             Box(
                 Modifier.fillMaxWidth().then(
-                    if (illustrationMaxHeight != null) Modifier.height(illustrationMaxHeight).padding(vertical = 16.dp)
-                    else if (compact) Modifier.height(illustrationHeight).padding(vertical = 24.dp)
+                    if (compact) Modifier.height(illustrationHeight).padding(vertical = 24.dp)
                     else Modifier.weight(1f).padding(vertical = 28.dp),
                 ),
                 contentAlignment = Alignment.Center,
@@ -286,7 +292,6 @@ internal fun ExperiencePage(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 details()
             }
-            if (illustrationMaxHeight != null && !compact) Spacer(Modifier.weight(1f))
             Column(Modifier.fillMaxWidth().padding(top = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 actions()
             }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.windowInsetsPadding
-import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -216,9 +215,8 @@ private val LYRICS_ITEM_FALLBACK_HEIGHT_DP = 68.dp
 private val LYRICS_ITEM_GAP_DP = 16.dp
 private val LYRICS_FADE_TOP_DP = 130.dp
 private val LYRICS_FADE_BOTTOM_DP = 160.dp
-private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
-private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
 private const val LAST_LINE_TAIL_MS = 10000L
+private const val LYRICS_POSITION_DISCONTINUITY_THRESHOLD_MS = 600L
 
 // Once playback passes the last line, the whole block drifts down so that it rests in the
 // lower part of the screen instead of hovering at the reading anchor.
@@ -582,14 +580,31 @@ fun ExperimentalLyrics(
     var lastMainMaxSeen by remember(lyricsText, lines) { mutableIntStateOf(-1) }
     var smoothPositionForSync by remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(lyricsText, lines) {
+    LaunchedEffect(mediaMetadata?.id, lyricsText, lines) {
         if (lyricsText.isNullOrEmpty() || lines.isEmpty()) {
             activeLineIndices = emptySet()
+            scrollTargetIndex = -1
+            previousScrollActiveIndices = emptySet()
+            lastAssignedScrollTarget = -1
+            deferredCurrentLineIndex = 0
+            lyricsEnded = false
+            isSeeking = false
             return@LaunchedEffect
         }
 
         var lastPlayerPos = playerConnection.player.currentPosition
         var lastUpdateTime = System.currentTimeMillis()
+        var lastSyncPosition = lastPlayerPos
+        var lastSyncTime = lastUpdateTime
+
+        // Progressive providers can replace lyric lines mid-song; old indices then point
+        // at different lyrics, so restart tracking from the live playhead.
+        scrollTargetIndex = -1
+        activeLineIndices = emptySet()
+        previousScrollActiveIndices = emptySet()
+        lastAssignedScrollTarget = -1
+        deferredCurrentLineIndex = 0
+        lyricsEnded = false
 
         while (isActive) {
             // Full-rate tracking only while playback runs: a paused song needs no 60 fps
@@ -610,6 +625,16 @@ fun ExperimentalLyrics(
                 val elapsed = now - lastUpdateTime
                 lastPlayerPos + (if (playerConnection.player.isPlaying) elapsed else 0)
             }
+
+            val sampleElapsed = (now - lastSyncTime).coerceAtLeast(0L)
+            val expectedAdvance = if (playerConnection.player.isPlaying) {
+                (sampleElapsed * playerConnection.player.playbackParameters.speed).toLong()
+            } else 0L
+            val positionDiscontinuity = !isSeeking &&
+                kotlin.math.abs((position - lastSyncPosition) - expectedAdvance) >
+                LYRICS_POSITION_DISCONTINUITY_THRESHOLD_MS
+            lastSyncPosition = position
+            lastSyncTime = now
 
             currentPositionState = position
             smoothPositionForSync = position
@@ -652,7 +677,7 @@ fun ExperimentalLyrics(
             val anyStillActive = scrollActiveIndices.isNotEmpty()
 
             val shouldScroll = when {
-                isSeeking -> true
+                isSeeking || positionDiscontinuity -> true
                 !isCurrentTargetStillActive && anyStillActive && scrollMax > scrollTargetIndex -> true
 
                 !isCurrentTargetStillActive && !anyStillActive && previousScrollActiveIndices.isNotEmpty() -> true
@@ -675,7 +700,7 @@ fun ExperimentalLyrics(
                     }
                     else -> scrollMax
                 }
-                if (targetToScroll != -1 && (isSeeking || targetToScroll > scrollTargetIndex)) {
+                if (targetToScroll != -1 && (isSeeking || positionDiscontinuity || targetToScroll > scrollTargetIndex)) {
                     lastAssignedScrollTarget = scrollTargetIndex
                     scrollTargetIndex = targetToScroll
                 }
@@ -1228,7 +1253,7 @@ fun ExperimentalLyrics(
                                 // what keeps lines from ever overlapping during reflow.
                                 morphing()
                             ) snap()
-                            else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
+                            else lyricsStaggeredScrollSpec(distance),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
                         val lineOpacity = if (compactPresentation && isSynced &&
@@ -1283,7 +1308,7 @@ fun ExperimentalLyrics(
                                         isSelectionModeActive = isSelectionModeActive,
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS,
-                                        playerConnection = playerConnection,
+                                        player = playerConnection.player,
                                         // Font follows the panel↔fullscreen morph: the
                                         // container is the frame itself, so text always
                                         // lives inside it — no cross-surface math.
@@ -1298,6 +1323,7 @@ fun ExperimentalLyrics(
                                         enabledLanguages = enabledLanguages,
                                         romanizeLyrics = (currentSong?.romanizeLyrics ?: true) && romanizeEnabled,
                                         lyricsBlurEnabled = true,
+                                        inactiveLyricsAlphaMultiplier = if (pillsController != null) 1.2f else 1f,
                                         onSizeChanged = { itemHeights[listIndex] = it },
                                         onClick = {
                                             if (isSelectionModeActive) {
@@ -1437,7 +1463,7 @@ fun ExperimentalLyrics(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Box(Modifier.padding(32.dp)) {
-                        Text("Generating image..." + "\n" + "Please wait")
+                        Text(stringResource(R.string.generating_image) + "\n" + stringResource(R.string.please_wait))
                     }
                 }
             }
@@ -1503,9 +1529,9 @@ fun ExperimentalLyrics(
                                 type = "image/png"
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }, "Share lyrics"))
+                            }, context.getString(R.string.share_lyrics)))
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to create image: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.failed_to_create_image, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                         } finally {
                             showProgressDialog = false
                         }
@@ -1522,7 +1548,7 @@ fun ExperimentalLyrics(
                             clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, "Lyrics image", uri))
                             Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to create image: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.failed_to_create_image, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                         } finally {
                             showProgressDialog = false
                         }

@@ -116,7 +116,7 @@ internal fun LyricsTranslationHeader(
                         color = Color.White,
                     )
                     Text(
-                        text = "Translating…",
+                        text = stringResource(R.string.ai_translating_lyrics),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White,
                     )
@@ -150,7 +150,7 @@ internal fun LyricsTranslationHeader(
                         tint = Color.White,
                     )
                     Text(
-                        text = "Lyrics translated",
+                        text = stringResource(R.string.ai_lyrics_translated),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White,
                     )
@@ -345,14 +345,14 @@ internal fun LyricsColorPickerDialog(
                     onClick = { bgStyle = LyricsBackgroundStyle.SOLID },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Color")
+                    Text(stringResource(R.string.lyrics_share_solid))
                 }
                 IrideFolioChoiceButton(
                     selected = bgStyle == LyricsBackgroundStyle.BLUR,
                     onClick = { bgStyle = LyricsBackgroundStyle.BLUR },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Blur")
+                    Text(stringResource(R.string.lyrics_share_blur))
                 }
             }
 
@@ -450,24 +450,25 @@ internal fun LyricsApiSetupDialog(
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
-                Text("Translation setup",
+                Text(stringResource(R.string.lyrics_translation_setup),
                 style = MaterialTheme.typography.headlineSmall,)
             }
 
             Text(
-                "Provider: $provider",
+                stringResource(R.string.lyrics_translation_provider, provider),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(
-                "To use AI lyrics translation, an API key for the selected provider is required.",
+                stringResource(R.string.lyrics_translation_setup_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
             if (url.isNotEmpty()) {
+                val keyLinkText = stringResource(R.string.lyrics_translation_key_link, url)
                 val annotatedString = buildAnnotatedString {
-                    append("Get your API key at ")
+                    append(keyLinkText.substringBefore(url))
                     val start = length
                     append(url)
                     addLink(
@@ -483,6 +484,7 @@ internal fun LyricsApiSetupDialog(
                         start = start,
                         end = length,
                     )
+                    append(keyLinkText.substringAfter(url))
                 }
                 Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
             }
@@ -490,14 +492,14 @@ internal fun LyricsApiSetupDialog(
             OutlinedTextField(
                 value = keyInput,
                 onValueChange = { keyInput = it },
-                label = { Text("API Key") },
+                label = { Text(stringResource(R.string.ai_api_key)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
             )
 
             Text(
-                "Translation language",
+                stringResource(R.string.ai_target_language),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -597,7 +599,7 @@ internal fun LyricsLanguagePickerDialog(
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Translate to",
+                    text = stringResource(R.string.lyrics_translate_to),
                 style = MaterialTheme.typography.headlineSmall,
                 )
             }
@@ -605,7 +607,7 @@ internal fun LyricsLanguagePickerDialog(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search language") },
+                placeholder = { Text(stringResource(R.string.lyrics_search_language)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = FolioShape(12.dp),
@@ -662,7 +664,7 @@ internal fun LyricsLanguagePickerDialog(
                 }
                 Spacer(Modifier.width(8.dp))
                 IrideFolioPrimaryButton(onClick = { onConfirm(selected) }) {
-                    Text("Translate")
+                    Text(stringResource(R.string.lyrics_translate_action))
                 }
             }
         }
@@ -718,15 +720,17 @@ internal fun GeminiSetupDialog(
                     modifier = Modifier.size(24.dp),
                     tint = primaryColor,
                 )
-                Text("AI Translation",
+                Text(stringResource(R.string.ai_lyrics_translation),
                 style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.textPrimary)
             }
 
             val linkUrl = "https://ai.google.dev/gemini-api"
+            val linkLabel = "ai.google.dev/gemini-api"
+            val linkText = stringResource(R.string.lyrics_gemini_setup_link, linkLabel)
             val annotatedString = buildAnnotatedString {
-                append("To get started, visit ")
+                append(linkText.substringBefore(linkLabel))
                 val start = length
-                append("ai.google.dev/gemini-api")
+                append(linkLabel)
                 addLink(
                     LinkAnnotation.Url(
                         url = linkUrl,
@@ -735,7 +739,7 @@ internal fun GeminiSetupDialog(
                     start = start,
                     end = length,
                 )
-                append(", configure a project, then start creating an API key and paste it below.")
+                append(linkText.substringAfter(linkLabel))
             }
             Text(annotatedString, style = bodyStyle, color = MaterialTheme.colorScheme.textPrimary)
 
@@ -745,7 +749,7 @@ internal fun GeminiSetupDialog(
                     keyInput = value
                     isApiKeyValid = value.isNotBlank()
                 },
-                label = { Text("Gemini API Key", style = smallStyle) },
+                label = { Text(stringResource(R.string.ai_fast_integration_key_label), style = smallStyle) },
                 placeholder = { Text("AIzaSyA0q.....", style = smallStyle) },
                 textStyle = bodyStyle,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -760,13 +764,13 @@ internal fun GeminiSetupDialog(
             )
 
             Text(
-                "If something doesn't work, you can explore more in Settings",
+                stringResource(R.string.lyrics_gemini_setup_help),
                 style = smallStyle,
                 color = MaterialTheme.colorScheme.textSecondary,
             )
 
             Text(
-                "Translation language",
+                stringResource(R.string.ai_target_language),
                 style = smallStyle,
                 color = MaterialTheme.colorScheme.textSecondary,
             )
@@ -835,7 +839,7 @@ internal fun GeminiSetupDialog(
                     },
                     enabled = isApiKeyValid && selectedLanguage.isNotBlank(),
                 ) {
-                    Text("Next",)
+                    Text(stringResource(R.string.next),)
                 }
             }
         }

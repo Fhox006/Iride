@@ -25,7 +25,10 @@ internal class ArtistArtworkPresentation(private val now: () -> Long = System::n
 
     @Synchronized
     fun choose(id: String, suggested: String?): String? {
-        current(id)?.let { return it }
+        current(id)?.let {
+            if (!it.contains(".mzstatic.com/")) return it
+            entries.remove(id)
+        }
         if (suggested == null) return null
         entries[id] = Entry(suggested, 0, now() + retention)
         if (entries.size > 128) entries.entries.firstOrNull { it.value.users == 0 }?.let { entries.remove(it.key) }

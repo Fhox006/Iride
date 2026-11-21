@@ -4,7 +4,7 @@ package com.metrolist.music.ui.screens.settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -57,10 +57,14 @@ import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.screens.IrideMonthlyDropRoute
+import com.metrolist.music.ui.screens.monthlyDropTitle
+import com.metrolist.music.ui.screens.rememberCurrentMonthlyDrop
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.DiagnosticLog
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.utils.MonthlyDropPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val LEAD_DEVELOPER_GITHUB = "https://github.com/Fhox006"
@@ -149,6 +153,59 @@ fun AboutScreen(navController: NavController) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+
+                if (BuildConfig.UPDATER_AVAILABLE) {
+                    Material3SettingsGroup(
+                        items = listOf(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.update),
+                                title = { Text(stringResource(R.string.updater)) },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/updater") },
+                            ),
+                        ),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                if (MonthlyDropPolicy.enabledForBuild) {
+                    val drop = rememberCurrentMonthlyDrop()
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.iride_monthly_drop_settings_section),
+                        items =
+                            listOf(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.ic_logo),
+                                    iconContainerColor = Color(0xFF7549D5),
+                                    title = {
+                                        Text(
+                                            if (drop == null) stringResource(R.string.iride_monthly_drop_guide_title)
+                                            else monthlyDropTitle(drop.month),
+                                        )
+                                    },
+                                    trailingContent = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.navigate_next),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        navController.navigate(IrideMonthlyDropRoute)
+                                    },
+                                ),
+                            ),
+                    )
+                    Spacer(Modifier.height(12.dp))
                 }
 
                 Material3SettingsGroup(

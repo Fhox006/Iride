@@ -9,6 +9,7 @@
 
 package com.metrolist.music.recognition
 
+import com.metrolist.music.R
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -61,7 +62,7 @@ object MusicRecognitionService {
     @SuppressLint("MissingPermission")
     suspend fun recognize(context: Context): RecognitionStatus = withContext(Dispatchers.IO) {
         if (!hasRecordPermission(context)) {
-            return@withContext RecognitionStatus.Error("Microphone permission not granted")
+            return@withContext RecognitionStatus.Error(context.getString(R.string.recognition_microphone_permission_missing))
         }
         _recognitionStatus.value = RecognitionStatus.Listening
         try {
@@ -77,7 +78,7 @@ object MusicRecognitionService {
                 decodedAudio, 
                 VibraSignature.REQUIRED_SAMPLE_RATE
             ).getOrElse { error ->
-                _recognitionStatus.value = RecognitionStatus.Error("Failed to resample audio: ${error.message}")
+                _recognitionStatus.value = RecognitionStatus.Error(context.getString(R.string.recognition_audio_resample_failed, error.message.orEmpty()))
                 return@withContext _recognitionStatus.value
             }
             require(
@@ -87,11 +88,11 @@ object MusicRecognitionService {
                 ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN &&
                 resampledAudio.data.isNotEmpty() && 
                 resampledAudio.data.size % 2 == 0
-            ) { "Invalid audio format for fingerprint generation" }
+            ) { context.getString(R.string.recognition_invalid_audio_format) }
             val signature = try {
                 VibraSignature.fromI16(resampledAudio.data)
             } catch (e: Exception) {
-                _recognitionStatus.value = RecognitionStatus.Error("Failed to generate fingerprint: ${e.message}")
+                _recognitionStatus.value = RecognitionStatus.Error(context.getString(R.string.recognition_fingerprint_failed, e.message.orEmpty()))
                 return@withContext _recognitionStatus.value
             }
             val sampleDurationMs = (resampledAudio.data.size / 2) * 1000L / VibraSignature.REQUIRED_SAMPLE_RATE
@@ -101,9 +102,9 @@ object MusicRecognitionService {
                     _recognitionStatus.value = RecognitionStatus.Success(recognitionResult)
                 },
                 onFailure = { error ->
-                    val message = error.message ?: "Unknown error"
+                    val message = error.message ?: context.getString(R.string.error_unknown)
                     _recognitionStatus.value = if (message.contains("No match", ignoreCase = true)) {
-                        RecognitionStatus.NoMatch("No matches found. Try again with clearer audio.")
+                        RecognitionStatus.NoMatch(context.getString(R.string.recognition_no_match_audio))
                     } else {
                         RecognitionStatus.Error(message)
                     }
@@ -111,7 +112,7 @@ object MusicRecognitionService {
             )
             _recognitionStatus.value
         } catch (e: Exception) {
-            _recognitionStatus.value = RecognitionStatus.Error(e.message ?: "Recognition failed")
+            _recognitionStatus.value = RecognitionStatus.Error(e.message ?: context.getString(R.string.recognition_notification_failed))
             _recognitionStatus.value
         }
     }

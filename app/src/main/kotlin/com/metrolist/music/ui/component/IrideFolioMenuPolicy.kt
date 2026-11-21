@@ -44,6 +44,12 @@ internal fun folioActionOrder(id: Int?): Pair<Int, Int> =
         else -> 4 to 10
     }
 
+internal fun isDestructiveFolioAction(id: Int?): Boolean =
+    id == R.string.delete || id == R.string.delete_uploaded_songs
+
+internal fun folioActionSection(id: Int?, section: Int? = null): Int =
+    if (isDestructiveFolioAction(id)) Int.MAX_VALUE else section ?: folioActionOrder(id).first
+
 private val collectionPlaybackActions =
     setOf(R.string.play, R.string.shuffle, R.string.radio, R.string.start_radio)
 
@@ -57,7 +63,7 @@ internal fun <T> folioContextItems(
         .distinctBy { actionId(it) ?: it }
         .sortedWith(
             compareBy(
-                { section(it) ?: folioActionOrder(actionId(it)).first },
+                { folioActionSection(actionId(it), section(it)) },
                 { folioActionOrder(actionId(it)).second },
             )
         )

@@ -126,6 +126,7 @@ import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.MediaMetadataListItem
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.UnderlinePill
 import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.PlayerMenu
@@ -149,7 +150,7 @@ import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import kotlinx.coroutines.flow.first
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.snapshotFlow
 
@@ -762,7 +763,7 @@ fun InlineQueuePanel(
                         ReorderableItem(
                             state = reorderableState,
                             key = slot.key,
-                        ) {
+                        ) { isDragging ->
                             when (slot) {
                                 is QueueSlot.History -> {
                                     val historyItem = slot.metadata
@@ -788,10 +789,7 @@ fun InlineQueuePanel(
                                                         }
                                                     },
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.more_vert),
-                                                        contentDescription = null,
-                                                    )
+                                                    TrackOverflowIcon()
                                                 }
                                                 IconButton(
                                                     onClick = {},
@@ -896,10 +894,7 @@ fun InlineQueuePanel(
                                                             }
                                                         },
                                                     ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.more_vert),
-                                                            contentDescription = null,
-                                                        )
+                                                        TrackOverflowIcon()
                                                     }
                                                     IconButton(
                                                         onClick = {},
@@ -967,10 +962,7 @@ fun InlineQueuePanel(
                                                         }
                                                     },
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.more_vert),
-                                                        contentDescription = null,
-                                                    )
+                                                    TrackOverflowIcon()
                                                 }
                                                 IconButton(
                                                     onClick = {},

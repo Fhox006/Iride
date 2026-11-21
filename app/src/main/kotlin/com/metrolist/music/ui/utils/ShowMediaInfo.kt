@@ -9,7 +9,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.text.format.Formatter
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -118,7 +118,7 @@ fun ShowMediaInfo(videoId: String) {
 
                     val generalItems = listOf(
                         copyable(stringResource(R.string.song_title), song?.title, R.drawable.music_note),
-                        copyable(stringResource(R.string.song_artists), song?.artists?.joinToString { it.name }, R.drawable.person),
+                        copyable(stringResource(R.string.song_artists), song?.artists?.joinToString { it.name }, R.drawable.artist),
                         copyable(stringResource(R.string.album), song?.song?.albumName, R.drawable.album),
                         copyable(stringResource(R.string.duration), song?.song?.duration?.let { makeTimeString(it * 1000L) }, R.drawable.timer),
                     )

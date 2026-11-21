@@ -5,7 +5,7 @@
 
 package com.metrolist.music.ui.component
 
-import android.widget.Toast
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -136,7 +136,7 @@ fun CastButton(
                     .clip(RoundedCornerShape(20.dp))
                     .clickable {
                     if (currentMetadata == null && !isCasting) {
-                        Toast.makeText(context, "Play a song first to cast", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.cast_start_playback_first, Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
                     val currentRoute = if (isCasting) {
@@ -167,7 +167,7 @@ fun CastButton(
                     painter = painterResource(
                         if (isCasting) R.drawable.cast_connected else R.drawable.cast
                     ),
-                    contentDescription = if (isCasting) "Stop casting" else "Cast",
+                    contentDescription = stringResource(if (isCasting) R.string.cast_stop else R.string.cast_to_device),
                     colorFilter = ColorFilter.tint(
                         if (isCasting) MaterialTheme.colorScheme.primary else tintColor
                     ),

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
@@ -29,10 +30,12 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.InspectorInfo
@@ -73,6 +76,26 @@ class FrostBackdrop internal constructor(
     private val recordingListeners = mutableSetOf<() -> Unit>()
     internal var captureVersion = 0L
     internal var sampledVersion = -1L
+    private val sampleBounds = mutableMapOf<Any, Rect>()
+
+    internal fun updateSampleBounds(observer: Any, bounds: Rect?) {
+        val previous = sampleBounds[observer]
+        if (previous == bounds) return
+        if (bounds == null) sampleBounds.remove(observer) else sampleBounds[observer] = bounds
+        invalidateRecording()
+    }
+
+    internal fun sampleRect(): Rect? {
+        var result: Rect? = null
+        sampleBounds.values.forEach { bounds ->
+            val current = result
+            result = if (current == null) bounds else Rect(
+                minOf(current.left, bounds.left), minOf(current.top, bounds.top),
+                maxOf(current.right, bounds.right), maxOf(current.bottom, bounds.bottom),
+            )
+        }
+        return result
+    }
     private val invalidationListeners = mutableSetOf<() -> Unit>()
 
     internal fun addInvalidationListener(listener: () -> Unit) {
@@ -117,17 +140,20 @@ private data class FrostBackdropObserverElement(val backdrop: FrostBackdrop) :
 }
 
 private class FrostBackdropObserverNode(private var backdrop: FrostBackdrop) :
-    Modifier.Node(), DrawModifierNode {
+    Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode {
     private val onRecorded: () -> Unit = { invalidateDraw() }
+    private var bounds: Rect? = null
 
     override fun onAttach() {
         backdrop.addRecordingListener(onRecorded)
         backdrop.recordingRequests++
+        backdrop.updateSampleBounds(this, bounds)
     }
 
     override fun onDetach() {
         backdrop.removeRecordingListener(onRecorded)
         backdrop.recordingRequests--
+        backdrop.updateSampleBounds(this, null)
     }
 
     fun updateBackdrop(newBackdrop: FrostBackdrop) {
@@ -135,13 +161,22 @@ private class FrostBackdropObserverNode(private var backdrop: FrostBackdrop) :
         if (isAttached) {
             backdrop.removeRecordingListener(onRecorded)
             backdrop.recordingRequests--
+            backdrop.updateSampleBounds(this, null)
         }
         backdrop = newBackdrop
         if (isAttached) {
             backdrop.addRecordingListener(onRecorded)
             backdrop.recordingRequests++
+            backdrop.updateSampleBounds(this, bounds)
             invalidateDraw()
         }
+    }
+
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        val position = coordinates.positionOnScreen()
+        bounds = Rect(position.x, position.y,
+            position.x + coordinates.size.width, position.y + coordinates.size.height)
+        backdrop.updateSampleBounds(this, bounds)
     }
 
     override fun ContentDrawScope.draw() {
@@ -158,7 +193,7 @@ val LocalScreenFrostBackdrop = androidx.compose.runtime.staticCompositionLocalOf
 // Only the background, never the navigation/controls that sample the page's snapshot.
 val LocalScreenFrostBackground = androidx.compose.runtime.staticCompositionLocalOf<FrostBackdrop?> { null }
 
-/** Layers backing the frosted bar. Null when the device has no RenderEffect blur (API < 31). */
+/** Layers backing the frosted bar. Null when blur is unsupported or disabled by the active profile. */
 @Composable
 fun rememberFrostBackdrop(
     background: FrostBackdrop? = null,
@@ -169,7 +204,7 @@ fun rememberFrostBackdrop(
     stableBlur: Boolean = false,
     captureOnly: Boolean = false,
 ): FrostBackdrop? {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || blurredScale <= 0f) return null
     val content = rememberGraphicsLayer()
     val blurred = rememberGraphicsLayer()
     // Shared bottom panels sample one rasterized page, rather than replaying changing lazy-item
@@ -238,22 +273,33 @@ fun Modifier.recordFrostBackdrop(
                 backdrop.notifyRecorded()
                 return@drawWithContent
             }
+            if (layer.size.width <= 0 || layer.size.height <= 0) return@drawWithContent
             // Flatten transparent text/images over the actual background before blurring. Otherwise
             // the sharp original pixels show through the transparent parts of the blurred glyphs.
             backdrop.blurred.alpha = 1f
-            val sampleHeight = (backdrop.blurredSampleHeightPx ?: layer.size.height)
-                .coerceIn(1, layer.size.height.coerceAtLeast(1))
-            val sampleTop = layer.size.height - sampleHeight
+            // Blur only the area actually sampled by glass, including Gaussian support.
+            // The page display list stays at full resolution; the unused screen never
+            // becomes an offscreen blur texture during a fling.
+            val requested = backdrop.sampleRect()?.translate(-backdrop.positionOnScreen)
+            val padding = IrideFolio.FrostedBlurRadius.toPx() * 3f
+            val sampleLeft = requested?.let { (it.left - padding).toInt().coerceIn(0, layer.size.width - 1) } ?: 0
+            val sampleTop = requested?.let { (it.top - padding).toInt().coerceIn(0, layer.size.height - 1) }
+                ?: (layer.size.height - (backdrop.blurredSampleHeightPx ?: layer.size.height)
+                    .coerceIn(1, layer.size.height.coerceAtLeast(1)))
+            val sampleRight = requested?.let { (it.right + padding).roundToInt().coerceIn(sampleLeft + 1, layer.size.width) }
+                ?: layer.size.width
+            val sampleBottom = requested?.let { (it.bottom + padding).roundToInt().coerceIn(sampleTop + 1, layer.size.height) }
+                ?: layer.size.height
             val sampleScale = backdrop.blurredScale
-            backdrop.blurredOffset = Offset(0f, sampleTop.toFloat())
+            backdrop.blurredOffset = Offset(sampleLeft.toFloat(), sampleTop.toFloat())
             val sampleSize = IntSize(
-                (layer.size.width * sampleScale).roundToInt().coerceAtLeast(1),
-                (sampleHeight * sampleScale).roundToInt().coerceAtLeast(1),
+                ((sampleRight - sampleLeft) * sampleScale).roundToInt().coerceAtLeast(1),
+                ((sampleBottom - sampleTop) * sampleScale).roundToInt().coerceAtLeast(1),
             )
             backdrop.blurred.record(size = sampleSize) {
                 drawRect(backdrop.backgroundColor)
                 scale(sampleScale, pivot = Offset.Zero) {
-                    translate(top = -sampleTop.toFloat()) {
+                    translate(left = -sampleLeft.toFloat(), top = -sampleTop.toFloat()) {
                         val background = backdrop.background
                         if (background != null && background.content.size.width > 0 && background.content.size.height > 0) {
                             translate(

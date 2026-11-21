@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens
 
+import android.text.format.DateFormat
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.Box
@@ -318,8 +320,11 @@ private fun releaseDetails(release: NewRelease): String {
         NewReleaseKind.EP -> R.string.new_releases_ep
         NewReleaseKind.SINGLE -> R.string.new_releases_single
     })
-    val date = remember(release.releaseDate) {
-        runCatching { LocalDate.parse(release.releaseDate).format(DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH)) }
+    val locale = LocalConfiguration.current.locales[0]
+    val date = remember(release.releaseDate, locale) {
+        runCatching { LocalDate.parse(release.releaseDate).format(DateTimeFormatter.ofPattern(
+            DateFormat.getBestDateTimePattern(locale, "MMMd"), locale,
+        )) }
             .getOrDefault(release.releaseDate)
     }
     return stringResource(R.string.new_releases_details, kind, date)

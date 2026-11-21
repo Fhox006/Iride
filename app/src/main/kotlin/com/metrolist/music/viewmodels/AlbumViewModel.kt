@@ -17,21 +17,26 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.pages.AlbumPage
 import com.metrolist.music.discovery.AlbumDiscoveryRepository
-import com.metrolist.music.data.remote.MusicBrainzRepository
+import com.metrolist.music.data.remote.AlbumReleaseDateRepository
+import com.metrolist.music.data.remote.AlbumDeluxeRepository
+import com.metrolist.music.utils.AlbumDeluxeGroupingEnabled
+import com.metrolist.music.utils.AlbumDeluxeBlock
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -46,11 +51,13 @@ data class AlbumDiscoveryState(
 )
 
 @HiltViewModel
+@OptIn(FlowPreview::class)
 class AlbumViewModel
 @Inject
 constructor(
     private val database: MusicDatabase,
-    private val musicBrainzRepository: MusicBrainzRepository,
+    private val releaseDateRepository: AlbumReleaseDateRepository,
+    private val deluxeRepository: AlbumDeluxeRepository,
     private val networkConnectivity: NetworkConnectivityObserver,
     private val discoveryRepository: AlbumDiscoveryRepository,
     savedStateHandle: SavedStateHandle,
@@ -61,12 +68,35 @@ constructor(
         const val ReuseWindowMs = 120_000L
         val snapshots = LruCache<String, AlbumWithSongs>(8)
         val pages = LruCache<String, CachedAlbumPage>(8)
+        val deluxeBlocks = LruCache<String, AlbumDeluxeBlock>(32)
     }
 
     val albumId = savedStateHandle.get<String>("albumId")!!
     private val cachedPage = pages.get(albumId)
     val playlistId = MutableStateFlow(cachedPage?.page?.album?.playlistId.orEmpty())
     val unavailableSongs = MutableStateFlow(cachedPage?.page?.unavailableSongs.orEmpty())
+    private val _deluxeBlock = MutableStateFlow(deluxeBlocks.get(albumId))
+    val deluxeBlock = _deluxeBlock.asStateFlow()
+    private var deluxeJob: Job? = null
+
+    private fun loadDeluxeBlock(page: AlbumPage) {
+        if (!AlbumDeluxeGroupingEnabled) return
+        deluxeJob?.cancel()
+        _deluxeBlock.value = null
+        deluxeBlocks.remove(albumId)
+        deluxeJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                deluxeRepository.find(page) { block ->
+                    deluxeBlocks.put(albumId, block)
+                    _deluxeBlock.value = block
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.d(error, "Deluxe album metadata unavailable")
+            }
+        }
+    }
 
     val albumWithSongs =
         database
@@ -140,21 +170,21 @@ constructor(
 
     private val _hasError = MutableStateFlow(false)
     val hasError = _hasError.asStateFlow()
+    private var albumLoadJob: Job? = null
 
     init {
+        if (cachedPage != null && _deluxeBlock.value == null) loadDeluxeBlock(cachedPage.page)
         if (cachedPage == null || snapshots.get(albumId) == null ||
             SystemClock.elapsedRealtime() - cachedPage.loadedAt >= ReuseWindowMs
         ) fetchFromYouTube()
 
         viewModelScope.launch {
-            networkConnectivity.networkStatus
-                .drop(1)
-                .collect { connected ->
-                    if (connected && _hasError.value) {
-                        Timber.d("Network restored — auto-retrying album fetch for %s", albumId)
-                        retry()
-                    }
+            networkConnectivity.networkChanged.debounce(1_000L).collect {
+                if (networkConnectivity.networkStatus.value && (_hasError.value || albumLoadJob?.isActive == true)) {
+                    Timber.d("Network restored — auto-retrying album fetch for %s", albumId)
+                    retry()
                 }
+            }
         }
     }
 
@@ -182,11 +212,13 @@ constructor(
     }
 
     private fun fetchFromYouTube() {
-        viewModelScope.launch {
+        albumLoadJob?.cancel()
+        albumLoadJob = viewModelScope.launch {
             try {
                 withTimeout(60_000L) {
                     val album = database.album(albumId).first()
                     val ytResult = YouTube.album(albumId)
+                    currentCoroutineContext().ensureActive()
 
                     ytResult
                         .onSuccess { albumPage ->
@@ -197,10 +229,11 @@ constructor(
                                 if (album == null) {
                                     insert(albumPage)
                                 } else {
-                                    update(album.album, albumPage, album.artists)
+                                    update(album.album, albumPage)
                                 }
                             }
                             pages.put(albumId, CachedAlbumPage(albumPage, SystemClock.elapsedRealtime()))
+                            loadDeluxeBlock(albumPage)
                             _isLoading.value = false
                             discoveryPage = albumPage
                             val initial = discoveryRepository.usableAlbums(
@@ -221,29 +254,9 @@ constructor(
                             restoreCachedDiscovery()
                         }
 
-                    val albumPage = ytResult.getOrNull() ?: return@withTimeout
-
-                    val currentReleaseDate = albumPage.releaseDate ?: album?.album?.releaseDate
-                    val fullDate = Regex("""\d{4}-\d{2}-\d{2}""")
-
-                    if (currentReleaseDate == null || !fullDate.matches(currentReleaseDate)) {
+                    if (ytResult.isSuccess) {
                         viewModelScope.launch(Dispatchers.IO) {
-                            val releaseDate = YouTube.appleMusicAlbumReleaseDate(
-                                title = albumPage.album.title,
-                                artist = albumPage.album.artists?.firstOrNull()?.name,
-                                year = albumPage.album.year,
-                            ) ?: musicBrainzRepository.getAlbumReleaseDate(
-                                albumTitle = albumPage.album.title,
-                                artistName = albumPage.album.artists?.firstOrNull()?.name,
-                                year = albumPage.album.year,
-                            )
-                            if (releaseDate != null) {
-                                database.album(albumId).first()?.let { currentAlbum ->
-                                    database.query {
-                                        update(currentAlbum.album.copy(releaseDate = releaseDate))
-                                    }
-                                }
-                            }
+                            database.album(albumId).first()?.let { releaseDateRepository.enrich(it) }
                         }
                     }
                 }
@@ -252,6 +265,8 @@ constructor(
                 _isLoading.value = false
                 _discovery.value = _discovery.value.copy(albumsLoading = false)
                 restoreCachedDiscovery()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 reportException(e)
                 _hasError.value = true

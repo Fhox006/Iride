@@ -28,7 +28,11 @@ object ArtistMetadataResolver {
     private val cache = LinkedHashMap<String, CacheEntry>(128, 0.75f, true)
     private val pending = mutableMapOf<String, Deferred<Result<ArtistEntity?>>>()
 
-    private suspend fun lookup(key: String, load: suspend () -> ArtistEntity?): Result<ArtistEntity?> {
+    private suspend fun lookup(
+        key: String,
+        failureLifetime: Long = 60_000_000_000L,
+        load: suspend () -> ArtistEntity?,
+    ): Result<ArtistEntity?> {
         val request = synchronized(cache) {
             cache[key]?.takeIf { it.expiresAt > System.nanoTime() }?.let { return it.result }
             pending.getOrPut(key) {
@@ -43,7 +47,7 @@ object ArtistMetadataResolver {
                         Result.failure(error)
                     }
                     synchronized(cache) {
-                        val lifetime = if (result.getOrNull() != null) 900_000_000_000L else 60_000_000_000L
+                        val lifetime = if (result.getOrNull() != null) 900_000_000_000L else failureLifetime
                         cache[key] = CacheEntry(result, System.nanoTime() + lifetime)
                         while (cache.size > 128) cache.remove(cache.keys.first())
                     }
@@ -56,12 +60,13 @@ object ArtistMetadataResolver {
         return request.await()
     }
 
-    suspend fun withArtwork(database: MusicDatabase, artist: ArtistEntity): ArtistEntity = withContext(Dispatchers.IO) {
+    suspend fun withArtwork(database: MusicDatabase, artist: ArtistEntity, refresh: Boolean = false): ArtistEntity = withContext(Dispatchers.IO) {
         val saved = database.getArtistById(artist.id) ?: artist
-        if (!saved.thumbnailUrl.isNullOrBlank() || !saved.isYouTubeArtist || saved.isPrivatelyOwnedArtist) {
+        if ((!refresh && !saved.thumbnailUrl.isNullOrBlank()) || !saved.isYouTubeArtist || saved.isPrivatelyOwnedArtist || saved.isLocal) {
             return@withContext saved
         }
-        val fetched = lookup("id:${saved.id}") {
+        val key = if (refresh) "id:${saved.id}:refresh:${saved.thumbnailUrl}" else "id:${saved.id}"
+        val fetched = lookup(key, failureLifetime = 5_000_000_000L) {
             val item = YouTube.artist(saved.id).getOrThrow().artist
             item.thumbnail?.takeIf { it.isNotBlank() }?.let {
                 saved.copy(thumbnailUrl = it.resize(544, 544), channelId = item.channelId ?: saved.channelId)
@@ -71,7 +76,9 @@ object ArtistMetadataResolver {
         var updated = fetched
         database.withTransaction {
             val current = getArtistById(saved.id)
-            updated = (current ?: saved).copy(thumbnailUrl = fetched.thumbnailUrl, channelId = fetched.channelId)
+            updated = if (current != null && current.thumbnailUrl != saved.thumbnailUrl && !current.thumbnailUrl.isNullOrBlank()) {
+                current
+            } else (current ?: saved).copy(thumbnailUrl = fetched.thumbnailUrl, channelId = fetched.channelId ?: current?.channelId)
             if (current == null) insert(updated) else update(updated)
         }
         updated
@@ -122,8 +129,12 @@ object ArtistMetadataResolver {
             val result = credited?.let { Result.success(it) } ?: resolve(name, song)
             // Leave the original title intact on network failures so a later render can retry.
             if (result.isFailure) return@withContext song
-            resolved[name] = result.getOrNull()
+            val artist = result.getOrNull()
+                ?.takeIf { it.isYouTubeArtist && !it.isPrivatelyOwnedArtist }
+                ?: continue
+            resolved[name] = artist
         }
+        if (resolved.isEmpty()) return@withContext song
         database.withTransaction { linkFeaturedArtist(song, resolved) }
         // Unsaved online songs need the same verified credits without entering the library.
         val artists = song.orderedArtists.toMutableList()
@@ -136,7 +147,9 @@ object ArtistMetadataResolver {
                 if (placeholderIndex != null) artists.add(placeholderIndex, artist) else artists.add(artist)
             }
         }
-        song.copy(song = song.song.copy(title = extracted?.first ?: song.title), artists = artists, artistMaps = emptyList())
+        val title = extracted?.takeIf { (_, features) -> features.all { it in resolved } }?.first
+            ?: song.title
+        song.copy(song = song.song.copy(title = title), artists = artists, artistMaps = emptyList())
     }
 
     private fun ArtistItem.toEntity() = ArtistEntity(

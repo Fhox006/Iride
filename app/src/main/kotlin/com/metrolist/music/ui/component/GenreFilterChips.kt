@@ -144,8 +144,8 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): G
             return@LaunchedEffect
         }
 
-        delay(INITIAL_PILL_RENDER_DELAY_MS)
         isLoading = true
+        delay(INITIAL_PILL_RENDER_DELAY_MS)
         val semaphore = Semaphore(4)
         val fetchJob =
             launch {
@@ -186,9 +186,10 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): G
 fun GenrePillsRow(
     state: GenreFilterState,
     modifier: Modifier = Modifier,
+    showLoadingPlaceholder: Boolean = false,
 ) {
     val genres = state.sortedGenres
-    val showPlaceholder = genres.size <= 1 && state.isLoading
+    val showPlaceholder = genres.size <= 1 && (state.isLoading || showLoadingPlaceholder)
 
     AnimatedVisibility(
         visible = genres.size > 1 || showPlaceholder,
@@ -199,7 +200,7 @@ fun GenrePillsRow(
         if (genres.size > 1) {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp),
+                contentPadding = PaddingValues(horizontal = IrideFolio.TrackArtworkInset),
             ) {
                 items(genres, key = { it }) { genre ->
                     val selected = state.selectedGenre == genre
@@ -296,7 +297,7 @@ private fun GenrePillsPlaceholder(modifier: Modifier = Modifier) {
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = IrideFolio.TrackArtworkInset),
     ) {
         items(listOf(56.dp, 84.dp, 68.dp)) { width ->
             Box(

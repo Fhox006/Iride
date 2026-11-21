@@ -7,7 +7,6 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.shape.CircleShape
 
-
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
@@ -20,18 +19,22 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
@@ -51,6 +54,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
@@ -200,7 +204,7 @@ fun AppNavigationBar(
     NavigationBar(
         modifier = modifier,
         containerColor = containerColor,
-        contentColor = contentColor
+        contentColor = contentColor,
     ) {
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
@@ -236,50 +240,64 @@ fun AppNavigationBar(
                 }
             }
 
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = {
-                    if (!isSearchItem) {
-                        onItemClick(screen, currentIsSelected)
-                    }
-                },
-                interactionSource = interactionSource,
-                icon = {
-                    Box(modifier = Modifier.pressScale(interactionSource)) {
-                        if (screen == Screens.Account && accountImageUrl != null) {
-                            AsyncImage(
-                                model = accountImageUrl,
-                                contentDescription = stringResource(screen.titleId),
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                            )
-                        } else {
-                            Crossfade(
-                                targetState = isSelected,
-                                animationSpec = tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
-                                label = "navIcon",
-                            ) { selected ->
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (selected) screen.iconIdActive else screen.iconIdInactive
-                                    ),
-                                    contentDescription = stringResource(screen.titleId)
-                                )
-                            }
+            val selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer
+            val selectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            val labelColor = if (isSelected) MaterialTheme.colorScheme.onSurface else contentColor
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .selectable(
+                        selected = isSelected,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Tab,
+                    ) {
+                        if (!isSearchItem) {
+                            onItemClick(screen, currentIsSelected)
                         }
-                    }
-                },
-                label = if (!slimNav) {
-                    {
-                        Text(
-                            text = stringResource(screen.titleId),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 64.dp, height = 32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isSelected) selectedContainerColor else Color.Transparent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (screen == Screens.Account && accountImageUrl != null) {
+                        AsyncImage(
+                            model = accountImageUrl,
+                            contentDescription = stringResource(screen.titleId),
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape),
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isSelected) screen.iconIdActive else screen.iconIdInactive,
+                            ),
+                            contentDescription = stringResource(screen.titleId),
+                            tint = if (isSelected) selectedContentColor else contentColor,
                         )
                     }
-                } else null
-            )
+                }
+                if (!slimNav) {
+                    Text(
+                        text = stringResource(screen.titleId),
+                        color = labelColor,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -297,10 +315,6 @@ fun TopNavigationBar(
 ) {
     if (compact) {
         val leftItems = navigationItems.filter { it != Screens.Search && it != Screens.Account }
-        val searchSelected = remember(currentRoute) {
-            isRouteSelected(currentRoute, Screens.Search.route, navigationItems)
-        }
-        val currentSearchSelected by rememberUpdatedState(searchSelected)
         val accountSelected = remember(currentRoute) {
             isRouteSelected(currentRoute, Screens.Account.route, navigationItems)
         }
@@ -401,33 +415,6 @@ fun TopNavigationBar(
                 }
             }
 
-            Spacer(modifier = Modifier.size(8.dp))
-
-            val searchTint by animateColorAsState(
-                targetValue = if (searchSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
-                animationSpec = if (searchSelected) tween(220) else snap(),
-                label = "searchTint"
-            )
-            val searchInteractionSource = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .pressScale(searchInteractionSource, pressedScale = 0.85f)
-                    .clickable(
-                        interactionSource = searchInteractionSource,
-                        indication = null
-                    ) {
-                        onItemClick(Screens.Search, currentSearchSelected)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = Screens.Search.iconIdInactive),
-                    contentDescription = stringResource(Screens.Search.titleId),
-                    tint = searchTint,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
         }
         return
     }

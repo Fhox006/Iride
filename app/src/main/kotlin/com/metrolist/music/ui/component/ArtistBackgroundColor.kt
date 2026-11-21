@@ -22,6 +22,23 @@ private fun artistColorGroup(pixel: Int): Int {
     return 4 + (hue * 4f).roundToInt() % 24 * 3 + (saturation * 3f).toInt().coerceAtMost(2)
 }
 
+private fun isPinkArtistPigment(pixel: Int): Boolean {
+    val red = pixel ushr 16 and 255
+    val green = pixel ushr 8 and 255
+    val blue = pixel and 255
+    val maximum = maxOf(red, green, blue)
+    val minimum = minOf(red, green, blue)
+    val delta = maximum - minimum
+    if (delta == 0 || maximum == 0) return false
+    val hue = when (maximum) {
+        red -> 60f * (green - blue).toFloat() / delta
+        green -> 60f * ((blue - red).toFloat() / delta + 2f)
+        else -> 60f * ((red - green).toFloat() / delta + 4f)
+    }.let { if (it < 0f) it + 360f else it }
+    val saturation = delta.toFloat() / maximum
+    return saturation >= 0.18f && hue >= 285f
+}
+
 private fun artistRgbBucket(pixel: Int): Int =
     ((pixel ushr 12) and 0xF00) or ((pixel ushr 8) and 0xF0) or ((pixel ushr 4) and 0xF)
 
@@ -29,6 +46,7 @@ private fun artistRgbBucket(pixel: Int): Int =
 internal fun artistBackgroundColor(pixels: IntArray, width: Int, height: Int): Int {
     require(width > 0 && height > 0 && pixels.size == width * height)
     val population = IntArray(76)
+    val nonPinkPopulation = IntArray(76)
     val edgePopulation = IntArray(76)
     val edgeWeight = DoubleArray(76)
     var visiblePixels = 0
@@ -46,6 +64,7 @@ internal fun artistBackgroundColor(pixels: IntArray, width: Int, height: Int): I
         if (!isArtistBackgroundPigment(pixel)) return@forEachIndexed
         val group = artistColorGroup(pixel)
         population[group]++
+        if (!isPinkArtistPigment(pixel)) nonPinkPopulation[group]++
         if (edge(index)) {
             edgePopulation[group]++
             edgeWeight[group] += verticalWeight(index)
@@ -54,18 +73,30 @@ internal fun artistBackgroundColor(pixels: IntArray, width: Int, height: Int): I
     if (visiblePixels == 0) return 0xFF000000.toInt()
     // Require meaningful coverage, rather than letting a bright detail or skin in the
     // center win. Lower side edges count more, but black clothing does not veto a backdrop.
+    val grayscalePopulation = population.take(4).sum()
+    val secondaryPigmentCandidates = population.indices.filter { group ->
+        group >= 4 && population[group] >= visiblePixels * 0.04 &&
+            nonPinkPopulation[group] >= visiblePixels * 0.035 &&
+            edgePopulation[group] >= edgePixels * 0.15
+    }
+    val useSecondaryPigment = grayscalePopulation >= visiblePixels * 0.55 && secondaryPigmentCandidates.isNotEmpty()
     val candidates = population.indices.filter {
         population[it] >= visiblePixels * 0.06 && edgePopulation[it] >= edgePixels * 0.15
     }
     // Detailed scenery still supplies a pigment: never discard a photo's color for being a midtone.
-    val selectedGroup = (candidates.ifEmpty { population.indices.filter { population[it] > 0 } })
-        .maxBy { edgeWeight[it] * 4.0 + population[it] * 0.1 }
+    val selectedGroup = if (useSecondaryPigment) {
+        secondaryPigmentCandidates.maxBy { population[it] * 1.0 + edgeWeight[it] * 2.0 }
+    } else {
+        (candidates.ifEmpty { population.indices.filter { population[it] > 0 } })
+            .maxBy { edgeWeight[it] * 4.0 + population[it] * 0.1 }
+    }
     val bucketWeight = DoubleArray(4096)
     val redSum = DoubleArray(4096)
     val greenSum = DoubleArray(4096)
     val blueSum = DoubleArray(4096)
     pixels.forEachIndexed { index, pixel ->
-        if (!isArtistBackgroundPigment(pixel) || artistColorGroup(pixel) != selectedGroup) return@forEachIndexed
+        if (!isArtistBackgroundPigment(pixel) || artistColorGroup(pixel) != selectedGroup ||
+            (useSecondaryPigment && isPinkArtistPigment(pixel))) return@forEachIndexed
         val bucket = artistRgbBucket(pixel)
         val weight = 1.0 + if (edge(index)) 4.0 * verticalWeight(index) else 0.0
         bucketWeight[bucket] += weight
@@ -81,6 +112,7 @@ internal fun artistBackgroundColor(pixels: IntArray, width: Int, height: Int): I
     var nearest = Double.POSITIVE_INFINITY
     pixels.forEach { pixel ->
         if (!isArtistBackgroundPigment(pixel) || artistColorGroup(pixel) != selectedGroup ||
+            (useSecondaryPigment && isPinkArtistPigment(pixel)) ||
             artistRgbBucket(pixel) != selectedBucket) return@forEach
         val dr = ((pixel ushr 16) and 255) - red
         val dg = ((pixel ushr 8) and 255) - green

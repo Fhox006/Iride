@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,7 +51,7 @@ fun CastPickerSheet(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = if (currentlyConnectedRoute != null) "Casting" else "Cast to",
+                text = stringResource(if (currentlyConnectedRoute != null) R.string.current_casting else R.string.cast_to_device),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -68,7 +69,7 @@ fun CastPickerSheet(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = "Connecting...",
+                    text = stringResource(R.string.cast_connecting),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -94,13 +95,13 @@ fun CastPickerSheet(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Connected",
+                        text = stringResource(R.string.cast_connected),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
-                    text = "Disconnect",
+                    text = stringResource(R.string.disconnect),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -120,13 +121,13 @@ fun CastPickerSheet(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "No Cast devices found",
+                    text = stringResource(R.string.cast_device_missing),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Make sure your device is on the same Wi-Fi network",
+                    text = stringResource(R.string.cast_same_network),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )

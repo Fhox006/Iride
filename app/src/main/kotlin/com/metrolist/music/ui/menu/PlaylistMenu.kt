@@ -3,7 +3,7 @@ package com.metrolist.music.ui.menu
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -243,6 +243,8 @@ fun PlaylistMenu(
         onDismiss = { showChoosePlaylistDialog = false },
     )
     IrideFolioContextMenu(
+        playlistId = playlist.playlist.browseId ?: playlist.id,
+        legacyCustomImage = com.metrolist.music.db.entities.isCustomPlaylistImage(playlist.playlist.thumbnailUrl),
         items =
             buildList {
                     add(
@@ -329,7 +331,7 @@ fun PlaylistMenu(
                                             },
                                             icon = {
                                                 Icon(
-                                                    painter = painterResource(R.drawable.offline),
+                                                    painter = painterResource(R.drawable.track_downloaded),
                                                     contentDescription = null,
                                                 )
                                             },
@@ -372,7 +374,7 @@ fun PlaylistMenu(
                                             },
                                             icon = {
                                                 Icon(
-                                                    painter = painterResource(R.drawable.download),
+                                                    painter = painterResource(R.drawable.track_download),
                                                     contentDescription = null,
                                                 )
                                             },

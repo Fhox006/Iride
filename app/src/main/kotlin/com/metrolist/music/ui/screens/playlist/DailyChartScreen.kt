@@ -1,7 +1,7 @@
 package com.metrolist.music.ui.screens.playlist
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
 import androidx.compose.foundation.layout.asPaddingValues
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,7 +25,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -56,22 +54,28 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.repository.ChartTrackStatus
-import com.metrolist.music.ui.component.IrideChartPoster
+import com.metrolist.music.repository.ChartPlaylistIdentity
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.IrideFolioRankedSongRow
 import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
+import com.metrolist.music.ui.component.IrideFolioMenuAction
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.PlaylistPageCapabilities
+import com.metrolist.music.ui.component.playlistPageSections
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.ListItem
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.cleanTrackTitle
+import com.metrolist.music.ui.component.formatTrackArtistCredits
 import com.metrolist.music.ui.component.chartCountryName
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.utils.rememberPreference
@@ -87,7 +91,7 @@ import sv.lib.squircleshape.SquircleShape
 
 @Composable
 internal fun chartTitle(market: ChartMarket, count: Int = 100, englishTitle: Boolean = false): String =
-    stringResource(R.string.new_charts_playlist_title, chartCountryName(market.code))
+    stringResource(R.string.new_charts_playlist_title, chartCountryName(market.code, LocalConfiguration.current.locales[0], stringResource(R.string.new_charts_global)))
 
 internal fun chartDate(date: String) = LocalDate.parse(date).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
 
@@ -106,7 +110,6 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val chart = charts[viewModel.market.code]?.chart
     val title = chartTitle(viewModel.market)
-    val country = chartCountryName(viewModel.market.code)
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -132,6 +135,30 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
     }
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
+    val onChartDownloadClick: () -> Unit = {
+        if (!preparingDownload) scope.launch {
+            if (downloadState == Download.STATE_COMPLETED || downloadState == Download.STATE_DOWNLOADING) {
+                resolvedSongs.forEach { song ->
+                    DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, song.id, false)
+                }
+            } else {
+                preparingDownload = true
+                try {
+                    viewModel.resolveDownloadSongs().filterNot { hideExplicit && it.explicit }.forEach { song ->
+                        val request = DownloadRequest.Builder(song.id, song.id.toUri()).setCustomCacheKey(song.id)
+                            .setData(song.title.toByteArray()).build()
+                        DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    timber.log.Timber.w(error, "Could not prepare chart download")
+                } finally {
+                    preparingDownload = false
+                }
+            }
+        }
+    }
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -148,6 +175,22 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
         title = title, showPageTitle = false, showTopBar = true,
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
+        menuSections = if (chart == null) emptyList() else listOf(
+            listOf(
+                IrideFolioMenuAction(
+                    label = stringResource(
+                        when (downloadState) {
+                            Download.STATE_COMPLETED -> R.string.remove_download
+                            Download.STATE_DOWNLOADING,
+                            Download.STATE_QUEUED -> R.string.folio_cancel_download
+                            else -> R.string.action_download
+                        },
+                    ),
+                    icon = if (downloadState == Download.STATE_COMPLETED) R.drawable.track_downloaded else R.drawable.track_download,
+                    onClick = onChartDownloadClick,
+                ),
+            ),
+        ),
         actions = {
             IrideOutlineIconButton(onClick = viewModel::toggleBookmark,
                 icon = if (bookmarked) R.drawable.favorite else R.drawable.favorite_border,
@@ -155,18 +198,19 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                 enabled = chart != null && !saving, size = 40.dp, iconSize = 20.dp, pressEffect = IridePressEffect.Punch)
         },
     ) {
-        item(key = "playlist_header") {
-            IrideGeneratedPlaylistHeader(title, emptyList(),
-                metadataLine = displayedCount?.let { pluralStringResource(R.plurals.n_song, it, it) }.orEmpty(),
-                artwork = {
-                    if (displayedCount != null) {
-                        IrideChartPoster(viewModel.market.code, country,
-                            stringResource(R.string.new_charts_top_count, displayedCount), Modifier.fillMaxSize())
-                    } else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer))
-                })
-        }
-        if (chart != null) {
-            item(key = "control_panel") {
+        playlistPageSections(
+            capabilities = PlaylistPageCapabilities(
+                showPlaybackControls = chart != null,
+                showSearch = chart != null,
+            ),
+            header = {
+                IrideGeneratedPlaylistHeader(
+                    title = title,
+                    metadataLine = displayedCount?.let { pluralStringResource(R.plurals.n_song, it, it) }.orEmpty(),
+                    playlistId = ChartPlaylistIdentity.id(viewModel.market),
+                )
+            },
+            playbackControls = {
                 IridePlaylistControlPanel(
                     onShuffleClick = {
                         if (!isListenTogetherGuest) viewModel.play(null, title, hideExplicit, shuffle = true) { playerConnection.playQueue(it) }
@@ -177,32 +221,22 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                             else viewModel.play(null, title, hideExplicit) { playerConnection.playQueue(it) }
                         }
                     },
-                    onDownloadClick = {
-                        if (!preparingDownload) scope.launch {
-                            if (downloadState == Download.STATE_COMPLETED || downloadState == Download.STATE_DOWNLOADING) {
-                                resolvedSongs.forEach { song -> DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, song.id, false) }
-                            } else {
-                                preparingDownload = true
-                                try {
-                                    viewModel.resolveDownloadSongs().filterNot { hideExplicit && it.explicit }.forEach { song ->
-                                        val request = DownloadRequest.Builder(song.id, song.id.toUri()).setCustomCacheKey(song.id)
-                                            .setData(song.title.toByteArray()).build()
-                                        DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
-                                    }
-                                } catch (cancelled: CancellationException) { throw cancelled }
-                                catch (error: Exception) { timber.log.Timber.w(error, "Could not prepare chart download") }
-                                finally { preparingDownload = false }
-                            }
-                        }
-                    }, downloadState = downloadState, isPlaying = isThisPlaylistPlaying, modifier = Modifier.padding(bottom = 12.dp))
-            }
-            item(key = "search_bar") {
-                IrideFolioCollectionSearchBox(query, onQueryChange = { query = it },
-                    placeholderText = stringResource(R.string.search_playlists), focusRequester = focusRequester,
-                    onFocusChanged = {}, onSearch = { focusManager.clearFocus() }, onClear = { query = TextFieldValue() },
-                    modifier = Modifier.padding(horizontal = IrideFolio.HorizontalPadding, vertical = 8.dp))
-            }
-        }
+                    isPlaying = isThisPlaylistPlaying,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+            },
+            search = {
+                IrideFolioCollectionSearchBox(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholderText = stringResource(R.string.search_playlists),
+                    focusRequester = focusRequester,
+                    onFocusChanged = {},
+                    onSearch = { focusManager.clearFocus() },
+                    onClear = { query = TextFieldValue() },
+                )
+            },
+        )
         items(visibleTracks, key = { it.spotifyId }) { track ->
             val trackState = trackStates[track.spotifyId]
             val song = trackState?.song
@@ -237,14 +271,17 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                     }
                     SongListItem(
                         song = displaySong,
-                        subtitleOverride = if (displaySong.artists.isEmpty()) song.artists.joinToString { it.name } else null,
+                        subtitleOverride =
+                            if (displaySong.artists.isEmpty()) {
+                                formatTrackArtistCredits(song.artists.map { it.name }, song.title)
+                            } else null,
                         subtitleColor = Color.Unspecified,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         isSwipeable = !hidden,
                         trailingContent = {
                             SongMenuIconButton(onClick = onMenu) {
-                                Icon(painterResource(R.drawable.more_vert), stringResource(R.string.menu))
+                                TrackOverflowIcon(contentDescription = stringResource(R.string.menu))
                             }
                         },
                         modifier = Modifier.fillMaxWidth().irideFolioCombinedClickable(
@@ -255,8 +292,9 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                     )
                 } else {
                     ListItem(
-                        title = track.title,
-                        subtitle = track.artists.joinToString(),
+                        title = cleanTrackTitle(track.title),
+                        trackLiked = false,
+                        subtitle = formatTrackArtistCredits(track.artists, track.title),
                         subtitleColor = Color.Unspecified,
                         thumbnailContent = {
                             ItemThumbnail(
@@ -273,7 +311,7 @@ fun DailyChartScreen(navController: NavController, viewModel: DailyChartViewMode
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
                                 SongMenuIconButton(onClick = {}, enabled = false) {
-                                    Icon(painterResource(R.drawable.more_vert), stringResource(R.string.menu))
+                                    TrackOverflowIcon(contentDescription = stringResource(R.string.menu))
                                 }
                             }
                         },

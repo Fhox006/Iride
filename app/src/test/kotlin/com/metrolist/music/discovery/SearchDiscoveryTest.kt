@@ -2,6 +2,7 @@ package com.metrolist.music.discovery
 
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,6 +11,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SearchDiscoveryTest {
+    @Test
+    fun alternateRecordingAndEmbeddedFeaturingKeepAllVerifiedCredits() {
+        val scar = Artist("SCAR", "UC_scar")
+        val guest = Artist("18K", "UC_18k")
+        val seed = song("album", "Tutto ciò che odio (feat. 18K)").copy(artists = listOf(scar))
+        val alternate = seed.copy(id = "single", title = "Tutto ciò che odio", artists = listOf(scar, guest))
+        assertEquals(listOf(scar, guest), SearchDiscovery.credits(seed, listOf(alternate), emptyList()))
+        assertEquals(listOf("18K"), SearchDiscovery.missingCredits(seed, listOf(scar)))
+        assertTrue(SearchDiscovery.missingCredits(seed, listOf(scar, guest)).isEmpty())
+        assertEquals("Tutto ciò che odio", SearchDiscovery.cleanTitle(seed.title))
+        assertEquals(SearchDiscovery.songKey(seed), SearchDiscovery.songKey(alternate))
+    }
+
+    @Test
+    fun creditedAndSimilarArtistsShareOneOrderedSection() {
+        val credits = listOf(artist("UC_scar"), artist("UC_18k"))
+        val similar = listOf(artist("UC_similar"), credits.first())
+        assertEquals(credits + similar.first(), SearchDiscovery.artists(credits, similar, listOf(credits.last())))
+    }
+
+    @Test
+    fun normalPlaylistResultsSurviveWhenSongRadioHasNoPlaylists() {
+        val playlist = PlaylistItem("PL_context", "Tutto ciò che odio", null, null, null, null, null, null)
+        assertEquals(listOf(playlist), SearchDiscovery.playlists(emptyList(), listOf(playlist)))
+        assertEquals(listOf(playlist), SearchDiscovery.playlists(listOf(playlist), listOf(playlist)))
+    }
+
     private fun song(id: String, title: String = "Track $id") = SongItem(
         id = id,
         title = title,
@@ -36,6 +64,14 @@ class SearchDiscoveryTest {
         val track = song("audio", "My Song")
         assertEquals(track, SearchDiscovery.recognizeSong("My Song Artist", listOf(track), null))
         assertEquals(track, SearchDiscovery.recognizeSong("Artist My Song", listOf(track), null))
+    }
+
+    @Test
+    fun unambiguousMultiwordTitlePrefixCanSeedRecommendations() {
+        val track = song("audio", "Il Ferro di Čechov")
+        assertEquals(track, SearchDiscovery.recognizeSong("il ferro", listOf(track), track))
+        assertNull(SearchDiscovery.recognizeSong("ferro", listOf(track), track))
+        assertNull(SearchDiscovery.recognizeSong("il ferro", listOf(track, song("other", track.title)), track))
     }
 
     @Test

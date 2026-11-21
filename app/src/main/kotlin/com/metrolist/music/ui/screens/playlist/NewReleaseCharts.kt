@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.playlist
 
+import java.text.Collator
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +49,8 @@ import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.data.remote.ChartMarket
 import com.metrolist.music.data.remote.DailyChart
 import com.metrolist.music.data.remote.isCurrentFor
-import com.metrolist.music.ui.component.IrideChartPoster
+import com.metrolist.music.repository.ChartPlaylistIdentity
+import com.metrolist.music.ui.component.PlaylistArtwork
 import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.rememberCollectionExpansionTile
 import com.metrolist.music.ui.component.IrideFolio
@@ -59,12 +62,12 @@ import com.metrolist.music.ui.component.SharedHomeSectionTitle
 import com.metrolist.music.ui.component.collectDeferredHomeState
 import com.metrolist.music.ui.component.SharedYouTubePlaylistRow
 import com.metrolist.music.ui.component.chartCountryName
-import com.metrolist.music.ui.component.hasChartArtwork
+import com.metrolist.music.ui.component.supportsChartMarket
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ChartDirectoryViewModel
 import java.util.Locale
 import kotlinx.coroutines.delay
-import sv.lib.squircleshape.SquircleShape
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 
 internal fun isCurrentChart(chart: DailyChart): Boolean = runCatching {
     chart.isCurrentFor(ChartMarket(chart.marketCode))
@@ -76,7 +79,7 @@ private fun homeChartMarkets(viewModel: ChartDirectoryViewModel): List<ChartMark
     val region = rememberChartRegion()
     return remember(catalog.markets, region) {
         listOf(region, "global", "us", "br", "gb", "de", "mx", "fr", "in", "jp")
-            .distinct().mapNotNull { code -> catalog.markets.find { it.code == code && hasChartArtwork(code) } }
+            .distinct().mapNotNull { code -> catalog.markets.find { it.code == code && supportsChartMarket(code) } }
     }
 }
 
@@ -116,7 +119,7 @@ fun NewReleaseChartsShelf(
             SharedHomeSectionTitle(stringResource(R.string.new_charts_title), showNavigationArrow = true,
                 onClick = { navController.navigate("all_charts") })
             SharedYouTubePlaylistRow(available, key = { it.code }, contentPadding = IrideFolio.HorizontalPadding) { market ->
-                ChartCard(market, charts.getValue(market.code).chart!!.tracks.size,
+                ChartCard(market,
                     onClick = { navController.navigate("new_releases_chart/${market.code}") }, modifier = Modifier.width(172.dp))
             }
         }
@@ -134,11 +137,16 @@ fun AllChartsScreen(navController: NavController, viewModel: ChartDirectoryViewM
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
-    val candidates = remember(catalog.markets, region, query.text) {
-        catalog.markets.filter { hasChartArtwork(it.code) }.sortedWith(compareBy<ChartMarket> {
+    val locale = LocalConfiguration.current.locales[0]
+    val globalLabel = stringResource(R.string.new_charts_global)
+    val candidates = remember(catalog.markets, region, query.text, locale, globalLabel) {
+        val collator = Collator.getInstance(locale)
+        catalog.markets.filter { supportsChartMarket(it.code) }.sortedWith(compareBy<ChartMarket> {
             when (it.code) { region -> 0; "global" -> 1; else -> 2 }
-        }.thenBy { chartCountryName(it.code) }).filter {
-            chartCountryName(it.code).contains(query.text.trim(), ignoreCase = true) ||
+        }.thenComparator { a, b ->
+            collator.compare(chartCountryName(a.code, locale, globalLabel), chartCountryName(b.code, locale, globalLabel))
+        }).filter {
+            chartCountryName(it.code, locale, globalLabel).contains(query.text.trim(), ignoreCase = true) ||
                 it.code.equals(query.text.trim(), ignoreCase = true)
         }
     }
@@ -182,7 +190,7 @@ fun AllChartsScreen(navController: NavController, viewModel: ChartDirectoryViewM
             Row(Modifier.fillMaxWidth().padding(horizontal = IrideFolio.HorizontalPadding, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 pair.forEach { market ->
-                    ChartCard(market, charts.getValue(market.code).chart!!.tracks.size,
+                    ChartCard(market,
                         onClick = { navController.navigate("new_releases_chart/${market.code}") }, modifier = Modifier.weight(1f))
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -215,16 +223,20 @@ private fun rememberChartRegion(): String {
 }
 
 @Composable
-private fun ChartCard(market: ChartMarket, count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ChartCard(market: ChartMarket, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val title = chartTitle(market)
     val (tap, cover) = rememberCollectionExpansionTile(
-        CollectionExpansionKind.Playlist, market.code,
+        CollectionExpansionKind.Playlist, market.code, title = title,
     )
-    val name = chartCountryName(market.code)
-    val description = stringResource(R.string.new_charts_playlist_title, name)
     Column(tap.then(modifier)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f).then(cover).clip(SquircleShape(7.dp))
-            .semantics { contentDescription = description }.clickable(role = Role.Button, onClick = onClick)) {
-            IrideChartPoster(market.code, name, stringResource(R.string.new_charts_top_count, count), Modifier.fillMaxSize())
+        Box(Modifier.fillMaxWidth().aspectRatio(1f).then(cover).clip(CollectionArtworkShape)
+            .semantics { contentDescription = title }.clickable(role = Role.Button, onClick = onClick)) {
+            PlaylistArtwork(
+                title = title,
+                playlistId = ChartPlaylistIdentity.id(market),
+                modifier = Modifier.fillMaxSize(),
+                showBadge = false,
+            )
         }
     }
 }

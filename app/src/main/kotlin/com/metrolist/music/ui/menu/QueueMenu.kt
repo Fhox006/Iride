@@ -82,6 +82,7 @@ import com.metrolist.music.ui.component.NewActionGrid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 
 @Composable
 fun QueueMenu(
@@ -214,7 +215,7 @@ fun QueueMenu(
                                             }.onFailure { e ->
                                                 timber.log.Timber.e(e, "[EPISODE_SAVE] Failed to remove episode: ${songEntity.id}")
                                                 kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                                    android.widget.Toast.makeText(context, R.string.error_episode_remove, android.widget.Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, R.string.error_episode_remove, Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }
@@ -224,7 +225,7 @@ fun QueueMenu(
                                         }.onFailure { e ->
                                             timber.log.Timber.e(e, "[EPISODE_SAVE] Failed to save episode: ${songEntity.id}")
                                             kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                                android.widget.Toast.makeText(context, R.string.error_episode_save, android.widget.Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, R.string.error_episode_save, Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
@@ -382,7 +383,7 @@ fun QueueMenu(
                                 },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.offline),
+                                        painter = painterResource(R.drawable.track_downloaded),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp)
                                     )
@@ -424,7 +425,7 @@ fun QueueMenu(
                                 description = { Text(text = stringResource(R.string.download_desc)) },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.download),
+                                        painter = painterResource(R.drawable.track_download),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp)
                                     )

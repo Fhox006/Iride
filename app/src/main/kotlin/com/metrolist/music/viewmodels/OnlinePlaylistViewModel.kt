@@ -1,5 +1,6 @@
 package com.metrolist.music.viewmodels
 
+import com.metrolist.music.R
 import android.content.Context
 import android.os.SystemClock
 import android.util.LruCache
@@ -127,9 +128,9 @@ class OnlinePlaylistViewModel @Inject constructor(
                     .onSuccess { episodes ->
                         playlist.value = PlaylistItem(
                             id = playlistId,
-                            title = "New Episodes",
+                            title = context.getString(R.string.new_episodes),
                             author = null,
-                            songCountText = "${episodes.size} episodes",
+                            songCountText = context.resources.getQuantityString(R.plurals.n_episode, episodes.size, episodes.size),
                             thumbnail = episodes.firstOrNull()?.thumbnail ?: "",
                             playEndpoint = null,
                             shuffleEndpoint = null,
@@ -151,9 +152,9 @@ class OnlinePlaylistViewModel @Inject constructor(
                 if (result.isSuccess && episodes.isNotEmpty()) {
                     playlist.value = PlaylistItem(
                         id = playlistId,
-                        title = "Episodes for Later",
+                        title = context.getString(R.string.episodes_for_later),
                         author = null,
-                        songCountText = "${episodes.size} episodes",
+                        songCountText = context.resources.getQuantityString(R.plurals.n_episode, episodes.size, episodes.size),
                         thumbnail = episodes.firstOrNull()?.thumbnail ?: "",
                         playEndpoint = null,
                         shuffleEndpoint = null,
@@ -209,9 +210,9 @@ class OnlinePlaylistViewModel @Inject constructor(
 
         playlist.value = PlaylistItem(
             id = playlistId,
-            title = "Episodes for Later",
+            title = context.getString(R.string.episodes_for_later),
             author = null,
-            songCountText = "${songItems.size} episodes",
+            songCountText = context.resources.getQuantityString(R.plurals.n_episode, songItems.size, songItems.size),
             thumbnail = songItems.firstOrNull()?.thumbnail ?: "",
             playEndpoint = null,
             shuffleEndpoint = null,

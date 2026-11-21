@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_choice_title">Sei sicuro?</string>
+    <string name="navigation_choice_save_failed">Impossibile salvare. Riprova.</string>
+    <string name="navigation_choice_close">Chiudi</string>
+    <string name="navigation_choice_browser_failed">Nessun browser disponibile.</string>
+    <string name="navigation_choice_heart">Fatto con il cuore, da un designer.</string>
+    <string name="navigation_choice_support">La navigazione tramite pulsanti ha un supporto limitato.</string>
+    <string name="navigation_choice_motion">Alcuni movimenti e dettagli necessitano di gesti.</string>
+    <string name="navigation_choice_confirm">Voglio ancora usare Iride</string>
+    <string name="navigation_choice_open_repository">Apri %1$s su GitHub</string>
+    <string name="navigation_choice_alternatives">Alternative gratuite, se preferisci.</string>
+    <string name="navigation_continue_anyway">Continua comunque</string>
+</resources>

@@ -6,6 +6,7 @@
 
 package com.metrolist.music.utils
 
+import com.metrolist.music.R
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import com.metrolist.innertube.YouTube
@@ -209,7 +210,8 @@ class SyncUtils @Inject constructor(
                         try {
                             processOperation(operation)
                         } catch (e: CancellationException) {
-                            throw e
+                            if (!isActive) throw e
+                            Timber.w(e, "Sync operation cancelled: $operation")
                         } catch (e: Exception) {
                             Timber.e(e, "Error processing sync operation: $operation")
                         }
@@ -373,6 +375,7 @@ class SyncUtils @Inject constructor(
             val lastSync = context.dataStore.get(LastFullSyncKey, 0L)
             val currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
             if (!force && lastSync > 0 && (currentTime - lastSync) < SYNC_COOLDOWN) {
+                syncSavedPlaylists()
                 return@launch
             }
 
@@ -596,7 +599,7 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = "Starting full sync") }
+        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_starting)) }
         updateState {
             copy(
                 likedSongs = SyncStatus.Idle,
@@ -676,7 +679,7 @@ class SyncUtils @Inject constructor(
         } else {
             updateState {
                 copy(
-                    overallStatus = SyncStatus.Error("Some categories failed to sync"),
+                    overallStatus = SyncStatus.Error(context.getString(R.string.sync_some_categories_failed)),
                     currentOperation = "",
                 )
             }
@@ -784,7 +787,7 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(likedSongs = SyncStatus.Syncing, currentOperation = "Syncing liked songs") }
+        updateState { copy(likedSongs = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_liked_songs)) }
 
         withRetry {
             val firstPage = YouTube.playlist("LM").getOrThrow()
@@ -804,24 +807,19 @@ class SyncUtils @Inject constructor(
                 val remoteIds = remoteSongs.map { it.id }.toSet()
                 val localSongs = database.likedSongsByNameAsc().first()
 
-                if (remoteSongs.isEmpty() && localSongs.isNotEmpty()) {
-                    Timber.w("Liked songs sync: remote returned 0 items but local has ${localSongs.size} — skipping removal to prevent data loss")
-                    updateState { copy(likedSongs = SyncStatus.Completed) }
-                    return@withContext
-                }
-
-                if (remoteListLooksTruncated(remoteSongs.size, localSongs.size)) {
-                    Timber.w("Liked songs sync: remote has ${remoteSongs.size} items vs ${localSongs.size} local — skipping removals to prevent data loss")
-                } else {
-                    localSongs.filterNot { it.id in remoteIds || pendingLikes.containsKey(it.id) }.forEach { song ->
-                        try {
-                            database.update(song.song.localToggleLike())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update song: ${song.id}")
+                var localLikeUploadFailed = false
+                // Keep local likes when the remote playlist omits them; omissions can come from incomplete responses.
+                localSongs
+                    .filter { it.id !in remoteIds && !it.song.isLocal && pendingLikes[it.id]?.liked != false }
+                    .forEach { song ->
+                        withRetry {
+                            YouTube.likeVideo(song.id, true).getOrThrow()
+                        }.onFailure { error ->
+                            localLikeUploadFailed = true
+                            Timber.e(error, "Failed to merge local liked song to YouTube: ${song.id}")
                         }
+                        delay(DB_OPERATION_DELAY_MS)
                     }
-                }
 
                 val now = LocalDateTime.now()
                 remoteSongs.forEachIndexed { index, song ->
@@ -836,8 +834,13 @@ class SyncUtils @Inject constructor(
                                 insert(song.toMediaMetadata()) {
                                     it.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong)
                                 }
-                            } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp || dbSong.song.isVideo != isVideoSong) {
-                                update(dbSong.song.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong))
+                            } else {
+                                if (dbSong.artists.none { it.name.isNotBlank() }) {
+                                    restoreMissingSongArtists(song.toMediaMetadata())
+                                }
+                                if (!dbSong.song.liked || dbSong.song.likedDate != timestamp || dbSong.song.isVideo != isVideoSong) {
+                                    update(dbSong.song.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong))
+                                }
                             }
                         }
                         delay(DB_OPERATION_DELAY_MS)
@@ -846,15 +849,23 @@ class SyncUtils @Inject constructor(
                     }
                 }
 
-                updateState { copy(likedSongs = SyncStatus.Completed) }
+                updateState {
+                    copy(
+                        likedSongs = if (localLikeUploadFailed) {
+                            SyncStatus.Error(context.getString(R.string.sync_some_liked_songs_failed))
+                        } else {
+                            SyncStatus.Completed
+                        },
+                    )
+                }
                 Timber.d("Synced ${remoteSongs.size} liked songs")
             } catch (e: Exception) {
                 Timber.e(e, "Error processing liked songs")
-                updateState { copy(likedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(likedSongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync liked songs after retries")
-            updateState { copy(likedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(likedSongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -864,10 +875,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(librarySongs = SyncStatus.Syncing, currentOperation = "Syncing library songs") }
+        updateState { copy(librarySongs = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_library)) }
 
         withRetry {
-            YouTube.library("FEmusic_liked_videos").completed()
+            YouTube.library("FEmusic_liked_videos").completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -886,7 +897,8 @@ class SyncUtils @Inject constructor(
                     } else {
                         localSongs.filterNot { it.id in remoteIds }.forEach { song ->
                             try {
-                                database.update(song.song.toggleLibrary(syncToYouTube = false))
+                                // Removing a library entry must not also erase its independent liked state.
+                                database.update(song.song.copy(inLibrary = null))
                                 delay(DB_OPERATION_DELAY_MS)
                             } catch (e: Exception) {
                                 Timber.e(e, "Failed to update song: ${song.id}")
@@ -914,15 +926,15 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remoteSongs.size} library songs")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing library songs")
-                    updateState { copy(librarySongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(librarySongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 Timber.e(e, "Failed to fetch library songs from YouTube")
-                updateState { copy(librarySongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(librarySongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync library songs after retries")
-            updateState { copy(librarySongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(librarySongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -932,10 +944,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(uploadedSongs = SyncStatus.Syncing, currentOperation = "Syncing uploaded songs") }
+        updateState { copy(uploadedSongs = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_uploaded_songs)) }
 
         withRetry {
-            YouTube.library("FEmusic_library_privately_owned_tracks", tabIndex = 1).completed()
+            YouTube.library("FEmusic_library_privately_owned_tracks", tabIndex = 1).completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -984,7 +996,7 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remoteSongs.size} uploaded songs")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing uploaded songs")
-                    updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 if (e.message?.contains("No content found", ignoreCase = true) == true) {
@@ -992,7 +1004,7 @@ class SyncUtils @Inject constructor(
                     updateState { copy(uploadedSongs = SyncStatus.Completed) }
                 } else {
                     Timber.e(e, "Failed to fetch uploaded songs from YouTube")
-                    updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }
         }.onFailure { e ->
@@ -1001,7 +1013,7 @@ class SyncUtils @Inject constructor(
                 updateState { copy(uploadedSongs = SyncStatus.Completed) }
             } else {
                 Timber.e(e, "Failed to sync uploaded songs after retries")
-                updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }
     }
@@ -1012,10 +1024,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(likedAlbums = SyncStatus.Syncing, currentOperation = "Syncing liked albums") }
+        updateState { copy(likedAlbums = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_liked_albums)) }
 
         withRetry {
-            YouTube.library("FEmusic_liked_albums").completed()
+            YouTube.library("FEmusic_liked_albums").completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -1071,15 +1083,15 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remoteAlbums.size} liked albums")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing liked albums")
-                    updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 Timber.e(e, "Failed to fetch liked albums from YouTube")
-                updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync liked albums after retries")
-            updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(likedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -1089,10 +1101,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(uploadedAlbums = SyncStatus.Syncing, currentOperation = "Syncing uploaded albums") }
+        updateState { copy(uploadedAlbums = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_uploaded_albums)) }
 
         withRetry {
-            YouTube.library("FEmusic_library_privately_owned_releases").completed()
+            YouTube.library("FEmusic_library_privately_owned_releases").completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -1148,15 +1160,15 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remoteAlbums.size} uploaded albums")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing uploaded albums")
-                    updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 Timber.e(e, "Failed to fetch uploaded albums from YouTube")
-                updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync uploaded albums after retries")
-            updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(uploadedAlbums = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -1166,10 +1178,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(artists = SyncStatus.Syncing, currentOperation = "Syncing artist subscriptions") }
+        updateState { copy(artists = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_artists)) }
 
         withRetry {
-            YouTube.library("FEmusic_library_corpus_artists").completed()
+            YouTube.library("FEmusic_library_corpus_artists").completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -1245,15 +1257,15 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remoteArtists.size} artist subscriptions")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing artist subscriptions")
-                    updateState { copy(artists = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(artists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 Timber.e(e, "Failed to fetch artist subscriptions from YouTube")
-                updateState { copy(artists = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(artists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync artist subscriptions after retries")
-            updateState { copy(artists = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(artists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -1265,7 +1277,7 @@ class SyncUtils @Inject constructor(
         }
         Timber.d("[PODCAST_SYNC] User is logged in, proceeding with sync")
 
-        updateState { copy(currentOperation = "Syncing podcast subscriptions") }
+        updateState { copy(currentOperation = context.getString(R.string.sync_status_podcasts)) }
 
         withRetry {
             Timber.d("[PODCAST_SYNC] Calling YouTube.savedPodcastShows()")
@@ -1429,7 +1441,7 @@ class SyncUtils @Inject constructor(
         }
         Timber.d("[EPISODES_SYNC] User is logged in, proceeding with sync")
 
-        updateState { copy(currentOperation = "Syncing episodes for later") }
+        updateState { copy(currentOperation = context.getString(R.string.sync_status_saved_episodes)) }
 
         withRetry {
             Timber.d("[EPISODES_SYNC] Calling YouTube.episodesForLater() (VLSE playlist)")
@@ -1534,10 +1546,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
 
-        updateState { copy(playlists = SyncStatus.Syncing, currentOperation = "Syncing saved playlists") }
+        updateState { copy(playlists = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_playlists)) }
 
         withRetry {
-            YouTube.library("FEmusic_liked_playlists").completed()
+            YouTube.library("FEmusic_liked_playlists").completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -1547,8 +1559,11 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remotePlaylists.map { it.id }.toSet()
 
                     val localPlaylists = database.playlistsByNameAsc().first()
+                    val localRemoteCount = localPlaylists.count { it.playlist.browseId != null }
 
-                    if (remoteListLooksTruncated(remotePlaylists.size, localPlaylists.count { it.playlist.browseId != null })) {
+                    if ((remotePlaylists.isEmpty() && localRemoteCount > 0) ||
+                        remoteListLooksTruncated(remotePlaylists.size, localRemoteCount)
+                    ) {
                         Timber.w("Saved playlists sync: remote has ${remotePlaylists.size} playlists vs local — skipping removals to prevent data loss")
                     } else {
                         localPlaylists.filterNot { it.playlist.browseId in remoteIds }
@@ -1566,6 +1581,7 @@ class SyncUtils @Inject constructor(
                     for (playlist in remotePlaylists) {
                         try {
                             var playlistEntity = localPlaylists.find { it.playlist.browseId == playlist.id }?.playlist
+                                ?: database.playlistByBrowseId(playlist.id).first()?.playlist
 
                             if (playlistEntity == null) {
                                 playlistEntity = PlaylistEntity(
@@ -1584,6 +1600,9 @@ class SyncUtils @Inject constructor(
                                 database.insert(playlistEntity)
                                 Timber.d("syncSavedPlaylists: Created new playlist ${playlist.title} (${playlist.id})")
                             } else {
+                                if (playlistEntity.bookmarkedAt == null) {
+                                    playlistEntity = playlistEntity.localToggleLike()
+                                }
                                 database.update(playlistEntity, playlist)
                                 Timber.d("syncSavedPlaylists: Updated existing playlist ${playlist.title} (${playlist.id})")
                             }
@@ -1610,15 +1629,15 @@ class SyncUtils @Inject constructor(
                     Timber.d("Synced ${remotePlaylists.size} saved playlists")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing saved playlists")
-                    updateState { copy(playlists = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    updateState { copy(playlists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
                 }
             }.onFailure { e ->
                 Timber.e(e, "syncSavedPlaylists: Failed to fetch playlists from YouTube")
-                updateState { copy(playlists = SyncStatus.Error(e.message ?: "Unknown error")) }
+                updateState { copy(playlists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to sync saved playlists after retries")
-            updateState { copy(playlists = SyncStatus.Error(e.message ?: "Unknown error")) }
+            updateState { copy(playlists = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown))) }
         }
     }
 
@@ -1660,7 +1679,7 @@ class SyncUtils @Inject constructor(
         Timber.d("syncPlaylist: Starting sync for browseId=$browseId, playlistId=$playlistId")
 
         withRetry {
-            YouTube.playlist(browseId).completed()
+            YouTube.playlist(browseId).completed(requireComplete = true)
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
@@ -1673,6 +1692,7 @@ class SyncUtils @Inject constructor(
                     }
 
                     val remoteIds = songs.map { it.id }
+                    val remoteIdSet = remoteIds.toHashSet()
                     val localIds = database.playlistSongs(playlistId).first()
                         .sortedBy { it.map.position }
                         .map { it.song.id }
@@ -1694,7 +1714,8 @@ class SyncUtils @Inject constructor(
                         if (isPlaylistBeingModified(playlistId)) return@withTransaction
                         database.clearPlaylist(playlistId)
                         songs.forEachIndexed { idx, song ->
-                            if (database.song(song.id).firstOrNull() == null) {
+                            // Keep reads on the thread holding the Room transaction.
+                            if (getSongByIdBlocking(song.id) == null) {
                                 database.insert(song)
                             }
                             database.insert(
@@ -1707,23 +1728,20 @@ class SyncUtils @Inject constructor(
                             )
                         }
 
+                        var nextPosition = songs.size
                         downloadedSongIds.forEach { songId ->
-                            if (songId !in remoteIds) {
-                                val existingSong = database.song(songId).firstOrNull()
-                                if (existingSong != null) {
-                                    val maxPosition = database.playlistSongs(playlistId).first()
-                                        .maxOfOrNull { it.map.position } ?: -1
-                                    database.insert(
-                                        PlaylistSongMap(
-                                            songId = songId,
-                                            playlistId = playlistId,
-                                            position = maxPosition + 1
-                                        )
+                            if (songId !in remoteIdSet && getSongByIdBlocking(songId) != null) {
+                                database.insert(
+                                    PlaylistSongMap(
+                                        songId = songId,
+                                        playlistId = playlistId,
+                                        position = nextPosition++
                                     )
-                                    Timber.d("syncPlaylist: Preserved downloaded song $songId in playlist")
-                                }
+                                )
+                                Timber.d("syncPlaylist: Preserved downloaded song $songId in playlist")
                             }
                         }
+                        database.updatePlaylistLastUpdated(playlistId)
                     }
                     Timber.d("syncPlaylist: Successfully synced playlist")
                 } catch (e: Exception) {
@@ -1769,7 +1787,7 @@ class SyncUtils @Inject constructor(
     private suspend fun executeClearAllSyncedContent() = withContext(Dispatchers.IO) {
         Timber.d("clearAllSyncedContent: Starting cleanup")
 
-        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = "Clearing synced content") }
+        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_clear_content)) }
 
         try {
             database.withTransaction {
@@ -1822,14 +1840,14 @@ class SyncUtils @Inject constructor(
             Timber.d("clearAllSyncedContent: Cleanup completed successfully")
         } catch (e: Exception) {
             Timber.e(e, "clearAllSyncedContent: Error during cleanup")
-            updateState { copy(overallStatus = SyncStatus.Error(e.message ?: "Unknown error"), currentOperation = "") }
+            updateState { copy(overallStatus = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown)), currentOperation = "") }
         }
     }
 
     private suspend fun executeClearPodcastData() = withContext(Dispatchers.IO) {
         Timber.d("[PODCAST_CLEAR] Starting podcast data cleanup")
 
-        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = "Clearing podcast data") }
+        updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = context.getString(R.string.sync_status_clear_podcasts)) }
 
         try {
             database.withTransaction {
@@ -1851,7 +1869,7 @@ class SyncUtils @Inject constructor(
             Timber.d("[PODCAST_CLEAR] Podcast data cleared successfully")
         } catch (e: Exception) {
             Timber.e(e, "[PODCAST_CLEAR] Error during cleanup")
-            updateState { copy(overallStatus = SyncStatus.Error(e.message ?: "Unknown error"), currentOperation = "") }
+            updateState { copy(overallStatus = SyncStatus.Error(e.message ?: context.getString(R.string.error_unknown)), currentOperation = "") }
         }
     }
 

@@ -1,7 +1,6 @@
 package com.metrolist.music.repository
 
 import android.content.Context
-import android.util.AtomicFile
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.R
 import com.metrolist.music.data.remote.ChartMarket
@@ -12,10 +11,8 @@ import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.chartCountryName
-import com.metrolist.music.ui.component.hasChartArtwork
-import com.metrolist.music.ui.component.renderChartPoster
+import com.metrolist.music.ui.component.supportsChartMarket
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -32,7 +29,6 @@ class SavedChartPlaylistRepository @Inject constructor(
     private val database: MusicDatabase,
 ) {
     private val lock = Mutex()
-    private val covers = File(context.filesDir, "chart_posters")
 
     fun playlist(market: ChartMarket) = database.playlist(ChartPlaylistIdentity.id(market))
 
@@ -47,14 +43,13 @@ class SavedChartPlaylistRepository @Inject constructor(
                 }
                 return@withLock
             }
-            if (!hasChartArtwork(market.code) || !shouldUpdateSavedChart(chart.date, null, LocalDate.now(ZoneOffset.UTC))) return@withLock
-            val cover = posterPath(market, chart.tracks.size)
+            if (!supportsChartMarket(market.code) || !shouldUpdateSavedChart(chart.date, null, LocalDate.now(ZoneOffset.UTC))) return@withLock
             val fingerprint = chartRankingFingerprint(chart.date, chart.tracks.map { it.spotifyId })
             val entity = (previous ?: PlaylistEntity(id = id, name = title(market))).copy(
                 name = title(market), browseId = null, isLocal = true, isEditable = false,
                 isAutoSync = false, bookmarkedAt = LocalDateTime.now(),
                 lastUpdateTime = LocalDate.parse(chart.date).atStartOfDay(),
-                remoteSongCount = chart.tracks.size, thumbnailUrl = cover,
+                remoteSongCount = chart.tracks.size, thumbnailUrl = null,
                 playEndpointParams = fingerprint,
             )
             database.withTransaction {
@@ -78,9 +73,8 @@ class SavedChartPlaylistRepository @Inject constructor(
         lock.withLock {
             val market = ChartMarket(chart.marketCode)
             val previous = database.playlistBlocking(ChartPlaylistIdentity.id(market))?.playlist ?: return@withLock
-            if (previous.bookmarkedAt == null || !hasChartArtwork(market.code) ||
+            if (previous.bookmarkedAt == null || !supportsChartMarket(market.code) ||
                 !shouldUpdateSavedChart(chart.date, previous.lastUpdateTime?.toLocalDate(), LocalDate.now(ZoneOffset.UTC))) return@withLock
-            val cover = posterPath(market, chart.tracks.size)
             val fingerprint = chartRankingFingerprint(chart.date, chart.tracks.map { it.spotifyId })
             database.withTransaction {
                 val latest = playlistBlocking(previous.id)?.playlist ?: return@withTransaction
@@ -88,8 +82,8 @@ class SavedChartPlaylistRepository @Inject constructor(
                     latest.lastUpdateTime?.toLocalDate(), LocalDate.now(ZoneOffset.UTC))) return@withTransaction
                 // Resolutions are saved separately; a minute-long foreground cache check needs no writes.
                 if (latest.playEndpointParams == fingerprint && latest.remoteSongCount == chart.tracks.size &&
-                    latest.thumbnailUrl == cover && latest.name == title(market)) return@withTransaction
-                update(latest.copy(name = title(market), remoteSongCount = chart.tracks.size, thumbnailUrl = cover,
+                    latest.thumbnailUrl == null && latest.name == title(market)) return@withTransaction
+                update(latest.copy(name = title(market), remoteSongCount = chart.tracks.size, thumbnailUrl = null,
                     lastUpdateTime = LocalDate.parse(chart.date).atStartOfDay(), playEndpointParams = fingerprint))
                 mergeResolvedSongs(previous.id, chart, songs,
                     clearPrevious = shouldReplaceSavedChart(latest.playEndpointParams, fingerprint,
@@ -130,25 +124,13 @@ class SavedChartPlaylistRepository @Inject constructor(
             }
     }
 
-    private fun title(market: ChartMarket) = context.getString(R.string.new_charts_playlist_title, chartCountryName(market.code))
-
-    private fun posterPath(market: ChartMarket, count: Int): String {
-        val file = File(covers, "v3_${market.code}_$count.png")
-        if (!file.isFile || file.length() == 0L) {
-            covers.mkdirs()
-            val bitmap = renderChartPoster(context, market.code, count)
-            try {
-                val atomic = AtomicFile(file)
-                val stream = atomic.startWrite()
-                try {
-                    check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
-                    atomic.finishWrite(stream)
-                } catch (error: Exception) {
-                    atomic.failWrite(stream)
-                    throw error
-                }
-            } finally { bitmap.recycle() }
-        }
-        return file.toURI().toString()
-    }
+    private fun title(market: ChartMarket) =
+        context.getString(
+            R.string.new_charts_playlist_title,
+            chartCountryName(
+                market.code,
+                context.resources.configuration.locales[0],
+                context.getString(R.string.new_charts_global),
+            ),
+        )
 }

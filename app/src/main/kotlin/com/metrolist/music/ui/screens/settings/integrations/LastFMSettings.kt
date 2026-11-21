@@ -5,7 +5,7 @@ import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -211,7 +211,7 @@ fun LastFMSettings(navController: NavController) {
                 IrideFolioPrimaryButton(
                     onClick = {
                         if (tempUsername.isBlank() || tempPassword.isBlank()) {
-                            loginError = "Please enter both username and password"
+                            loginError = context.getString(R.string.lastfm_login_fields_required)
                             return@IrideFolioPrimaryButton
                         }
 
@@ -239,19 +239,19 @@ fun LastFMSettings(navController: NavController) {
                                                 when (exception) {
                                                     is LastFM.LastFmException -> {
                                                         when (exception.code) {
-                                                            4 -> "Invalid username or password"
-                                                            6 -> "Invalid parameters"
-                                                            9 -> "Invalid session key"
-                                                            10 -> "Invalid API key"
-                                                            13 -> "Invalid method signature"
-                                                            14 -> "Unauthorized token"
-                                                            15 -> "Service temporarily unavailable"
+                                                            4 -> context.getString(R.string.lastfm_login_invalid_credentials)
+                                                            6 -> context.getString(R.string.lastfm_invalid_parameters)
+                                                            9 -> context.getString(R.string.lastfm_invalid_session)
+                                                            10 -> context.getString(R.string.lastfm_invalid_api_key)
+                                                            13 -> context.getString(R.string.lastfm_invalid_signature)
+                                                            14 -> context.getString(R.string.lastfm_unauthorized_token)
+                                                            15 -> context.getString(R.string.lastfm_service_unavailable)
                                                             else ->
-                                                                "Login failed: ${exception.message}"
+                                                                context.getString(R.string.lastfm_login_failed_details, exception.message.orEmpty())
                                                         }
                                                     }
                                                     else ->
-                                                        "Network error. Please check your connection."
+                                                        context.getString(R.string.lastfm_connection_error)
                                                 }
                                         }
                                         reportException(exception)
@@ -259,7 +259,7 @@ fun LastFMSettings(navController: NavController) {
                             } catch (e: Exception) {
                                 coroutineScope.launch(Dispatchers.Main) {
                                     isLoggingIn = false
-                                    loginError = "Unexpected error occurred"
+                                    loginError = context.getString(R.string.error_unknown)
                                 }
                                 reportException(e)
                             }

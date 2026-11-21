@@ -10,7 +10,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -31,12 +31,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.metrolist.music.R
-import com.metrolist.music.ui.component.iridePageTitleTextStyle
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.FolioShape
 import com.metrolist.music.ui.theme.drawFolioRoundRect
@@ -46,18 +44,17 @@ import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.math.cos
 
-internal enum class NavigationDemo { Welcome, Account, Settings, Back, Compatibility }
+internal enum class NavigationDemo { Account, Settings, Back }
 
 internal val LocalExperienceVisible = staticCompositionLocalOf { true }
 
-/** One gesture per composition; motion pauses when the screen is no longer visible. */
 @Composable
-internal fun NavigationMotionIllustration(demo: NavigationDemo) {
+internal fun rememberNavigationIllustrationPhase(key: Any? = null): Animatable<Float, *> {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val reducedMotion = rememberReducedMotion()
     val visible = LocalExperienceVisible.current
-    val phase = remember(demo) { Animatable(0f) }
-    LaunchedEffect(demo, reducedMotion, lifecycle, visible) {
+    val phase = remember(key) { Animatable(0f) }
+    LaunchedEffect(key, reducedMotion, lifecycle, visible) {
         if (reducedMotion || !visible) phase.snapTo(0.52f)
         else lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
@@ -66,12 +63,23 @@ internal fun NavigationMotionIllustration(demo: NavigationDemo) {
             }
         }
     }
+    return phase
+}
+
+internal fun GraphicsLayerScope.applyAccountTileMotion(phase: Float, index: Int, strength: Float = 1f) {
+    val cycle = phase * 2f * PI.toFloat()
+    translationY += sin(cycle + index * PI.toFloat()) * 5.dp.toPx() * strength
+    rotationZ += sin(cycle) * strength * (if (index % 2 == 0) -2f else 2f)
+}
+
+/** One gesture per composition; motion pauses when the screen is no longer visible. */
+@Composable
+internal fun NavigationMotionIllustration(demo: NavigationDemo) {
+    val phase = rememberNavigationIllustrationPhase(demo)
     val description = stringResource(when (demo) {
-        NavigationDemo.Welcome -> R.string.experience_diagram_welcome
         NavigationDemo.Account -> R.string.experience_diagram_account
         NavigationDemo.Back -> R.string.experience_diagram_back
         NavigationDemo.Settings -> R.string.experience_diagram_settings
-        NavigationDemo.Compatibility -> R.string.experience_diagram_compatibility
     })
     Box(
         Modifier.fillMaxSize().clipToBounds()
@@ -79,11 +87,6 @@ internal fun NavigationMotionIllustration(demo: NavigationDemo) {
         contentAlignment = Alignment.Center,
     ) {
         when (demo) {
-            NavigationDemo.Compatibility -> Text(
-                "14", style = iridePageTitleTextStyle().copy(fontSize = 150.sp, lineHeight = 160.sp),
-                color = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.16f),
-            )
-            NavigationDemo.Welcome -> WelcomeWordmark(phase)
             NavigationDemo.Account -> IdentityMotion(phase)
             else -> GestureCutaway(demo, phase)
         }
@@ -92,21 +95,6 @@ internal fun NavigationMotionIllustration(demo: NavigationDemo) {
 
 private fun motionProgress(phase: Float, start: Float, end: Float): Float =
     FastOutSlowInEasing.transform(((phase - start) / (end - start)).coerceIn(0f, 1f))
-
-@Composable
-private fun WelcomeWordmark(phase: Animatable<Float, *>) {
-    Icon(
-        painter = painterResource(R.drawable.ic_logo),
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.textPrimary,
-        modifier = Modifier.size(88.dp).graphicsLayer {
-            val breath = sin(phase.value * 2f * PI.toFloat())
-            scaleX = 0.98f + breath * 0.012f
-            scaleY = scaleX
-            translationY = breath * 3.dp.toPx()
-        },
-    )
-}
 
 @Composable
 private fun IdentityMotion(phase: Animatable<Float, *>) {
@@ -147,11 +135,10 @@ private fun IdentityMotion(phase: Animatable<Float, *>) {
             val youtube = index == 0
             Box(
                 Modifier.size(tileSize).graphicsLayer {
-                    val cycle = phase.value * 2f * PI.toFloat()
                     translationX = spread.toPx() * if (youtube) -1f else 1f
-                    translationY = (if (youtube) (-30).dp else 8.dp).toPx() +
-                        sin(cycle + index * PI.toFloat()) * 5.dp.toPx()
-                    rotationZ = sin(cycle) * (if (youtube) -2f else 2f)
+                    translationY = (if (youtube) (-30).dp else 8.dp).toPx()
+                    rotationZ = 0f
+                    applyAccountTileMotion(phase.value, index)
                 }.clip(FolioShape(28.dp)).background(paper)
                     .background(ink.copy(alpha = 0.045f)).border(1.dp, ink.copy(alpha = 0.25f), FolioShape(28.dp)),
                 contentAlignment = Alignment.Center,

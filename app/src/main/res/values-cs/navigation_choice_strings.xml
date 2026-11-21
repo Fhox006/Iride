@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="navigation_continue_anyway">Přesto pokračovat</string>
+    <string name="navigation_choice_title">Opravdu chcete pokračovat?</string>
+    <string name="navigation_choice_heart">Navrženo se srdcem.</string>
+    <string name="navigation_choice_motion">Některé animace a detaily vyžadují ovládání gesty.</string>
+    <string name="navigation_choice_support">Ovládání tlačítky má omezenou podporu.</string>
+    <string name="navigation_choice_alternatives">Můžete zkusit bezplatnou alternativu.</string>
+    <string name="navigation_choice_confirm">Přesto chci používat Iride</string>
+    <string name="navigation_choice_close">Zavřít</string>
+    <string name="navigation_choice_save_failed">Volbu se nepodařilo uložit. Zkuste to znovu.</string>
+    <string name="navigation_choice_browser_failed">Není dostupný žádný prohlížeč.</string>
+    <string name="navigation_choice_open_repository">Otevřít %1$s na GitHubu</string>
+</resources>

@@ -4,7 +4,6 @@
  */
 package com.metrolist.music.ui.component
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,12 +58,10 @@ fun CreatePlaylistDialog(
     IrideFolioEditorDialog(onDismiss = ::dismiss, dismissEnabled = !draft.saving) {
         IrideFolioPlaylistComposer(
             draft = draft,
-            onDismiss = ::dismiss,
             onNameChange = viewModel::setName,
             onQueryChange = viewModel::setQuery,
             onSelectionChange = viewModel::showSelection,
             onToggleSong = viewModel::toggle,
-            onRefresh = viewModel::refresh,
             onRetrySeeds = ::initialize,
             onCreate = { viewModel.create(allowSyncing, defaultName) },
         )

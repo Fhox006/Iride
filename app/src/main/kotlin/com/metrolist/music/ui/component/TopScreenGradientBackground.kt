@@ -74,7 +74,8 @@ fun TopScreenGradientBackground(
     val artworkUrl = mediaMetadata?.thumbnailUrl?.takeIf { it.isNotBlank() }
     val videoUrl = mediaMetadata?.id?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
         ?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
-    LaunchedEffect(artworkUrl, videoUrl) {
+    LaunchedEffect(artworkUrl, videoUrl, artworkTint) {
+        if (artworkTint != null) return@LaunchedEffect
         val urls = listOfNotNull(artworkUrl, videoUrl).distinct()
         for (attempt in 0..2) {
             for (url in urls) {
@@ -103,7 +104,7 @@ fun TopScreenGradientBackground(
         }
         // Retain the last resolved pigment through missing artwork or temporary network errors.
     }
-    val tint by animateColorAsState(pigment, tween(700), label = "sharedTopPigment")
+    val tint by animateColorAsState(artworkTint ?: pigment, tween(700), label = "sharedTopPigment")
     val topColor = tint.copy(alpha = 0.55f).compositeOver(Color.Black)
     val currentOnTopColorChanged by rememberUpdatedState(onTopColorChanged)
     LaunchedEffect(topColor) { currentOnTopColorChanged(topColor) }

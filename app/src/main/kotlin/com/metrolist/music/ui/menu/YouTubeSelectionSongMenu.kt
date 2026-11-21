@@ -257,7 +257,7 @@ fun YouTubeSelectionSongMenu(
                                     },
                                     icon = {
                                         Icon(
-                                            painter = painterResource(R.drawable.offline),
+                                            painter = painterResource(R.drawable.track_downloaded),
                                             contentDescription = null,
                                         )
                                     },
@@ -290,7 +290,7 @@ fun YouTubeSelectionSongMenu(
                                     },
                                     icon = {
                                         Icon(
-                                            painter = painterResource(R.drawable.download),
+                                            painter = painterResource(R.drawable.track_download),
                                             contentDescription = null,
                                         )
                                     },

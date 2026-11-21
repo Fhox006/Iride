@@ -35,14 +35,11 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.GestureNavigationKey
-import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
-import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
-import com.metrolist.music.constants.SwipeToRemoveSongKey
-import com.metrolist.music.constants.SwipeToSongKey
+import com.metrolist.music.constants.ReducedFolioModeKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.gestureNavigationEnabled
@@ -52,6 +49,7 @@ import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFolioDeviceProfile
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,15 +77,11 @@ fun InterfaceSettings(
     val (defaultOpenTab, onDefaultOpenTabChange) =
         rememberEnumPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME)
     val (gestureNavigation, onGestureNavigationChange) = rememberPreference(GestureNavigationKey, defaultValue = true)
-    val (swipeToSong, onSwipeToSongChange) = rememberPreference(SwipeToSongKey, defaultValue = true)
-    val (swipeToRemoveSong, onSwipeToRemoveSongChange) =
-        rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
-    val (showFeaturedArtistsInTopSongs, onShowFeaturedArtistsInTopSongsChange) =
-        rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
-    val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
-        rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
+    val folioDevice = rememberFolioDeviceProfile()
+    val (folioLightweightEntrances, onFolioLightweightEntrancesChange) =
+        rememberPreference(ReducedFolioModeKey, folioDevice.defaultLightweightMode)
 
     var showDefaultOpenTabDialog by remember { mutableStateOf(false) }
 
@@ -170,56 +164,6 @@ fun InterfaceSettings(
                     items =
                         listOf(
                             Material3SettingsItem(
-                                icon = painterResource(R.drawable.swipe),
-                                title = { Text(stringResource(R.string.swipe_song_to_add_title)) },
-                                description = { Text(stringResource(R.string.swipe_song_to_add)) },
-                                trailingContent = {
-                                    IrideSwitch(
-                                        checked = swipeToSong,
-                                        onCheckedChange = onSwipeToSongChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        if (swipeToSong) R.drawable.check
-                                                        else R.drawable.close
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
-                                    )
-                                },
-                                onClick = { onSwipeToSongChange(!swipeToSong) },
-                            ),
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.swipe),
-                                title = {
-                                    Text(stringResource(R.string.swipe_song_to_remove_title))
-                                },
-                                description = {
-                                    Text(stringResource(R.string.swipe_song_to_remove))
-                                },
-                                trailingContent = {
-                                    IrideSwitch(
-                                        checked = swipeToRemoveSong,
-                                        onCheckedChange = onSwipeToRemoveSongChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        if (swipeToRemoveSong) R.drawable.check
-                                                        else R.drawable.close
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
-                                    )
-                                },
-                                onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) },
-                            ),
-                            Material3SettingsItem(
                                 icon = painterResource(R.drawable.timer),
                                 title = {
                                     Text(stringResource(R.string.hide_duration_standard_songs))
@@ -250,64 +194,21 @@ fun InterfaceSettings(
                                 },
                             ),
                             Material3SettingsItem(
-                                icon = painterResource(R.drawable.group),
-                                title = {
-                                    Text(
-                                        stringResource(R.string.show_featured_artists_in_top_songs)
-                                    )
-                                },
-                                description = {
-                                    Text(
-                                        stringResource(
-                                            R.string.show_featured_artists_in_top_songs_desc
-                                        )
-                                    )
-                                },
-                                trailingContent = {
-                                    IrideSwitch(
-                                        checked = showFeaturedArtistsInTopSongs,
-                                        onCheckedChange = onShowFeaturedArtistsInTopSongsChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        if (showFeaturedArtistsInTopSongs)
-                                                            R.drawable.check
-                                                        else R.drawable.close
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
-                                    )
-                                },
-                                onClick = {
-                                    onShowFeaturedArtistsInTopSongsChange(
-                                        !showFeaturedArtistsInTopSongs
-                                    )
-                                },
-                            ),
-                            Material3SettingsItem(
                                 icon = painterResource(R.drawable.speed),
-                                title = { Text(stringResource(R.string.enable_high_refresh_rate)) },
+                                title = { Text(stringResource(R.string.reduced_folio_mode)) },
+                                description = {
+                                    Text(stringResource(
+                                        if (folioDevice.recommendedLowPowerMode) R.string.reduced_folio_mode_low_end_desc
+                                        else R.string.reduced_folio_mode_desc,
+                                    ))
+                                },
                                 trailingContent = {
                                     IrideSwitch(
-                                        checked = enableHighRefreshRate,
-                                        onCheckedChange = onEnableHighRefreshRateChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        if (enableHighRefreshRate) R.drawable.check
-                                                        else R.drawable.close
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
+                                        checked = folioDevice.lightweight(folioLightweightEntrances),
+                                        onCheckedChange = onFolioLightweightEntrancesChange,
                                     )
                                 },
-                                onClick = { onEnableHighRefreshRateChange(!enableHighRefreshRate) },
+                                onClick = { onFolioLightweightEntrancesChange(!folioLightweightEntrances) },
                             ),
                         ),
                 )

@@ -87,7 +87,8 @@ class AlbumDiscoveryRepository @Inject constructor(
             }
         val known = database.mostPlayedArtists(fromTimeStamp = 0L, limit = 50).first()
             .map { discoveryName(it.artist.name) }.toSet()
-        val pool = usableAlbums(page, immediateAlbums(page, hideExplicit), hideExplicit).toMutableList()
+        val initialAlbums = usableAlbums(page, immediateAlbums(page, hideExplicit), hideExplicit)
+        val pool = initialAlbums.toMutableList()
         val recent = readHistory("youtube-mix:${page.album.id}")
         val artistNames = page.album.artists.orEmpty().map { discoveryName(it.name) }.toSet()
         fun select(): List<AlbumItem> {
@@ -100,9 +101,17 @@ class AlbumDiscoveryRepository @Inject constructor(
             return (balanced + ordered.filterNot { it.id in selectedIds }.take(16 - balanced.size))
                 .shuffled(Random(rotation))
         }
+        // Publish one stable first page, then grow it on the right as artist catalogs arrive.
+        // Re-selecting the entire pool for every response made visible tiles jump positions.
+        val presented = initialAlbums.take(16).toMutableList()
         fun append(albums: List<AlbumItem>) {
             pool += usableAlbums(page, albums, hideExplicit)
-            select().takeIf { it.isNotEmpty() }?.let(onProgress)
+            val existingIds = presented.mapTo(mutableSetOf()) { it.id }
+            select().asSequence()
+                .filter { existingIds.add(it.id) }
+                .take((16 - presented.size).coerceAtLeast(0))
+                .forEach(presented::add)
+            if (presented.isNotEmpty()) onProgress(presented.toList())
         }
         // Finish selection and caching even when slower catalog requests exhaust the budget.
         withTimeoutOrNull(12_000) {
@@ -131,7 +140,7 @@ class AlbumDiscoveryRepository @Inject constructor(
                 }.orEmpty())
             }
         }
-        val result = select().ifEmpty { immediateAlbums(page, hideExplicit) }
+        val result = presented.ifEmpty { select().ifEmpty { immediateAlbums(page, hideExplicit) } }
         saveFeed(page, result)
         rememberHistory("youtube-mix:${page.album.id}", result)
         result

@@ -319,7 +319,7 @@ fun YouTubeAlbumMenu(albumItem: AlbumItem, navController: NavController, onDismi
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.offline),
+                                                painter = painterResource(R.drawable.track_downloaded),
                                                 contentDescription = null,
                                             )
                                         },
@@ -376,7 +376,7 @@ fun YouTubeAlbumMenu(albumItem: AlbumItem, navController: NavController, onDismi
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.download),
+                                                painter = painterResource(R.drawable.track_download),
                                                 contentDescription = null,
                                             )
                                         },

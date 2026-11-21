@@ -8,7 +8,7 @@ import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
 
 import android.content.Context
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -30,14 +30,11 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.Card
@@ -58,13 +55,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -95,12 +90,13 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideOutlineIconButton
+import com.metrolist.music.ui.component.NowPlayingStaticHeader
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -126,7 +122,7 @@ fun ListenTogetherScreen(
 
     val (listenTogetherInTopBar) =
         rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
-    val shouldShowTopBar = showTopBar || listenTogetherInTopBar
+    val shouldShowTopBar = false
 
     var savedUsername by rememberPreference(ListenTogetherUsernameKey, "")
     var roomCodeInput by rememberSaveable { mutableStateOf("") }
@@ -225,8 +221,6 @@ fun ListenTogetherScreen(
     }
 
     val lazyListState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
@@ -272,32 +266,18 @@ fun ListenTogetherScreen(
             bottomPadding =
                 LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            listModifier = Modifier.imePadding(),
             contentHorizontalPadding = 16.dp,
-        ) {
-            item {
-                HeaderSection(isInRoom = isInRoom)
-            }
-
-            item {
-                ConnectionStatusCard(
-                    connectionState = connectionState,
-                    onConnect = { listenTogetherManager.connect() },
-                    onDisconnect = { listenTogetherManager.disconnect() },
-                    onReconnect = { listenTogetherManager.forceReconnect() },
+            overlay = {
+                IrideOutlineIconButton(
+                    onClick = { navController.navigate("settings/integrations/listen_together") },
+                    icon = R.drawable.settings,
+                    contentDescription = stringResource(R.string.settings),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
                 )
-            }
-
-            if (connectionState == ConnectionState.CONNECTED && !isInRoom) {
-                item {
-                    Text(
-                        text = stringResource(R.string.listen_together_background_disconnect_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+            },
+        ) {
+            stickyHeader {
+                NowPlayingStaticHeader(mediaMetadata = mediaMetadata)
             }
 
             if (isInRoom) {
@@ -378,7 +358,6 @@ fun ListenTogetherScreen(
                         isJoiningRoom = isJoiningRoom,
                         joinErrorMessage = joinErrorMessage,
                         waitingForApprovalText = waitingForApprovalText,
-                        bringIntoViewRequester = bringIntoViewRequester,
                         onCreateRoom = {
                             val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
                             val finalUsername = username.trim()
@@ -425,18 +404,35 @@ fun ListenTogetherScreen(
                                     .show()
                             }
                         },
-                        onFieldFocused = {
-                            coroutineScope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                        },
                     )
                 }
             }
+        }
+    }
+}
 
-            item {
-                SettingsLinkCard(
-                    onClick = { navController.navigate("settings/integrations/listen_together") }
+@Composable
+private fun NowPlayingHeader(mediaMetadata: MediaMetadata?) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = mediaMetadata?.title ?: stringResource(R.string.not_playing),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            mediaMetadata?.artists?.joinToString { it.name }?.takeIf(String::isNotBlank)?.let { artist ->
+                Text(
+                    text = artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -646,7 +642,7 @@ private fun ConnectionStatusCard(
                         onClick = onReconnect,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Reconnect",)
+                        Text(stringResource(R.string.reconnect),)
                     }
                 }
             }
@@ -1064,24 +1060,14 @@ private fun JoinCreateRoomSection(
     isJoiningRoom: Boolean,
     joinErrorMessage: String?,
     waitingForApprovalText: String,
-    bringIntoViewRequester: BringIntoViewRequester,
     onCreateRoom: () -> Unit,
     onJoinRoom: () -> Unit,
-    onFieldFocused: () -> Unit = {},
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = FolioShape(24.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            ),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
             OutlinedTextField(
                 value = usernameInput,
                 onValueChange = onUsernameChange,
@@ -1110,8 +1096,7 @@ private fun JoinCreateRoomSection(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     ),
-                modifier =
-                    Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) onFieldFocused() },
+                modifier = Modifier.fillMaxWidth(),
             )
 
             OutlinedTextField(
@@ -1142,10 +1127,7 @@ private fun JoinCreateRoomSection(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     ),
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .bringIntoViewRequester(bringIntoViewRequester)
-                        .onFocusChanged { if (it.isFocused) onFieldFocused() },
+                modifier = Modifier.fillMaxWidth(),
             )
 
             AnimatedVisibility(
@@ -1214,40 +1196,29 @@ private fun JoinCreateRoomSection(
             }
 
             val hasUsername = usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()
-            val hasRoomCode = roomCodeInput.length == 8
+            val canJoin = roomCodeInput.length == 8
 
-            AnimatedVisibility(visible = hasUsername && !hasRoomCode) {
-                IrideFolioPrimaryButton(
-                    onClick = onCreateRoom,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = hasUsername,
-                ) {
+            IrideFolioPrimaryButton(
+                onClick = if (canJoin) onJoinRoom else onCreateRoom,
+                modifier = Modifier.fillMaxWidth().animateContentSize(),
+                enabled = hasUsername && !isJoiningRoom,
+            ) {
+                if (isJoiningRoom) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
                     Icon(
-                        painter = painterResource(R.drawable.add),
+                        painter = painterResource(if (canJoin) R.drawable.login else R.drawable.add),
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.create_room),)
                 }
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(if (canJoin) R.string.join_room else R.string.create_room))
             }
-
-            AnimatedVisibility(visible = hasUsername && hasRoomCode) {
-                IrideFolioPrimaryButton(
-                    onClick = onJoinRoom,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = hasUsername && hasRoomCode,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.login),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.join_room),)
-                }
-            }
-        }
     }
 }
 
@@ -1285,10 +1256,10 @@ private fun SettingsLinkCard(onClick: () -> Unit) {
                 )
             }
             Icon(
-                painter = painterResource(R.drawable.arrow_forward),
+                painter = painterResource(R.drawable.navigate_next),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }

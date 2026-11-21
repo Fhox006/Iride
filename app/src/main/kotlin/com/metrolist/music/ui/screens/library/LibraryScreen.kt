@@ -8,6 +8,7 @@ package com.metrolist.music.ui.screens.library
 
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 import com.metrolist.music.ui.component.IrideFolioSecondaryButton
+import com.metrolist.music.ui.component.IrideFolio
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
@@ -85,7 +86,6 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -177,6 +177,7 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.IrideGeneratedPlaylistHeader
+import com.metrolist.music.ui.component.IrideFolioSection
 import com.metrolist.music.ui.component.LocalIridePageTitleVisible
 import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.component.IrideSearchBox
@@ -202,6 +203,7 @@ import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistListItem
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalLibraryTextColor
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
@@ -306,8 +308,8 @@ fun LibraryScreen(
             LibraryCategory.ALBUMS -> if (offline) "library_albums_offline" else "library_albums"
             LibraryCategory.PLAYLISTS -> if (offline) "library_playlists_offline" else "library_playlists"
             LibraryCategory.ARTISTS -> if (offline) "library_artists_offline" else "library_artists"
-            LibraryCategory.SONGS -> if (offline) "library_songs_offline" else "library_songs"
-            LibraryCategory.LOCAL_SONGS -> "library_songs_local"
+            LibraryCategory.SONGS -> "auto_playlist/all_tracks?offline=$offline"
+            LibraryCategory.LOCAL_SONGS -> "auto_playlist/local_songs"
             LibraryCategory.CACHE -> "cache_playlist/cached"
         }
         // Real destinations share the album's NavHost transition and predictive back gesture.
@@ -366,10 +368,10 @@ fun LibraryAlbumsScreen(
     val menuState = LocalMenuState.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
-    val playerConnection = LocalPlayerConnection.current ?: return
+    val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
 
     var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.GRID)
     val gridViewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else viewType
@@ -575,16 +577,7 @@ fun LibraryAlbumsScreen(
             }
         }
     }
-    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-
     Box(modifier = Modifier.fillMaxSize()) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
-
-            .graphicsLayer { alpha = screenProgress },
-    ) {
         CompositionLocalProvider(
             LocalItemHorizontalPadding provides false,
             LocalContentColor provides Color.White,
@@ -649,11 +642,11 @@ fun LibraryAlbumsScreen(
                                         } ?: return@launch
                                         val queue = loadAlbumMediaItems(database, album).shuffled()
                                         if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     title = album.album.title,
                                                     items = queue,
-                                                    sourceRoute = "album/${album.id}",
+                                                    sourceRoute = "album/${album.id}?offline=$isOffline",
                                                 )
                                             )
                                         }
@@ -674,7 +667,7 @@ fun LibraryAlbumsScreen(
                                         val items = rotationAlbums.flatMap { loadAlbumMediaItems(database, it) }
                                         val queue = database.buildRotationQueue(items)
                                         if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     title = albumsQueueTitle,
                                                     items = queue,
@@ -734,7 +727,6 @@ fun LibraryAlbumsScreen(
                     }
             }
         }
-    }
 }
 
 private suspend fun loadAlbumMediaItems(
@@ -762,7 +754,7 @@ fun LibraryArtistsScreen(
     val menuState = LocalMenuState.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
-    val playerConnection = LocalPlayerConnection.current ?: return
+    val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
     var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
 
@@ -840,8 +832,8 @@ fun LibraryArtistsScreen(
                     columns = if (viewType == LibraryViewType.GRID_WIDE) GridCells.Fixed(3) else GridCells.Fixed(2),
                     bottomPadding = LocalPlayerAwareWindowInsets.current
                         .asPaddingValues().calculateBottomPadding(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (viewType == LibraryViewType.GRID_WIDE) IrideFolio.ShelfMosaicGap else 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (viewType == LibraryViewType.GRID_WIDE) IrideFolio.ShelfMosaicGap else 8.dp),
                     menuSections = listOf(
                         libraryGridMenuActions(viewType) { viewType = it },
                         librarySortMenuActions(sortOptions, sortType, onSortTypeChange),
@@ -881,7 +873,7 @@ fun LibraryArtistsScreen(
                                         val queue = database.artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
                                             .first().map { it.toMediaItem() }.distinctBy { it.mediaId }.shuffled()
                                         if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     title = artist.artist.name,
                                                     items = queue,
@@ -909,7 +901,7 @@ fun LibraryArtistsScreen(
                                         }.distinctBy { it.mediaId }
                                         val queue = database.buildRotationQueue(tracks)
                                         if (queue.isNotEmpty()) {
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     title = queueTitle,
                                                     items = queue,
@@ -1002,10 +994,11 @@ fun LibraryPlaylistsScreen(
     val menuState = LocalMenuState.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
-    val playerConnection = LocalPlayerConnection.current ?: return
+    val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val activeQueueTitle by playerConnection.queueTitle.collectAsState()
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
+    val activeQueueTitle = playerConnection?.queueTitle?.collectAsState()?.value
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
 
     var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.GRID)
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -1018,17 +1011,18 @@ fun LibraryPlaylistsScreen(
 
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
+    val likedSongCount by viewModel.likedSongCount.collectAsState()
+    val likedSongThumbnails by viewModel.likedSongThumbnails.collectAsState()
 
     val likedName = stringResource(R.string.starred)
-    val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
-    val likedPlaylistPinned = remember(likedName, lastLikedThumbnails) {
+    val likedPlaylist = remember(likedName, likedSongCount, likedSongThumbnails) {
         Playlist(
             playlist = PlaylistEntity(
                 id = PlaylistEntity.LIKED_PLAYLIST_ID,
                 name = likedName,
             ),
-            songCount = 0,
-            songThumbnails = lastLikedThumbnails,
+            songCount = likedSongCount,
+            songThumbnails = likedSongThumbnails,
         )
     }
 
@@ -1054,12 +1048,26 @@ fun LibraryPlaylistsScreen(
         }
     }
 
-    val visibleResults = remember(filteredPlaylists) {
-        filteredPlaylists.distinctBy { it.id }.map { playlist ->
-            VisiblePlaylistItem(
-                key = playlist.id,
-                playlist = playlist,
-                autoPlaylist = false,
+    val visibleResults = remember(filteredPlaylists, normalizedQuery, likedPlaylist, isOffline) {
+        buildList {
+            if (matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)) {
+                add(
+                    VisiblePlaylistItem(
+                        key = likedPlaylist.id,
+                        playlist = likedPlaylist,
+                        autoPlaylist = true,
+                        route = "auto_playlist/liked?offline=$isOffline",
+                    ),
+                )
+            }
+            addAll(
+                filteredPlaylists.distinctBy { it.id }.map { playlist ->
+                    VisiblePlaylistItem(
+                        key = playlist.id,
+                        playlist = playlist,
+                        autoPlaylist = false,
+                    )
+                },
             )
         }
     }
@@ -1120,16 +1128,7 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-
     Box(modifier = Modifier.fillMaxSize()) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
-
-            .graphicsLayer { alpha = screenProgress },
-    ) {
         CompositionLocalProvider(
             LocalItemHorizontalPadding provides false,
             LocalContentColor provides Color.White,
@@ -1145,6 +1144,7 @@ fun LibraryPlaylistsScreen(
                         columns = if (viewType == LibraryViewType.GRID_WIDE) GridCells.Fixed(3) else GridCells.Fixed(2),
                         bottomPadding = LocalPlayerAwareWindowInsets.current
                             .asPaddingValues().calculateBottomPadding(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         menuSections = listOf(
                             libraryGridMenuActions(viewType) { viewType = it },
@@ -1184,18 +1184,18 @@ fun LibraryPlaylistsScreen(
                                 actions = {
                                     // Keep the pinned playlist in place while playlist data loads.
                                     Box(Modifier.height(48.dp)) {
-                                        if (visibleResults.isNotEmpty()) {
+                                        if (filteredPlaylists.isNotEmpty()) {
                                             LibraryPlaybackActions(
                                                 onShuffle = {
                                                     coroutineScope.launch {
                                                         val chosen = filteredPlaylists.randomOrNull() ?: return@launch
                                                         val queue = loadPlaylistMediaItems(database, chosen).shuffled()
                                                         if (queue.isNotEmpty()) {
-                                                            playerConnection.playQueue(
+                                                            playerConnection?.playQueue(
                                                                 ListQueue(
                                                                     title = chosen.playlist.name,
                                                                     items = queue,
-                                                                    sourceRoute = "local_playlist/${chosen.id}",
+                                                                    sourceRoute = "local_playlist/${chosen.id}?offline=$isOffline",
                                                                 )
                                                             )
                                                         }
@@ -1206,7 +1206,7 @@ fun LibraryPlaylistsScreen(
                                                         val items = filteredPlaylists.flatMap { loadPlaylistMediaItems(database, it) }
                                                         val queue = database.buildRotationQueue(items)
                                                         if (queue.isNotEmpty()) {
-                                                            playerConnection.playQueue(
+                                                            playerConnection?.playQueue(
                                                                 ListQueue(
                                                                     title = queueTitle,
                                                                     items = queue,
@@ -1220,19 +1220,6 @@ fun LibraryPlaylistsScreen(
                                         }
                                     }
                                 },
-                            )
-                        }
-
-                        item(key = "liked_pinned", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                            PlaylistGridItem(
-                                playlist = likedPlaylistPinned,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .irideFolioCombinedClickable(
-                                        onClick = { navController.navigate("auto_playlist/liked") },
-                                    ),
                             )
                         }
 
@@ -1275,6 +1262,7 @@ fun LibraryPlaylistsScreen(
                                     coroutineScope = coroutineScope,
                                 playlist = item.playlist,
                                 isActive = activeQueueTitle == item.playlist.playlist.name,
+                                isPlaying = isPlaying,
                                     modifier = Modifier.animateItem(),
                                 )
                             }
@@ -1292,9 +1280,8 @@ fun LibraryPlaylistsScreen(
             }
         }
     }
-
-    }
 }
+
 private suspend fun loadPlaylistMediaItems(
     database: com.metrolist.music.db.MusicDatabase,
     playlist: Playlist,
@@ -1331,9 +1318,9 @@ fun LibrarySongsScreen(
         isOffline -> "library_songs_offline"
         else -> "library_songs"
     }
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(SongSortTypeKey, SongSortType.CREATE_DATE)
@@ -1353,11 +1340,10 @@ fun LibrarySongsScreen(
         else -> viewModel?.allSongs
     } ?: emptySongs
     val regularSongs by regularSongsFlow.collectAsState()
-    val localSongs by (viewModel?.localSongs ?: emptySongs).collectAsState()
+    val allSongsLoaded = viewModel?.allSongsLoaded?.collectAsState()?.value ?: true
     val songs = when {
         isCache -> cacheSongs
-        isLocal -> regularSongs
-        else -> (regularSongs + localSongs).distinctBy { it.id }
+        else -> regularSongs
     }
     var searchFieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     val searchFocusRequester = remember { FocusRequester() }
@@ -1449,12 +1435,14 @@ fun LibrarySongsScreen(
     }
 
     LibraryTracksPage(
+        imagePlaylistId = if (isCache) "cached" else null,
         titleRes = when {
             isCache -> R.string.offline_ready_songs
             isLocal -> R.string.local_songs
             else -> R.string.all_tracks
         },
         songs = filteredSongs,
+        isLoading = !isCache && !isLocal && !isOffline && !allSongsLoaded,
         state = lazyListState,
         query = searchFieldValue,
         onQueryChange = {
@@ -1479,7 +1467,7 @@ fun LibrarySongsScreen(
         onShuffle = {
             val queue = filteredSongs.shuffled().map { it.toMediaItem() }
             if (queue.isNotEmpty()) {
-                playerConnection.playQueue(
+                playerConnection?.playQueue(
                     ListQueue(
                         title = queueAllSongsStr,
                         items = queue,
@@ -1492,7 +1480,7 @@ fun LibrarySongsScreen(
             coroutineScope.launch {
                 val queue = database.buildRotationQueue(filteredSongs.map { it.toMediaItem() })
                 if (queue.isNotEmpty()) {
-                    playerConnection.playQueue(
+                    playerConnection?.playQueue(
                         ListQueue(
                             title = queueAllSongsStr,
                             items = queue,
@@ -1506,9 +1494,8 @@ fun LibrarySongsScreen(
         collectionHeader = if (isCache) ({
             IrideGeneratedPlaylistHeader(
                 title = cachedPlaylistStr,
-                thumbnails = remember(filteredSongs) { filteredSongs.mapNotNull { it.song.thumbnailUrl } },
+                playlistId = "cached",
                 metadataLine = pluralStringResource(R.plurals.n_song, filteredSongs.size, filteredSongs.size),
-                badgeIcon = R.drawable.cached,
             )
         }) else null,
     ) { song, index ->
@@ -1519,7 +1506,6 @@ fun LibrarySongsScreen(
             song = song,
             isActive = song.id == mediaMetadata?.id,
             isPlaying = isPlaying,
-            showLikedIcon = false,
             trailingContent = {
                 if (isCache && inSelectMode) {
                     androidx.compose.material3.Checkbox(
@@ -1537,7 +1523,7 @@ fun LibrarySongsScreen(
                             )
                         }
                     }) {
-                        Icon(painter = painterResource(R.drawable.more_vert), contentDescription = stringResource(R.string.more_options))
+                        TrackOverflowIcon()
                     }
                 }
             },
@@ -1546,9 +1532,9 @@ fun LibrarySongsScreen(
                     if (isCache && inSelectMode) {
                         onCheckedChange(song.id !in selection)
                     } else if (song.id == mediaMetadata?.id) {
-                        playerConnection.togglePlayPause()
+                        playerConnection?.togglePlayPause()
                     } else {
-                        playerConnection.playQueue(
+                        playerConnection?.playQueue(
                             ListQueue(
                                 sourceRoute = sourceRoute,
                                 title = if (isCache) cachedPlaylistStr else queueAllSongsStr,
@@ -1588,6 +1574,7 @@ fun LibrarySongsScreen(
 fun LibraryTracksPage(
     titleRes: Int,
     songs: List<Song>,
+    isLoading: Boolean = false,
     state: LazyListState,
     query: TextFieldValue,
     onQueryChange: (TextFieldValue) -> Unit,
@@ -1604,6 +1591,7 @@ fun LibraryTracksPage(
     onRotation: () -> Unit,
     overlay: @Composable BoxScope.() -> Unit = {},
     collectionHeader: (@Composable () -> Unit)? = null,
+    imagePlaylistId: String? = null,
     rowContent: @Composable LazyItemScope.(Song, Int) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1627,7 +1615,8 @@ fun LibraryTracksPage(
             bottomPadding = bottomPadding,
             onNavigateUp = onNavigateUp,
             showNavigationPill = showNavigationPill,
-            menuSections = listOf(librarySortMenuActions(sortOptions, sortType, onSortTypeChange)),
+            menuSections = listOf(librarySortMenuActions(sortOptions, sortType, onSortTypeChange)) +
+                if (imagePlaylistId != null) listOf(com.metrolist.music.ui.component.playlistImageHeaderActions(imagePlaylistId)) else emptyList(),
             overlay = overlay,
         ) {
             if (collectionHeader != null) item(key = "collection_header") { collectionHeader() }
@@ -1646,7 +1635,16 @@ fun LibraryTracksPage(
                 )
                 }
             }
-            if (songs.isEmpty() && query.text.isBlank() && emptyMessageRes != null) {
+            if (isLoading && songs.isEmpty()) {
+                item(key = "loading_tracks") {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 480.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(32.dp))
+                    }
+                }
+            } else if (songs.isEmpty() && query.text.isBlank() && emptyMessageRes != null) {
                 item(key = "empty_tracks") {
                     LibraryEmptyState(
                         text = stringResource(emptyMessageRes),
@@ -1676,9 +1674,9 @@ fun LibraryMixScreen(
 ) {
     val menuState = LocalMenuState.current
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()?.value == true
+    val mediaMetadata = playerConnection?.mediaMetadata?.collectAsState()?.value
 
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val isListView = viewType == LibraryViewType.LIST
@@ -1702,16 +1700,11 @@ fun LibraryMixScreen(
     var isLibraryFilter by rememberSaveable(initialOffline) { mutableStateOf(!initialOffline) }
     val isOffline = !isLibraryFilter
     val libraryTabKey = "library_$isLibraryFilter"
-    val screenProgress = if (IrideTabEntrance.wasRevealed(libraryTabKey)) {
-        1f
-    } else {
-        rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-            .also { if (it >= 1f) IrideTabEntrance.markRevealed(libraryTabKey) }
-    }
     val revealedSections = remember(isLibraryFilter) { IrideTabEntrance.sectionsFor(libraryTabKey) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
     val normalizedQuery = remember(debouncedSearchQuery) { debouncedSearchQuery.normalizeForSearch() }
+    val showItemSubtitles = normalizedQuery.isNotBlank()
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val hardResetContext = LocalContext.current
@@ -1732,9 +1725,10 @@ fun LibraryMixScreen(
     }
     val topSize by viewModel.topValue.collectAsState(initial = 50)
     val lastLikedDate by viewModel.lastLikedDate.collectAsState()
+    val likedSongCount by viewModel.likedSongCount.collectAsState()
     val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
     val likedPlaylistName = stringResource(R.string.starred)
-    val likedPlaylist = remember(lastLikedDate, likedPlaylistName, lastLikedThumbnails) {
+    val likedPlaylist = remember(lastLikedDate, likedPlaylistName, likedSongCount, lastLikedThumbnails) {
         Playlist(
             playlist = PlaylistEntity(
                 id = PlaylistEntity.LIKED_PLAYLIST_ID,
@@ -1742,7 +1736,7 @@ fun LibraryMixScreen(
                 createdAt = lastLikedDate,
                 lastUpdateTime = lastLikedDate,
             ),
-            songCount = 0,
+            songCount = likedSongCount,
             songThumbnails = lastLikedThumbnails,
         )
     }
@@ -1796,12 +1790,13 @@ fun LibraryMixScreen(
     val cacheViewModel: CachePlaylistViewModel = hiltViewModel()
     val cachedSongs by cacheViewModel.cachedSongs.collectAsState()
 
-    val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, false)
+    val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, false)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, false)
 
     val showDownloadedPlaylist =
-        showDownloaded && downloadedSongs.isNotEmpty() && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
+        !isLibraryFilter && showDownloaded && downloadedSongs.isNotEmpty() &&
+            matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
     val showTopPlaylists = false
     val showUploadedPlaylists =
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
@@ -1824,7 +1819,7 @@ fun LibraryMixScreen(
     val base = if (!isLibraryFilter) {
         downloadedAlbums
     } else {
-        val likedEntry = if (lastLikedDate != null) listOf(likedPlaylist) else emptyList()
+        val likedEntry = if (likedSongCount > 0) listOf(likedPlaylist) else emptyList()
         albums.value + artist.value + playlist.value.filterNot { playlist ->
             playlist.id == PlaylistEntity.WEEKLY_MOST_PLAYLIST_ID ||
                 playlist.id == PlaylistEntity.MONTHLY_MOST_PLAYLIST_ID
@@ -1977,7 +1972,7 @@ fun LibraryMixScreen(
             ),
             LibraryPageMenuAction(
                 label = stringResource(R.string.filter_downloaded),
-                icon = R.drawable.storage,
+                icon = R.drawable.track_downloaded,
                 selected = !isLibraryFilter,
                 onClick = { isLibraryFilter = false },
             ),
@@ -2011,12 +2006,11 @@ fun LibraryMixScreen(
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 if (isListView) {
                     IridePageLayout(
-                        titleRes = R.string.filter_library,
+                        titleRes = if (isLibraryFilter) R.string.filter_library else R.string.filter_downloaded,
                         state = lazyListState,
+                        pageTransitionKey = isLibraryFilter,
                         menuSections = pageMenuSections,
                         reducedMotion = reducedMotion,
-                        listModifier = Modifier
-                            .graphicsLayer { alpha = screenProgress },
                         contentHorizontalPadding = 20.dp,
                         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                     ) {
@@ -2051,9 +2045,10 @@ fun LibraryMixScreen(
                             PlaylistListItem(
                                 playlist = downloadPlaylist,
                                 autoPlaylist = true,
+                                showSubtitle = showItemSubtitles,
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     if (onSelectCategory != null) onSelectCategory(LibraryCategory.SONGS, true)
-                                    else navController.navigate("auto_playlist/downloaded")
+                                    else navController.navigate("auto_playlist/downloaded?offline=$isOffline")
                                 },
                             )
                         }
@@ -2061,6 +2056,7 @@ fun LibraryMixScreen(
                             PlaylistListItem(
                                 playlist = cachedPlaylist,
                                 autoPlaylist = true,
+                                showSubtitle = showItemSubtitles,
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     if (onSelectCategory != null) onSelectCategory(LibraryCategory.CACHE, true)
                                     else navController.navigate("cache_playlist/cached")
@@ -2071,6 +2067,7 @@ fun LibraryMixScreen(
                             PlaylistListItem(
                                 playlist = topPlaylist,
                                 autoPlaylist = true,
+                                showSubtitle = showItemSubtitles,
                                 modifier = Modifier.fillMaxWidth().clickable { navController.navigate("top_playlist/$topSize") },
                             )
                         }
@@ -2078,7 +2075,8 @@ fun LibraryMixScreen(
                             PlaylistListItem(
                                 playlist = uploadedPlaylist,
                                 autoPlaylist = true,
-                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/uploaded") },
+                                showSubtitle = showItemSubtitles,
+                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/uploaded?offline=$isOffline") },
                             )
                         }
                         listItems(filteredItems) { item ->
@@ -2088,10 +2086,17 @@ fun LibraryMixScreen(
                                         PlaylistListItem(
                                             playlist = item,
                                             autoPlaylist = true,
-                                            modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/liked") },
+                                            showSubtitle = showItemSubtitles,
+                                            modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/liked?offline=$isOffline") },
                                         )
                                     } else {
-                                        LibraryPlaylistListItem(navController, menuState, coroutineScope, item)
+                                        LibraryPlaylistListItem(
+                                            navController = navController,
+                                            menuState = menuState,
+                                            coroutineScope = coroutineScope,
+                                            playlist = item,
+                                            showSubtitle = showItemSubtitles,
+                                        )
                                     }
                                 }
                                 is Album -> LibraryAlbumListItem(
@@ -2100,15 +2105,22 @@ fun LibraryMixScreen(
                                     album = item,
                                     isActive = item.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
+                                    showSubtitle = showItemSubtitles,
                                 )
-                                is Artist -> LibraryArtistListItem(navController, menuState, coroutineScope, item)
+                                is Artist -> LibraryArtistListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    coroutineScope = coroutineScope,
+                                    artist = item,
+                                    showSubtitle = showItemSubtitles,
+                                )
                                 is Song -> {
-                                    val onClick = {
+                                    val onClick: () -> Unit = {
                                         if (item.id == mediaMetadata?.id) {
-                                            playerConnection.togglePlayPause()
+                                            playerConnection?.togglePlayPause()
                                         } else {
                                             val filteredSongs = filteredItems.filterIsInstance<Song>()
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     sourceRoute = "library",
                                                     title = queueSearchedSongsStr,
@@ -2122,6 +2134,7 @@ fun LibraryMixScreen(
                                         song = item,
                                         isActive = item.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier.fillMaxWidth().irideFolioCombinedClickable(
                                             onClick = onClick,
                                             onLongClick = {
@@ -2146,12 +2159,11 @@ fun LibraryMixScreen(
                     }
                 } else {
                 IridePageLayout(
-                    titleRes = R.string.filter_library,
+                    titleRes = if (isLibraryFilter) R.string.filter_library else R.string.filter_downloaded,
                     state = lazyGridState,
+                    pageTransitionKey = isLibraryFilter,
                     menuSections = pageMenuSections,
                     reducedMotion = reducedMotion,
-                    gridModifier = Modifier
-                        .graphicsLayer { alpha = screenProgress },
                     columns = when (viewType) {
                         LibraryViewType.GRID_WIDE -> GridCells.Fixed(3)
                         else -> GridCells.Adaptive(
@@ -2211,11 +2223,12 @@ fun LibraryMixScreen(
                                     PlaylistListItem(
                                         playlist = downloadPlaylist,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
                                                 if (onSelectCategory != null) onSelectCategory(LibraryCategory.SONGS, true)
-                                                else navController.navigate("auto_playlist/downloaded")
+                                                else navController.navigate("auto_playlist/downloaded?offline=$isOffline")
                                             }
                                             .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
@@ -2224,12 +2237,13 @@ fun LibraryMixScreen(
                                         playlist = downloadPlaylist,
                                         fillMaxWidth = true,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .irideFolioCombinedClickable(
                                                 onClick = {
                                                     if (onSelectCategory != null) onSelectCategory(LibraryCategory.SONGS, true)
-                                                    else navController.navigate("auto_playlist/downloaded")
+                                                    else navController.navigate("auto_playlist/downloaded?offline=$isOffline")
                                                 },
                                             )
                                             .animateItem(placementSpec = IrideMotion.PlacementSpec),
@@ -2250,6 +2264,7 @@ fun LibraryMixScreen(
                                     PlaylistListItem(
                                         playlist = cachedPlaylist,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
@@ -2263,6 +2278,7 @@ fun LibraryMixScreen(
                                         playlist = cachedPlaylist,
                                         fillMaxWidth = true,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .irideFolioCombinedClickable(
@@ -2289,6 +2305,7 @@ fun LibraryMixScreen(
                                     PlaylistListItem(
                                         playlist = topPlaylist,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("top_playlist/$topSize") }
@@ -2299,6 +2316,7 @@ fun LibraryMixScreen(
                                         playlist = topPlaylist,
                                         fillMaxWidth = true,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .irideFolioCombinedClickable(
@@ -2322,9 +2340,10 @@ fun LibraryMixScreen(
                                     PlaylistListItem(
                                         playlist = uploadedPlaylist,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { navController.navigate("auto_playlist/uploaded") }
+                                            .clickable { navController.navigate("auto_playlist/uploaded?offline=$isOffline") }
                                             .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 } else {
@@ -2332,9 +2351,10 @@ fun LibraryMixScreen(
                                         playlist = uploadedPlaylist,
                                         fillMaxWidth = true,
                                         autoPlaylist = true,
+                                        showSubtitle = showItemSubtitles,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { navController.navigate("auto_playlist/uploaded") }
+                                            .clickable { navController.navigate("auto_playlist/uploaded?offline=$isOffline") }
                                             .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 }
@@ -2354,9 +2374,10 @@ fun LibraryMixScreen(
                                             PlaylistListItem(
                                                 playlist = item,
                                                 autoPlaylist = true,
+                                                showSubtitle = showItemSubtitles,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .clickable { navController.navigate("auto_playlist/liked") }
+                                                    .clickable { navController.navigate("auto_playlist/liked?offline=$isOffline") }
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         } else {
@@ -2365,6 +2386,7 @@ fun LibraryMixScreen(
                                                 menuState = menuState,
                                                 coroutineScope = coroutineScope,
                                                 playlist = item,
+                                                showSubtitle = showItemSubtitles,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
@@ -2375,18 +2397,19 @@ fun LibraryMixScreen(
                                             playlist = item,
                                             fillMaxWidth = true,
                                             autoPlaylist = item.id == PlaylistEntity.LIKED_PLAYLIST_ID,
+                                            showSubtitle = showItemSubtitles,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .irideFolioCombinedClickable(
                                                     onClick = {
                                                         if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
-                                                            navController.navigate("auto_playlist/liked")
+                                                            navController.navigate("auto_playlist/liked?offline=$isOffline")
                                                         } else if (!item.playlist.isEditable && item.songCount == 0 &&
                                                             item.playlist.browseId != null
                                                         ) {
-                                                            navController.navigate("online_playlist/${item.playlist.browseId}")
+                                                            navController.navigate("online_playlist/${item.playlist.browseId}?offline=$isOffline")
                                                         } else {
-                                                            navController.navigate("local_playlist/${item.id}")
+                                                            navController.navigate("local_playlist/${item.id}?offline=$isOffline")
                                                         }
                                                     },
                                                     onLongClick = {
@@ -2407,12 +2430,12 @@ fun LibraryMixScreen(
                                 }
 
                                 is Song -> {
-                                    val onClick = {
+                                    val onClick: () -> Unit = {
                                         if (item.id == mediaMetadata?.id) {
-                                            playerConnection.togglePlayPause()
+                                            playerConnection?.togglePlayPause()
                                         } else {
                                             val filteredSongs = filteredItems.filterIsInstance<Song>()
-                                            playerConnection.playQueue(
+                                            playerConnection?.playQueue(
                                                 ListQueue(
                                                     sourceRoute = "library",
                                                     title = queueSearchedSongsStr,
@@ -2437,6 +2460,7 @@ fun LibraryMixScreen(
                                                 song = item,
                                                 isActive = item.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
+                                                showSubtitle = showItemSubtitles,
                                                 showLikedIcon = true,
                                                 showDivider = true,
                                                 hairlineBorder = false,
@@ -2454,6 +2478,7 @@ fun LibraryMixScreen(
                                             isPlaying = isPlaying,
                                             showLikedIcon = false,
                                             fillMaxWidth = true,
+                                            showSubtitle = showItemSubtitles,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .irideFolioCombinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -2470,6 +2495,7 @@ fun LibraryMixScreen(
                                             album = item,
                                             isActive = item.id == mediaMetadata?.album?.id,
                                             isPlaying = isPlaying,
+                                            showSubtitle = showItemSubtitles,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .animateItem(placementSpec = IrideMotion.PlacementSpec),
@@ -2482,10 +2508,11 @@ fun LibraryMixScreen(
                                             isPlaying = isPlaying,
                                             coroutineScope = coroutineScope,
                                             fillMaxWidth = true,
+                                            showSubtitle = showItemSubtitles,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .irideFolioCombinedClickable(
-                                                    onClick = { navController.navigate("album/${item.id}") },
+                                                    onClick = { navController.navigate("album/${item.id}?offline=$isOffline") },
                                                     onLongClick = {
                                                         menuState.show(anchored = true) {
                                                             AlbumMenu(
@@ -2507,6 +2534,7 @@ fun LibraryMixScreen(
                                             artist = item,
                                             showLikedIcon = false,
                                             fillMaxWidth = true,
+                                            showSubtitle = showItemSubtitles,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .irideFolioCombinedClickable(
@@ -2587,10 +2615,10 @@ private fun CategoriesContent(
 
     val items = remember(isOffline, showUploads, showLocalSongs, showDownloadedPlaylists, showDownloadedAlbums, showDownloadedSongs, showOfflineReady, albumsStr, artistsStr, playlistsStr, allTracksStr, cacheStr, localSongsStr, uploadedStr) {
         buildList {
-            if (!isOffline || showDownloadedPlaylists) add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
+            if (!isOffline || showDownloadedPlaylists) add(CategoryItem(playlistsStr, R.drawable.playlist_play, if (isOffline) "library_playlists_offline" else "library_playlists"))
             if (!isOffline || showDownloadedAlbums) add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
             if (!isOffline) add(CategoryItem(artistsStr, R.drawable.artist, "library_artists"))
-            if (!isOffline || showDownloadedSongs || showLocalSongs) add(CategoryItem(allTracksStr, R.drawable.music_note, if (isOffline) "library_songs_offline" else "library_songs"))
+            if (!isOffline || showDownloadedSongs || showLocalSongs) add(CategoryItem(allTracksStr, if (isOffline) R.drawable.track_downloaded else R.drawable.music_note, if (isOffline) "library_songs_offline" else "library_songs"))
             if (showLocalSongs) add(CategoryItem(localSongsStr, R.drawable.storage, "library_songs_local"))
             if (isOffline && showOfflineReady) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
             if (isOffline && showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
@@ -2646,7 +2674,7 @@ private fun CategoriesContent(
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
-                    modifier = Modifier.size(if (useIrideStyle) 18.dp else 24.dp),
+                    modifier = Modifier.size(if (useIrideStyle) 16.dp else 18.dp),
                     tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

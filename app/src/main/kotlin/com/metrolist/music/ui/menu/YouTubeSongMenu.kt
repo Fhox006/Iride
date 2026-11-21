@@ -27,10 +27,11 @@ fun YouTubeSongMenu(
 ) {
     val database = LocalDatabase.current
     val librarySong by database.song(song.id).collectAsState(initial = null)
+    val metadata = remember(song) { song.toMediaMetadata() }
 
-    val songForMenu = librarySong ?: remember(song.id) {
+    val songForMenu = librarySong ?: remember(song, metadata) {
         Song(
-            song = song.toMediaMetadata().toSongEntity(),
+            song = metadata.toSongEntity(),
             artists = song.artists.mapNotNull { a ->
                 a.id?.let { ArtistEntity(id = it, name = a.name) }
             },
@@ -42,6 +43,7 @@ fun YouTubeSongMenu(
         originalSong = songForMenu,
         navController = navController,
         onDismiss = onDismiss,
+        sourceMetadata = metadata,
         onHistoryRemoved = onHistoryRemoved,
     )
 }

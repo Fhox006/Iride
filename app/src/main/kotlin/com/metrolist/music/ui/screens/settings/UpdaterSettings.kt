@@ -79,11 +79,13 @@ fun UpdaterScreen(navController: NavController) {
     var isChecking by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf(false) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
+    var latestTag by remember { mutableStateOf<String?>(null) }
     var downloadUrl by remember { mutableStateOf<String?>(null) }
     var showChangelog by remember { mutableStateOf(false) }
     var changelogContent by remember { mutableStateOf<String?>(null) }
     var checkError by remember { mutableStateOf<String?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
+    val unknownError = stringResource(R.string.error_unknown)
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -96,6 +98,7 @@ fun UpdaterScreen(navController: NavController) {
                     .onSuccess { (releaseInfo, hasUpdate) ->
                         if (releaseInfo != null) {
                             latestVersion = releaseInfo.versionName
+                            latestTag = releaseInfo.tagName
                             updateAvailable = hasUpdate
                             changelogContent = releaseInfo.description
                             downloadUrl =
@@ -107,7 +110,7 @@ fun UpdaterScreen(navController: NavController) {
                         checkError =
                             String.format(
                                 failedToCheckUpdatesTemplate,
-                                it.message ?: "Unknown error",
+                                it.message ?: unknownError,
                             )
                     }
             }
@@ -271,14 +274,15 @@ fun UpdaterScreen(navController: NavController) {
                     )
                 }
 
-                if (updateAvailable) {
+                val releaseTag = latestTag
+                if (updateAvailable && releaseTag != null) {
                     val downloadState by
                         produceState<UpdateDownloadState>(
                             UpdateDownloadState.Idle,
-                            updateAvailable,
+                            releaseTag,
                         ) {
                             while (isActive) {
-                                value = UpdateDownloader.queryDownloadState(context)
+                                value = UpdateDownloader.queryDownloadState(context, releaseTag)
                                 delay(1_000)
                             }
                         }
@@ -335,7 +339,7 @@ fun UpdaterScreen(navController: NavController) {
                         onClick = {
                             when {
                                 downloadState is UpdateDownloadState.ReadyToInstall &&
-                                    canInstallPackages -> UpdateDownloader.promptInstall(context)
+                                    canInstallPackages -> UpdateDownloader.promptInstall(context, releaseTag)
                                 downloadState is UpdateDownloadState.ReadyToInstall ->
                                     UpdateDownloader.openInstallPermissionSettings(context)
                                 else ->
@@ -348,6 +352,7 @@ fun UpdaterScreen(navController: NavController) {
                                                         context,
                                                         url,
                                                         version,
+                                                        releaseTag = releaseTag,
                                                     )
                                                 }
                                             }

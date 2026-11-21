@@ -6,7 +6,7 @@ import com.metrolist.innertube.pages.PlaylistPage
 import java.security.MessageDigest
 
 @JvmName("completedLibrary")
-suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching {
+suspend fun Result<PlaylistPage>.completed(requireComplete: Boolean = false): Result<PlaylistPage> = runCatching {
     val page = getOrThrow()
     val songs = page.songs.toMutableList()
     var continuation = page.songsContinuation ?: page.continuation
@@ -20,7 +20,9 @@ suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching
         }
         seenContinuations.add(continuation)
         requestCount++
-        val continuationPage = YouTube.playlistContinuation(continuation).getOrNull() ?: break
+        val result = YouTube.playlistContinuation(continuation)
+        val continuationPage = (if (requireComplete) result.getOrThrow() else result.getOrNull()) ?: break
+        continuation = continuationPage.continuation
         if (continuationPage.songs.isEmpty()) {
             consecutiveEmptyResponses++
             if (consecutiveEmptyResponses >= 2) break
@@ -28,8 +30,8 @@ suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching
             consecutiveEmptyResponses = 0
             songs += continuationPage.songs
         }
-        continuation = continuationPage.continuation
     }
+    check(!requireComplete || continuation == null) { "Incomplete playlist response" }
     PlaylistPage(
         playlist = page.playlist,
         songs = songs,
@@ -39,7 +41,7 @@ suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching
 }
 
 @JvmName("completedPlaylist")
-suspend fun Result<LibraryPage>.completed(): Result<LibraryPage> = runCatching {
+suspend fun Result<LibraryPage>.completed(requireComplete: Boolean = false): Result<LibraryPage> = runCatching {
     val page = getOrThrow()
     val items = page.items.toMutableList()
     var continuation = page.continuation
@@ -53,7 +55,9 @@ suspend fun Result<LibraryPage>.completed(): Result<LibraryPage> = runCatching {
         }
         seenContinuations.add(continuation)
         requestCount++
-        val continuationPage = YouTube.libraryContinuation(continuation).getOrNull() ?: break
+        val result = YouTube.libraryContinuation(continuation)
+        val continuationPage = (if (requireComplete) result.getOrThrow() else result.getOrNull()) ?: break
+        continuation = continuationPage.continuation
         if (continuationPage.items.isEmpty()) {
             consecutiveEmptyResponses++
             if (consecutiveEmptyResponses >= 2) break
@@ -61,8 +65,8 @@ suspend fun Result<LibraryPage>.completed(): Result<LibraryPage> = runCatching {
             consecutiveEmptyResponses = 0
             items += continuationPage.items
         }
-        continuation = continuationPage.continuation
     }
+    check(!requireComplete || continuation == null) { "Incomplete library response" }
     LibraryPage(
         items = items,
         continuation = null

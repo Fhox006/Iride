@@ -4,6 +4,10 @@ import kotlin.math.sqrt
 
 internal const val ArtistArtworkDetailResolution = 3840
 
+/** Definition can improve during a flight, but the selected photograph cannot change. */
+internal fun artistArtworkCanUpgrade(currentUrl: String?, candidateUrl: String?, currentWidth: Int, candidateWidth: Int): Boolean =
+    currentUrl != null && currentUrl == candidateUrl && candidateWidth > currentWidth
+
 /** Leave analysis headroom and keep a decoded ARGB photo inside its cache budget. */
 internal fun artistArtworkDetailResolution(cacheBytes: Int): Int {
     require(cacheBytes > 0)

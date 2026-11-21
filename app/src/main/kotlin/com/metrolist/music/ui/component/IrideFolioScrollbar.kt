@@ -109,10 +109,9 @@ internal fun IrideFolioScrollbar(
         val x = size.width - IrideFolio.ScrollbarEdgeInset.toPx() - width
         val radius = CornerRadius(width / 2)
         val trackHeight = size.height - padding * 2
-        val compression =
-            (kotlin.math.abs(overscrollOffset) / (trackHeight * 0.55f).coerceAtLeast(1f))
-                .coerceIn(0f, 0.65f)
-        val thumbHeight = (metrics.height * (1f - compression)).coerceAtLeast(minimumThumbHeight)
+        val compressionDistance = (trackHeight * 0.55f).coerceAtLeast(1f)
+        val compression = kotlin.math.abs(overscrollOffset) / compressionDistance
+        val thumbHeight = metrics.height / (1f + compression)
         val thumbTravel = trackHeight - thumbHeight
         val thumbOffset = when {
             overscrollOffset > 0f -> 0f

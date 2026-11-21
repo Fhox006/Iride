@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -70,10 +71,12 @@ import com.metrolist.music.constants.EnableBetterLyricsUnisonKey
 import com.metrolist.music.constants.EnableKugouKey
 import com.metrolist.music.constants.EnableLrcLibKey
 import com.metrolist.music.constants.EnableLyricsPlus
+import com.metrolist.music.constants.FullyTranslatedAppLanguageNames
 import com.metrolist.music.constants.EnablePaxsenixKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoOnlyResultsKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.ShowExplicitBadgeKey
 import com.metrolist.music.constants.HideVideosInLibraryKey
 import com.metrolist.music.constants.LanguageCodeToName
 import com.metrolist.music.constants.LyricsClickKey
@@ -109,12 +112,14 @@ import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import java.net.Proxy
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContentSettings(navController: NavController) {
     val context = LocalContext.current
+    val displayLocale = LocalConfiguration.current.locales[0]
     val (appLanguage, onAppLanguageChange) =
         rememberPreference(key = AppLanguageKey, defaultValue = SYSTEM_DEFAULT)
 
@@ -124,6 +129,8 @@ fun ContentSettings(navController: NavController) {
         rememberPreference(key = ContentCountryKey, defaultValue = "system")
     val (hideExplicit, onHideExplicitChange) =
         rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val (showExplicitBadge, onShowExplicitBadgeChange) =
+        rememberPreference(key = ShowExplicitBadgeKey, defaultValue = false)
     val (hideVideoSongs, onHideVideoSongsChange) =
         rememberPreference(key = HideVideoSongsKey, defaultValue = false)
     val (resolveVideoSongs, onResolveVideoSongsChange) =
@@ -346,7 +353,11 @@ fun ContentSettings(navController: NavController) {
             current = contentCountry,
             values = (listOf(SYSTEM_DEFAULT) + CountryCodeToName.keys.toList()),
             valueText = {
-                CountryCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
+                if (it == SYSTEM_DEFAULT) {
+                    stringResource(R.string.system_default)
+                } else {
+                    Locale.Builder().setRegion(it).build().getDisplayCountry(displayLocale).ifBlank { it }
+                }
             },
         )
     }
@@ -364,9 +375,11 @@ fun ContentSettings(navController: NavController) {
             },
             title = stringResource(R.string.app_language),
             current = appLanguage,
-            values = (listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList()),
+            values = (listOf(SYSTEM_DEFAULT) + FullyTranslatedAppLanguageNames.keys),
             valueText = {
-                LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
+                FullyTranslatedAppLanguageNames[it]
+                    ?: LanguageCodeToName[it]
+                    ?: stringResource(R.string.system_default)
             },
         )
     }
@@ -817,9 +830,9 @@ fun ContentSettings(navController: NavController) {
                                     title = { Text(stringResource(R.string.app_language)) },
                                     description = {
                                         Text(
-                                            LanguageCodeToName.getOrElse(appLanguage) {
-                                                stringResource(R.string.system_default)
-                                            }
+                                        FullyTranslatedAppLanguageNames[appLanguage]
+                                            ?: LanguageCodeToName[appLanguage]
+                                            ?: stringResource(R.string.system_default)
                                         )
                                     },
                                     onClick = { showAppLanguageDialog = true },
@@ -842,12 +855,41 @@ fun ContentSettings(navController: NavController) {
                                 title = { Text(stringResource(R.string.content_country)) },
                                 description = {
                                     Text(
-                                        CountryCodeToName.getOrElse(contentCountry) {
-                                            stringResource(R.string.system_default)
-                                        }
+                                            if (contentCountry == SYSTEM_DEFAULT) {
+                                                stringResource(R.string.system_default)
+                                            } else {
+                                                Locale.Builder().setRegion(contentCountry).build()
+                                                    .getDisplayCountry(displayLocale).ifBlank { contentCountry }
+                                            }
                                     )
                                 },
                                 onClick = { showContentCountryDialog = true },
+                            ),
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.explicit),
+                                title = { Text(stringResource(R.string.show_explicit_badge)) },
+                                description = {
+                                    Text(stringResource(R.string.show_explicit_badge_desc))
+                                },
+                                trailingContent = {
+                                    IrideSwitch(
+                                        checked = showExplicitBadge,
+                                        onCheckedChange = onShowExplicitBadgeChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id =
+                                                            if (showExplicitBadge) R.drawable.check
+                                                            else R.drawable.close
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                onClick = { onShowExplicitBadgeChange(!showExplicitBadge) },
                             ),
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.explicit),
@@ -921,25 +963,6 @@ fun ContentSettings(navController: NavController) {
                                     )
                                 },
                                 onClick = { onResolveVideoSongsChange(!resolveVideoSongs) },
-                            ),
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.group_outlined),
-                                title = { Text(stringResource(R.string.together)) },
-                                description = {
-                                    Text(
-                                        stringResource(R.string.listen_together_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                },
-                                trailingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.navigate_next),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                },
-                                onClick = { navController.navigate("listen_together") },
                             ),
                         ),
                 )

@@ -4,6 +4,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 
+internal const val PlaybackEditionDissolveMillis = 450L
+
 /** The skip-fade envelope used by both the music service and the monthly film. */
 fun playbackFadeInGain(progress: Float): Float {
     val remaining = 1f - progress.coerceIn(0f, 1f)
@@ -24,6 +26,17 @@ suspend fun runPlaybackDissolve(durationMillis: Long, isPlaying: () -> Boolean, 
         apply((elapsed / (durationMillis.coerceAtLeast(1) * 1_000_000f)).coerceIn(0f, 1f))
     }
     apply(1f)
+}
+
+internal suspend fun runPlaybackGainDissolve(
+    durationMillis: Long,
+    isPlaying: () -> Boolean,
+    apply: (outgoingGain: Float, incomingGain: Float) -> Unit,
+) {
+    runPlaybackDissolve(durationMillis, isPlaying) { progress ->
+        val incomingGain = playbackFadeInGain(progress)
+        apply(1f - incomingGain, incomingGain)
+    }
 }
 
 class ReveriePlaybackLease internal constructor(val volume: Float, private val restore: (Boolean) -> Unit) {

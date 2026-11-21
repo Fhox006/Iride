@@ -70,13 +70,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEachReversed
-import androidx.compose.ui.util.lerp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
+import com.metrolist.music.ui.component.PlaylistArtwork
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.decode.DataSource
@@ -99,10 +98,6 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
-import com.metrolist.music.discovery.MixMood
-import com.metrolist.music.discovery.MixPosterPhotoSource
-import com.metrolist.music.discovery.MixPosterRepository
-import com.metrolist.music.discovery.MoodMixes
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
@@ -117,14 +112,16 @@ import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IrideCollectionTitle
 import com.metrolist.music.ui.component.IrideCollectionPageLayout
-import com.metrolist.music.ui.component.collectionExpansionTarget
+import com.metrolist.music.ui.component.rememberCollectionArtworkRequest
 import com.metrolist.music.ui.component.LocalCollectionExpansionProgress
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.PlaylistPageCapabilities
+import com.metrolist.music.ui.component.playlistPageSections
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.IrideFolioCollectionSearchBox
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.MixPosterPlaceholder
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.rememberGenreFilter
@@ -150,8 +147,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import sv.lib.squircleshape.SquircleShape
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -161,6 +156,7 @@ import sv.lib.squircleshape.SquircleShape
 @Composable
 fun OnlinePlaylistScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: OnlinePlaylistViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -176,32 +172,6 @@ fun OnlinePlaylistScreen(
     val queueTitle by playerConnection.queueTitle.collectAsState()
 
     val playlist by viewModel.playlist.collectAsState()
-    val isMoodMixPlaylist =
-        playlist?.let {
-            it.id.startsWith("RDTMA") || MoodMixes.hasMixTitle(it.title)
-        } == true
-    var moodPosterPath by remember(playlist?.id) { mutableStateOf<String?>(null) }
-    LaunchedEffect(playlist?.id, isMoodMixPlaylist) {
-        val currentPlaylist = playlist ?: return@LaunchedEffect
-        moodPosterPath = null
-        if (isMoodMixPlaylist) {
-            repeat(60) {
-                val poster =
-                    withContext(Dispatchers.IO) {
-                        MixPosterRepository.cachedPoster(
-                            context,
-                            currentPlaylist.id,
-                            currentPlaylist.thumbnail,
-                        )
-                    }
-                moodPosterPath = poster?.imagePath
-                if (poster?.photoSource == MixPosterPhotoSource.ARTIST) {
-                    return@LaunchedEffect
-                }
-                delay(500)
-            }
-        }
-    }
     val songs by viewModel.playlistSongs.collectAsState()
     val dbPlaylist by viewModel.dbPlaylist.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -348,7 +318,7 @@ fun OnlinePlaylistScreen(
         playlist?.let { current ->
             playerConnection.playQueue(
                 ListQueue(
-                    sourceRoute = "online_playlist/${current.id}",
+                    sourceRoute = "online_playlist/${current.id}?offline=$isOffline",
                     title = current.title,
                     items = songs.shuffled().map { it.toMediaItem() },
                 )
@@ -368,37 +338,6 @@ fun OnlinePlaylistScreen(
                             initialSongs = songs,
                             initialContinuation = viewModel.continuation,
                         )
-                    )
-                }
-            }
-        }
-    }
-    val onControlPanelDownloadClick: () -> Unit = {
-        when (downloadState) {
-            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-            Download.STATE_DOWNLOADING,
-            Download.STATE_QUEUED -> {
-                songs.forEach { song ->
-                    DownloadService.sendRemoveDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        song.id,
-                        false,
-                    )
-                }
-            }
-            else -> {
-                songs.forEach { song ->
-                    val downloadRequest =
-                        DownloadRequest.Builder(song.id, song.id.toUri())
-                            .setCustomCacheKey(song.id)
-                            .setData(song.title.toByteArray())
-                            .build()
-                    DownloadService.sendAddDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        downloadRequest,
-                        false,
                     )
                 }
             }
@@ -570,6 +509,7 @@ fun OnlinePlaylistScreen(
                                 menuState.show(anchored = true) {
                                     YouTubePlaylistMenu(
                                         showPageControls = false,
+                                        showDownloadAction = true,
                                         playlist = currentPlaylist,
                                         songs = songs,
                                         coroutineScope = coroutineScope,
@@ -655,27 +595,7 @@ fun OnlinePlaylistScreen(
                         })
                     else null,
             ) {
-                if (playlist == null || songs.isEmpty()) {
-                    playlist?.let { currentPlaylist ->
-                        item(key = "empty_playlist_title") {
-                            IrideCollectionTitle(
-                                title = currentPlaylist.title,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                            )
-                        }
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
+                if (playlist == null) {
                     if (isLoading) {
                         item(key = "loading_placeholder") {
                             Box(
@@ -718,45 +638,42 @@ fun OnlinePlaylistScreen(
                             }
                         }
                     }
-                    if (playlist == null) {
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
+                    item(key = "search_bar") {
+                        IrideFolioCollectionSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                        )
                     }
                 } else {
                     playlist?.let { playlist ->
-                        if (!isSearching) {
-                            item(key = "playlist_header") {
+                        playlistPageSections(
+                            capabilities = PlaylistPageCapabilities(
+                                showHeader = !isSearching,
+                                showPlaybackControls = !isSearching,
+                                showSearch = true,
+                                showFilters = !isSearching,
+                            ),
+                            header = {
                                 OnlinePlaylistHeader(
                                     playlist = playlist,
-                                    coverThumbnail =
-                                        if (isMoodMixPlaylist) moodPosterPath
-                                        else playlist.thumbnail,
-                                    isMoodMixPlaylist = isMoodMixPlaylist,
                                     songs = songs,
                                     dbPlaylist = dbPlaylist,
                                     navController = navController,
                                     coroutineScope = coroutineScope,
                                     continuation = viewModel.continuation,
+                                    isOffline = isOffline,
                                     isPodcastPlaylist = isPodcastPlaylist,
                                     headerRevealed = headerRevealed,
                                     titleTypingMs = titleTypingMs,
                                     modifier = Modifier,
                                 )
-                            }
-                        }
-
-                        if (!isSearching) {
-                            item(key = "control_panel") {
+                            },
+                            playbackControls = {
                                 val controlPanelProgress =
                                     headerEnter(
                                         revealed = headerRevealed,
@@ -767,35 +684,73 @@ fun OnlinePlaylistScreen(
                                 IridePlaylistControlPanel(
                                     onShuffleClick = onControlPanelShuffleClick,
                                     onPlayClick = onControlPanelPlayClick,
-                                    onDownloadClick = onControlPanelDownloadClick,
-                                    downloadState = downloadState,
                                     isPlaying = isThisPlaylistPlaying,
                                     modifier =
                                         Modifier.padding(bottom = 12.dp)
                                             .irideEnterScale(controlPanelProgress),
                                 )
-                            }
-                        }
-
-                        item(key = "search_bar") {
-                            IrideFolioCollectionSearchBox(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholderText = stringResource(R.string.search_playlists),
-                                focusRequester = focusRequester,
-                                onFocusChanged = { if (it.isFocused) isSearching = true },
-                                onSearch = {},
-                                onClear = { query = TextFieldValue() },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                        }
-
-                        if (!isSearching) {
-                            item(key = "genre_pills") {
+                            },
+                            search = {
+                                IrideFolioCollectionSearchBox(
+                                    query = query,
+                                    onQueryChange = { query = it },
+                                    placeholderText = stringResource(R.string.search_playlists),
+                                    focusRequester = focusRequester,
+                                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                                    onSearch = {},
+                                    onClear = { query = TextFieldValue() },
+                                )
+                            },
+                            filters = {
                                 GenrePillsRow(
                                     state = genreFilter,
                                     modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
                                 )
+                            },
+                        )
+
+                        if (songs.isEmpty()) {
+                            if (isLoading) {
+                                item(key = "loading_placeholder") {
+                                    Box(
+                                        modifier = Modifier.fillParentMaxSize().padding(32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        IrideLoadingIndicator()
+                                    }
+                                }
+                            } else if (error != null) {
+                                item(key = "error_placeholder") {
+                                    Column(
+                                        modifier = Modifier.fillParentMaxSize().padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        Text(
+                                            text = error ?: stringResource(R.string.error_unknown),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { viewModel.retry() }
+                                        ) {
+                                            Text(stringResource(R.string.retry))
+                                        }
+                                    }
+                                }
+                            } else {
+                                item(key = "empty_placeholder") {
+                                    Box(
+                                        modifier = Modifier.fillParentMaxSize().padding(32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.playlist_is_empty),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -891,7 +846,7 @@ fun OnlinePlaylistScreen(
                                                 }
                                             }
                                         ) {
-                                            Icon(painterResource(R.drawable.more_vert), null)
+                                            TrackOverflowIcon()
                                         }
                                     }
                                 },
@@ -923,13 +878,12 @@ fun OnlinePlaylistScreen(
 @Composable
 private fun OnlinePlaylistHeader(
     playlist: PlaylistItem,
-    coverThumbnail: String?,
-    isMoodMixPlaylist: Boolean,
     songs: List<SongItem>,
     dbPlaylist: Playlist?,
     navController: NavController,
     coroutineScope: CoroutineScope,
     continuation: String?,
+    isOffline: Boolean = false,
     isPodcastPlaylist: Boolean = false,
     headerRevealed: Boolean = false,
     titleTypingMs: Int = 0,
@@ -1000,8 +954,6 @@ private fun OnlinePlaylistHeader(
         )
     }
 
-    val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
-
     Column(
         modifier =
             modifier
@@ -1013,67 +965,23 @@ private fun OnlinePlaylistHeader(
                 .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        var coverLoaded by remember(playlist.id) { mutableStateOf(false) }
-        var skipCoverEnterAnim by remember(playlist.id) { mutableStateOf(false) }
-        LaunchedEffect(playlist.id, coverThumbnail, isMoodMixPlaylist) {
-            if (isMoodMixPlaylist && coverThumbnail == null) coverLoaded = true
-        }
-        val animatedCoverProgress =
-            rememberEnterProgress(
-                play = coverLoaded,
-                durationMillis = 420,
-                easing = IrideMotion.EaseOutQuart,
-            )
-        val coverProgress = if (skipCoverEnterAnim || LocalCollectionExpansionProgress.current != null) 1f else animatedCoverProgress
-        val coverModifier =
-            Modifier.size(240.dp).collectionExpansionTarget(ready = coverLoaded)
-                .graphicsLayer {
-                    alpha = coverProgress
-                    val s = lerp(0.94f, 1f, coverProgress)
-                    scaleX = s
-                    scaleY = s
-                }
-                .irideArtworkOverlayBorder(
-                    IrideBaseBorderWidth,
-                    MaterialTheme.colorScheme.strokeCard,
-                    playlistCoverSquircle,
-                )
-                .shadow(
-                    elevation = 20.dp,
-                    shape = playlistCoverSquircle,
-                    spotColor = Color.Black.copy(alpha = 0.5f),
-                )
-                .clip(playlistCoverSquircle)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            if (isMoodMixPlaylist && coverThumbnail == null) {
-                MixPosterPlaceholder(
-                    title = playlist.title,
-                    mood = MixMood.fromMixTitle(playlist.title) ?: MixMood.CHILL,
-                    modifier = coverModifier,
-                )
-            } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(coverThumbnail).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Success) {
-                            if (state.result.dataSource == DataSource.MEMORY_CACHE) {
-                                skipCoverEnterAnim = true
-                            }
-                            coverLoaded = true
-                        }
-                    },
-                    modifier = coverModifier,
-                )
-            }
+            PlaylistArtwork(
+                title = playlist.title,
+                thumbnailUrl = playlist.thumbnail,
+                playlistId = playlist.id,
+                modifier = Modifier.size(240.dp),
+                expansionTarget = true,
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        IrideCollectionTitle(title = playlist.title)
+        IrideCollectionTitle(
+            title = playlist.title.let { name ->
+                name
+            },
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 

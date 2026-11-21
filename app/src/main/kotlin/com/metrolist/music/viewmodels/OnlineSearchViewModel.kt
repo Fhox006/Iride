@@ -7,6 +7,7 @@ package com.metrolist.music.viewmodels
 
 import android.content.Context
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,14 +32,29 @@ import com.metrolist.innertube.pages.SearchSummaryPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.discovery.searchPersonalCatalog
 import com.metrolist.music.discovery.SearchDiscovery
+import com.metrolist.music.ui.screens.search.searchTopItems
+import com.metrolist.music.ui.screens.search.searchSongContextItems
+import com.metrolist.music.ui.screens.search.isSearchMusic
+import com.metrolist.music.ui.screens.search.rankSearchSuggestions
+import com.metrolist.music.db.MusicDatabase
+import com.metrolist.innertube.models.Artist
+import com.metrolist.music.db.entities.Song
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import com.metrolist.music.models.ItemsPage
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -54,6 +70,7 @@ class OnlineSearchViewModel
 constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
+    private val database: MusicDatabase,
 ) : ViewModel() {
     var query: String by mutableStateOf(
         savedStateHandle.get<String>("query")?.let {
@@ -70,6 +87,15 @@ constructor(
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
     var searchRevision by mutableIntStateOf(0)
         private set
+    private var pinnedSuggestions: List<YTItem> by mutableStateOf(emptyList())
+    private var pinnedSuggestionsQuery: String by mutableStateOf("")
+    private var selectedSong: SongItem? by mutableStateOf(null)
+    private var personalItems: List<YTItem> by mutableStateOf(emptyList())
+    private val personalSongs: List<SongItem> get() = personalItems.filterIsInstance<SongItem>()
+    private val networkRequests = Semaphore(3)
+    private var discoveryRevision: Int? = null
+    private var requestGeneration = 0
+    private var remoteSuggestions: List<YTItem> by mutableStateOf(emptyList())
 
     data class SongDiscovery(
         val seed: SongItem,
@@ -78,14 +104,15 @@ constructor(
         val similarArtists: List<ArtistItem> = emptyList(),
         val albums: List<AlbumItem> = emptyList(),
         val playlists: List<PlaylistItem> = emptyList(),
+        val complete: Boolean = false,
     )
 
     var songDiscovery by mutableStateOf<SongDiscovery?>(null)
         private set
 
     private val matchingSongs: List<SongItem>
-        get() = (viewStateMap[YouTube.SearchFilter.FILTER_SONG.value]?.items
-            ?: summaryPage?.summaries.orEmpty().flatMap { it.items })
+        get() = (viewStateMap[YouTube.SearchFilter.FILTER_SONG.value]?.items.orEmpty() +
+            summaryPage?.summaries.orEmpty().flatMap { it.items })
             .filterIsInstance<SongItem>()
             .filter { !it.isVideoSong && !it.isEpisode }
             .distinctBy { it.id }
@@ -94,37 +121,56 @@ constructor(
         get() = SearchDiscovery.songs(matchingSongs, songDiscovery?.seed, songDiscovery?.recommendations.orEmpty())
 
     fun sectionItems(filter: YouTube.SearchFilter): List<YTItem> {
-        val results = viewStateMap[filter.value]?.items.orEmpty()
-        return when (filter) {
+        val summaryItems = summaryPage?.summaries.orEmpty().flatMap { it.items }.filter { item ->
+            when (filter) {
+                YouTube.SearchFilter.FILTER_ALBUM -> item is AlbumItem
+                YouTube.SearchFilter.FILTER_ARTIST -> item is ArtistItem
+                YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST -> item is PlaylistItem
+                YouTube.SearchFilter.FILTER_VIDEO -> item is SongItem && item.isVideoSong && !item.isEpisode
+                else -> false
+            }
+        }
+        val results = (viewStateMap[filter.value]?.items.orEmpty() + summaryItems).distinctBy { it.id }
+        val section = when (filter) {
             YouTube.SearchFilter.FILTER_SONG -> songs
             YouTube.SearchFilter.FILTER_ALBUM -> YouTube.mergeAlbums(
                 (songDiscovery?.albums.orEmpty() + results).filterIsInstance<AlbumItem>(),
             )
-            YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST -> (songDiscovery?.playlists.orEmpty() + results).distinctBy { it.id }
+            YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST ->
+                SearchDiscovery.playlists(songDiscovery?.playlists.orEmpty(), results.filterIsInstance<PlaylistItem>())
+            YouTube.SearchFilter.FILTER_ARTIST -> SearchDiscovery.artists(
+                songDiscovery?.artists.orEmpty(), songDiscovery?.similarArtists.orEmpty(), results.filterIsInstance<ArtistItem>(),
+            )
             else -> results
         }
+        val topResultIds = topResult?.items.orEmpty().asSequence().map { it.id }.toSet()
+        return section.filter { it.isSearchMusic() || (filter == YouTube.SearchFilter.FILTER_VIDEO && it is SongItem && !it.isEpisode) }
+            .filterNot { filter != YouTube.SearchFilter.FILTER_ARTIST && it.id in topResultIds }
     }
 
-    val topResult: SearchSummary?
-        get() {
-            val top = summaryPage?.summaries?.firstOrNull() ?: return null
-            val songs = (viewStateMap[YouTube.SearchFilter.FILTER_SONG.value]?.items.orEmpty() +
-                summaryPage?.summaries.orEmpty().flatMap { it.items })
-                .filterIsInstance<SongItem>()
-                .filter { !it.isVideoSong && !it.isEpisode }
-                .distinctBy { it.id }
-            val exactMatches = songs.filter { it.title.trim().equals(query.trim(), ignoreCase = true) }
-            val promotedSongs = if (exactMatches.isNotEmpty()) {
-                exactMatches
-            } else if (top.items.any { it is SongItem && it.isVideoSong }) {
-                songs.take(1)
+    val topResult: SearchSummary? by derivedStateOf {
+            val pinned = pinnedSuggestions.takeIf {
+                pinnedSuggestionsQuery.equals(query, ignoreCase = true)
+            }.orEmpty().take(5)
+            val top = summaryPage?.summaries?.firstOrNull()
+            val discovery = songDiscovery
+            val seed = discovery?.seed ?: selectedSong
+            val all = remoteSuggestions + pinned + summaryPage?.summaries.orEmpty().flatMap { it.items } + matchingSongs
+            val items = if (seed != null) {
+                val artistIds = seed.artists.mapNotNull { it.id }.toSet()
+                val familiar = personalSongs.filter { song -> song.artists.any { it.id in artistIds } }
+                val relatedMatches = matchingSongs.filter { song -> song.artists.any { it.id in artistIds } }
+                val artists = discovery?.artists.orEmpty().ifEmpty {
+                    seed.artists.filter { it.id?.startsWith("UC") == true }.take(1).map {
+                        ArtistItem(requireNotNull(it.id), it.name, null, shuffleEndpoint = null, radioEndpoint = null)
+                    }
+                }
+                searchSongContextItems(seed, artists, familiar, relatedMatches, discovery?.recommendations.orEmpty())
             } else {
-                emptyList()
+                rankSearchSuggestions(query, personalItems, all)
             }
-            val items = (promotedSongs + top.items.filterNot { it is SongItem && it.isVideoSong })
-                .distinctBy { it.id }
-            if (SearchDiscovery.duplicatesFirstSongs(items.firstOrNull(), this.songs)) return null
-            return top.copy(items = items).takeIf { items.isNotEmpty() }
+            SearchSummary(top?.title ?: context.getString(com.metrolist.music.R.string.search_recommended), items)
+                .takeIf { items.isNotEmpty() }
         }
 
     private var summaryJob: Job? = null
@@ -144,15 +190,18 @@ constructor(
     private fun launchSummaryFetch(): Job {
         val job = viewModelScope.launch {
             val requestedQuery = query
-            YouTube
-                .searchSummary(requestedQuery)
+            val requestedRevision = requestGeneration
+            request { YouTube.searchSummary(requestedQuery) }
                 .onSuccess {
                     currentCoroutineContext().ensureActive()
-                    if (requestedQuery == query) {
+                    if (requestedQuery == query && requestedRevision == requestGeneration) {
                         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
                         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                        summaryPage = it.filterExplicit(hideExplicit)
+                        summaryPage = it.copy(summaries = it.summaries.mapNotNull { section ->
+                            section.copy(items = section.items.filter { item -> item.isSearchMusic() || item is SongItem && !item.isEpisode })
+                                .takeIf { section -> section.items.isNotEmpty() }
+                        }).filterExplicit(hideExplicit)
                             .filterVideoSongs(hideVideoSongs)
                             .filterYoutubeShorts(hideYoutubeShorts)
                     }
@@ -207,6 +256,13 @@ constructor(
 
     init {
         viewModelScope.launch {
+            database.searchPersonalCatalog().collect { catalog ->
+                personalItems = catalog.filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                    .filterYoutubeShorts(context.dataStore.get(HideYoutubeShortsKey, false))
+            }
+        }
+
+        viewModelScope.launch {
             filter.collect { filter ->
                 if (filter == null) {
                     loadSummaryPage()
@@ -223,14 +279,25 @@ constructor(
     }
 
     private suspend fun fetchAndStoreFilterResults(filter: YouTube.SearchFilter) {
-        if (query.isBlank()) return
+        if (query.isBlank() || filter == YouTube.SearchFilter.FILTER_PODCAST || filter == YouTube.SearchFilter.FILTER_EPISODE) return
         if (viewStateMap[filter.value] != null) return
         val requestedQuery = query
-        YouTube
-            .search(requestedQuery, filter, includeExternalAlbums = true)
+        val requestedRevision = requestGeneration
+        val seed = selectedSong ?: songDiscovery?.seed
+        val lookup = if (seed != null) {
+            when (filter) {
+                YouTube.SearchFilter.FILTER_ARTIST, YouTube.SearchFilter.FILTER_ALBUM -> seed.artists.firstOrNull()?.name ?: requestedQuery
+                else -> "${seed.title} ${seed.artists.joinToString(" ") { it.name }}"
+            }
+        } else {
+            personalItems.filterIsInstance<ArtistItem>().firstOrNull {
+                com.metrolist.music.ui.screens.search.searchPredictionScore(requestedQuery, it.title)?.let { score -> score <= 1 } == true
+            }?.title ?: requestedQuery
+        }
+        request { YouTube.search(lookup, filter) }
             .onSuccess { result ->
                 currentCoroutineContext().ensureActive()
-                if (requestedQuery != query) return@onSuccess
+                if (requestedQuery != query || requestedRevision != requestGeneration) return@onSuccess
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                 val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
                 val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
@@ -245,7 +312,7 @@ constructor(
                     )
             }.onFailure {
                 currentCoroutineContext().ensureActive()
-                if (requestedQuery != query) return@onFailure
+                if (requestedQuery != query || requestedRevision != requestGeneration) return@onFailure
                 val category = Category.entries.firstOrNull { filter in it.toFilters() }
                 val summaryItems = summaryPage?.summaries.orEmpty()
                     .flatMap { it.items }
@@ -268,58 +335,65 @@ constructor(
         val smartSearchOrder: List<YouTube.SearchFilter>,
         val smartSearchStarted: Boolean,
         val songDiscovery: SongDiscovery?,
+        val pinnedSuggestions: List<YTItem>,
+        val remoteSuggestions: List<YTItem>,
+        val selectedSong: SongItem?,
     )
     private val queryCache = linkedMapOf<String, QueryCache>()
 
     fun loadSmartSearch() {
         if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
+        val requestedQuery = query
+        smartSearchOrder = listOf(
+            YouTube.SearchFilter.FILTER_SONG, YouTube.SearchFilter.FILTER_ALBUM,
+            YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST, YouTube.SearchFilter.FILTER_ARTIST,
+            YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST,
+        ) + if (context.dataStore.get(HideVideoSongsKey, false)) emptyList() else listOf(YouTube.SearchFilter.FILTER_VIDEO)
         searchJob = viewModelScope.launch {
-            loadSummaryPage()
-            currentCoroutineContext().ensureActive()
-            val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
-            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-            val priorityOrder = (listOf(Category.SONG) + categoryPriorityOrder(topCategory)).distinct()
-            val order = priorityOrder
-                .flatMap { it.toFilters() }
-                .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
-                .filter { it != YouTube.SearchFilter.FILTER_PROFILE }
-                .let { filters -> filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } +
-                    filters.filter { it == YouTube.SearchFilter.FILTER_VIDEO } }
-            smartSearchOrder = order
-
-            val requestedQuery = query
-            order.forEach { sectionFilter ->
-                if (sectionFilter != YouTube.SearchFilter.FILTER_EPISODE) {
-                    launch {
-                        fetchAndStoreFilterResults(sectionFilter)
-                        if (sectionFilter == YouTube.SearchFilter.FILTER_SONG) {
-                            loadSongDiscovery(requestedQuery)
-                        }
-                    }
+            if (selectedSong != null) launch { loadSongDiscovery(requestedQuery) }
+            launch {
+                loadSummaryPage()
+                loadSongDiscovery(requestedQuery)
+            }
+            fetchAndStoreFilterResults(YouTube.SearchFilter.FILTER_SONG)
+            launch { loadSongDiscovery(requestedQuery) }
+            if (pinnedSuggestions.isEmpty()) launch {
+                val revision = requestGeneration
+                val result = request { YouTube.searchSuggestions(requestedQuery) }.getOrNull()
+                if (requestedQuery == query && revision == requestGeneration) {
+                    remoteSuggestions = result?.recommendedItems.orEmpty().filter { it.isSearchMusic() }
+                        .filterExplicit(context.dataStore.get(HideExplicitKey, false))
                 }
             }
-            if (viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] == null) {
-                viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] = ItemsPage(episodesFromSummary(), null)
+            smartSearchOrder.filter { it != YouTube.SearchFilter.FILTER_SONG }.forEach { sectionFilter ->
+                launch { fetchAndStoreFilterResults(sectionFilter) }
             }
+        }
+    }
+
+    private suspend fun <T> request(block: suspend () -> Result<T>): Result<T> = networkRequests.withPermit {
+        withContext(Dispatchers.IO) {
+            withTimeoutOrNull(10_000L) { block() } ?: Result.failure(IOException("Search request timed out"))
         }
     }
 
     private suspend fun loadSongDiscovery(requestedQuery: String) {
         currentCoroutineContext().ensureActive()
         if (requestedQuery != query) return
-        val seed = SearchDiscovery.recognizeSong(
+        val seed = selectedSong ?: SearchDiscovery.recognizeSong(
             requestedQuery,
             matchingSongs,
             summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull(),
         ) ?: return
-        val credits = (seed.artists + matchingSongs.take(4).flatMap { it.artists })
-            .filter { it.id?.startsWith("UC") == true }
-            .distinctBy { it.id }
-            .take(3)
+        val requestedRevision = requestGeneration
+        if (discoveryRevision == requestedRevision || (songDiscovery?.seed?.id == seed.id && songDiscovery?.complete == true)) return
+        discoveryRevision = requestedRevision
+        val credits = SearchDiscovery.credits(seed, matchingSongs + personalSongs, personalItems.filterIsInstance<ArtistItem>())
         val creditedIds = credits.mapNotNull { it.id }.toSet()
         songDiscovery = SongDiscovery(
-            seed = seed,
+            seed = seed.copy(artists = credits.ifEmpty { seed.artists }),
+            recommendations = personalSongs.filter { song -> song.id != seed.id && song.artists.any { it.id in creditedIds } }.take(20),
             artists = credits.map { artist ->
                 ArtistItem(
                     id = requireNotNull(artist.id),
@@ -330,23 +404,54 @@ constructor(
                 )
             },
         )
-        val contextualOrder = listOf(
-            YouTube.SearchFilter.FILTER_SONG,
-            YouTube.SearchFilter.FILTER_ARTIST,
-            YouTube.SearchFilter.FILTER_ALBUM,
-        )
-        smartSearchOrder = (contextualOrder + smartSearchOrder).distinct()
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        try {
         coroutineScope {
-            launch {
-                val related = withTimeoutOrNull(12_000L) {
-                    val endpoint = YouTube.next(seed.endpoint ?: WatchEndpoint(videoId = seed.id))
-                        .getOrNull()?.relatedEndpoint ?: return@withTimeoutOrNull null
-                    YouTube.related(endpoint).getOrNull()
+            SearchDiscovery.missingCredits(seed, credits).forEach { name ->
+                launch {
+                    val artist = request { YouTube.search(name, YouTube.SearchFilter.FILTER_ARTIST) }.getOrNull()
+                        ?.items?.filterIsInstance<ArtistItem>()
+                        ?.firstOrNull { it.title.equals(name, ignoreCase = true) && !it.isProfile } ?: return@launch
+                    if (requestedQuery != query || requestedRevision != requestGeneration) return@launch
+                    songDiscovery?.let { current ->
+                        songDiscovery = current.copy(
+                            seed = current.seed.copy(artists = (current.seed.artists + Artist(artist.title, artist.id)).distinctBy { it.id }),
+                            artists = (current.artists + artist).distinctBy { it.id },
+                        )
+                    }
                 }
+            }
+            seed.album?.id?.takeIf { it.startsWith("MPRE") }?.let { albumId ->
+                launch {
+                    val album = request { YouTube.album(albumId) }.getOrNull()?.album ?: return@launch
+                    if (requestedQuery == query && requestedRevision == requestGeneration) {
+                        songDiscovery?.let { current -> songDiscovery = current.copy(albums = (listOf(album) + current.albums).distinctBy { it.id }) }
+                    }
+                }
+            }
+            launch {
+                val radio = request { YouTube.next(WatchEndpoint(videoId = seed.id)) }.getOrNull()
                 currentCoroutineContext().ensureActive()
-                if (requestedQuery != query || related == null) return@launch
+                if (requestedQuery != query || requestedRevision != requestGeneration) return@launch
+                songDiscovery?.let { current ->
+                    songDiscovery = current.copy(recommendations = recommendedSongs(
+                        current.recommendations + radio?.items.orEmpty(), seed.id, hideExplicit, hideYoutubeShorts,
+                    ))
+                }
+                if (seed.album == null) {
+                    radio?.items?.firstOrNull { it.id == seed.id }?.album?.id?.takeIf { it.startsWith("MPRE") }?.let { albumId ->
+                        launch {
+                            val album = request { YouTube.album(albumId) }.getOrNull()?.album ?: return@launch
+                            if (requestedQuery == query && requestedRevision == requestGeneration) {
+                                songDiscovery?.let { current -> songDiscovery = current.copy(albums = (listOf(album) + current.albums).distinctBy { it.id }) }
+                            }
+                        }
+                    }
+                }
+                val related = radio?.relatedEndpoint?.let { endpoint -> request { YouTube.related(endpoint) }.getOrNull() }
+                currentCoroutineContext().ensureActive()
+                if (requestedQuery != query || requestedRevision != requestGeneration || related == null) return@launch
                 val current = songDiscovery ?: return@launch
                 songDiscovery = current.copy(
                     recommendations = recommendedSongs(
@@ -362,10 +467,10 @@ constructor(
                 )
             }
             launch {
-                for (credit in credits) {
-                    val page = withTimeoutOrNull(10_000L) { YouTube.artist(requireNotNull(credit.id)).getOrNull() }
+                for (credit in credits.take(2)) {
+                    val page = request { YouTube.artist(requireNotNull(credit.id)) }.getOrNull()
                     currentCoroutineContext().ensureActive()
-                    if (requestedQuery != query) return@launch
+                    if (requestedQuery != query || requestedRevision != requestGeneration) return@launch
                     if (page == null) continue
                     val current = songDiscovery ?: return@launch
                     val relatedItems = page.sections.flatMap { it.items }
@@ -386,6 +491,12 @@ constructor(
                     )
                 }
             }
+        }
+        if (requestedQuery == query && requestedRevision == requestGeneration) {
+            songDiscovery = songDiscovery?.copy(complete = true)
+        }
+        } finally {
+            if (discoveryRevision == requestedRevision) discoveryRevision = null
         }
     }
 
@@ -423,8 +534,17 @@ constructor(
         }
     }
 
-    fun search(newQuery: String, resetCarousels: Boolean = false) {
-        if (newQuery == query) {
+    fun search(
+        newQuery: String,
+        resetCarousels: Boolean = false,
+        pinnedSuggestions: List<YTItem> = emptyList(),
+        selectedSong: SongItem? = null,
+    ) {
+        if (newQuery == query && selectedSong?.id == this.selectedSong?.id) {
+            if (pinnedSuggestions.isNotEmpty() || pinnedSuggestionsQuery != newQuery) {
+                this.pinnedSuggestions = pinnedSuggestions.take(5)
+                pinnedSuggestionsQuery = newQuery
+            }
             if (resetCarousels) searchRevision++
             return
         }
@@ -435,6 +555,9 @@ constructor(
                 smartSearchOrder,
                 smartSearchStarted && searchJob?.isActive != true,
                 songDiscovery,
+                this.pinnedSuggestions,
+                remoteSuggestions,
+                this.selectedSong,
             )
             while (queryCache.size > MAX_QUERY_CACHE) {
                 queryCache.remove(queryCache.keys.first())
@@ -442,22 +565,32 @@ constructor(
         }
         searchJob?.cancel()
         summaryJob?.cancel()
+        discoveryRevision = null
+        requestGeneration++
         query = newQuery
+        this.selectedSong = selectedSong
+        this.pinnedSuggestions = pinnedSuggestions.take(5)
+        pinnedSuggestionsQuery = newQuery
         searchRevision++
         filter.value = null
         viewStateMap.clear()
-        val cached = queryCache[newQuery]
+        val cached = queryCache[newQuery].takeIf { selectedSong == null }
         if (cached != null) {
             summaryPage = cached.summaryPage
             viewStateMap.putAll(cached.viewStateMap)
             smartSearchOrder = cached.smartSearchOrder
             smartSearchStarted = cached.smartSearchStarted
             songDiscovery = cached.songDiscovery
+            remoteSuggestions = cached.remoteSuggestions
+            this.selectedSong = cached.selectedSong
+            if (pinnedSuggestions.isEmpty()) this.pinnedSuggestions = cached.pinnedSuggestions
+            pinnedSuggestionsQuery = newQuery
         } else {
             summaryPage = null
             smartSearchOrder = emptyList()
             smartSearchStarted = false
             songDiscovery = null
+            remoteSuggestions = emptyList()
         }
     }
 

@@ -3,7 +3,7 @@ package com.metrolist.music.ui.menu
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -305,7 +305,7 @@ fun SelectionSongMenu(
                                         onDismiss()
                                         playerConnection.playQueue(
                                             ListQueue(
-                                                title = "Selection",
+                                                title = context.getString(R.string.selected_tracks),
                                                 items =
                                                     songSelection.shuffled().map {
                                                         it.toMediaItem()
@@ -369,7 +369,7 @@ fun SelectionSongMenu(
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.offline),
+                                                painter = painterResource(R.drawable.track_downloaded),
                                                 contentDescription = null,
                                             )
                                         },
@@ -405,7 +405,7 @@ fun SelectionSongMenu(
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.download),
+                                                painter = painterResource(R.drawable.track_download),
                                                 contentDescription = null,
                                             )
                                         },
@@ -694,7 +694,7 @@ fun SelectionMediaMetadataMenu(
                                         onDismiss()
                                         playerConnection.playQueue(
                                             ListQueue(
-                                                title = "Selection",
+                                                title = context.getString(R.string.selected_tracks),
                                                 items = songSelection.map { it.toMediaItem() },
                                             )
                                         )
@@ -716,7 +716,7 @@ fun SelectionMediaMetadataMenu(
                                         onDismiss()
                                         playerConnection.playQueue(
                                             ListQueue(
-                                                title = "Selection",
+                                                title = context.getString(R.string.selected_tracks),
                                                 items =
                                                     songSelection.shuffled().map {
                                                         it.toMediaItem()
@@ -825,7 +825,7 @@ fun SelectionMediaMetadataMenu(
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.offline),
+                                                painter = painterResource(R.drawable.track_downloaded),
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.surface,
                                             )
@@ -866,7 +866,7 @@ fun SelectionMediaMetadataMenu(
                                         },
                                         icon = {
                                             Icon(
-                                                painter = painterResource(R.drawable.download),
+                                                painter = painterResource(R.drawable.track_download),
                                                 contentDescription = null,
                                             )
                                         },

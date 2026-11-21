@@ -1,20 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="local_history">ローカル</string>
     <string name="remote_history">リモート</string>
-
     <string name="charts">チャート</string>
     <string name="back_button_desc">戻る</string>
     <string name="album_cover_desc">アルバムカバー</string>
     <string name="top_music_videos">人気のミュージックビデオ</string>
     <string name="trending">急上昇</string>
     <string name="parsed_from_link">リンクから取得</string>
-
     <string name="weeks">週</string>
     <string name="months">月</string>
     <string name="years">年</string>
     <string name="continuous">全期間</string>
-
     <string name="liked">高評価した曲</string>
     <string name="starred">お気に入りの曲</string>
     <string name="offline">ダウンロード済み</string>
@@ -40,10 +37,7 @@
     <string name="text_color">テキストカラー</string>
     <string name="secondary_text_color">セカンダリテキストカラー</string>
     <string name="background_color">バックグラウンドカラー</string>
-
     <string name="remove_from_cache">キャッシュから削除</string>
-
-    <!-- Artist discography -->
     <string name="view_discography">ディスコグラフィーを見る</string>
     <string name="discography">ディスコグラフィー</string>
     <string name="discography_from_artist">アーティストの作品</string>
@@ -51,8 +45,6 @@
     <string name="discography_singles">シングル</string>
     <string name="discography_eps">EP</string>
     <string name="discography_empty">これ以上表示するものはありません</string>
-
-    <!-- Artist about section -->
     <string name="about_artist">概要</string>
     <string name="show_more">続きを読む</string>
     <string name="show_less">折りたたむ</string>
@@ -60,8 +52,6 @@
     <string name="show_artist_description">アーティストの説明を表示</string>
     <string name="show_artist_subscriber_count">チャンネル登録者数を表示</string>
     <string name="show_artist_monthly_listeners">月間視聴者数を表示</string>
-
-    <!-- Menu descriptions -->
     <string name="download_playlist_desc">すべての曲をオフライン再生用にダウンロードします</string>
     <string name="remove_download_playlist_desc">このプレイリストからダウンロードしたすべての曲を削除します</string>
     <string name="download_in_progress_desc">ダウンロードが進行中です</string>
@@ -79,27 +69,21 @@
     <string name="link_copied">リンクをクリップボードにコピーしました</string>
     <string name="starting_radio">ラジオを開始中</string>
     <string name="now_playing">再生中</string>
-
     <string name="lyrics">歌詞</string>
     <string name="close">閉じる</string>
     <string name="hide_player_thumbnail">プレーヤーにサムネイルを表示しない</string>
     <string name="hide_player_thumbnail_desc">再生画面に表示されるアルバムアートをアプリアイコンに置き換えます</string>
     <string name="crop_album_art">アルバムアートを切り抜く</string>
     <string name="crop_album_art_desc">動画のサムネイルを切り抜いて正方形の比率にします</string>
-
     <string name="already_in_playlist">この曲はすでにプレイリストに追加されています</string>
-
-        <plurals name="n_time">
+    <plurals name="n_time">
         <item quantity="other">%d回</item>
     </plurals>
-
     <string name="seek_forward_dynamic">%1$d秒進む</string>
     <string name="seek_backward_dynamic">%1$d秒戻る</string>
     <string name="seek_seconds_addup">シーク時間を段階的に増やす</string>
     <string name="seek_seconds_addup_description">連続してシーク操作を行うごとに５秒ずつ加算します</string>
-
     <string name="similar_content">似た曲</string>
-
     <string name="share_as_image">画像として共有</string>
     <string name="copy_as_image">画像としてコピー</string>
     <string name="player_background_style">プレーヤーの背景</string>
@@ -181,7 +165,6 @@
     <string name="skip_silence_desc">曲の無音の部分を早送りします</string>
     <string name="skip_silence_instant">無音の部分をスキップ</string>
     <string name="skip_silence_instant_desc">無音の部分は早送りせずに自動でスキップします</string>
-
     <string name="advanced_login">トークンを使用してログイン</string>
     <string name="token_hidden">トークンを表示</string>
     <string name="token_shown">トークンを編集</string>
@@ -192,18 +175,13 @@
     <string name="more_content">その他のコンテンツ</string>
     <string name="other_content">その他のコンテンツ</string>
     <string name="show_token">トークンを表示</string>
-
     <string name="sort_ascending">昇順で並べ替え</string>
     <string name="sort_descending">降順で並べ替え</string>
-
-    <!-- Playlist cover edit -->
     <string name="edit_playlist_cover">カバー画像を変更</string>
     <string name="edit_playlist_cover_note">プレイリストのカバー画像を変更するには、アカウントが電話番号に紐付けられ、YouTube Musicで確認済みである必要があります。</string>
     <string name="edit_playlist_cover_note_wait">新しいカバー画像が反映するまでに時間がかかる場合があります。</string>
     <string name="choose_from_library">写真から選択</string>
     <string name="remove_custom_image">変更した画像を削除</string>
-
-    <!-- General -->
     <string name="general">一般</string>
     <string name="proxy">プロキシ</string>
     <string name="default_lib_chips">デフォルトのライブラリタブを変更</string>
@@ -222,7 +200,6 @@
     <string name="enable_authentication">プロキシ認証</string>
     <string name="discord_use_details">曲名を強調して表示</string>
     <string name="discord_use_details_description">アーティスト名より曲名を目立つように表示します</string>
-
     <string name="enable_similar_content">似た曲を再生</string>
     <string name="similar_content_desc">キューの最後まで再生したあと、自動で似た曲を追加します</string>
     <string name="persistent_shuffle_title">シャッフル再生を保持</string>
@@ -230,7 +207,6 @@
     <string name="remember_shuffle_and_repeat">シャッフル/リピート再生を保持</string>
     <string name="remember_shuffle_and_repeat_desc">アプリを再起動したあともシャッフル/リピート再生を維持します</string>
     <string name="percentage_format">%d%%</string>
-
     <string name="import_online">M3U形式のプレイリストをインポート</string>
     <string name="import_csv">CSV形式のプレイリストをインポート</string>
     <string name="playlist_add_local_to_synced_note">同期/リモートプレイリストへのローカル曲の追加はサポートしていません</string>
@@ -241,21 +217,15 @@
     <string name="export_failed">プレイリストのエクスポートに失敗しました</string>
     <string name="export_option_share">共有</string>
     <string name="export_option_save">ドキュメントに保存</string>
-
     <string name="auto_download_on_like">高評価した曲を自動でダウンロード</string>
     <string name="auto_download_on_like_desc">ハートをつけた曲を自動でダウンロードします</string>
-
     <string name="swipe_sensitivity">ミニプレーヤーのスワイプ感度</string>
     <string name="sensitivity_percentage">%1$d%%</string>
-
     <string name="clear_song_cache_dialog">キャッシュした曲をすべて削除しますか？</string>
     <string name="clear_image_cache_dialog">画像のキャッシュをすべて削除しますか？</string>
     <string name="clear_downloads_dialog">ダウンロードした曲をすべて削除しますか？</string>
-
     <string name="disable">オフ</string>
-
     <string name="not_logged_in_youtube">YouTubeにログインしてください</string>
-
     <string name="default_links">対応のリンクを開く</string>
     <string name="open_app_settings_error">アプリの設定を開けませんでした</string>
     <string name="changelog_empty">変更履歴はありません</string>
@@ -289,7 +259,6 @@
     <string name="update_download_error_no_space">空き容量が不足しています</string>
     <string name="update_download_error_connection">接続エラーです</string>
     <string name="update_download_notification_description">新しいバージョンをダウンロードしています…</string>
-
     <string name="all_time">全期間</string>
     <string name="past_24_hours">過去24時間</string>
     <string name="past_week">過去1週間</string>
@@ -306,11 +275,9 @@
     <string name="dislikes">低評価数</string>
     <string name="subscribe">チャンネル登録</string>
     <string name="subscribed">チャンネル登録済み</string>
-        <plurals name="seconds">
+    <plurals name="seconds">
         <item quantity="other">%d秒</item>
     </plurals>
-
-    <!-- Sleep timer -->
     <string name="set_as_default">デフォルトに設定</string>
     <string name="sleep_timer_default_set">スリープタイマーのデフォルト値を%d分に設定しました</string>
     <string name="enable_automatic_sleeptimer">スリープタイマーを自動的に開始</string>
@@ -335,15 +302,13 @@
     <string name="sleep_timer_stop_after_current_song_description">現在再生中の曲が終わるとスリープタイマーを停止します</string>
     <string name="sleep_timer_fade_out_title">フェードアウト</string>
     <string name="sleep_timer_fade_out_description">終了1分前から音量を徐々に下げます</string>
-
-    <!-- Alarm -->
     <string name="alarm">アラーム</string>
     <string name="alarm_enabled">アラームを使用</string>
     <string name="alarm_time">アラーム時刻</string>
     <string name="alarm_playlist">プレイリスト</string>
     <string name="alarm_select_playlist">プレイリストを選択</string>
     <string name="alarm_no_playlists">プレイリストが見つかりません</string>
-        <plurals name="alarm_playlist_song_count">
+    <plurals name="alarm_playlist_song_count">
         <item quantity="other">%d曲</item>
     </plurals>
     <string name="alarm_selected">選択中</string>
@@ -370,14 +335,11 @@
     <string name="alarm_battery_optimization_desc">バックグラウンドでのアラームの信頼性を高めるために、バッテリーの最適化をオフにしてください。</string>
     <string name="open_settings">設定</string>
     <string name="lastfm_api_not_configured">このビルドでは LastFM が設定されていません</string>
-
-    <!-- Player Settings -->
     <string name="disable_load_more_when_repeat_all">全曲リピート再生しているときは追加の曲を自動で読み込まない</string>
     <string name="disable_load_more_when_repeat_all_desc">全曲リピート再生しているときは似た曲の追加を行いません</string>
     <string name="pause_music_when_media_is_muted">ミュート時に再生を停止</string>
     <string name="resume_on_bluetooth_connect">Bluetooth接続時に再生を再開</string>
     <string name="keep_screen_on_when_player_is_expanded">プレーヤーを展開中は画面をオンに保つ</string>
-
     <string name="crossfade">クロスフェード</string>
     <string name="crossfade_desc">曲の切り替わりをなめらかにします</string>
     <string name="crossfade_duration">クロスフェードの長さ</string>
@@ -388,8 +350,6 @@
     <string name="skip_fade">スキップ時のフェード</string>
     <string name="skip_fade_desc">次の曲はすぐに再生を開始し、前の曲はバックグラウンドで短くフェードアウトします</string>
     <string name="skip_fade_duration">スキップ時のフェード時間</string>
-
-    <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">キリル文字</string>
     <string name="lyrics_romanize_title">ローマ字</string>
     <string name="lyrics_romanization">歌詞にローマ字を追加</string>
@@ -409,18 +369,12 @@
     <string name="line_by_line_dialog_title">確認</string>
     <string name="line_by_line_dialog_desc">この機能は実験的で、動作が不安定になる場合があります。\n通常、言語は曲全体から判別されますが、この設定をオンにすると行ごとに判別されます。複数の言語が混在する曲に対応できますが、判別結果が常に正しいとは限りません（例：ウクライナ語特有の文字が含まれていない歌詞は、ロシア語として判別される場合があります）。\n問題がない場合は、この設定はオフにすることをおすすめします。</string>
     <string name="romanize_current_track">歌詞にローマ字を追加</string>
-
-    <!-- Japanese dictionary on-demand download -->
     <string name="lyrics_romanize_japanese_dict_title">日本語辞書をダウンロードしますか？</string>
     <string name="lyrics_romanize_japanese_dict_message">日本語の歌詞をローマ字で表示するには、日本語辞書（約13 MB）が必要です。インターネット接続を通じて一度だけダウンロードされます。</string>
     <string name="lyrics_romanize_japanese_dict_downloading">日本語辞書をダウンロード中… %d%%</string>
     <string name="lyrics_romanize_japanese_dict_failed">ダウンロードに失敗しました。接続を確認してもう一度お試しください。</string>
     <string name="lyrics_romanize_japanese_dict_download">ダウンロード</string>
-
-    <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">歌詞のタイミングを調整</string>
-
-    <!-- Material 3 Settings Sections -->
     <string name="settings_section_ui">インターフェース</string>
     <string name="settings_section_privacy">プライバシーとセキュリティ</string>
     <string name="settings_section_player_content">プレーヤーとコンテンツ</string>
@@ -439,44 +393,31 @@
     <string name="settings_section_display">表示</string>
     <string name="settings_section_lab">ラボ</string>
     <string name="settings_section_system_short">システム</string>
-
-    <!-- Updater -->
     <string name="updater">アップデーター</string>
     <string name="check_for_updates">自動でアップデートを確認する</string>
     <string name="update_notifications">新しいバージョンがある場合は通知を受け取る</string>
     <string name="update_available_title">アップデートが利用可能です</string>
     <string name="update_channel_name">アプリをアップデート</string>
     <string name="update_channel_desc">新しいバージョンの通知</string>
-
-    <!-- Offload -->
     <string name="audio_offload">オフロード再生</string>
     <string name="audio_offload_description">音声の再生にオフロードのオーディオパスを使用します。この設定をオフにすると消費電力が増加する可能性がありますが、再生や音声の処理に関する問題の改善に役立つ場合があります</string>
     <string name="audio_offload_disabled_by_crossfade">クロスフェードを使用中は有効にできません</string>
-
-    <!-- Varispeed -->
     <string name="speed">再生速度</string>
     <string name="varispeed">バリスピードを有効化</string>
     <string name="varispeed_description">ピッチを再生速度に連動させ、テープのような速回し・遅回し効果を実現します</string>
-
-    <!-- Google Cast -->
-    <string name="google_cast">Google Cast</string>
+    <string name="google_cast">Googleキャスト</string>
     <string name="google_cast_description">Chromecastなどのキャスト対応のデバイスに音声をキャストできます</string>
-
     <string name="lyrics_romanize_macedonian">マケドニア語の歌詞にローマ字を追加</string>
     <string name="lyrics_romanize_as_main">ローマ字の歌詞をメインに表示</string>
-
     <string name="integrations">外部のサービスと連携</string>
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
-
-    <!-- Last.fm -->
     <string name="lastfm_integration">Last.fmと連携</string>
     <string name="enable_scrobbling">再生履歴を送信</string>
     <string name="lastfm_now_playing">再生中の曲を反映する</string>
     <string name="last_fm_send_likes">高評価/低評価を反映する</string>
     <string name="last_fm_send_likes_description">Irideで曲に高評価/低評価をつけると、Last.fmでもラブ/アンラブされます</string>
     <string name="logging_in">ログインしています…</string>
-
     <string name="scrobbling_configuration">再生履歴の設定</string>
     <string name="scrobble_min_track_duration">送信する最小の再生時間</string>
     <string name="scrobble_delay_percent">送信する再生の割合</string>
@@ -485,7 +426,6 @@
     <string name="square_video_thumbnail">正方形の動画サムネイル</string>
     <string name="square_video_thumbnail_desc">動画サムネイルを正方形のアスペクト比にトリミングします</string>
     <string name="hide_youtube_shorts">YouTubeショートを非表示</string>
-
     <string name="details_desc">この曲の詳細を表示します</string>
     <string name="edit_desc">タイトルやアーティスト名を変更します</string>
     <string name="start_radio_desc">この曲をもとに似た曲を再生します</string>
@@ -515,7 +455,6 @@
     <string name="cache_size_warning_title">ちょっと待って！</string>
     <string name="cache_size_warning_message">現在アプリが使用している容量（%1$s）より小さいキャッシュサイズ上限を選択しています。新しい上限に合わせるため、一部の%2$sが削除されることがあります。続行しますか？</string>
     <string name="cache_size_warning_confirm">続行</string>
-
     <string name="lyrics_animation_style_title">単語ごとのアニメーションスタイル</string>
     <string name="none">なし</string>
     <string name="fade">フェード</string>
@@ -545,11 +484,11 @@
     <string name="wrapped_total_artists_subtitle">ユニークなアーティスト数</string>
     <string name="wrapped_total_songs_title">再生した</string>
     <string name="wrapped_total_songs_subtitle">ユニークな曲数</string>
-    <string name="wrapped_intro_title">IRIDE</string>
+    <string name="wrapped_intro_title">入出</string>
     <string name="wrapped_intro_subtitle">これまでに聴いてきた音楽を振り返りましょう</string>
     <string name="wrapped_intro_button">さあ、始めよう！</string>
     <string name="wrapped_logo_content_description">Irideロゴ</string>
-    <string name="wrapped_year">2025</string>
+    <string name="wrapped_year">2025年</string>
     <string name="wrapped_ready_title">あなたのWrappedが完成しました！</string>
     <string name="wrapped_ready_subtitle">今年あなたが夢中になった音楽を見てみましょう。</string>
     <string name="wrapped_thank_you">聴いてくれてありがとう</string>
@@ -558,9 +497,7 @@
     <string name="wrapped_playlist_title">あなたの%sWrapped</string>
     <string name="wrapped_create_playlist">プレイリストを作成</string>
     <string name="wrapped_playlist_saved">プレイリストを保存しました</string>
-
-    <!-- Equalizer UI -->
-        <plurals name="profiles_count">
+    <plurals name="profiles_count">
         <item quantity="other">%dプロファイル</item>
     </plurals>
     <string name="equalizer_header">イコライザー</string>
@@ -568,7 +505,7 @@
     <string name="import_profile">プロファイルをインポート</string>
     <string name="system_equalizer">システムイコライザー</string>
     <string name="eq_disabled">無効</string>
-        <plurals name="band_count">
+    <plurals name="band_count">
         <item quantity="other">%dバンド</item>
     </plurals>
     <string name="delete_profile_desc">プロファイルを削除</string>
@@ -578,41 +515,37 @@
     <string name="import_error_title">インポートエラー</string>
     <string name="error_title">エラー</string>
     <string name="error_eq_apply_failed">イコライザープロファイルを適用できません：%1$s</string>
-
-    <!-- Parametric equalizer editor -->
     <string name="eq_editor_subtitle">Shape the sound for every output device</string>
-    <string name="eq_master_enable">Enable equalizer</string>
-    <string name="eq_output_source">Output</string>
-    <string name="eq_device_speaker">Phone speaker</string>
-    <string name="eq_device_wired">Wired headphones</string>
-    <string name="eq_device_unknown">Audio output</string>
-    <string name="eq_save_for_device">Save for this device</string>
-    <string name="eq_saved_for_device">Linked to %1$s</string>
-    <string name="eq_manage_devices">Saved devices</string>
-    <string name="eq_no_saved_devices">No linked devices yet</string>
-    <string name="eq_unbind_device">Remove link</string>
-    <string name="eq_unbind_done">Device link removed</string>
-    <string name="eq_preset_balanced">Balanced</string>
-    <string name="eq_preset_more_bass">More bass</string>
-    <string name="eq_preset_more_treble">More treble</string>
-    <string name="eq_preset_voice">Vocal</string>
-    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
-    <string name="eq_frequency">Frequency</string>
+    <string name="eq_master_enable">イコライザーを有効にする</string>
+    <string name="eq_output_source">出力</string>
+    <string name="eq_device_speaker">電話スピーカー</string>
+    <string name="eq_device_wired">有線ヘッドフォン</string>
+    <string name="eq_device_unknown">音声出力</string>
+    <string name="eq_save_for_device">このデバイス用に保存</string>
+    <string name="eq_saved_for_device">%1$sにリンクされています</string>
+    <string name="eq_manage_devices">保存されたデバイス</string>
+    <string name="eq_no_saved_devices">リンクされたデバイスはまだありません</string>
+    <string name="eq_unbind_device">リンクを削除する</string>
+    <string name="eq_unbind_done">デバイスリンクが削除されました</string>
+    <string name="eq_preset_balanced">バランスの取れた</string>
+    <string name="eq_preset_more_bass">低音をさらに強化</string>
+    <string name="eq_preset_more_treble">さらなる高音</string>
+    <string name="eq_preset_voice">ボーカル</string>
+    <string name="eq_selected_band_label">バンド %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">周波数</string>
     <string name="eq_q_factor">Q</string>
-    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance">低音強化</string>
     <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
-    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_title">期間</string>
     <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
-    <string name="eq_advanced_options">Advanced options</string>
-    <string name="eq_exact_gain_title">Exact gain</string>
-    <string name="eq_reset_band">Reset band</string>
-    <string name="eq_profile_saved">Equalizer saved</string>
-    <string name="queue_empty">Queue is empty</string>
-    <string name="queue_history_title">History</string>
-    <string name="queue_radio_section_title">Radio</string>
-    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
-
-    <!-- Hardcoded strings -->
+    <string name="eq_advanced_options">詳細オプション</string>
+    <string name="eq_exact_gain_title">正確なゲイン</string>
+    <string name="eq_reset_band">リセットバンド</string>
+    <string name="eq_profile_saved">イコライザーが保存されました</string>
+    <string name="queue_empty">キューが空です</string>
+    <string name="queue_history_title">歴史</string>
+    <string name="queue_radio_section_title">ラジオ</string>
+    <string name="queue_radio_section_subtitle">これらの歌はラジオから流れてきます</string>
     <string name="found_in_settings_content">”設定” ▶ ”コンテンツ”にあります</string>
     <string name="your_daily_discover">毎日の発見</string>
     <string name="plays">回再生</string>
@@ -625,16 +558,12 @@
     <string name="copied_artist">アーティスト名をコピーしました</string>
     <string name="error_playing">再生中にエラーが発生しました</string>
     <string name="failed_to_parse_proxy">プロキシURLを解析できません。</string>
-
-    <!-- Playback errors -->
     <string name="error_playback_failed">再生に失敗しました</string>
     <string name="error_episode_save">エピソードの保存に失敗しました</string>
     <string name="error_episode_remove">エピソードの削除に失敗しました</string>
     <string name="error_podcast_subscribe">ポッドキャストの登録に失敗しました</string>
     <string name="error_podcast_unsubscribe">ポッドキャストの登録解除に失敗しました</string>
     <string name="view_channel">チャンネルを表示</string>
-
-    <!-- Widget strings -->
     <string name="album_art">アルバムアート</string>
     <string name="no_song_playing">再生中の曲はありません</string>
     <string name="tap_to_open">タップしてIrideを開く</string>
@@ -648,8 +577,6 @@
     <string name="turntable_widget_description">再生と高評価の操作ができる円形のウィジェット</string>
     <string name="widget_music_player">音楽プレーヤー</string>
     <string name="widget_turntable">ターンテーブル</string>
-
-    <!-- Music Recognizer Widget strings -->
     <string name="widget_recognizer_name">楽曲認識</string>
     <string name="widget_recognizer_description">周囲で流れている曲を認識できるウィジェット</string>
     <string name="widget_recognizer_tap_to_search">タップして開始</string>
@@ -664,14 +591,8 @@
     <string name="widget_recognizer_channel_name">楽曲認識</string>
     <string name="widget_recognizer_channel_desc">ウィジェットから曲を認識している間、通知を表示します</string>
     <string name="widget_recognizer_notification_text">音声を録音中…</string>
-
-    <!-- Player Client Settings -->
-
-    <!-- Decryption Library Settings -->
-
-    <!-- Listen Together -->
-    <string name="together">Together</string>
-    <string name="listen_together">Listen Together</string>
+    <string name="together">一緒に</string>
+    <string name="listen_together">一緒に聞いてください</string>
     <string name="listen_together_server_url">サーバーURL</string>
     <string name="listen_together_choose_server">サーバーを選択</string>
     <string name="listen_together_custom_server">カスタムサーバー</string>
@@ -709,7 +630,7 @@
     <string name="listen_together_suggestion_received">%1$sが%2$sをリクエストしました</string>
     <string name="listen_together_suggestion_sent">ホストに提案を送信しました！</string>
     <string name="listen_together_join_request_notification">%1$sがルームへの参加を希望しています</string>
-    <string name="listen_together_notification_channel_name">Listen Together</string>
+    <string name="listen_together_notification_channel_name">一緒に聞いてください</string>
     <string name="listen_together_notification_channel_desc">Listen Togetherのイベント通知</string>
     <string name="listen_together_room_created">ルームを作成しました：%s</string>
     <string name="listen_together_cannot_edit_username_in_room">ルームに参加中はユーザー名を変更できません</string>
@@ -761,8 +682,6 @@
     <string name="listen_together_no_blocked_users">誰もブロックしていません</string>
     <string name="unblock">ブロックを解除</string>
     <string name="user_blocked_by_host">ホストによってユーザーがブロックされました</string>
-
-    <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">AI歌詞翻訳</string>
     <string name="ai_translating_lyrics">歌詞を翻訳中...</string>
     <string name="ai_lyrics_translated">翻訳しました</string>
@@ -803,8 +722,6 @@
     <string name="ai_system_prompt_placeholder">翻訳する行数のプレースホルダーとして {lineCount} を使用します。</string>
     <string name="ai_system_prompt_default">デフォルト</string>
     <string name="ai_system_prompt_reset">デフォルトにリセット</string>
-
-    <!-- Crash Handler -->
     <string name="crash_title">アプリがクラッシュしました</string>
     <string name="crash_description">予期しないエラーが発生しました。問題の解決に役立てるため、クラッシュレポートを共有してください。</string>
     <string name="crash_share_logs">クラッシュログを共有</string>
@@ -812,8 +729,6 @@
     <string name="crash_report_subject">Irideのクラッシュレポート</string>
     <string name="crash_close">閉じる</string>
     <string name="crash_no_log">クラッシュログがありません</string>
-
-    <!-- Theme Palette Names -->
     <string name="palette_dynamic">ダイナミック</string>
     <string name="palette_crimson">クリムゾン</string>
     <string name="palette_rose">ローズ</string>
@@ -834,13 +749,9 @@
     <string name="palette_brown">ブラウン</string>
     <string name="palette_grey">グレー</string>
     <string name="palette_blue_grey">ブルーグレー</string>
-
-    <!-- Theme Mode Selector -->
     <string name="theme_mode_light">ライト</string>
     <string name="theme_mode_dark">ダーク</string>
     <string name="theme_mode_system">システム</string>
-
-    <!-- Theme Content Descriptions -->
     <string name="cd_back">戻る</string>
     <string name="cd_pure_black_mode">ピュアブラックモード</string>
     <string name="cd_light_mode">ライトモード</string>
@@ -850,17 +761,12 @@
     <string name="play_all">すべて再生</string>
     <string name="mp3_panel_lyrics">歌詞</string>
     <string name="mp3_panel_up_next">次の曲</string>
-
-    <!-- Library Albums screen sections -->
     <string name="continue_listening">聴き続ける</string>
     <string name="remove_from_continue_listening">「聴き続ける」から削除</string>
     <string name="favorite_albums">お気に入り</string>
     <string name="remove_suggested_follow_artist">提案を削除</string>
-
     <string name="enable_high_refresh_rate">高リフレッシュレート</string>
     <string name="enable_high_refresh_rate_desc">ディスプレイを対応している中で最も高いリフレッシュレートで強制的に動作させます</string>
-
-    <!-- Music Recognition -->
     <string name="recognize_music">楽曲認識</string>
     <string name="tap_to_recognize">タップして開始</string>
     <string name="listening">聴き取り中…</string>
@@ -883,8 +789,6 @@
     <string name="recognition_notification_no_match">一致する曲が見つかりませんでした</string>
     <string name="recognition_notification_failed">認識に失敗しました</string>
     <string name="listen_on_metrolist">Irideで聴く</string>
-
-    <!-- CSV Import Strings -->
     <string name="map_csv_columns">CSV列の対応設定</string>
     <string name="first_row_is_header">1行目をヘッダーとして扱う</string>
     <string name="artist_name_column">アーティスト名の列</string>
@@ -893,11 +797,8 @@
     <string name="continue_action">続行</string>
     <string name="importing_csv">CSVをインポート中</string>
     <string name="importing_playlist">プレイリストをインポート中</string>
-
     <string name="recently_converted">最近変換した項目</string>
     <string name="column_label">列%d</string>
-
-    <!-- Discord Integration -->
     <string name="discord_status">ステータス</string>
     <string name="discord_status_online">オンライン</string>
     <string name="discord_status_idle">退席中</string>
@@ -932,26 +833,18 @@
     <string name="randomize_home_order_desc">ホーム画面の各項目をランダムに並び替えます</string>
     <string name="hero_carousel_title">ヒーローカルーセル</string>
     <string name="hero_carousel_desc">新しいリリースとおすすめを紹介するローテーションバナー</string>
-
-    <!-- Smart boot -->
     <string name="smart_boot">スマートブート</string>
     <string name="smart_boot_desc">高速な起動：注目コンテンツは即座に読み込まれ、読み込み中もセクションの位置が保持され、重複ダウンロードが減ります。元の動作に戻すにはオフにしてください（完全に適用するには再起動が必要です）</string>
-
-    <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">%1$sに似たおすすめ</string>
     <string name="daily_discover_because_you_listen_to">%1$sをよく聴いているため</string>
     <string name="daily_discover_similar_to">%1$sに似たおすすめ</string>
     <string name="daily_discover_based_on">%1$sをもとにしたおすすめ</string>
     <string name="daily_discover_for_fans_of">%1$sのファンにおすすめ</string>
     <string name="from_the_community">コミュニティのおすすめ</string>
-
-    <!-- Logout dialog -->
     <string name="logout_dialog_title">ライブラリデータを保持しますか？</string>
     <string name="logout_dialog_message">プレイリストとライブラリデータを保持しますか？ダウンロードした曲は、いずれの場合も保持されます。</string>
     <string name="logout_keep">保持</string>
     <string name="logout_clear">削除</string>
-
-    <!-- Credits / About Screen -->
     <string name="credits_lead_developer">主任開発者</string>
     <string name="about_creator_role">Iride のクリエイター</string>
     <string name="about_release_badge">初回リリースはもうすぐ</string>
@@ -965,19 +858,17 @@
     <string name="credits_discord">Discordサーバー</string>
     <string name="credits_telegram">Telegramチャンネル</string>
     <string name="credits_website">ウェブサイト</string>
-    <string name="credits_instagram">Instagram</string>
+    <string name="credits_instagram">インスタグラム</string>
     <string name="credits_github">GitHub</string>
     <string name="credits_view_repo">リポジトリを表示</string>
     <string name="app_version_info">%1$s • %2$s</string>
     <string name="like_what_i_do">私の活動を気に入ってもらえましたか？</string>
     <string name="buy_mo_a_coffee">コーヒーをおごる</string>
     <string name="community_and_info">コミュニティと情報</string>
-    <string name="metrolist">IRIDE</string>
+    <string name="metrolist">入出</string>
     <string name="wanna_play_favorite_song">お気に入りの曲を再生しますか？</string>
     <string name="yeah">はい</string>
     <string name="stands_with_palestine">このプロジェクトはパレスチナを支持しています 🇵🇸</string>
-
-    <!-- Podcasts -->
     <string name="filter_podcasts">ポッドキャスト</string>
     <string name="view_podcast">ポッドキャストを表示</string>
     <string name="podcast_channels">ポッドキャストチャンネル</string>
@@ -989,7 +880,7 @@
     <string name="save_episode_for_later_desc">”あとで聴く”プレイリストに追加</string>
     <string name="remove_episode_from_saved">保存した曲から削除</string>
     <string name="subscribe_to_podcast">ポッドキャストをライブラリに保存</string>
-        <plurals name="n_episode">
+    <plurals name="n_episode">
         <item quantity="other">%dエピソード</item>
     </plurals>
     <string name="filter_episodes">エピソード</string>
@@ -1000,21 +891,15 @@
     <string name="downloaded_episodes">ダウンロードしたエピソード</string>
     <string name="no_subscribed_channels">登録しているチャンネルはありません</string>
     <string name="no_downloaded_episodes">ダウンロードしたエピソードはありません</string>
-        <plurals name="n_channel">
+    <plurals name="n_channel">
         <item quantity="other">%dチャンネル</item>
     </plurals>
-
-    <!-- Restore confirmation dialog -->
     <string name="restore_confirm_title">バックアップを復元しますか？</string>
     <string name="restore_confirm_message">バックアップからアプリのデータを復元します。</string>
     <string name="restore_account_warning">復元後、再度ログインが必要になります。このアカウントはサインアウトされます：</string>
     <string name="restore">復元</string>
     <string name="checking_previous_account">以前のアカウントを確認中…</string>
     <string name="no_account_found">アカウントが見つかりません</string>
-
-    <!-- Cache settings -->
-
-    <!-- Upload songs -->
     <string name="upload_songs">曲をアップロード</string>
     <string name="uploading">アップロード中…</string>
     <string name="upload_progress">%1$d/%2$d</string>
@@ -1030,9 +915,7 @@
     <string name="delete_uploaded_songs_confirm">%1$d件のアップロードした曲を削除しますか？この操作は元に戻せません。</string>
     <string name="deleted_n_songs">%1$d件の曲を削除しました</string>
     <string name="deleting">削除中…</string>
-
-    <!-- Android Auto settings -->
-    <string name="android_auto">Android Auto</string>
+    <string name="android_auto">アンドロイドオート</string>
     <string name="android_auto_visible_sections">表示する項目</string>
     <string name="android_auto_reorder_hint">項目をタップするとオン/オフを切り替えられます。長押しで並び替えができます。先頭の項目が既定で表示されます。</string>
     <string name="android_auto_youtube_playlists">YouTubeのおすすめのプレイリストを表示</string>
@@ -1042,8 +925,6 @@
     <string name="android_auto_target_playlist_auto">未設定</string>
     <string name="added_to_playlist">プレイリストに追加しました</string>
     <string name="android_auto_target_playlist_not_set">プレイリストが選択されていません。Android Autoの設定で選択してください。</string>
-
-    <!-- Stats time transfer -->
     <string name="time_transfer_title">再生時間の引き継ぎ</string>
     <string name="time_transfer_warning">この操作は完了すると元に戻せません。続行する前にバックアップを作成してください。少なくとも1回の再生履歴またはイベントが記録されている曲のみが対象です。</string>
     <string name="time_transfer_source_song">元の曲</string>
@@ -1051,8 +932,6 @@
     <string name="time_transfer_listen_time_label">再生時間:</string>
     <string name="time_transfer_convert">変換</string>
     <string name="song_dropdown_more_results">さらに入力して結果を絞り込んでください（あと%d文字）</string>
-
-    <!-- Accessibility -->
     <string name="back">戻る</string>
     <string name="clear_search">検索をクリア</string>
     <string name="close_chip">閉じる</string>
@@ -1060,8 +939,6 @@
     <string name="switch_to_grid_view">グリッド表示に切り替え</string>
     <string name="switch_to_wide_grid_view">ワイドグリッド表示に切り替え</string>
     <string name="more_options">その他のオプション</string>
-
-    <!-- Settings hub descriptions -->
     <string name="music_settings">音楽設定</string>
     <string name="music_settings_desc">外観、再生、コンテンツ</string>
     <string name="settings_appearance_desc">テーマ、ホーム画面、プレーヤー、歌詞</string>
@@ -1096,23 +973,18 @@
     <string name="resume_album_track_progress">%2$d 曲中の %1$d 曲目</string>
     <string name="muzza_player_logic">高速再生エンジン</string>
     <string name="muzza_player_logic_desc">別のストリーミング方式を使用して曲をより速く読み込みます。</string>
-
-    <!-- News screen -->
     <string name="compact_top_navigation_bar">コンパクトな上部バー</string>
     <string name="compact_top_navigation_bar_desc">左側にホームとライブラリのテキスト、右側に検索とプロフィール画像のアイコンを表示します。オフにすると、すべてのタブ名が表示される従来のバーに戻ります</string>
     <string name="iride_animations">Iride のアニメーション</string>
     <string name="iride_animations_desc">タイプライター風タイトル、パララックス、表示時のトランジション。アプリがカクつく場合はオフにしてください</string>
     <string name="player_auto_hide_top_panel">戻るパネルを自動的に隠す</string>
     <string name="player_auto_hide_top_panel_desc">展開したプレーヤーで5秒間操作がないと、上部のアプリに戻るパネルをフェードアウトします。下にスクロールすると再度表示されます</string>
-
     <string name="better_library_beta">改良版ライブラリ BETA</string>
     <string name="better_library_beta_desc">Material 3 向けに刷新されたライブラリを有効にします（トップアプリバー、FAB、UI の修正を含む）</string>
     <string name="upload">アップロード</string>
     <string name="new_playlist">新しいプレイリスト</string>
     <string name="toggle_view_type">表示形式を切り替え</string>
     <string name="navigate_back">戻る</string>
-
-    <!-- Comments -->
     <string name="comments">コメント</string>
     <string name="comments_count">コメント%s件</string>
     <string name="comments_empty">コメントはまだありません</string>
@@ -1126,15 +998,11 @@
     <string name="comments_reply_count">返信%d件</string>
     <string name="enable_comments">コメントを有効にする</string>
     <string name="enable_comments_desc">プレーヤーで曲の YouTube コメントを表示します（実験的機能のため、読み込めない場合があります）</string>
-
-    <!-- Song menu redesign -->
     <string name="add_note">メモ、評価、感想を追加…</string>
     <string name="note_title_placeholder">タイトル</string>
     <string name="note_description_placeholder">説明を追加…</string>
     <string name="view_ep">EP を見る</string>
     <string name="view_single">シングルを見る</string>
-
-    <!-- Notes screen -->
     <string name="notes_screen_title">メモ</string>
     <string name="notes_screen_desc">アルバムと曲のレビュー</string>
     <string name="notes_tab_albums">アルバム</string>
@@ -1143,41 +1011,30 @@
     <string name="notes_empty_tracks">曲のメモはまだありません</string>
     <string name="notes_delete_title">メモを削除しますか？</string>
     <string name="notes_delete_message">この項目に入力したタイトル、評価、テキストが削除されます。</string>
-
-    <!-- Download all favorite albums -->
     <string name="download_all_favorite_albums">お気に入りのアルバムをすべてダウンロード</string>
     <string name="download_all_favorite_albums_started">お気に入りのアルバムをすべてダウンロードしています…</string>
     <string name="all_favorite_albums_downloaded">お気に入りのアルバムをすべてダウンロードしました</string>
     <string name="remove_all_favorite_albums_confirm">お気に入りのアルバムをすべてダウンロードから削除してもよろしいですか？</string>
     <string name="no_favorite_albums_to_download">ダウンロードできるお気に入りのアルバムはありません</string>
-
-    <!-- Onboarding -->
-    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
-    <string name="onboarding_get_started">Get Started</string>
-    <string name="onboarding_notifications_title">Stay Updated</string>
-    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
-    <string name="onboarding_notifications_enable">Enable Notifications</string>
-    <string name="onboarding_notifications_skip">No Thanks</string>
-    <string name="onboarding_login_title">Connect Your Account</string>
-    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
-    <string name="onboarding_login_cta">Sign in with YouTube</string>
-    <string name="onboarding_login_skip">Continue Without Account</string>
-
-    <!-- Update announcement interstitial -->
-    <string name="update_interstitial_title">New update ready</string>
-    <string name="update_interstitial_version">Version %1$s</string>
-    <string name="update_interstitial_update_now">Update now</string>
-    <string name="update_interstitial_not_now">Not now</string>
-    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
-    <string name="update_interstitial_enable_install">Allow installation</string>
-    <string name="update_interstitial_preparing">Finishing preparation…</string>
-
-    <!-- About -->
-    <string name="about_check_updates">Check for updates</string>
-
-    <!-- Extra keys -->
-<string name="new_player_design">新しいプレーヤーのデザイン</string>
-<string name="new_mini_player_design">新しいミニプレーヤーのデザイン</string>
+    <string name="onboarding_welcome_tagline">感じて、見ることができる音楽。\n音だけでなく視覚的な感情も含めた、完全な感覚体験。</string>
+    <string name="onboarding_get_started">始めましょう</string>
+    <string name="onboarding_notifications_title">最新情報を入手</string>
+    <string name="onboarding_notifications_desc">通知により、音楽の再生中が通知され、ロック画面からプレーヤーを直接制御できます。</string>
+    <string name="onboarding_notifications_enable">通知を有効にする</string>
+    <string name="onboarding_notifications_skip">いいえ、ありがとう</string>
+    <string name="onboarding_login_title">アカウントを接続する</string>
+    <string name="onboarding_login_desc">YouTube アカウントでサインインして、プレイリスト、「いいね！」した曲、視聴履歴を同期します。</string>
+    <string name="onboarding_login_cta">YouTube でサインインする</string>
+    <string name="onboarding_login_skip">アカウントなしで続行する</string>
+    <string name="update_interstitial_title">新しいアップデートの準備ができました</string>
+    <string name="update_interstitial_version">バージョン %1$s</string>
+    <string name="update_interstitial_update_now">今すぐアップデートしてください</string>
+    <string name="update_interstitial_not_now">今ではありません</string>
+    <string name="update_interstitial_enable_install">インストールを許可する</string>
+    <string name="update_interstitial_preparing">準備完了…</string>
+    <string name="about_check_updates">アップデートをチェックする</string>
+    <string name="new_player_design">新しいプレーヤーのデザイン</string>
+    <string name="new_mini_player_design">新しいミニプレーヤーのデザイン</string>
     <string name="featured_for_you">あなたへのおすすめ</string>
     <string name="trending_artist_subtitle">フィードで急上昇</string>
     <string name="artist_radio_subtitle">このアーティストからインスピレーションを受けた無限ミックス</string>
@@ -1188,4 +1045,116 @@
     <string name="syncing_your_library">ライブラリを同期しています…</string>
     <string name="collapse_section">セクションを折りたたむ</string>
     <string name="expand_section">セクションを展開</string>
-    </resources>
+    <string name="recently_added">最近追加された</string>
+    <string name="recently_downloaded">最近ダウンロードしたもの</string>
+    <string name="artist_page_load_error">アーティスト ページを読み込めませんでした。</string>
+    <string name="update_download_ready_title">アップデートの準備完了!イリデ %1$s</string>
+    <string name="update_download_ready_description">Iride が再起動してインストールします。</string>
+    <string name="update_ready_toast">アップデートの準備完了! Iride が再起動してインストールします。</string>
+    <string name="update_permission_required_toast">アップデートの準備完了! Android 設定で Iride にアップデートのインストールを許可します。</string>
+    <string name="update_size_unknown">サイズがありません</string>
+    <string name="update_roaming_title">利用可能なアップデート</string>
+    <string name="update_roaming_message">イリデ「%1$s」（%2$s）を購入できます。お使いの携帯電話は、通常の国外でモバイル データを使用しているため、追加料金がかかる場合があります。</string>
+    <string name="update_roaming_question">今すぐダウンロードしますか?</string>
+    <string name="update_roaming_download_now">今すぐダウンロード</string>
+    <string name="update_roaming_wait_wifi">Wi-Fiを待つ</string>
+    <string name="update_home_title">新しいバージョンが見つかりました</string>
+    <string name="update_home_version">イリデ %s が入荷しました</string>
+    <string name="update_home_downloading">ダウンロード中…</string>
+    <string name="iride_backup_screen_title">入出コピー</string>
+    <string name="iride_save_copy">Iride のコピーを保存する</string>
+    <string name="iride_load_copy">保存したコピーをロードする</string>
+    <string name="iride_backup_notice">電話転送には Android デバイスのバックアップが必要です。</string>
+    <string name="iride_choose_backup">保存されたコピーを選択してください</string>
+    <string name="iride_choose_file">保存されたコピーを見つける</string>
+    <string name="iride_no_backups">このデバイスには保存されたコピーが見つかりません。</string>
+    <string name="track_favorite_saved">お気に入り</string>
+    <string name="track_favorite_not_saved">お気に入りではありません</string>
+    <string name="track_download_status_not_downloaded">ダウンロードされていません</string>
+    <string name="track_download_status_queued">ダウンロードが待機中です</string>
+    <string name="track_download_status_downloading">ダウンロード中</string>
+    <string name="track_download_status_downloaded">ダウンロード済み</string>
+    <string name="track_download_status_failed">ダウンロードに失敗しました</string>
+    <string name="track_download_status_removing">ダウンロードを削除しています</string>
+    <string name="eq_preset_standard">フラット</string>
+    <string name="eq_preset_custom">カスタム</string>
+    <string name="eq_desc_standard">色付けのないニュートラルなサウンド</string>
+    <string name="eq_desc_balanced">豊かな低音と明るい高音を穏やかに保ちます</string>
+    <string name="eq_desc_more_bass">強力なローエンド、さらなるパンチ</string>
+    <string name="eq_desc_more_treble">より明るい高音、より鮮明なディテール</string>
+    <string name="eq_desc_voice">音声が前に出てクリア</string>
+    <string name="eq_desc_custom">あなた自身の曲線</string>
+    <string name="eq_preset_modified">修正された</string>
+    <string name="eq_help_title">仕組み</string>
+    <string name="eq_help_drag">スライダーを上下にドラッグして、サウンドのその部分を上げたり下げたりします。スライダーの上の数字をタップして、正確な値を入力します。</string>
+    <string name="eq_help_exact">「帯域をリセット」は、選択した帯域をゼロ、つまり元の周波数、Q、ゲインに戻します。</string>
+    <string name="eq_help_q">Q は帯域の幅を設定します。幅が広いと近くの周波数にも影響し、ターゲットは正確に狭くなります。</string>
+    <string name="eq_help_reset_style">選択したスタイルをもう一度タップすると、すべてが基本値に復元されます。</string>
+    <string name="reconnect">再接続</string>
+    <string name="diagnostic_copy_log">診断ログをコピーする</string>
+    <string name="ai_fast_integration_title">Gemini のクイックセットアップ</string>
+    <string name="ai_fast_integration_body">翻訳やその他の AI 機能には Gemini を使用します。 Google は、変更される可能性のある使用制限付きの無料割り当てを提供しています。</string>
+    <string name="ai_fast_integration_step_1">Google AI Studio を開いてサインインします。</string>
+    <string name="ai_fast_integration_step_2">プロジェクトを選択または作成し、「API キーの作成」を選択します。</string>
+    <string name="ai_fast_integration_step_3">キーをコピーして下に貼り付けます。</string>
+    <string name="ai_fast_integration_open_google">Google AIスタジオを開く</string>
+    <string name="ai_fast_integration_key_label">Gemini API キー</string>
+    <string name="ai_fast_integration_key_placeholder">ここにキーを貼り付けてください</string>
+    <string name="ai_fast_integration_key_hint">このコードにより、Iride は選択した Google プロジェクトを通じて Gemini を使用できるようになります。</string>
+    <string name="ai_fast_integration_checking">キーを確認中…</string>
+    <string name="ai_fast_integration_connected">ジェミニが接続されています</string>
+    <string name="ai_fast_integration_verified">接続済み・モデル %1$s</string>
+    <string name="ai_fast_integration_failed">キーが無効であるか、サービスに到達できません。キーを確認して再試行してください。</string>
+    <string name="ai_fast_integration_retry">再試行</string>
+    <string name="ai_advanced_settings">詳細設定</string>
+    <string name="ai_hide_advanced_settings">詳細設定を非表示にする</string>
+    <string name="crash_restarting">イリデを再起動中…</string>
+    <string name="crash_report_copied">クラッシュレポートがコピーされました</string>
+    <string name="home_app_version">アプリのバージョン %1$s</string>
+    <string name="clear_search_on_open">検索をクリア</string>
+    <string name="settings_storage_title">ストレージとメモリ</string>
+    <string name="sync_youtube_account">YouTube アカウントを同期する</string>
+    <string name="spotify_import_playlists">Spotify からプレイリストをインポートする</string>
+    <string name="reduced_folio_mode">低電力モード</string>
+    <string name="reduced_folio_mode_desc">シンプルなフェードを使用し、ホーム背景のブラーを除去し、カバーのプリロードを制限し、MP3 の冒頭を暗くします。</string>
+    <string name="reduced_folio_mode_low_end_desc">このデバイスに推奨されます。自己責任でオフにしてください。視覚効果が途切れる場合があります。</string>
+    <string name="update_interstitial_whats_new">新機能</string>
+    <string name="adv_home_settings_title">先進的なホーム</string>
+    <string name="adv_home_settings_desc">ムードトリガーと毎日のお気に入りを備えた、より穏やかでシンプルな家。オフにすると、クラシックなホームに戻ります。</string>
+    <string name="adv_feelings_question">調子はどうですか？</string>
+    <string name="adv_feeling_energy">エネルギー</string>
+    <string name="adv_feeling_chill">チル</string>
+    <string name="adv_feeling_focus">フォーカス</string>
+    <string name="adv_feeling_nostalgia">ノスタルジー</string>
+    <string name="adv_feeling_party">パーティー</string>
+    <string name="adv_feeling_surprise">驚かせてください</string>
+    <string name="adv_thread_section">続けてください</string>
+    <string name="adv_daily_pick">毎日の選択</string>
+    <string name="adv_all_news">すべての新しいリリース</string>
+    <string name="adv_badge_new">新しい</string>
+    <string name="adv_badge_rotation">リピート中</string>
+    <string name="adv_badge_foryou">あなたのために</string>
+    <string name="adv_badge_trending">トレンド</string>
+    <string name="adv_badge_radio">ラジオ</string>
+    <string name="iride_monthly_drop_home_title">新しいイリデアップデート！</string>
+    <string name="iride_monthly_drop_title">%1$s の新機能</string>
+    <plurals name="iride_monthly_drop_changes">
+        <item quantity="one">%d変更</item>
+        <item quantity="other">%d の変更</item>
+    </plurals>
+    <string name="iride_monthly_drop_tap_to_read">新機能を見る</string>
+    <string name="iride_monthly_drop_settings_section">毎月の更新</string>
+    <string name="iride_monthly_drop_guide_title">毎月のアップデートの仕組み</string>
+    <string name="iride_monthly_drop_guide_subtitle">毎月のアップデートの説明</string>
+    <string name="iride_monthly_drop_guide_schedule_title">新しい機能が登場したとき</string>
+    <string name="iride_monthly_drop_guide_schedule">毎月の機能は、リリース日前のアップデートに含めることができます。これらは、携帯電話の現地時間を使用して、月の 1 日の 00:00 に利用可能になります。</string>
+    <string name="iride_monthly_drop_guide_fixes_title">緊急の修正</string>
+    <string name="iride_monthly_drop_guide_fixes">重要なバグ修正とセキュリティ修正は、準備が整い次第リリースされる可能性があります。</string>
+    <string name="iride_monthly_drop_guide_download_title">アップデートをダウンロードしています</string>
+    <string name="iride_monthly_drop_guide_download">Iride は、通常の国では Wi-Fi またはモバイル データでアップデートを自動的にダウンロードします。モバイルデータがローミングしているように見える場合、ダウンロードする前に入出氏が尋ねます。</string>
+    <string name="iride_monthly_drop_guide_install">ダウンロードの準備ができると、Android はインストールの確認を求める場合があります。アップデートのインストール中に Iride が再起動します。</string>
+    <string name="playlist_set_image">設定イメージ</string>
+    <string name="playlist_change_image">イメージを変更する</string>
+    <string name="playlist_image_failed">この画像をインポートできません。別の写真を選択してください。</string>
+    <string name="iride_search_top_results">上位の結果</string>
+</resources>

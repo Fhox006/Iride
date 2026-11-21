@@ -41,6 +41,7 @@ internal fun IrideFolioContextMenuAction(
     }
     IrideFolioMenuItem(
         text = action.title,
+        destructive = isDestructiveFolioAction(action.actionId),
         enabled = action.onClick != null && action.readiness != MenuActionReadiness.Unavailable,
         selected = action.selected,
         leadingIcon = if (queued) {

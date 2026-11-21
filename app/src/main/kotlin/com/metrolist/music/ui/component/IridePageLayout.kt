@@ -2,6 +2,8 @@ package com.metrolist.music.ui.component
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
@@ -39,11 +41,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -60,6 +66,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.utils.rememberReducedMotion
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 
 object IridePageLayoutDefaults {
@@ -70,12 +77,16 @@ object IridePageLayoutDefaults {
 }
 
 internal val LocalPageControlsProgress = staticCompositionLocalOf { 0f }
+internal val LocalIridePageScrolling = staticCompositionLocalOf<State<Boolean>?> { null }
 
 /** A floating header can own the title while the page retains its usual content spacing. */
 val LocalIridePageTitleVisible = staticCompositionLocalOf { true }
 
 /** A detached editor shares its page's pull when it returns to rest. */
 val LocalIridePageOverscrollPull = staticCompositionLocalOf<RubberBandPull?> { null }
+
+/** A detached search editor samples the Folio page's existing content capture. */
+internal val LocalIridePageFrostBackdrop = staticCompositionLocalOf<FrostBackdrop?> { null }
 
 private const val PAGE_TITLE_KEY = "iride_page_title"
 
@@ -104,6 +115,7 @@ fun IridePageLayout(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     background: @Composable BoxScope.() -> Unit = {},
     navigationIcon: (@Composable () -> Unit)? = null,
+    detachedAction: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
     topBarContent: (@Composable () -> Unit)? = null,
@@ -119,12 +131,15 @@ fun IridePageLayout(
     animateTopScrimColor: Boolean = true,
     overscrollPull: RubberBandPull? = LocalIridePageOverscrollPull.current,
     translateOverscroll: Boolean = true,
+    frostBlurScale: Float = 1f,
+    pageTransitionKey: Any? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val effectiveTitleTopSpacing =
         if (
             (showTopBar || menuSections.any { it.isNotEmpty() } || pageControls != null) &&
-                titleTopSpacing == IridePageLayoutDefaults.ContentTopSpacing
+                titleTopSpacing == IridePageLayoutDefaults.ContentTopSpacing &&
+                (!gestureNavigationEnabled() || topBarContent != null || !showPageTitle)
         ) {
             IrideFolio.TitleAfterControls
         } else {
@@ -151,6 +166,7 @@ fun IridePageLayout(
         overlay = overlay,
         background = background,
         navigationIcon = navigationIcon,
+        detachedAction = detachedAction,
         actions = actions,
         menuSections = menuSections,
         topBarContent = topBarContent,
@@ -164,6 +180,8 @@ fun IridePageLayout(
         animateTopScrimColor = animateTopScrimColor,
         overscrollPull = overscrollPull,
         translateOverscroll = translateOverscroll,
+        frostBlurScale = frostBlurScale,
+        pageTransitionKey = pageTransitionKey ?: PageEntranceKey(title, state),
     ) {
         LazyColumn(
             state = state,
@@ -207,7 +225,9 @@ fun IridePageFrame(
     menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val titleTopSpacing = IrideFolio.TitleAfterControls
+    val titleTopSpacing =
+        if (gestureNavigationEnabled()) IridePageLayoutDefaults.ContentTopSpacing
+        else IrideFolio.TitleAfterControls
     val density = LocalDensity.current
     val contentTop =
         iridePageStatusBarTopPadding() +
@@ -276,12 +296,14 @@ fun IridePageLayout(
     pageControls: (@Composable BoxScope.() -> Unit)? = null,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    pageTransitionKey: Any? = null,
     content: LazyGridScope.() -> Unit,
 ) {
     val effectiveTitleTopSpacing =
         if (
             (showTopBar || menuSections.any { it.isNotEmpty() } || pageControls != null) &&
-                titleTopSpacing == IridePageLayoutDefaults.ContentTopSpacing
+                titleTopSpacing == IridePageLayoutDefaults.ContentTopSpacing &&
+                (!gestureNavigationEnabled() || topBarContent != null)
         ) {
             IrideFolio.TitleAfterControls
         } else {
@@ -312,6 +334,7 @@ fun IridePageLayout(
         showTopBar = showTopBar || menuSections.any { it.isNotEmpty() },
         pageControls = pageControls,
         topBarStrokeColor = topBarStrokeColor,
+        pageTransitionKey = pageTransitionKey ?: PageEntranceKey(title, state),
     ) {
         LazyVerticalGrid(
             columns = columns,
@@ -342,6 +365,8 @@ private data class TitlePosition(
     val scrollOffset: Int,
     val encounterTop: Float,
 )
+
+private data class PageEntranceKey(val title: String, val state: Any)
 
 private class PageHeader(
     val contentTopPadding: Dp,
@@ -398,6 +423,7 @@ private fun PageFrame(
     overlay: @Composable BoxScope.() -> Unit = {},
     background: @Composable BoxScope.() -> Unit = {},
     navigationIcon: (@Composable () -> Unit)? = null,
+    detachedAction: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
     topBarContent: (@Composable () -> Unit)? = null,
@@ -412,18 +438,24 @@ private fun PageFrame(
     animateTopScrimColor: Boolean = true,
     overscrollPull: RubberBandPull? = null,
     translateOverscroll: Boolean = true,
+    frostBlurScale: Float = 1f,
+    pageTransitionKey: Any? = title,
     content: @Composable () -> Unit,
 ) {
+    val entranceProgress = rememberPageEntranceProgress(pageTransitionKey, reducedMotion)
+    val scrolling = remember(scrollState) { derivedStateOf { scrollState.isScrollInProgress } }
     val pagePull = overscrollPull ?: rememberRubberBandPull()
     val ambientBackground = LocalScreenFrostBackground.current
     val pageBackground = rememberFrostBackdrop(
         background = ambientBackground,
         backgroundColor = MaterialTheme.colorScheme.surface,
+        blurredScale = if (frostBlurScale <= 0f) 0f else 1f,
     )
-    val backdrop = rememberFrostBackdrop(
+    val backdrop = LocalIridePageFrostBackdrop.current ?: rememberFrostBackdrop(
         background = ambientBackground,
         backgroundColor = MaterialTheme.colorScheme.surface,
         stableBlur = true,
+        blurredScale = frostBlurScale,
     )
     val statusBarHeight = iridePageStatusBarTopPadding()
     val scrimColor = if (animateTopScrimColor) {
@@ -441,23 +473,29 @@ private fun PageFrame(
         with(LocalDensity.current) {
             (statusBarHeight + IrideFolio.ControlsTopSpacing + IrideFolio.ControlsHeight).toPx()
         }
-    val cameraBoundaryPx = with(LocalDensity.current) {
-        (statusBarHeight + IrideFolio.TopScrimCameraGap).toPx()
+    // Scroll pixels change every frame; composition only needs the threshold crossing.
+    val currentEncounter = rememberUpdatedState(topScrimEncounter)
+    val firstEncounter by remember(header, controlsBottomPx) {
+        derivedStateOf {
+            header.scrolling && (currentEncounter.value?.invoke() ?: header.encounterTop) <= controlsBottomPx
+        }
     }
-    val encounterTop = topScrimEncounter?.invoke() ?: header.encounterTop
-    val firstEncounter = header.scrolling && encounterTop <= controlsBottomPx
-    val scrimEncounter = header.scrolling && encounterTop <= cameraBoundaryPx
-    val scrimProgress = rememberIrideFolioFade(if (showTopScrim && scrimEncounter) 1f else 0f, reducedMotion)
+    // Keep the artwork-colored top fade mounted throughout navigation and collection
+    // expansion transitions; tying visibility to scroll encounter caused a one-frame gap.
+    val scrimProgress = rememberIrideFolioFade(if (showTopScrim) 1f else 0f, reducedMotion)
     val controlsProgress =
         rememberIrideFolioFade(
             if (firstEncounter) 1f else 0f,
             reducedMotion,
         )
+    val collectionProgress = LocalCollectionExpansionProgress.current
+    val collectionDissolves = LocalCollectionExpansionSource.current?.returnWithDissolve == true
     CompositionLocalProvider(
         LocalOverscrollFactory provides null,
         LocalScreenFrostBackdrop provides backdrop,
         LocalScreenFrostBackground provides pageBackground,
         LocalPageControlsProgress provides controlsProgress,
+        LocalIridePageScrolling provides scrolling,
     ) {
         Box(
             modifier =
@@ -473,7 +511,7 @@ private fun PageFrame(
                 Modifier.fillMaxSize()
                     .recordFrostBackdrop(
                         backdrop,
-                        enabled = controlsProgress > 0f || (backdrop?.recordingRequests ?: 0) > 0,
+                        enabled = (backdrop?.recordingRequests ?: 0) > 0,
                         trackScroll = true,
                     )
             ) {
@@ -490,7 +528,8 @@ private fun PageFrame(
                     Modifier.fillMaxSize().graphicsLayer {
                         translationY = if (translateOverscroll) pagePull.offset else 0f
                     }
-                        .then(LocalCollectionExpansionProgress.current?.let(::irideExpansionControlsModifier) ?: Modifier)
+                        .then(if (collectionDissolves || collectionProgress == null) Modifier else irideExpansionControlsModifier(collectionProgress))
+                        .graphicsLayer { alpha = entranceProgress.value.coerceIn(0f, 1f) }
                 ) {
                     content()
                     if (titleScrollOffset != null) {
@@ -534,6 +573,7 @@ private fun PageFrame(
                         .then(LocalCollectionExpansionProgress.current?.let(::irideExpansionControlsModifier) ?: Modifier)
                         .irideFolioScrollReceiver(scrollState),
                     navigationIcon = navigationIcon,
+                    detachedAction = detachedAction,
                     actions = actions,
                     menuSections = menuSections,
                     titleContent = topBarContent,
@@ -544,6 +584,38 @@ private fun PageFrame(
             pageControls?.invoke(this)
         }
     }
+}
+
+@Composable
+private fun rememberPageEntranceProgress(key: Any?, reducedMotion: Boolean): State<Float> {
+    val sourceEntryId = LocalCollectionSourceEntry.current
+    val expansionBackdrop = LocalIrideExpansionBackdrop.current
+    val usesExpansionEntrance = LocalCollectionExpansionProgress.current != null ||
+        LocalIrideExpansionContentMotion.current != null ||
+        (sourceEntryId != null && expansionBackdrop?.returning == true && expansionBackdrop.entryId == sourceEntryId)
+    // Keep entrance ownership for this composition even if another flight takes over.
+    val expansionOwnsEntrance = remember(sourceEntryId) { usesExpansionEntrance }
+    val skipEntrance = expansionOwnsEntrance || reducedMotion
+    // NavHost restores this state when predictive back recomposes the page before the pop.
+    var entranceStarted by rememberSaveable(key) { mutableStateOf(false) }
+    val progress = remember(key) {
+        Animatable(if (entranceStarted || skipEntrance) 1f else 0f)
+    }
+    LaunchedEffect(progress, skipEntrance) {
+        entranceStarted = true
+        if (skipEntrance) {
+            progress.snapTo(1f)
+        } else if (progress.value < 1f) {
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = IrideMotion.PageEntrance,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+        }
+    }
+    return if (skipEntrance) rememberUpdatedState(1f) else progress.asState()
 }
 
 /**
@@ -567,8 +639,9 @@ fun IridePageFrame(
 ) {
     val flingBehavior = rememberIrideFolioFlingBehavior()
     val titleTopSpacing =
-        if (showTopBar || menuSections.any { it.isNotEmpty() }) IrideFolio.TitleAfterControls
-        else IridePageLayoutDefaults.ContentTopSpacing
+        if ((showTopBar || menuSections.any { it.isNotEmpty() }) && !gestureNavigationEnabled()) {
+            IrideFolio.TitleAfterControls
+        } else IridePageLayoutDefaults.ContentTopSpacing
     var titleHeightPx by remember(title) { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val titleHeight =
@@ -686,7 +759,10 @@ internal fun IrideCollectionPageLayout(
     mediaMetadata: com.metrolist.music.models.MediaMetadata? = null,
     playerBackground: com.metrolist.music.constants.PlayerBackgroundStyle = com.metrolist.music.constants.PlayerBackgroundStyle.GRADIENT,
     gradientEnabled: Boolean = true,
+    artworkTint: Color? = null,
+    lowPerformancePanelColor: Color? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
+    detachedAction: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
     topBarContent: (@Composable () -> Unit)? = null,
@@ -702,46 +778,58 @@ internal fun IrideCollectionPageLayout(
     animateTopScrimColor: Boolean = true,
     overscrollPull: RubberBandPull? = LocalIridePageOverscrollPull.current,
     translateOverscroll: Boolean = true,
+    pageTransitionKey: Any? = null,
     content: LazyListScope.() -> Unit,
 ) {
     var scrim by remember { mutableStateOf(Color.Black) }
-    IrideArtworkSurface(backgroundColor = LocalArtworkBackgroundColor.current ?: Color.Black, modifier = Modifier.fillMaxSize()) {
-        IridePageLayout(
-            title = title,
-            modifier = modifier,
-            state = state,
-            listModifier = listModifier,
-            topBarModifier = topBarModifier,
-            reducedMotion = reducedMotion,
-            titleTopSpacing = titleTopSpacing,
-            bottomPadding = bottomPadding,
-            contentHorizontalPadding = contentHorizontalPadding,
-            verticalArrangement = verticalArrangement,
-            background = {
-                if (background != null) background()
-                else if (gradientEnabled) TopScreenGradientBackground(
-                    mediaMetadata = mediaMetadata, playerBackground = playerBackground,
-                    emphasizeArtwork = true, backgroundColor = Color.Black,
-                    onTopColorChanged = { scrim = it },
-                )
-            },
-            navigationIcon = navigationIcon,
-            actions = actions,
-            menuSections = menuSections,
-            topBarContent = topBarContent,
-            showTopBar = showTopBar,
-            topBarStrokeColor = topBarStrokeColor,
-            overlay = overlay,
-            pageControls = pageControls,
-            showPageTitle = showPageTitle,
-            showTopScrim = showTopScrim,
-            topScrimEncounter = topScrimEncounter,
-            topScrimColor = if (background == null && gradientEnabled) scrim else topScrimColor,
-            contentTopPadding = contentTopPadding,
-            animateTopScrimColor = if (background == null) false else animateTopScrimColor,
-            overscrollPull = overscrollPull,
-            translateOverscroll = translateOverscroll,
-            content = content,
-        )
+    val pageBackgroundColor = LocalArtworkBackgroundColor.current ?: Color.Black
+    val topBarSurfaceColor = if (background == null && gradientEnabled) scrim else pageBackgroundColor
+    IrideArtworkSurface(
+        backgroundColor = pageBackgroundColor,
+        lowPerformanceSurfaceColor = lowPerformancePanelColor,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        CompositionLocalProvider(LocalTopBarLowPerformanceSurfaceColor provides topBarSurfaceColor) {
+            IridePageLayout(
+                title = title,
+                modifier = modifier,
+                state = state,
+                listModifier = listModifier,
+                topBarModifier = topBarModifier,
+                reducedMotion = reducedMotion,
+                titleTopSpacing = titleTopSpacing,
+                bottomPadding = bottomPadding,
+                contentHorizontalPadding = contentHorizontalPadding,
+                verticalArrangement = verticalArrangement,
+                background = {
+                    if (background != null) background()
+                    else if (gradientEnabled) TopScreenGradientBackground(
+                        mediaMetadata = mediaMetadata, playerBackground = playerBackground,
+                        emphasizeArtwork = true, backgroundColor = Color.Black,
+                        artworkTint = artworkTint,
+                        onTopColorChanged = { scrim = it },
+                    )
+                },
+                navigationIcon = navigationIcon,
+                detachedAction = detachedAction,
+                actions = actions,
+                menuSections = menuSections,
+                topBarContent = topBarContent,
+                showTopBar = showTopBar,
+                topBarStrokeColor = topBarStrokeColor,
+                overlay = overlay,
+                pageControls = pageControls,
+                showPageTitle = showPageTitle,
+                showTopScrim = showTopScrim,
+                topScrimEncounter = topScrimEncounter,
+                topScrimColor = if (background == null && gradientEnabled) scrim else topScrimColor,
+                contentTopPadding = contentTopPadding,
+                animateTopScrimColor = if (background == null) false else animateTopScrimColor,
+                overscrollPull = overscrollPull,
+                translateOverscroll = translateOverscroll,
+                pageTransitionKey = pageTransitionKey,
+                content = content,
+            )
+        }
     }
 }

@@ -52,14 +52,14 @@ class DiscordRPC(
         val buttonsList = mutableListOf<Pair<String, String>>()
         if (button1Visible) {
             val resolvedText = resolveVariables(
-                button1Text.ifEmpty { "Listen on YouTube Music" },
+                button1Text.ifEmpty { context.getString(R.string.discord_listen_on_youtube) },
                 song
             )
             buttonsList.add(resolvedText to "https://music.youtube.com/watch?v=${song.song.id}")
         }
         if (button2Visible) {
             val resolvedText = resolveVariables(
-                button2Text.ifEmpty { "Visit Metrolist" },
+                button2Text.ifEmpty { context.getString(R.string.discord_visit_iride) },
                 song
             )
             buttonsList.add(resolvedText to "https://github.com/MetrolistGroup/Metrolist")

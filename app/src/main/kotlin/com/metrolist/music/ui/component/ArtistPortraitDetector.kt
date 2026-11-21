@@ -17,7 +17,13 @@ internal object ArtistPortraitDetector {
     fun quality(bitmap: Bitmap): Float {
         val sample = Bitmap.createBitmap(SampleSize, SampleSize, Bitmap.Config.RGB_565)
         return try {
-            Canvas(sample).drawBitmap(bitmap, null, Rect(0, 0, SampleSize, SampleSize), Paint(Paint.FILTER_BITMAP_FLAG))
+            // Fit wide video frames without stretching faces into the square detector input.
+            val scale = SampleSize.toFloat() / maxOf(bitmap.width, bitmap.height)
+            val width = (bitmap.width * scale).toInt().coerceIn(1, SampleSize)
+            val height = (bitmap.height * scale).toInt().coerceIn(1, SampleSize)
+            val left = (SampleSize - width) / 2
+            val top = (SampleSize - height) / 2
+            Canvas(sample).drawBitmap(bitmap, null, Rect(left, top, left + width, top + height), Paint(Paint.FILTER_BITMAP_FLAG))
             synchronized(lock) {
                 val engine = detector ?: FaceDetector(SampleSize, SampleSize, MaxFaces).also { detector = it }
                 val faces = arrayOfNulls<FaceDetector.Face>(MaxFaces)

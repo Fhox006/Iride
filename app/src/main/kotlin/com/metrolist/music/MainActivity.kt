@@ -6,6 +6,10 @@
 package com.metrolist.music
 
 import com.metrolist.music.ui.component.IrideFolioDialog
+import com.metrolist.music.ui.component.IrideFolioToastHost
+import com.metrolist.music.ui.component.IrideFolioToast
+import com.metrolist.music.ui.component.UpdateRoamingDialog
+import com.metrolist.music.ui.component.UpdateRoamingPrompt
 
 import android.annotation.SuppressLint
 import android.app.DownloadManager
@@ -25,10 +29,13 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import com.metrolist.music.ui.component.IrideArtistNavigationTransitions
+import com.metrolist.music.ui.component.rememberLightweightFolioMode
 import com.metrolist.music.ui.component.LocalArtistPortraitNavigation
+import com.metrolist.music.ui.component.usesSimpleSearchSectionMotion
 import com.metrolist.music.ui.component.LocalCollectionExpansionNavigation
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
@@ -50,16 +57,19 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -88,7 +98,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
-import kotlinx.coroutines.isActive
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -102,6 +111,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.animation.core.animateFloatAsState
@@ -122,6 +132,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
+import kotlin.math.roundToInt
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
@@ -137,7 +148,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -163,6 +176,13 @@ import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.LastUpdateCheckKey
+import com.metrolist.music.constants.UpdateInstallPermissionPendingKey
+import com.metrolist.music.constants.UpdateInstallPermissionPromptedTagKey
+import com.metrolist.music.constants.UpdateInstallStartedTagKey
+import com.metrolist.music.constants.UpdateReadyShownTagKey
+import com.metrolist.music.constants.UpdateRoamingAllowedTagKey
+import com.metrolist.music.constants.UpdateRoamingDeferredTagKey
+import com.metrolist.music.constants.UpdateRoamingDeferredUntilKey
 import com.metrolist.music.constants.   PendingUpdateNotesKey
 import com.metrolist.music.constants.PendingUpdateTagKey
 import com.metrolist.music.constants.PendingUpdateVersionNameKey
@@ -173,7 +193,6 @@ import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseListenHistoryKey
-import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
 import com.metrolist.music.constants.MainTopGradientKey
@@ -185,11 +204,9 @@ import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
-import com.metrolist.music.constants.UpdateAnnouncementDismissedTagKey
 import com.metrolist.music.constants.LastSessionEndedAtKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.lyrics.LyricsProviderRegistry
 import com.metrolist.music.models.toMediaMetadata
@@ -217,14 +234,13 @@ import com.metrolist.music.ui.component.FrostedPlayerNavigationBackdrop
 import com.metrolist.music.ui.component.iridePlayerExpansionPhase
 import com.metrolist.music.ui.component.LocalIrideBottomDockMotion
 import com.metrolist.music.ui.component.rememberIrideBottomDockMotion
-import com.metrolist.music.ui.component.irideBottomDockEdgeInset
+import com.metrolist.music.ui.component.irideBottomDockBottomInset
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.invalidateFrostOnChanges
 import com.metrolist.music.ui.component.LocalScreenFrostBackground
 import com.metrolist.music.ui.component.IrideMiniPlayerHeight
 import com.metrolist.music.ui.component.IrideMiniPlayerNavigationSpacing
-import com.metrolist.music.ui.component.UpdateInterstitialScreen
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -257,6 +273,8 @@ import com.metrolist.music.ui.utils.resetHeightOffset
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.utils.UpdateDownloader
+import com.metrolist.music.utils.UpdateNetworkPolicy
+import com.metrolist.music.utils.UpdateNetworkStatus
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -270,6 +288,7 @@ import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -284,7 +303,13 @@ import java.net.URLEncoder
 import java.util.Locale
 import javax.inject.Inject
 
-@Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+private fun formatUpdateSize(context: Context, bytes: Long): String =
+    if (bytes > 0L) {
+        String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+    } else {
+        context.getString(R.string.update_size_unknown)
+    }
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
@@ -319,8 +344,12 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection: PlayerConnection? = null
     private var playerConnectionSnapshot by mutableStateOf<PlayerConnection?>(null)
+    private var hasResumedOnce = false
     private var isServiceBound = false
+    private var playerConnectionRetry: Job? = null
     private var updateDownloadReceiver: BroadcastReceiver? = null
+    private var updateReadyPending = false
+    private var verifiedUpdateTag by mutableStateOf<String?>(null)
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -328,6 +357,7 @@ class MainActivity : ComponentActivity() {
                 name: ComponentName?,
                 service: IBinder?,
             ) {
+                playerConnectionRetry?.cancel()
                 if (service is MusicBinder) {
                     try {
                         playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
@@ -336,7 +366,7 @@ class MainActivity : ComponentActivity() {
                         listenTogetherManager.setPlayerConnection(playerConnection)
                     } catch (e: Exception) {
                         Timber.tag("MainActivity").e(e, "Failed to create PlayerConnection")
-                        lifecycleScope.launch {
+                        playerConnectionRetry = lifecycleScope.launch {
                             delay(500)
                             try {
                                 playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
@@ -351,12 +381,34 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                listenTogetherManager.setPlayerConnection(null)
-                playerConnection?.dispose()
-                playerConnection = null
-                playerConnectionSnapshot = null
+                clearPlayerConnection()
+            }
+
+            override fun onBindingDied(name: ComponentName?) {
+                safeUnbindService("onBindingDied()")
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                    bindPlaybackService()
+                }
             }
         }
+
+    private fun clearPlayerConnection() {
+        playerConnectionRetry?.cancel()
+        playerConnectionRetry = null
+        listenTogetherManager.setPlayerConnection(null)
+        playerConnection?.dispose()
+        playerConnection = null
+        playerConnectionSnapshot = null
+    }
+
+    private fun bindPlaybackService() {
+        if (isServiceBound) return
+        isServiceBound = bindService(
+            Intent(this, MusicService::class.java),
+            serviceConnection,
+            BIND_AUTO_CREATE,
+        )
+    }
 
     private fun safeUnbindService(source: String) {
         if (!isServiceBound) return
@@ -366,10 +418,7 @@ class MainActivity : ComponentActivity() {
             Timber.tag("MainActivity").w(e, "Service was not bound when attempting to unbind in $source")
         } finally {
             isServiceBound = false
-            listenTogetherManager.setPlayerConnection(null)
-            playerConnection?.dispose()
-            playerConnection = null
-            playerConnectionSnapshot = null
+            clearPlayerConnection()
         }
     }
 
@@ -381,8 +430,13 @@ class MainActivity : ComponentActivity() {
                     intent: Intent?,
                 ) {
                     val downloadId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: return
-                    if (UpdateDownloader.onDownloadCompleted(this@MainActivity, downloadId)) {
-                        UpdateDownloader.promptInstall(this@MainActivity)
+                    val tag = verifiedUpdateTag ?: return
+                    if (UpdateDownloader.onDownloadCompleted(this@MainActivity, downloadId, tag)) {
+                        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                            handleUpdateReady()
+                        } else {
+                            updateReadyPending = true
+                        }
                     }
                 }
             }
@@ -407,14 +461,7 @@ class MainActivity : ComponentActivity() {
                 startService(Intent(this, MusicService::class.java))
             }
         }
-        if (!isServiceBound) {
-            bindService(
-                Intent(this, MusicService::class.java),
-                serviceConnection,
-                BIND_AUTO_CREATE,
-            )
-            isServiceBound = true
-        }
+        bindPlaybackService()
     }
 
     override fun onStop() {
@@ -423,6 +470,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        val refreshCloudPlaylists = hasResumedOnce
+        hasResumedOnce = true
+        lifecycleScope.launch {
+            val permissionPending = dataStore[UpdateInstallPermissionPendingKey] == true
+            if (updateReadyPending) {
+                updateReadyPending = false
+                handleUpdateReady()
+            } else if (permissionPending) {
+                dataStore.edit { it.remove(UpdateInstallPermissionPendingKey) }
+                if (UpdateDownloader.canInstallPackages(this@MainActivity)) {
+                    dataStore.edit { it.remove(UpdateInstallPermissionPromptedTagKey) }
+                    handleUpdateReady()
+                }
+            }
+        }
         lifecycleScope.launch {
             val prefs = dataStore.data.first()
             val cookie = prefs[InnerTubeCookieKey]
@@ -445,6 +507,52 @@ class MainActivity : ComponentActivity() {
             if ((cookie != null && YouTube.cookie == null) ||
                 (visitorData != null && YouTube.visitorData == null)) {
                 (application as App).initializeSettings()
+            }
+
+            if (refreshCloudPlaylists) syncUtils.tryAutoSync()
+        }
+    }
+
+    private fun handleUpdateReady(force: Boolean = false) {
+        val tag = verifiedUpdateTag ?: return
+        if (!force && !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            updateReadyPending = true
+            return
+        }
+        lifecycleScope.launch {
+            if (verifiedUpdateTag != tag ||
+                UpdateDownloader.queryDownloadState(this@MainActivity, tag) != UpdateDownloadState.ReadyToInstall
+            ) return@launch
+            val canInstall = UpdateDownloader.canInstallPackages(this@MainActivity)
+            var showReady = false
+            var openPermission = false
+            var startInstall = false
+            dataStore.edit { prefs ->
+                if (prefs[UpdateReadyShownTagKey] != tag) {
+                    prefs[UpdateReadyShownTagKey] = tag
+                    showReady = true
+                }
+                if (!canInstall) {
+                    if (force || prefs[UpdateInstallPermissionPromptedTagKey] != tag) {
+                        prefs[UpdateInstallPermissionPendingKey] = true
+                        prefs[UpdateInstallPermissionPromptedTagKey] = tag
+                        openPermission = true
+                    }
+                } else if (force || prefs[UpdateInstallStartedTagKey] != tag) {
+                    prefs.remove(UpdateInstallPermissionPendingKey)
+                    prefs[UpdateInstallStartedTagKey] = tag
+                    startInstall = true
+                }
+            }
+            if (showReady) {
+                val message = if (canInstall) R.string.update_ready_toast else R.string.update_permission_required_toast
+                IrideFolioToast.makeText(this@MainActivity, message, IrideFolioToast.LENGTH_LONG).show()
+            }
+            if (openPermission) {
+                UpdateDownloader.openInstallPermissionSettings(this@MainActivity)
+            }
+            if (startInstall) {
+                UpdateDownloader.installUpdate(this@MainActivity, tag)
             }
         }
     }
@@ -518,7 +626,6 @@ class MainActivity : ComponentActivity() {
         listenTogetherManager.initialize()
 
         if (BuildConfig.UPDATER_AVAILABLE) {
-            UpdateDownloader.cleanupStaleDownloads(this)
             registerUpdateDownloadReceiver()
         }
 
@@ -596,13 +703,8 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun isColdSessionLaunch(): Boolean {
-        val endedAt = dataStore[LastSessionEndedAtKey] ?: return true
-        return System.currentTimeMillis() - endedAt >= COLD_SESSION_GAP_MS
-    }
-
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
     @Composable
     private fun IrideApp(
         latestVersionName: String,
@@ -613,12 +715,13 @@ class MainActivity : ComponentActivity() {
         syncUtils: SyncUtils,
     ) {
         val checkForUpdates by rememberPreference(CheckForUpdatesKey, defaultValue = true)
+        val onboardingCompleted by rememberPreference(OnboardingCompletedKey, defaultValue = false)
+        var homeUpdateVersion by remember { mutableStateOf<String?>(null) }
+        var homeUpdateDownloadUrl by remember { mutableStateOf<String?>(null) }
+        var homeUpdateSizeBytes by remember { mutableLongStateOf(0L) }
+        var homeUpdateDownloadState by remember { mutableStateOf<UpdateDownloadState>(UpdateDownloadState.Idle) }
+        var roamingUpdatePrompt by remember { mutableStateOf<UpdateRoamingPrompt?>(null) }
 
-        // Single silent update check per launch (cache-aware). When a compatible update is
-        // found the APK is downloaded in the background and its metadata persisted; nothing
-        // is shown during this session — the announcement interstitial surfaces on the NEXT
-        // launch, driven purely by the persisted state so it renders instantly, offline too.
-        // The Settings badge keeps working off latestVersionName.
         if (BuildConfig.UPDATER_AVAILABLE) {
             LaunchedEffect(checkForUpdates) {
                 if (!checkForUpdates) {
@@ -626,15 +729,8 @@ class MainActivity : ComponentActivity() {
                     return@LaunchedEffect
                 }
 
-                delay(20_000)
-
-                val lastCheckAt = withContext(Dispatchers.IO) { dataStore.get(LastUpdateCheckKey, 0L) }
-                if (System.currentTimeMillis() - lastCheckAt <= Updater.CHECK_INTERVAL_MILLIS) {
-                    onLatestVersionNameChange(BuildConfig.VERSION_NAME)
-                    return@LaunchedEffect
-                }
-
-                withContext(Dispatchers.IO) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    delay(5_000)
                     Updater.checkForAnyUpdate(forceRefresh = false)
                         .onSuccess { result ->
                             val (releaseInfo, hasUpdate) = result
@@ -655,12 +751,14 @@ class MainActivity : ComponentActivity() {
                             // this build is already current (that comparison would otherwise
                             // bail first and nothing could ever be exercised).
                             if (!forceTest && Updater.compareVersions(BuildConfig.VERSION_NAME, tag) >= 0) {
-                                // Genuinely up to date: clear any leftover announcement state
-                                // from an install that already happened.
+                                UpdateDownloader.discardOtherDownload(applicationContext, releaseTag = null)
                                 dataStore.edit { prefs ->
                                     prefs.remove(PendingUpdateTagKey)
                                     prefs.remove(PendingUpdateVersionNameKey)
                                     prefs.remove(PendingUpdateNotesKey)
+                                    prefs.remove(UpdateInstallStartedTagKey)
+                                    prefs.remove(UpdateInstallPermissionPendingKey)
+                                    prefs.remove(UpdateInstallPermissionPromptedTagKey)
                                 }
                                 return@onSuccess
                             }
@@ -675,62 +773,105 @@ class MainActivity : ComponentActivity() {
                                     .w("Release %s has no APK asset for arch/variant", tag)
                                 return@onSuccess
                             }
-                            if (!(dataStore[OnboardingCompletedKey] ?: false)) return@onSuccess
-
-                            val pendingTag = dataStore[PendingUpdateTagKey]
-                            if (pendingTag != tag) {
-                                Timber.tag("UpdateAnnouncement")
-                                    .i("Pending update %s (%s), starting silent download", info.versionName, tag)
-                                dataStore.edit { prefs ->
-                                    prefs[PendingUpdateTagKey] = tag
-                                    prefs[PendingUpdateVersionNameKey] = info.versionName
-                                    prefs[PendingUpdateNotesKey] = info.description.take(MAX_PENDING_UPDATE_NOTES_LENGTH)
+                            UpdateDownloader.discardOtherDownload(applicationContext, tag)
+                            dataStore.edit { prefs ->
+                                val previousTag = prefs[PendingUpdateTagKey]
+                                prefs[PendingUpdateTagKey] = tag
+                                prefs[PendingUpdateVersionNameKey] = info.versionName
+                                prefs[PendingUpdateNotesKey] = info.description.take(MAX_PENDING_UPDATE_NOTES_LENGTH)
+                                if (previousTag != tag) {
+                                    prefs.remove(UpdateRoamingAllowedTagKey)
+                                    prefs.remove(UpdateRoamingDeferredTagKey)
+                                    prefs.remove(UpdateRoamingDeferredUntilKey)
+                                    prefs.remove(UpdateReadyShownTagKey)
+                                    prefs.remove(UpdateInstallStartedTagKey)
+                                    prefs.remove(UpdateInstallPermissionPendingKey)
+                                    prefs.remove(UpdateInstallPermissionPromptedTagKey)
                                 }
-                                UpdateDownloader.enqueueUpdate(
-                                    applicationContext,
-                                    downloadUrl,
-                                    info.versionName,
-                                )
-                            } else when (UpdateDownloader.queryDownloadState(applicationContext)) {
-                                // Same version already announced: only re-kick a download that
-                                // failed on a previous launch; a completed or running one is left alone.
-                                is UpdateDownloadState.Failed -> {
-                                    Timber.tag("UpdateAnnouncement")
-                                        .w("Previous download of %s failed, retrying", tag)
-                                    UpdateDownloader.enqueueUpdate(
-                                        applicationContext,
-                                        downloadUrl,
-                                        info.versionName,
-                                    )
-                                }
-                                else -> Unit
                             }
+                            homeUpdateVersion = info.versionName
+                            homeUpdateDownloadUrl = downloadUrl
+                            homeUpdateSizeBytes = info.assets.firstOrNull { it.downloadUrl == downloadUrl }?.size ?: 0L
+                            homeUpdateDownloadState = UpdateDownloader.queryDownloadState(applicationContext, tag)
+                            verifiedUpdateTag = tag
                         }
                         .onFailure {
                             Timber.tag("UpdateAnnouncement").w(it, "Silent update check failed")
                         }
+
+                    // Revalidate on the next foreground session before reusing a cached package.
+                    try {
+                        kotlinx.coroutines.awaitCancellation()
+                    } finally {
+                        verifiedUpdateTag = null
+                        roamingUpdatePrompt = null
+                        homeUpdateDownloadState = UpdateDownloadState.Idle
+                    }
                 }
             }
         }
 
-        // Full-screen "update ready" gate for this launch. Computed once, synchronously, from
-        // persisted state: no network involved, so the wall replaces the app immediately even
-        // before the check above completes. It only fires when a previous launch already
-        // detected and downloaded the update. The test flag bypasses BOTH the version
-        // comparison and the dismissed-version memory, so the announcement can be exercised
-        // repeatedly against the real latest release.
-        val showUpdateGateInitially = remember {
-            BuildConfig.UPDATER_AVAILABLE &&
-                isColdSessionLaunch() &&
-                (dataStore[OnboardingCompletedKey] ?: false) && run {
-                    val tag = dataStore[PendingUpdateTagKey]
-                    tag != null &&
-                        (Updater.FORCE_UPDATE_ANNOUNCEMENT_FOR_TESTING ||
-                            (Updater.compareVersions(BuildConfig.VERSION_NAME, tag) < 0 &&
-                                tag != dataStore[UpdateAnnouncementDismissedTagKey]))
+        LaunchedEffect(verifiedUpdateTag, homeUpdateDownloadUrl, homeUpdateSizeBytes, onboardingCompleted) {
+            val tag = verifiedUpdateTag ?: return@LaunchedEffect
+            val downloadUrl = homeUpdateDownloadUrl ?: return@LaunchedEffect
+            if (!onboardingCompleted) return@LaunchedEffect
+            var lastRetryAt = 0L
+            while (verifiedUpdateTag == tag) {
+                val downloadState = UpdateDownloader.queryDownloadState(applicationContext, tag)
+                homeUpdateDownloadState = downloadState
+                if (downloadState is UpdateDownloadState.ReadyToInstall) {
+                    roamingUpdatePrompt = null
+                    handleUpdateReady()
+                    break
                 }
+
+                val networkStatus = UpdateNetworkPolicy.currentStatus(applicationContext)
+                val roamingApproved = dataStore[UpdateRoamingAllowedTagKey] == tag
+                when (networkStatus) {
+                    UpdateNetworkStatus.NO_CONNECTION -> Unit
+                    UpdateNetworkStatus.ROAMING_CONFIRMATION_REQUIRED -> {
+                        if (roamingApproved) {
+                            if (downloadState == UpdateDownloadState.Idle || downloadState is UpdateDownloadState.Failed) {
+                                UpdateDownloader.enqueueUpdate(
+                                    applicationContext,
+                                    downloadUrl,
+                                    homeUpdateVersion.orEmpty(),
+                                    releaseTag = tag,
+                                    allowOverRoaming = true,
+                                )
+                            }
+                        } else {
+                            val deferredTag = dataStore[UpdateRoamingDeferredTagKey]
+                            val deferredUntil = dataStore[UpdateRoamingDeferredUntilKey] ?: 0L
+                            if (deferredTag != tag || System.currentTimeMillis() >= deferredUntil) {
+                                roamingUpdatePrompt = UpdateRoamingPrompt(
+                                    releaseTag = tag,
+                                    versionName = homeUpdateVersion.orEmpty(),
+                                    downloadSize = formatUpdateSize(applicationContext, homeUpdateSizeBytes),
+                                    downloadUrl = downloadUrl,
+                                )
+                            }
+                        }
+                    }
+                    UpdateNetworkStatus.AUTOMATIC -> {
+                        roamingUpdatePrompt = null
+                        val retryAllowed = System.currentTimeMillis() - lastRetryAt >= 30 * 60 * 1000L
+                        if (downloadState == UpdateDownloadState.Idle ||
+                            (downloadState is UpdateDownloadState.Failed && retryAllowed)
+                        ) {
+                            lastRetryAt = System.currentTimeMillis()
+                            UpdateDownloader.enqueueUpdate(
+                                applicationContext,
+                                downloadUrl,
+                                homeUpdateVersion.orEmpty(),
+                                releaseTag = tag,
+                            )
+                        }
+                    }
+                }
+                delay(10_000)
+            }
         }
-        var showUpdateInterstitial by rememberSaveable { mutableStateOf(showUpdateGateInitially) }
 
         val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
@@ -740,7 +881,17 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val layoutParams = window.attributes
                 if (enableHighRefreshRate) {
-                    layoutParams.preferredDisplayModeId = 0
+                    val display = window.windowManager.defaultDisplay
+                    val currentMode = display.mode
+                    val modes = display.supportedModes
+                    val highestRefreshMode = modes
+                        .filter {
+                            it.physicalWidth == currentMode.physicalWidth &&
+                                it.physicalHeight == currentMode.physicalHeight
+                        }
+                        .maxByOrNull { it.refreshRate }
+                        ?: modes.maxByOrNull { it.refreshRate }
+                    layoutParams.preferredDisplayModeId = highestRefreshMode?.modeId ?: 0
                 } else {
                     val modes = window.windowManager.defaultDisplay.supportedModes
                     val mode60 =
@@ -755,7 +906,8 @@ class MainActivity : ComponentActivity() {
             } else {
                 val params = window.attributes
                 if (enableHighRefreshRate) {
-                    params.preferredRefreshRate = 0f
+                    params.preferredRefreshRate =
+                        window.windowManager.defaultDisplay.supportedModes.maxOfOrNull { it.refreshRate } ?: 0f
                 } else {
                     params.preferredRefreshRate = 60f
                 }
@@ -872,6 +1024,7 @@ class MainActivity : ComponentActivity() {
                         .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
             ) {
                 val density = LocalDensity.current
+                val lightweightFolioMode by rememberLightweightFolioMode()
                 val configuration = LocalWindowInfo.current
                 val cutoutInsets = WindowInsets.displayCutout
                 val windowsInsets = WindowInsets.systemBars
@@ -931,12 +1084,15 @@ class MainActivity : ComponentActivity() {
                             when (screen) {
                                 Screens.Home -> 0
                                 Screens.Library -> 1
-                                Screens.Account -> 2
-                                Screens.Search -> 3
+                                Screens.Search -> 2
+                                Screens.Account -> 3
                                 else -> 4
                             }
                         }
                     }
+                val navigationBarItems = remember(navigationItems) {
+                    navigationItems.filterNot { it == Screens.Account }
+                }
                 val composeNavigator = remember(navController) {
                     navController.navigatorProvider.getNavigator<ComposeNavigator>("composable")
                 }
@@ -984,25 +1140,20 @@ class MainActivity : ComponentActivity() {
                             if (searchQuery.isNotEmpty()) {
                                 navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
 
-                                if (dataStore[PauseSearchHistoryKey] != true) {
-                                    lifecycleScope.launch(Dispatchers.IO) {
-                                        database.query {
-                                            insert(SearchHistory(query = searchQuery))
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
 
+                val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
                 val currentRoute by remember {
-                    derivedStateOf { navBackStackEntry?.destination?.route }
+                    derivedStateOf { navBackStackEntry?.destination?.route ?: "onboarding".takeUnless { onboardingCompleted } }
                 }
 
                 val isFullscreenStory = currentRoute == "wrapped" || currentRoute?.startsWith("reverie/") == true
                 val inSearchScreen by remember {
                     derivedStateOf { currentRoute?.startsWith("search/") == true }
                 }
+                val hideSearchDockForIme = WindowInsets.ime.getBottom(density) > 0
                 val isTopLevelRoute by remember {
                     derivedStateOf {
                         currentRoute == null ||
@@ -1019,7 +1170,7 @@ class MainActivity : ComponentActivity() {
                 val topGradientAlpha = if (mainTopGradientEnabled) 1f else 0f
 
                 val playerTopPeek = if (curtainMode) maxHeight * 0.14f else 0.dp
-                val dockEdgeInset = irideBottomDockEdgeInset()
+                val bottomDockInset = irideBottomDockBottomInset()
                 val playerReady = topGradientMediaMetadata != null
                 val playerDockFraction by animateFloatAsState(
                     targetValue = if (playerReady) 1f else 0f,
@@ -1033,7 +1184,7 @@ class MainActivity : ComponentActivity() {
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         initialAnchor = persistableAnchor(App.playerAnchorCache),
-                        collapsedBound = (if (curtainMode) dockEdgeInset else bottomInset) + when {
+                        collapsedBound = (if (curtainMode) bottomDockInset else bottomInset) + when {
                             curtainMode -> FloatingBottomNavigationHeight +
                                 (IrideMiniPlayerHeight + IrideMiniPlayerNavigationSpacing) * if (playerReady) 1f else 0f
                             !showRail -> MiniPlayerHeight + FloatingPillBottomSpacing
@@ -1053,7 +1204,10 @@ class MainActivity : ComponentActivity() {
                     derivedStateOf { playerBottomSheetState.progress >= 0.95f }
                 }
                 LaunchedEffect(useDarkTheme, playerCoversSystemBars, isFullscreenStory) {
-                    setSystemBarAppearance(useDarkTheme || playerCoversSystemBars || isFullscreenStory)
+                    setSystemBarAppearance(
+                        useDarkTheme || playerCoversSystemBars || isFullscreenStory,
+                        lightNavigationIcons = systemNavigationMode == com.metrolist.music.utils.SystemNavigationMode.ThreeButtons,
+                    )
                 }
 
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -1077,7 +1231,7 @@ class MainActivity : ComponentActivity() {
                 val irideBridgeState = remember { IrideBridgeState() }
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, dockEdgeInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, bottomDockInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (curtainActive) {
                             bottom = playerBottomSheetState.collapsedBound + 6.dp
@@ -1238,7 +1392,6 @@ class MainActivity : ComponentActivity() {
                 }
                 val navigationBackdrop = rememberFrostBackdrop(
                     blurredScale = 0.5f,
-                    rasterizeContent = true,
                     stableBlur = true,
                 )
                 val songMenuState = LocalMenuState.current
@@ -1256,8 +1409,8 @@ class MainActivity : ComponentActivity() {
                     captureOnly = true,
                 )
                 // Cache the small blur steps instead of allocating a native effect on each animation frame.
-                val playerPageBlurEffects = remember(density.density) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val playerPageBlurEffects = remember(density.density, lightweightFolioMode) {
+                    if (!lightweightFolioMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         List(21) { step ->
                             if (step == 0) null else {
                                 val radius = with(density) { 5.dp.toPx() } * step / 20f
@@ -1269,7 +1422,9 @@ class MainActivity : ComponentActivity() {
                     } else emptyList()
                 }
                 val folioDragOverlay = remember { com.metrolist.music.ui.component.IrideFolioDragOverlayState() }
+                val onboardingLaunchReveal = remember { com.metrolist.music.ui.screens.OnboardingLaunchReveal() }
                 var artistTransitionTouchLocked by remember { mutableStateOf(false) }
+                var artistTransitionBackLocked by remember { mutableStateOf(false) }
                 val folioPressIndication = com.metrolist.music.ui.component.rememberIrideFolioPressIndication()
 
                 var topGradientScrimColor by remember {
@@ -1277,6 +1432,7 @@ class MainActivity : ComponentActivity() {
                 }
                 CompositionLocalProvider(
                     com.metrolist.music.ui.screens.LocalSystemNavigationMode provides systemNavigationMode,
+                    com.metrolist.music.ui.screens.LocalOnboardingLaunchReveal provides onboardingLaunchReveal,
                     com.metrolist.music.ui.component.LocalIrideFolioPressIndication provides folioPressIndication,
                     androidx.compose.foundation.LocalOverscrollFactory provides null,
                     com.metrolist.music.ui.component.LocalFolioDragOverlay provides folioDragOverlay,
@@ -1304,7 +1460,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     val floatingNavigationVisible = !isFullscreenStory &&
-                        currentRoute != "onboarding" && floatingNavigationAlpha > 0f
+                        currentRoute != "onboarding" && !hideSearchDockForIme && floatingNavigationAlpha > 0f
 
                     // Capture the visible page, player and navigation before drawing any song menu.
                     Box(
@@ -1328,17 +1484,25 @@ class MainActivity : ComponentActivity() {
                                         iridePlayerExpansionPhase(playerBottomSheetState.progress)
                                     } else 0f
                                     val progress = maxOf(playerProgress, folioDragOverlay.progress)
-                                    renderEffect = playerPageBlurEffects.getOrNull((progress * 20f).toInt())
-                                    alpha = 1f - 0.14f * progress
+                                    renderEffect = if (lightweightFolioMode) null else {
+                                        playerPageBlurEffects.getOrNull((progress * 20f).toInt())
+                                    }
+                                    alpha = if (lightweightFolioMode) 1f else 1f - 0.14f * progress
                                 }
-                                .recordFrostBackdrop(navigationBackdrop, trackScroll = true)
+                                .recordFrostBackdrop(
+                                    navigationBackdrop,
+                                    enabled = (navigationBackdrop?.recordingRequests ?: 0) > 0,
+                                    trackScroll = true,
+                                )
                         ) {
                             Scaffold(
                                 snackbarHost = { SnackbarHost(snackbarHostState) },
                                 // Folio pages own their transparent title and controls.
                                 topBar = {},
                                 bottomBar = {
-                                    if (!curtainMode && !isFullscreenStory && currentRoute != "onboarding" && !playerBottomSheetState.isDismissed) {
+                                    if (!curtainMode && !isFullscreenStory && currentRoute != "onboarding" &&
+                                        !hideSearchDockForIme && !playerBottomSheetState.isDismissed
+                                    ) {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,
@@ -1362,7 +1526,7 @@ class MainActivity : ComponentActivity() {
 
                                     if (showRail && !isFullscreenStory && currentRoute != "onboarding") {
                                         AppNavigationRail(
-                                            navigationItems = navigationItems,
+                                            navigationItems = navigationBarItems,
                                             currentRoute = activeNavigationRoute ?: currentRoute,
                                             onItemClick = onNavItemClick,
                                             pureBlack = pureBlack,
@@ -1377,6 +1541,9 @@ class MainActivity : ComponentActivity() {
                                         Box(
                                             Modifier.fillMaxSize()
                                                 .background(Color.Black)
+                                                // A completed predictive-back pop can leave this retained
+                                                // capture displaying its pre-gesture frame until scroll invalidates it.
+                                                .invalidateFrostOnChanges { navBackStackEntry?.id }
                                                 .recordFrostBackdrop(pageBackgroundBackdrop),
                                         ) {
                                             TopScreenGradientBackground(
@@ -1390,20 +1557,103 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
 
-                                        val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
-
                                         fun topLevelIndex(route: String?) = navigationItems.indexOfFirst { it.route == route }
-
                                         val navAnimationsEnabled = !rememberReducedMotion()
                                         val navEnterDuration = if (navAnimationsEnabled) IrideMotion.Short else 0
-                                        val navExitDuration = if (navAnimationsEnabled) IrideMotion.Quick else 0
+                                        val navExitDuration = if (navAnimationsEnabled) 100 else 0
+                                        val navForwardOffset = with(density) { 40.dp.roundToPx() }
 
                                         IrideArtistNavigationTransitions(
                                             navController,
-                                            onTouchLockChanged = { artistTransitionTouchLocked = it },
+                                            onTransitionLockChanged = { touchLocked, backLocked ->
+                                                artistTransitionTouchLocked = touchLocked
+                                                artistTransitionBackLocked = backLocked
+                                            },
                                         ) {
                                             val portraitNavigation = LocalArtistPortraitNavigation.current
                                             val collectionNavigation = LocalCollectionExpansionNavigation.current
+                                            fun AnimatedContentTransitionScope<NavBackStackEntry>.hasArtworkTransition(): Boolean =
+                                                portraitNavigation?.isPair(initialState, targetState) == true ||
+                                                    collectionNavigation?.isPair(initialState, targetState) == true
+
+                                            fun AnimatedContentTransitionScope<NavBackStackEntry>.pageEnter(pop: Boolean): EnterTransition {
+                                                val outgoing = if (pop) targetState else initialState
+                                                val incoming = if (pop) initialState else targetState
+                                                if (hasArtworkTransition()) return EnterTransition.None
+
+                                                val currentRouteIndex = topLevelIndex(incoming.destination.route)
+                                                val previousRouteIndex = topLevelIndex(outgoing.destination.route)
+                                                if (currentRouteIndex != -1 && previousRouteIndex != -1) {
+                                                    return EnterTransition.None
+                                                }
+                                                val easing = IrideMotion.EaseOutExpo
+                                                val fade = fadeIn(
+                                                    tween(
+                                                        navEnterDuration - navExitDuration,
+                                                        delayMillis = navExitDuration,
+                                                        easing = easing,
+                                                    ),
+                                                )
+                                                if (!navAnimationsEnabled ||
+                                                    incoming.destination.route == "onboarding" ||
+                                                    outgoing.destination.route == "onboarding"
+                                                ) return fade
+
+                                                val offset = if (usesSimpleSearchSectionMotion(initialState, targetState)) {
+                                                    if (pop) -navForwardOffset else navForwardOffset
+                                                } else if (pop) {
+                                                    if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
+                                                        navForwardOffset
+                                                    } else {
+                                                        -navForwardOffset
+                                                    }
+                                                } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
+                                                    navForwardOffset
+                                                } else {
+                                                    -navForwardOffset
+                                                }
+                                                return fade + slideInHorizontally(
+                                                    tween(
+                                                        navEnterDuration - navExitDuration,
+                                                        delayMillis = navExitDuration,
+                                                        easing = easing,
+                                                    ),
+                                                ) { offset }
+                                            }
+
+                                            fun AnimatedContentTransitionScope<NavBackStackEntry>.pageExit(pop: Boolean): ExitTransition {
+                                                val outgoing = initialState
+                                                val incoming = targetState
+                                                if (hasArtworkTransition()) return ExitTransition.None
+
+                                                val currentRouteIndex = topLevelIndex(outgoing.destination.route)
+                                                val targetRouteIndex = topLevelIndex(incoming.destination.route)
+                                                if (currentRouteIndex != -1 && targetRouteIndex != -1) {
+                                                    return ExitTransition.None
+                                                }
+                                                val fade = fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
+                                                if (!navAnimationsEnabled ||
+                                                    outgoing.destination.route == "onboarding" ||
+                                                    incoming.destination.route == "onboarding"
+                                                ) return fade
+
+                                                val offset = if (usesSimpleSearchSectionMotion(initialState, targetState)) {
+                                                    if (pop) navForwardOffset else -navForwardOffset
+                                                } else if (pop) {
+                                                    if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
+                                                        -navForwardOffset
+                                                    } else {
+                                                        navForwardOffset
+                                                    }
+                                                } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
+                                                    -navForwardOffset
+                                                } else {
+                                                    navForwardOffset
+                                                }
+                                                return fade + slideOutHorizontally(
+                                                    tween(navExitDuration, easing = IrideMotion.EaseOutQuart),
+                                                ) { offset }
+                                            }
                                             NavHost(
                                                 navController = navController,
                                                 startDestination =
@@ -1416,82 +1666,10 @@ class MainActivity : ComponentActivity() {
                                                             else -> Screens.Home
                                                         }.route
                                                     },
-                                                enterTransition = {
-                                                    val currentRouteIndex = topLevelIndex(targetState.destination.route)
-                                                    val previousRouteIndex = topLevelIndex(initialState.destination.route)
-
-                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
-                                                        EnterTransition.None
-                                                    } else if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        if (targetState.arguments?.getString("portraitSource") != null) EnterTransition.None
-                                                        else fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
-                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
-                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else {
-                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
-                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    }
-                                                },
-                                                exitTransition = {
-                                                    val currentRouteIndex = topLevelIndex(initialState.destination.route)
-                                                    val targetRouteIndex = topLevelIndex(targetState.destination.route)
-
-                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
-                                                        ExitTransition.None
-                                                    } else if (initialState.destination.route == Screens.Home.route && targetState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        if (targetState.arguments?.getString("portraitSource") != null) ExitTransition.None
-                                                        else fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
-                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
-                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else {
-                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
-                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    }
-                                                },
-                                                popEnterTransition = {
-                                                    val currentRouteIndex = topLevelIndex(targetState.destination.route)
-                                                    val previousRouteIndex = topLevelIndex(initialState.destination.route)
-
-                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
-                                                        EnterTransition.None
-                                                    } else if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        if (initialState.arguments?.getString("portraitSource") != null) EnterTransition.None
-                                                        else fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                                        fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
-                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { it / 8 } +
-                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    } else {
-                                                        slideInHorizontally(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo)) { -it / 8 } +
-                                                            fadeIn(tween(navEnterDuration, easing = IrideMotion.EaseOutExpo))
-                                                    }
-                                                },
-                                                popExitTransition = {
-                                                    val currentRouteIndex = topLevelIndex(initialState.destination.route)
-                                                    val targetRouteIndex = topLevelIndex(targetState.destination.route)
-
-                                                    if (portraitNavigation?.isPair(initialState, targetState) == true || collectionNavigation?.isPair(initialState, targetState) == true) {
-                                                        ExitTransition.None
-                                                    } else if (targetState.destination.route == Screens.Home.route && initialState.destination.route?.startsWith("artist/{artistId}?") == true) {
-                                                        if (initialState.arguments?.getString("portraitSource") != null) ExitTransition.None
-                                                        else fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                                        fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
-                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { -it / 8 } +
-                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    } else {
-                                                        slideOutHorizontally(tween(navExitDuration, easing = IrideMotion.EaseOutQuart)) { it / 8 } +
-                                                            fadeOut(tween(navExitDuration, easing = IrideMotion.EaseOutQuart))
-                                                    }
-                                                },
+                                                enterTransition = { pageEnter(pop = false) },
+                                                exitTransition = { pageExit(pop = false) },
+                                                popEnterTransition = { pageEnter(pop = true) },
+                                                popExitTransition = { pageExit(pop = true) },
                                                 modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                                             ) {
                                                 NavigationBuilder(
@@ -1500,20 +1678,38 @@ class MainActivity : ComponentActivity() {
                                                     latestVersionName = latestVersionName,
                                                     activity = this@MainActivity,
                                                     snackbarHostState = snackbarHostState,
+                                                    homeUpdateVersion = homeUpdateVersion.takeIf {
+                                                        homeUpdateDownloadState is UpdateDownloadState.ReadyToInstall
+                                                    },
+                                                    homeUpdateDownloadState = homeUpdateDownloadState,
+                                                    onHomeUpdateClick = { handleUpdateReady(force = true) },
                                                 )
                                             }
                                         }
                                     }
                                 }
                             }
+                            if (lightweightFolioMode && curtainActive && !isFullscreenStory &&
+                                currentRoute != "onboarding" && !hideSearchDockForIme
+                            ) {
+                                Box(
+                                    Modifier.fillMaxSize()
+                                        .graphicsLayer {
+                                            alpha = iridePlayerExpansionPhase(playerBottomSheetState.progress)
+                                        }
+                                        .background(Color.Black),
+                                )
+                            }
                         }
 
                         // One surface contains the player row, divider and all navigation tabs.
-                        if (curtainActive && !isFullscreenStory && currentRoute != "onboarding") {
+                        if (curtainActive && !isFullscreenStory && currentRoute != "onboarding" &&
+                            !hideSearchDockForIme
+                        ) {
                             FrostedPlayerNavigationBackdrop(
-                                collapsedHeight = dockEdgeInset + collapsedDockHeight,
+                                collapsedHeight = bottomDockInset + collapsedDockHeight,
                                 panelHeight = if (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed) {
-                                    dockEdgeInset + collapsedDockHeight
+                                    bottomDockInset + collapsedDockHeight
                                 } else playerBottomSheetState.value,
                                 expansion = playerBottomSheetState.progress,
                                 dividerAlpha = floatingNavigationAlpha * playerDockFraction,
@@ -1528,7 +1724,9 @@ class MainActivity : ComponentActivity() {
                         }
 
 
-                        if (curtainActive && !isFullscreenStory && currentRoute != "onboarding") {
+                        if (curtainActive && !isFullscreenStory && currentRoute != "onboarding" &&
+                            !hideSearchDockForIme
+                        ) {
                             if (playerBottomSheetState.progress > 0f) {
                                 val closePlayerDescription = stringResource(R.string.mp3_close)
                                 Box(
@@ -1569,14 +1767,14 @@ class MainActivity : ComponentActivity() {
                         // Navigation stays above the collapsed player's touch layer; menus stay above both.
                         if (currentRoute != "onboarding") {
                             FloatingBottomNavigation(
-                                navigationItems = navigationItems,
+                                navigationItems = navigationBarItems,
                                 currentRoute = activeNavigationRoute ?: currentRoute,
                                 onItemClick = onNavItemClick,
                                 contentColor = floatingPanelAppearance.contentColor,
                                 visible = floatingNavigationVisible,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = dockEdgeInset)
+                                    .padding(bottom = bottomDockInset)
                                     .height(FloatingBottomNavigationHeight)
                                     .graphicsLayer {
                                         alpha = floatingNavigationAlpha
@@ -1591,7 +1789,7 @@ class MainActivity : ComponentActivity() {
                     val songMenuFooterHeight = if (floatingNavigationVisible) {
                         maxOf(
                             playerFooterHeight,
-                            dockEdgeInset + FloatingBottomNavigationHeight,
+                            bottomDockInset + FloatingBottomNavigationHeight,
                         )
                     } else playerFooterHeight
                     CompositionLocalProvider(
@@ -1627,21 +1825,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (showUpdateInterstitial) {
-                        UpdateInterstitialScreen(
-                            onDismiss = {
-                                showUpdateInterstitial = false
-                                lifecycleScope.launch(Dispatchers.IO) {
-                                    val tag = dataStore[PendingUpdateTagKey] ?: return@launch
-                                    dataStore.edit { it[UpdateAnnouncementDismissedTagKey] = tag }
-                                }
-                            },
-                        )
-                    }
-
                     DebugBubble()
                     if (artistTransitionTouchLocked) {
-                        androidx.activity.compose.BackHandler { }
+                        if (artistTransitionBackLocked) {
+                            androidx.activity.compose.BackHandler { }
+                        }
                         Box(
                             Modifier.fillMaxSize().pointerInput(Unit) {
                                 awaitPointerEventScope {
@@ -1652,6 +1840,66 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                     }
+                    if (systemNavigationMode == com.metrolist.music.utils.SystemNavigationMode.ThreeButtons) {
+                        val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(navigationBarHeight + 32.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        0.5f to Color.Black.copy(alpha = 0.82f),
+                                        1f to Color.Black,
+                                    ),
+                                ),
+                        )
+                    }
+
+                        if (currentRoute != "onboarding" && !isFullscreenStory) {
+                            IrideFolioToastHost(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = bottomDockInset + collapsedDockHeight + 16.dp),
+                            )
+                        }
+                        roamingUpdatePrompt?.takeIf { it.releaseTag == verifiedUpdateTag }?.let { prompt ->
+                            UpdateRoamingDialog(
+                                prompt = prompt,
+                                onDownloadNow = {
+                                    roamingUpdatePrompt = null
+                                    lifecycleScope.launch {
+                                        if (verifiedUpdateTag != prompt.releaseTag) return@launch
+                                        dataStore.edit { prefs ->
+                                            prefs[UpdateRoamingAllowedTagKey] = prompt.releaseTag
+                                            prefs.remove(UpdateRoamingDeferredTagKey)
+                                            prefs.remove(UpdateRoamingDeferredUntilKey)
+                                        }
+                                        UpdateDownloader.enqueueUpdate(
+                                            applicationContext,
+                                            prompt.downloadUrl,
+                                            prompt.versionName,
+                                            releaseTag = prompt.releaseTag,
+                                            allowOverRoaming = true,
+                                        )
+                                        homeUpdateDownloadState =
+                                            UpdateDownloader.queryDownloadState(applicationContext, prompt.releaseTag)
+                                    }
+                                },
+                                onWaitForWifi = {
+                                    roamingUpdatePrompt = null
+                                    lifecycleScope.launch {
+                                        dataStore.edit { prefs ->
+                                            prefs[UpdateRoamingDeferredTagKey] = prompt.releaseTag
+                                            prefs[UpdateRoamingDeferredUntilKey] =
+                                                System.currentTimeMillis() + 48L * 60L * 60L * 1000L
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                        com.metrolist.music.ui.screens.OnboardingLaunchOverlay(onboardingLaunchReveal, currentRoute)
                 }
             }
             com.metrolist.music.ui.screens.DeviceExperienceGate(systemNavigationMode)
@@ -1785,10 +2033,10 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("ObsoleteSdkInt")
-    private fun setSystemBarAppearance(isDark: Boolean) {
+    private fun setSystemBarAppearance(isDark: Boolean, lightNavigationIcons: Boolean = false) {
         WindowCompat.getInsetsController(window, window.decorView.rootView).apply {
             isAppearanceLightStatusBars = !isDark
-            isAppearanceLightNavigationBars = !isDark
+            isAppearanceLightNavigationBars = !lightNavigationIcons && !isDark
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             window.statusBarColor = (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()

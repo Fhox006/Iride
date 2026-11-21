@@ -63,29 +63,15 @@ fun StatsScreen(
     val playerConnection = LocalPlayerConnection.current
     val months by viewModel.listeningMonths.collectAsStateWithLifecycle()
     val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
-    val reverieMonths by viewModel.reverieMonths.collectAsStateWithLifecycle()
-    val firstFullMonth by viewModel.firstFullReverieMonth.collectAsStateWithLifecycle()
     val mostPlayedSongs by viewModel.mostPlayedSongs.collectAsStateWithLifecycle()
     val mostPlayedSongsStats by viewModel.mostPlayedSongsStats.collectAsStateWithLifecycle()
     val mostPlayedArtists by viewModel.mostPlayedArtists.collectAsStateWithLifecycle()
     val mostPlayedAlbums by viewModel.mostPlayedAlbums.collectAsStateWithLifecycle()
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val lazyListState = rememberLazyListState()
-    var showReverieArchive by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.syncMostPlaylistsIfNeeded() }
 
-    if (showReverieArchive) {
-        ReverieArchiveDialog(
-            months = reverieMonths,
-            preferredMonth = selectedMonth,
-            onDismiss = { showReverieArchive = false },
-            onPlay = { month ->
-                showReverieArchive = false
-                navController.navigate("reverie/$month")
-            },
-        )
-    }
 
     IridePageLayout(
         titleRes = R.string.stats,
@@ -95,36 +81,6 @@ fun StatsScreen(
         bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
     ) {
-        item(key = "monthly_selector") {
-            ReverieMonthSelector(
-                months = months,
-                selectedMonth = selectedMonth,
-                onSelect = viewModel::selectMonth,
-                modifier = Modifier.padding(horizontal = 20.dp),
-            )
-        }
-        if (selectedMonth in reverieMonths) {
-            item(key = "watch_monthly_reverie") {
-                IrideFolioPrimaryButton(
-                    onClick = { navController.navigate("reverie/$selectedMonth") },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                ) {
-                    Icon(painterResource(R.drawable.play), null, modifier = Modifier.size(18.dp))
-                    Text(
-                        stringResource(R.string.reverie_watch_selected,
-                            selectedMonth.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.getDefault()))),
-                        modifier = Modifier.padding(start = 10.dp),
-                    )
-                }
-            }
-        }
-        if (selectedMonth !in reverieMonths) {
-            item(key = "reverie_availability") {
-                com.metrolist.music.ui.component.ReverieAvailabilityCard(
-                    selectedMonth, firstFullMonth, Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                )
-            }
-        }
         if (mostPlayedSongs.isEmpty()) {
             item(key = "empty_stats") {
                 StatsEmptyState(

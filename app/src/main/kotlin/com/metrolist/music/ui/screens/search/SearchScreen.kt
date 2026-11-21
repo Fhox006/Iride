@@ -43,7 +43,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
-import com.metrolist.music.ui.theme.fillSubtle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -52,38 +51,35 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.WatchEndpoint
+import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.YouTubeUrlParser
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.gestureNavigationEnabled
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
-import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.LibraryPageMenuAction
-import com.metrolist.music.ui.component.irideTypewriterStepMillis
-import com.metrolist.music.ui.utils.rememberReducedMotion
-import com.metrolist.music.ui.component.IrideArtworkSurface
-import com.metrolist.music.ui.component.rememberIrideArtistArtwork
-import com.metrolist.music.ui.component.rememberGenreArtwork
-import com.metrolist.music.ui.component.rememberGenreArtworkLoader
-import com.metrolist.music.ui.component.rememberArtistArtworkLoader
-import com.metrolist.music.ui.component.ArtistArtworkRequest
-import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.ui.component.navigateSearchSection
+import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.OnlineSearchViewModel
+import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -95,6 +91,9 @@ fun SearchScreen(
     onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel(),
 ) {
     val database = LocalDatabase.current
+    val searchSuggestionsViewModel: OnlineSearchSuggestionViewModel =
+        hiltViewModel(key = "searchSceneSuggestions")
+    val searchSuggestions by searchSuggestionsViewModel.viewState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -116,9 +115,6 @@ fun SearchScreen(
     val submittedQuery = searchSession.submittedQuery
     val motionEvent = searchSession.event
     val isFocused = motionEvent.mode == SearchSceneMode.Editing
-    var completionJob by remember { mutableStateOf<Job?>(null) }
-    var expectedCompletionText by remember { mutableStateOf<String?>(null) }
-    val reducedMotion = rememberReducedMotion()
     val scrollToTopCount by
         savedStateHandle.getStateFlow("scrollToTopCount", 0).collectAsState(initial = 0)
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
@@ -131,23 +127,15 @@ fun SearchScreen(
     val textState = remember { TextFieldState(savedQuery.text, savedQuery.selection) }
     val query = TextFieldValue(textState.text.toString(), textState.selection)
     fun setQuery(value: TextFieldValue) {
+        savedQuery = value
         textState.edit {
             if (toString() != value.text) replace(0, length, value.text)
             selection = value.selection
         }
     }
-    fun cancelCompletion() {
-        completionJob?.cancel()
-        completionJob = null
-        expectedCompletionText = null
-    }
     LaunchedEffect(textState) {
         snapshotFlow { TextFieldValue(textState.text.toString(), textState.selection) }.collect { value ->
             savedQuery = value
-            // Native input and machine completion share this one text state. A real edit cancels
-            // completion; programmatic keystrokes never feed back through a second editor state.
-            if (completionJob?.isActive == true && value.text != expectedCompletionText &&
-                value.text == textState.text.toString()) cancelCompletion()
         }
     }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
@@ -188,15 +176,13 @@ fun SearchScreen(
 
     fun dismissEditor() {
         if (searchSession.event.mode != SearchSceneMode.Editing) return
-        cancelCompletion()
         searchSession = searchSession.dismiss()
-        setQuery(TextFieldValue(searchSession.submittedQuery))
+        setQuery(TextFieldValue(searchSession.submittedQuery, TextRange(searchSession.submittedQuery.length)))
         hideKeyboard()
     }
 
     fun openEditor() {
         if (isPlayerExpanded || searchSession.event.mode == SearchSceneMode.Editing) return
-        cancelCompletion()
         if (searchSession.event.returnsToRoot) {
             setQuery(TextFieldValue())
             onlineSearchResultViewModel.search("")
@@ -220,8 +206,13 @@ fun SearchScreen(
         }
     }
 
-    fun handleSearch(rawQuery: String) {
-        cancelCompletion()
+    fun openSection(route: String) {
+        hideKeyboard()
+        if (isFocused) dismissEditor()
+        navController.navigateSearchSection(route, simpleMotion = false)
+    }
+
+    fun handleSearch(rawQuery: String, selectedSong: SongItem? = null) {
         val searchQuery = rawQuery.trim()
         if (searchQuery.isEmpty()) {
             if (searchSession.event.returnsToRoot) return
@@ -243,34 +234,45 @@ fun SearchScreen(
                 playerConnection?.playQueue(YouTubeQueue(WatchEndpoint(videoId = parsedUrl.id)))
             }
             is YouTubeUrlParser.ParsedUrl.Playlist -> {
-                navController.navigate("online_playlist/${parsedUrl.id}")
+                openSection("online_playlist/${parsedUrl.id}")
             }
             is YouTubeUrlParser.ParsedUrl.Album -> {
-                navController.navigate("album/MPREb_${parsedUrl.id}")
+                openSection("album/MPREb_${parsedUrl.id}")
             }
             is YouTubeUrlParser.ParsedUrl.Artist -> {
-                navController.navigate("artist/${parsedUrl.id}")
+                openSection("artist/${parsedUrl.id}")
             }
             null -> {
-                setQuery(TextFieldValue(searchQuery, TextRange(searchQuery.length)))
                 if (searchSource == SearchSource.ONLINE) {
-                    onlineSearchResultViewModel.search(searchQuery, resetCarousels = true)
+                    val suggestionsMatchDraft = searchSuggestions.query.trim().equals(rawQuery.trim(), ignoreCase = true)
+                    val pinnedSuggestions = if (suggestionsMatchDraft && selectedSong == null) {
+                        searchSuggestions.recommendedItems.take(5)
+                    } else emptyList()
+                    onlineSearchResultViewModel.search(
+                        searchQuery,
+                        resetCarousels = true,
+                        pinnedSuggestions = (listOfNotNull(selectedSong) + pinnedSuggestions).distinctBy { it.id }.take(5),
+                        selectedSong = selectedSong,
+                    )
                     onlineSearchResultViewModel.loadSmartSearch()
                 }
                 coroutineScope.launch { lazyListState.scrollToItem(0) }
             }
         }
-        if (!pauseSearchHistory) {
-            coroutineScope.launch(Dispatchers.IO) {
-                database.query { insert(SearchHistory(query = searchQuery)) }
-            }
-        }
+    }
+
+    fun selectSong(song: SongItem) {
+        val title = com.metrolist.music.discovery.SearchDiscovery.cleanTitle(song.title)
+        if (onlineSearchResultViewModel.query == title && onlineSearchResultViewModel.songDiscovery?.seed?.id == song.id) return
+        setQuery(TextFieldValue(title, TextRange(title.length)))
+        handleSearch(title, song)
     }
 
     val playerSearchQuery by savedStateHandle.getStateFlow<String?>("playerSearchQuery", null).collectAsState()
     LaunchedEffect(playerSearchQuery) {
         playerSearchQuery?.takeIf { it.isNotBlank() }?.let { requestedQuery ->
             searchSource = SearchSource.ONLINE
+            setQuery(TextFieldValue(requestedQuery, TextRange(requestedQuery.length)))
             handleSearch(requestedQuery)
             lazyListState.scrollToItem(0)
             savedStateHandle["playerSearchQuery"] = null
@@ -290,31 +292,9 @@ fun SearchScreen(
     }
 
     fun acceptCompletion(suggested: String, submit: Boolean) {
-        cancelCompletion()
         if (!isFocused) openEditor()
-        val typed = textState.text.toString()
-        val completed = searchCompletionText(typed, suggested)
-        val prefixLength = searchCompletionPrefixLength(typed, completed)
-        if (reducedMotion || prefixLength == completed.length) {
-            setQuery(TextFieldValue(completed, TextRange(completed.length)))
-            if (submit) handleSearch(completed)
-            return
-        }
-        val prefix = completed.take(prefixLength)
-        expectedCompletionText = prefix
-        setQuery(TextFieldValue(prefix, TextRange(prefix.length)))
-        completionJob = coroutineScope.launch {
-            val step = irideTypewriterStepMillis(completed.length)
-            for (length in prefixLength + 1..completed.length) {
-                delay(step)
-                val next = completed.take(length)
-                expectedCompletionText = next
-                setQuery(TextFieldValue(next, TextRange(next.length)))
-            }
-            completionJob = null
-            expectedCompletionText = null
-            if (submit) handleSearch(completed)
-        }
+        setQuery(TextFieldValue(suggested, TextRange(suggested.length)))
+        if (submit) handleSearch(suggested)
     }
 
     val pageMenuSections =
@@ -336,64 +316,19 @@ fun SearchScreen(
                         searchSource = SearchSource.LOCAL
                     },
                 ),
-            )
+            ),
         )
-    val genreArtworkLoader = rememberGenreArtworkLoader()
-    val draftGenre = remember(query.text, isFocused, searchSource) {
-        if (isFocused && searchSource == SearchSource.ONLINE) searchGenreArtworkName(query.text) else null
-    }
-    LaunchedEffect(draftGenre, genreArtworkLoader) {
-        draftGenre?.let(genreArtworkLoader::prefetch)
-    }
-    val searchedGenre = remember(submittedQuery, searchSource) {
-        if (searchSource == SearchSource.ONLINE) searchGenreArtworkName(submittedQuery) else null
-    }
-    val artworkLoader = rememberArtistArtworkLoader()
-    val pendingArtist = (onlineSearchResultViewModel.summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull() as? ArtistItem)
-        ?.takeIf { searchedGenre == null && searchSource == SearchSource.ONLINE && submittedQuery.isNotBlank() && onlineSearchResultViewModel.query == submittedQuery }
-    // Decode during result classification so the confirmed backdrop is already warm.
-    LaunchedEffect(pendingArtist, submittedQuery) {
-        pendingArtist?.let {
-            artworkLoader.prefetch(ArtistArtworkRequest(it.id, it.title, null, it.channelId,
-                !it.isProfile))
-        }
-    }
-    // Song results can promote an exact song above an initially returned artist. Wait for that
-    // classification before mounting artwork; suggestions only prefetch, never choose a backdrop.
-    val classificationReady = onlineSearchResultViewModel.summaryPage != null &&
-        onlineSearchResultViewModel.viewStateMap[YouTube.SearchFilter.FILTER_SONG.value] != null
-    val firstArtist = (onlineSearchResultViewModel.topResult?.items?.firstOrNull() as? ArtistItem)
-        ?.takeIf { searchedGenre == null && classificationReady && searchSource == SearchSource.ONLINE && submittedQuery.isNotBlank() && onlineSearchResultViewModel.query == submittedQuery }
-    val artistArtwork = if (searchedGenre != null) {
-        val loaded by rememberGenreArtwork(searchedGenre)
-        loaded
-    } else if (firstArtist != null) {
-        val loaded by rememberIrideArtistArtwork(
-            artistId = firstArtist.id,
-            // Keep search artwork stable: let Apple Music supply the first displayed image.
-            url = null,
-            artistName = firstArtist.title,
-            channelId = firstArtist.channelId,
-            externalEnabled = !firstArtist.isProfile,
-        )
-        loaded
-    } else null
     val landingColor = when {
         mainTopGradient -> Color.Transparent
         else -> MaterialTheme.colorScheme.background
     }
     val landingInk = MaterialTheme.colorScheme.textPrimary
     val landingSecondary = MaterialTheme.colorScheme.textSecondary
-    val landingFieldColor = MaterialTheme.colorScheme.fillSubtle
-    val pageColor = artistArtwork?.tint ?: landingColor
-    // The scene paints its pigment on the same clock as the returning photo. The surface still
-    // supplies matching ink and navigation colors, including when the base page is transparent.
-    IrideArtworkSurface(backgroundColor = pageColor, modifier = Modifier.fillMaxSize(), paintBackground = false) {
         val searchBack: (@Composable () -> Unit)? = if (submittedQuery.isBlank() || gestureNavigationEnabled()) null else ({
             Box(
                 Modifier.size(48.dp).clickable(
                     interactionSource = remember { MutableInteractionSource() }, indication = null,
-                    role = Role.Button, onClick = { cancelCompletion(); handleSearch("") },
+                    role = Role.Button, onClick = { handleSearch("") },
                 ), contentAlignment = Alignment.Center,
             ) {
                 Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back),
@@ -416,7 +351,6 @@ fun SearchScreen(
             landingColor = landingColor,
             landingInk = landingInk,
             landingSecondary = landingSecondary,
-            landingFieldColor = landingFieldColor,
             resultsReady = searchSource != SearchSource.ONLINE ||
                 (onlineSearchResultViewModel.query == submittedQuery &&
                     (onlineSearchResultViewModel.summaryPage != null || onlineSearchResultViewModel.viewStateMap.values.any { it != null })),
@@ -426,14 +360,45 @@ fun SearchScreen(
             listState = lazyListState,
             onOpen = ::openEditor,
             onDismiss = ::dismissEditor,
-            onSubmit = { cancelCompletion(); handleSearch(it) },
+            onSubmit = { handleSearch(it) },
             onComplete = ::acceptCompletion,
-            onOpenArtist = { artistId ->
-                dismissEditor()
-                navController.navigate("artist/$artistId")
+            onOpenArtist = { artistId -> openSection("artist/$artistId") },
+            onOpenAlbum = { albumId -> openSection("album/$albumId") },
+            onOpenItem = { item ->
+                if (!pauseSearchHistory) database.recordSearchHistoryOpen(query.text, item)
+                when (item) {
+                    is ArtistItem -> openSection("artist/${item.id}")
+                    is AlbumItem -> openSection("album/${item.id}")
+                    is PlaylistItem -> openSection("online_playlist/${item.id}")
+                    is SongItem -> {
+                        selectSong(item)
+                        if (playerConnection?.mediaMetadata?.value?.id == item.id) {
+                            playerConnection.togglePlayPause()
+                        } else {
+                            playerConnection?.playQueue(
+                                YouTubeQueue(item.endpoint ?: WatchEndpoint(videoId = item.id), item.toMediaMetadata()),
+                            )
+                        }
+                    }
+                    else -> Unit
+                }
             },
-            artistArtwork = artistArtwork,
+            navController = navController,
             navigationIcon = searchBack,
+            landingContent = { landingHeader ->
+                if (searchSource == SearchSource.ONLINE) {
+                    OnlineSearchScreen(
+                        query = "", onQueryChange = ::setQuery, navController = navController,
+                        onSearch = { handleSearch(it) }, onDismiss = ::dismissEditor, pureBlack = pureBlack,
+                        header = landingHeader, pageMenuSections = pageMenuSections,
+                    )
+                } else {
+                    LocalSearchScreen(
+                        query = "", navController = navController, onDismiss = { navController.navigateUp() },
+                        pureBlack = pureBlack, header = landingHeader, pageMenuSections = pageMenuSections,
+                    )
+                }
+            },
         ) { irideHeader ->
             if (searchSource == SearchSource.ONLINE) {
                 OnlineSearchResultsBody(
@@ -445,7 +410,7 @@ fun SearchScreen(
                     isSearchFocused = false,
                     queryText = query.text,
                     submittedQuery = submittedQuery,
-                    onQueryChange = { cancelCompletion(); setQuery(it) },
+                    onQueryChange = { setQuery(it) },
                     onSearch = { handleSearch(it) },
                     onDismissSuggestions = {
                         dismissEditor()
@@ -466,7 +431,6 @@ fun SearchScreen(
                 )
             }
         }
-    }
 
     val latestDismissEditor by rememberUpdatedState(::dismissEditor)
     DisposableEffect(lifecycleOwner, isPlayerExpanded) {

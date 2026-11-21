@@ -5,12 +5,14 @@
 
 package com.metrolist.music
 
+import android.app.ActivityManager
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
-import android.widget.Toast
+import android.os.Process
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.datastore.preferences.core.edit
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -46,12 +48,14 @@ import com.metrolist.music.utils.reportException
 import com.metrolist.music.ui.component.dismissedAnchor
 import com.metrolist.music.ui.component.ArtistArtworkEntryPoint
 import com.metrolist.music.ui.component.persistablePlayerAnchor
+import dagger.Lazy
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -75,13 +79,24 @@ class App :
     lateinit var applicationScope: CoroutineScope
 
     @Inject
-    lateinit var connectivityObserver: NetworkConnectivityObserver
+    lateinit var connectivityObserver: Lazy<NetworkConnectivityObserver>
 
     @Inject
-    lateinit var database: MusicDatabase
+    lateinit var database: Lazy<MusicDatabase>
+
+    private val isCrashRecoveryProcess by lazy {
+        val processName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Application.getProcessName()
+        } else {
+            getSystemService(ActivityManager::class.java)?.runningAppProcesses
+                ?.firstOrNull { it.pid == Process.myPid() }?.processName
+        }
+        processName == "$packageName:crash"
+    }
 
     override fun onCreate() {
         super.onCreate()
+        if (isCrashRecoveryProcess) return
 
         CrashHandler.install(this)
 
@@ -118,7 +133,7 @@ class App :
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_MODERATE) {
+        if (!isCrashRecoveryProcess && level >= TRIM_MEMORY_MODERATE) {
             coil3.SingletonImageLoader.get(this).memoryCache?.clear()
             EntryPointAccessors.fromApplication(this, ArtistArtworkEntryPoint::class.java)
                 .artistArtworkLoader().clearMemory()
@@ -127,24 +142,24 @@ class App :
 
     private fun removeLibraryPreviewSong() {
         applicationScope.launch(Dispatchers.IO) {
-            database.query {
+            database.get().query {
                 getSongByIdBlocking("iride-debug-local-track")?.let { delete(it.song) }
             }
         }
     }
 
     /**
-     * Release calls bound to a dead default network and restore account credentials before
-     * consumers retry their failed loads. Capability-only updates do not reset working calls.
+     * Drop idle connections from the previous route and restore credentials for retries.
      */
     @OptIn(FlowPreview::class)
     private fun observeConnectivity() {
+        val connectivity = connectivityObserver.get()
         applicationScope.launch(Dispatchers.IO) {
-            connectivityObserver.networkChanged
+            connectivity.networkChanged
                 .debounce(300)
-                .collect {
-                    YouTube.resetConnections()
-                    if (connectivityObserver.networkStatus.value) {
+                .collectLatest {
+                    YouTube.evictConnections()
+                    if (connectivity.networkStatus.value) {
                         try {
                             val prefs = dataStore.data.first()
                             prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }

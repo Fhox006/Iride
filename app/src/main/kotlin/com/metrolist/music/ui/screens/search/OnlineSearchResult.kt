@@ -2,12 +2,18 @@
 package com.metrolist.music.ui.screens.search
 
 import com.metrolist.music.ui.component.irideFolioCombinedClickable
+import com.metrolist.music.ui.component.navigateSearchSection
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -24,9 +30,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -67,15 +77,26 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IrideFolio
+import com.metrolist.music.ui.component.IrideFolioSection
+import com.metrolist.music.ui.component.IrideFolioSectionSkeleton
+import com.metrolist.music.ui.component.IrideFolioSectionEntranceOrder
+import com.metrolist.music.ui.component.LocalFolioSectionEntranceOrder
+import com.metrolist.music.ui.component.LocalFolioSectionFastReveal
+import com.metrolist.music.ui.component.LocalArtworkContentColor
+import com.metrolist.music.ui.component.gestureNavigationEnabled
+import com.metrolist.music.ui.component.rememberIrideFolioFlingBehavior
+import com.metrolist.music.ui.component.rubberBandOverscroll
+import androidx.compose.foundation.gestures.Orientation
 import com.metrolist.music.ui.component.LibraryPageMenuAction
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalLibraryTextColor
 import com.metrolist.music.ui.component.LocalArtworkBackgroundColor
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
-import com.metrolist.music.ui.component.SharedQuickPicksCarousel
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -87,7 +108,6 @@ import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.OnlineSearchViewModel
 import java.net.URLDecoder
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 
 private fun filterSectionTitleRes(filter: YouTube.SearchFilter): Int =
@@ -105,11 +125,7 @@ private fun filterSectionTitleRes(filter: YouTube.SearchFilter): Int =
     }
 
 @Composable
-private fun SearchResultsStyle(content: @Composable () -> Unit) {
-    if (LocalArtworkBackgroundColor.current != null) {
-        content()
-        return
-    }
+internal fun SearchResultsStyle(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
             primary = Color.White,
@@ -120,6 +136,7 @@ private fun SearchResultsStyle(content: @Composable () -> Unit) {
         ),
     ) {
         CompositionLocalProvider(
+            LocalArtworkContentColor provides Color.White,
             LocalContentColor provides Color.White,
             LocalLibraryTextColor provides Color.White,
             content = content,
@@ -172,6 +189,8 @@ fun OnlineSearchResultsBody(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    var lastScrollResetQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastScrollResetRevision by rememberSaveable { mutableIntStateOf(Int.MIN_VALUE) }
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }.collect(onScrollChanged)
     }
@@ -181,12 +200,16 @@ fun OnlineSearchResultsBody(
     val isUrlQuery = remember(searchQuery) { YouTubeUrlParser.parse(searchQuery) != null }
     LaunchedEffect(searchQuery, isUrlQuery) {
         if (isUrlQuery) return@LaunchedEffect
-        if (searchQuery != viewModel.query && searchQuery.isNotEmpty()) delay(300)
-        viewModel.search(searchQuery)
+        if (searchQuery != viewModel.query) viewModel.search(searchQuery)
         viewModel.loadSmartSearch()
     }
     LaunchedEffect(viewModel.query, viewModel.searchRevision) {
+        if (lastScrollResetQuery == viewModel.query &&
+            lastScrollResetRevision == viewModel.searchRevision
+        ) return@LaunchedEffect
         lazyListState.scrollToItem(0)
+        lastScrollResetQuery = viewModel.query
+        lastScrollResetRevision = viewModel.searchRevision
     }
     val ytItemContent: @Composable (YTItem, Modifier, Boolean) -> Unit = { item, itemModifier, isSwipeable ->
         val longClick = {
@@ -243,24 +266,21 @@ fun OnlineSearchResultsBody(
                 isSwipeable = isSwipeable,
                 showDivider = false,
                 trailingContent = {
-                    if (item is ArtistItem) {
+                    if (item is ArtistItem || item is AlbumItem || item is PlaylistItem) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_forward),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp).rotate(-45f),
                         )
                     } else {
                         IconButton(onClick = longClick) {
-                            Icon(
-                                painter = painterResource(R.drawable.more_vert),
-                                contentDescription = null,
-                            )
+                            TrackOverflowIcon()
                         }
                     }
                 },
                 modifier =
-                    itemModifier
-                        .irideFolioCombinedClickable(
+                    Modifier.irideFolioCombinedClickable(
                             onClick = {
                                 if (!pauseSearchHistory)
                                     database.recordSearchHistoryOpen(viewModel.query, item)
@@ -276,10 +296,10 @@ fun OnlineSearchResultsBody(
                                                 )
                                             )
                                     }
-                                    is AlbumItem -> navController.navigate("album/${item.id}")
-                                    is ArtistItem -> navController.navigate("artist/${item.id}")
+                                    is AlbumItem -> navController.navigateSearchSection("album/${item.id}", simpleMotion = false)
+                                    is ArtistItem -> navController.navigateSearchSection("artist/${item.id}", simpleMotion = false)
                                     is PlaylistItem ->
-                                        navController.navigate("online_playlist/${item.id}")
+                                        navController.navigateSearchSection("online_playlist/${item.id}", simpleMotion = false)
                                     is PodcastItem ->
                                         navController.navigate("online_podcast/${item.id}")
                                     is EpisodeItem -> {
@@ -296,13 +316,22 @@ fun OnlineSearchResultsBody(
                                 }
                             },
                             onLongClick = longClick,
-                        ),
+                        ).then(itemModifier),
             )
         }
     }
 
     val searchResultRow: @Composable (List<YTItem>) -> Unit = { rowItems ->
-        LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 8.dp)) {
+        val rowState = rememberLazyListState()
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+        LazyRow(
+            state = rowState,
+            flingBehavior = rememberIrideFolioFlingBehavior(),
+            overscrollEffect = null,
+            modifier = Modifier.rubberBandOverscroll(Orientation.Horizontal, rowState),
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        ) {
             items(
                 items = rowItems,
                 key = { it.id },
@@ -346,11 +375,11 @@ fun OnlineSearchResultsBody(
                                                 )
                                         }
                                         is AlbumItem ->
-                                            navController.navigate("album/${rowItem.id}")
+                                            navController.navigateSearchSection("album/${rowItem.id}", simpleMotion = false)
                                         is ArtistItem ->
-                                            navController.navigate("artist/${rowItem.id}")
+                                            navController.navigateSearchSection("artist/${rowItem.id}", simpleMotion = false)
                                         is PlaylistItem ->
-                                            navController.navigate("online_playlist/${rowItem.id}")
+                                            navController.navigateSearchSection("online_playlist/${rowItem.id}", simpleMotion = false)
                                         is PodcastItem ->
                                             navController.navigate("online_podcast/${rowItem.id}")
                                         is EpisodeItem -> {
@@ -409,172 +438,102 @@ fun OnlineSearchResultsBody(
                                         }
                                     }
                                 },
-                            )
-                            .animateItem(),
+                            ),
                 )
             }
         }
-    }
-
-    val searchResultRowPlaceholder: @Composable () -> Unit = {
-        Row(modifier = Modifier.padding(start = 4.dp)) {
-            repeat(3) { GridItemPlaceHolder() }
         }
     }
 
+    val presentedSections = remember(viewModel.query, viewModel.searchRevision) { mutableSetOf<String>() }
+    val entranceOrder = remember(viewModel.query, viewModel.searchRevision) { IrideFolioSectionEntranceOrder() }
     val resultsListContent: LazyListScope.() -> Unit = {
         val order = viewModel.smartSearchOrder
-        val topResult = viewModel.topResult
-        var isFirstSection = true
-        if (viewModel.query == searchQuery && order.isNotEmpty()) {
-            topResult?.let { top ->
-                val titleTopPadding = if (header != null) 0.dp else null
-                isFirstSection = false
-                item(key = "smart_top_title") {
-                    SearchResultsStyle {
+        val top = viewModel.topResult
+        val revision = "${viewModel.query}:${viewModel.searchRevision}"
+        if (viewModel.query == searchQuery && (order.isNotEmpty() || top != null)) {
+            item(key = "smart_top") {
+                SearchResultsStyle {
+                    IrideFolioSection(
+                        sectionKey = "$revision:top", ready = top != null,
+                        presentedSections = presentedSections,
+                        artwork = top?.items.orEmpty().map { it.thumbnail },
+                        placeholder = { IrideFolioSectionSkeleton(148.dp, songs = true, songRows = 5) },
+                    ) {
                         NavigationTitle(
-                            top.title,
-                            useIrideStyle = useIrideStyle,
-                            showDivider = false,
-                            topPadding = titleTopPadding,
+                            stringResource(R.string.iride_search_top_results), useIrideStyle = useIrideStyle,
+                            showDivider = false, topPadding = if (header != null) 0.dp else null,
                         )
-                    }
-                }
-                items(
-                    items = top.items,
-                    key = { "smart_top_${it.id}" },
-                ) { item ->
-                    SearchResultsStyle {
-                        ytItemContent(item, Modifier.padding(horizontal = 16.dp).animateItem(), true)
+                        top?.items.orEmpty().forEach { item ->
+                            key(item.id) {
+                                ytItemContent(item, Modifier.padding(start = if (item is SongItem) 6.dp else 16.dp, end = 20.dp), item is SongItem)
+                            }
+                        }
                     }
                 }
             }
-
-            order.forEach { sectionFilter ->
+            order.filter { it != FILTER_SONG }.forEach { sectionFilter ->
                 val page = viewModel.viewStateMap[sectionFilter.value]
                 val discovery = viewModel.songDiscovery
-                if (sectionFilter == FILTER_ARTIST && discovery != null &&
-                    (discovery.artists.isNotEmpty() || discovery.similarArtists.isNotEmpty())
-                ) {
-                    listOf(
-                        "credited" to (R.string.search_track_artists to discovery.artists),
-                        "similar" to (R.string.search_similar_artists to discovery.similarArtists),
-                    ).forEach { (sectionKey, section) ->
-                        val (titleRes, artists) = section
-                        if (artists.isNotEmpty()) {
-                            val titleTopPadding = if (header != null && isFirstSection) 0.dp else null
-                            isFirstSection = false
-                            item(key = "smart_title_$sectionKey") {
-                                SearchResultsStyle {
-                                    NavigationTitle(
-                                        title = stringResource(titleRes),
-                                        useIrideStyle = useIrideStyle,
-                                        showDivider = false,
-                                        topPadding = titleTopPadding,
-                                    )
-                                }
-                            }
-                            item(key = "smart_row_$sectionKey") {
-                                SearchResultsStyle {
-                                    key(viewModel.query, viewModel.searchRevision) { searchResultRow(artists) }
-                                }
-                            }
-                        }
-                    }
-                    return@forEach
-                }
                 val sectionItems = viewModel.sectionItems(sectionFilter)
                 if (page != null && sectionItems.isEmpty()) return@forEach
-                val titleTopPadding = if (header != null && isFirstSection) 0.dp else null
-                isFirstSection = false
-                item(key = "smart_title_${sectionFilter.value}") {
-                    val titleRes = when {
-                        sectionFilter == FILTER_SONG && discovery?.recommendations?.isNotEmpty() == true ->
-                            R.string.search_songs_recommendations
-                        sectionFilter == FILTER_ALBUM && discovery?.albums?.isNotEmpty() == true ->
-                            R.string.search_albums_to_explore
-                        sectionFilter == FILTER_COMMUNITY_PLAYLIST && discovery?.playlists?.isNotEmpty() == true ->
-                            R.string.search_playlists_to_explore
-                        else -> filterSectionTitleRes(sectionFilter)
-                    }
-                    SearchResultsStyle {
-                        NavigationTitle(
-                            title = stringResource(titleRes),
-                            useIrideStyle = useIrideStyle,
-                            showDivider = false,
-                            topPadding = titleTopPadding,
-                        )
-                    }
+                val titleRes = when {
+                    sectionFilter == FILTER_ARTIST && discovery != null -> R.string.search_similar_artists
+                    sectionFilter == FILTER_ALBUM && discovery != null -> R.string.search_albums_to_explore
+                    sectionFilter == FILTER_COMMUNITY_PLAYLIST && discovery != null -> R.string.search_playlists_to_explore
+                    else -> filterSectionTitleRes(sectionFilter)
                 }
-                item(key = "smart_row_${sectionFilter.value}") {
+                item(key = "smart_section_${sectionFilter.value}") {
                     SearchResultsStyle {
-                        key(viewModel.query, viewModel.searchRevision) {
-                            if (sectionFilter == FILTER_SONG) {
-                                SharedQuickPicksCarousel(
-                                    items = viewModel.songs,
-                                    key = { it.id },
-                                    loading = page == null && sectionItems.isEmpty(),
-                                    contentPadding = 16.dp,
-                                    usePager = true,
-                                ) { song, itemWidth ->
-                                    ytItemContent(song, Modifier.width(itemWidth), false)
-                                }
-                            } else if (page != null || sectionItems.isNotEmpty()) {
-                                searchResultRow(sectionItems)
-                            } else {
-                                searchResultRowPlaceholder()
-                            }
+                        IrideFolioSection(
+                            sectionKey = "$revision:${sectionFilter.value}",
+                            ready = sectionItems.isNotEmpty(), presentedSections = presentedSections,
+                            artwork = sectionItems.take(4).map { it.thumbnail },
+                            placeholder = { IrideFolioSectionSkeleton(if (sectionFilter == FILTER_ALBUM) 180.dp else 148.dp) },
+                        ) {
+                            NavigationTitle(stringResource(titleRes), useIrideStyle = useIrideStyle, showDivider = false)
+                            key(viewModel.query, viewModel.searchRevision) { searchResultRow(sectionItems) }
                         }
                     }
                 }
             }
-
-            val allResolved = order.all { viewModel.viewStateMap[it.value] != null }
-            val allEmpty =
-                allResolved &&
-                    topResult == null &&
-                    order.all { viewModel.viewStateMap[it.value]?.items.isNullOrEmpty() }
-            if (allEmpty) {
-                item {
-                    SearchResultsStyle {
-                        EmptyPlaceholder(
-                            icon = R.drawable.search,
-                            text = stringResource(R.string.no_results_found),
-                        )
-                    }
-                }
+            if (order.isNotEmpty() && order.all { viewModel.viewStateMap[it.value] != null } &&
+                top == null && order.all { viewModel.sectionItems(it).isEmpty() }) {
+                item { SearchResultsStyle { EmptyPlaceholder(R.drawable.search, stringResource(R.string.no_results_found)) } }
             }
         } else {
-            item {
-                ShimmerHost {
-                    repeat(8) { ListItemPlaceHolder() }
-                }
-            }
+            item { IrideFolioSectionSkeleton(148.dp, songs = true, songRows = 5) }
         }
-        if (header == null) {
-            item(key = "bottom_spacer") {
-                Spacer(
-                    modifier =
-                        Modifier.height(
-                            MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight
-                        )
-                )
-            }
+        if (header == null) item(key = "bottom_spacer") {
+            Spacer(Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
         }
     }
 
-    if (header != null) {
+    CompositionLocalProvider(
+        LocalFolioSectionFastReveal provides true,
+        LocalFolioSectionEntranceOrder provides entranceOrder,
+    ) {
+    if (header != null && searchQuery.isNotBlank()) {
+        IridePageLayout(
+            titleRes = R.string.search,
+            state = lazyListState,
+            showTopBar = true,
+            showTopScrim = true,
+            contentTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+                if (gestureNavigationEnabled()) IrideFolio.TitleTopSpacing else IrideFolio.TitleAfterControls,
+            contentHorizontalPadding = 0.dp,
+            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            modifier = modifier,
+            menuSections = pageMenuSections,
+        ) {
+            item(key = "search_header") { header() }
+            resultsListContent()
+        }
+    } else if (header != null) {
         OnlineSearchScreen(
-            query = submittedQuery,
-            onQueryChange = onQueryChange,
-            navController = navController,
-            onSearch = onSearch,
-            onDismiss = onDismissSuggestions,
-            pureBlack = pureBlack,
-            isFocused = isSearchFocused,
-            header = header,
-            resultsContent = resultsListContent,
-            pageMenuSections = pageMenuSections,
+            query = submittedQuery, onQueryChange = onQueryChange, navController = navController,
+            onSearch = onSearch, onDismiss = onDismissSuggestions, pureBlack = pureBlack,
+            isFocused = isSearchFocused, header = header, pageMenuSections = pageMenuSections,
             lazyListState = lazyListState,
         )
     } else if (searchQuery.isEmpty() || isUrlQuery) {
@@ -598,5 +557,6 @@ fun OnlineSearchResultsBody(
         ) {
             resultsListContent()
         }
+    }
     }
 }

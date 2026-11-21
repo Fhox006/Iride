@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_continue_anyway">Продолжить в любом случае</string>
+    <string name="navigation_choice_title">Вы уверены?</string>
+    <string name="navigation_choice_heart">Сделано с душой, дизайнером.</string>
+    <string name="navigation_choice_motion">Некоторые движения и детали требуют жестов.</string>
+    <string name="navigation_choice_support">Кнопочная навигация имеет ограниченную поддержку.</string>
+    <string name="navigation_choice_alternatives">Бесплатные альтернативы, если хотите.</string>
+    <string name="navigation_choice_confirm">Я все еще хочу использовать Iride</string>
+    <string name="navigation_choice_close">Закрыть</string>
+    <string name="navigation_choice_save_failed">Не удалось сохранить. Пожалуйста, попробуйте еще раз.</string>
+    <string name="navigation_choice_browser_failed">Нет доступного браузера.</string>
+    <string name="navigation_choice_open_repository">Откройте %1$s на GitHub.</string>
+</resources>

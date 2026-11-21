@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_continue_anyway">استمر على أي حال</string>
+    <string name="navigation_choice_title">هل أنت متأكد؟</string>
+    <string name="navigation_choice_heart">مصنوعة من القلب، من قبل المصمم.</string>
+    <string name="navigation_choice_motion">بعض الحركة والتفاصيل تحتاج إلى إيماءات.</string>
+    <string name="navigation_choice_support">التنقل باستخدام الأزرار له دعم محدود.</string>
+    <string name="navigation_choice_alternatives">بدائل مجانية، إذا كنت تفضل ذلك.</string>
+    <string name="navigation_choice_confirm">ما زلت أريد استخدام Iride</string>
+    <string name="navigation_choice_close">إغلاق</string>
+    <string name="navigation_choice_save_failed">لا يمكن الحفظ. يرجى المحاولة مرة أخرى.</string>
+    <string name="navigation_choice_browser_failed">لا يوجد متصفح متاح.</string>
+    <string name="navigation_choice_open_repository">افتح %1$s على جيثب</string>
+</resources>

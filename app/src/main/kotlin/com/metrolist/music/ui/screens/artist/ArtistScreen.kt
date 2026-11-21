@@ -1,18 +1,25 @@
 /** Metrolist Project (C) 2026 Licensed under GPL-3.0 | See git history for contributors */
 package com.metrolist.music.ui.screens.artist
 
+import java.time.format.FormatStyle
+import androidx.compose.ui.platform.LocalConfiguration
 import com.metrolist.music.ui.component.LocalArtistControlMotion
 import com.metrolist.music.ui.component.LocalArtistPortraitTransitionActive
 import com.metrolist.music.ui.component.ArtistPortraitMotion
 import com.metrolist.music.ui.component.IrideExpansionContentMotion
+import com.metrolist.music.ui.component.LocalIrideExpansionContentMotion
 import com.metrolist.music.ui.component.irideExpansionContentModifier
 import com.metrolist.music.ui.component.irideExpansionControlsModifier
 import com.metrolist.music.ui.component.artistPortraitPanelModifier
-import com.metrolist.music.ui.component.iridePanelGestureModifier
+import com.metrolist.music.ui.component.artistPortraitReturnBorder
+import com.metrolist.music.ui.component.rememberIridePanelGesture
 import com.metrolist.music.ui.component.IrideExpansionMotion
+import com.metrolist.music.ui.component.drawIrideReturnArtwork
+import com.metrolist.music.ui.component.ArtistReturnPhotoShape
 import com.metrolist.music.ui.component.LocalIrideExpansionBackdrop
 import com.metrolist.music.ui.component.LocalCollectionSourceEntry
 import com.metrolist.music.ui.component.irideExpansionBackdropModifier
+import com.metrolist.music.ui.component.irideExpansionReturnArtwork
 import com.metrolist.music.ui.component.rememberCollectionExpansionTile
 import com.metrolist.music.ui.component.CollectionExpansionKind
 import com.metrolist.music.ui.component.artistPortraitFinish
@@ -50,9 +57,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -60,10 +67,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -81,8 +90,9 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
@@ -105,6 +115,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.pages.sortedByReleaseDate
 import com.metrolist.innertube.models.ArtistItem
@@ -121,7 +134,6 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.ShowArtistDescriptionKey
 import com.metrolist.music.constants.ShowArtistSubscriberCountKey
-import com.metrolist.music.constants.ShowMonthlyListenersKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.extensions.toMediaItem
@@ -129,9 +141,10 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
-import com.metrolist.music.ui.component.rememberIrideArtistEditorialArtwork
 import com.metrolist.music.ui.component.IrideArtistEditorialTitle
-import com.metrolist.music.ui.component.IrideArtistEditorialMotion
+import com.metrolist.music.ui.component.IrideFolioCollectionAction
+import com.metrolist.music.ui.component.IrideFolioCollectionControlPanel
+import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.ExpandableText
 import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.component.IrideFolioSection
@@ -144,9 +157,12 @@ import com.metrolist.music.ui.component.IridePageBackButton
 import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.LinkSegment
 import com.metrolist.music.ui.component.SongMenuIconButton
+import com.metrolist.music.ui.component.TrackOverflowIcon
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongCarousel
+import com.metrolist.music.ui.component.SharedQuickPicksCarousel
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -160,6 +176,7 @@ import com.metrolist.music.ui.component.IrideArtistArtworkImage
 import com.metrolist.music.ui.component.artistPhotoBlurProgress
 import com.metrolist.music.ui.component.iridePageStatusBarTopPadding
 import com.metrolist.music.ui.component.rememberIrideArtistArtwork
+import com.metrolist.music.ui.component.artistArtworkCanUpgrade
 import com.metrolist.music.ui.component.artistArtworkPhotoOpacity
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.menu.AlbumMenu
@@ -224,29 +241,44 @@ fun ArtistScreen(
                     viewModel.artistPage?.artist?.isProfile != true,
         )
     val portraitNavigation = LocalArtistPortraitNavigation.current
-    val editorial by viewModel.appleMusicEditorial.collectAsState()
-    val editorialVideo = editorial?.squareVideoUrl ?: editorial?.wideVideoUrl
-    val editorialPreview =
-        if (editorial?.squareVideoUrl != null) editorial?.squarePreviewUrl
-        else editorial?.widePreviewUrl
-    val editorialArtwork by
-        rememberIrideArtistEditorialArtwork(viewModel.artistId, editorialVideo, editorialPreview)
-    val portraitVisibility = LocalAnimatedVisibilityScope.current
-    val returningHome = LocalArtistPortraitTransitionActive.current &&
-        portraitVisibility?.transition?.targetState == EnterExitState.PostExit
-    val artistArtwork =
-        // Use the same bitmap at both ends of the shared flight.
-        if (returningHome) portraitSeed?.artwork ?: flightArtwork
-        else if (!portraitSettled) flightArtwork
-        else editorialArtwork ?: portraitArtwork ?: portraitSeed?.artwork
+    val exitingPage = LocalAnimatedVisibilityScope.current?.transition?.targetState == EnterExitState.PostExit
+    val pageArtwork =
+        if (!portraitSettled) portraitArtwork?.takeIf {
+            artistArtworkCanUpgrade(flightArtwork?.sourceUrl, it.sourceUrl, flightArtwork?.bitmap?.width ?: 0, it.bitmap.width)
+        } ?: flightArtwork
+        else {
+            val handoffArtwork = portraitSeed?.artwork ?: flightArtwork
+            portraitArtwork?.takeIf {
+                artistArtworkCanUpgrade(
+                    handoffArtwork?.sourceUrl,
+                    it.sourceUrl,
+                    handoffArtwork?.bitmap?.width ?: 0,
+                    it.bitmap.width,
+                )
+            } ?: handoffArtwork ?: portraitArtwork
+        }
+    // The portrait handoff can swap bitmaps while the page keeps its own pigment.
+    val artistArtwork = portraitSeed?.artwork?.takeIf { portraitFlightActive && exitingPage } ?: pageArtwork
     LaunchedEffect(artistArtwork, portraitSettled) {
-        if (portraitSettled && !returningHome) artistArtwork?.let { portraitNavigation?.upgrade(viewModel.artistId, it) }
+        if (portraitSettled && !exitingPage) artistArtwork?.let { portraitNavigation?.upgrade(viewModel.artistId, it) }
     }
-    val tint = artistArtwork?.tint ?: Color.Black
-    val tintChannelSpread = maxOf(tint.red, tint.green, tint.blue) - minOf(tint.red, tint.green, tint.blue)
-    val tintBrightness = (tint.red + tint.green + tint.blue) / 3f
-    val artistBackground = if (tintChannelSpread < 0.12f && tintBrightness > 0.55f) Color.Black else tint
-    IrideArtworkSurface(backgroundColor = tint, contentColor = Color.White, paintBackground = false) {
+    val artworkPigment = pageArtwork?.tint?.let { tint ->
+        val channelSpread = maxOf(tint.red, tint.green, tint.blue) - minOf(tint.red, tint.green, tint.blue)
+        val brightness = (tint.red + tint.green + tint.blue) / 3f
+        if (channelSpread < 0.12f && brightness > 0.55f) Color.Black else tint
+    }
+    var savedPigment by rememberSaveable(viewModel.artistId) { mutableStateOf<Int?>(null) }
+    val artistBackground = artworkPigment?.takeUnless { exitingPage }
+        ?: savedPigment?.let { Color(it) } ?: artworkPigment ?: Color.Black
+    SideEffect {
+        if (!exitingPage && artworkPigment != null) savedPigment = artworkPigment.toArgb()
+    }
+    IrideArtworkSurface(
+        backgroundColor = artistBackground,
+        contentColor = Color.White,
+        paintBackground = false,
+        lowPerformanceSurfaceColor = artistBackground,
+    ) {
         val entranceOrder = remember(viewModel.artistId) { IrideFolioSectionEntranceOrder() }
         CompositionLocalProvider(LocalFolioSectionEntranceOrder provides entranceOrder) {
             ArtistScreenContent(
@@ -271,6 +303,7 @@ private fun ArtistScreenContent(
     portraitSourceKey: String?,
     artistBackdropColor: Color,
 ) {
+    val unknownArtist = stringResource(R.string.widget_recognizer_unknown_artist)
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
     val uriHandler = LocalUriHandler.current
@@ -279,15 +312,17 @@ private fun ArtistScreenContent(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
+    val queueSourceRoute by playerConnection.queueSourceRoute.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val artistPage = viewModel.artistPage
     val appleMusicEditorial by viewModel.appleMusicEditorial.collectAsState()
     val reducedMotion = rememberReducedMotion()
-    val editorialVideo = appleMusicEditorial?.squareVideoUrl ?: appleMusicEditorial?.wideVideoUrl
-    val headerVideoUrl = editorialVideo?.takeUnless { reducedMotion || !portraitSettled }
     val libraryArtist by viewModel.libraryArtist.collectAsState()
+    val isChannelSubscribed by viewModel.isChannelSubscribed.collectAsState()
     val librarySongs by viewModel.librarySongs.collectAsState()
+    val libraryHasSongs by viewModel.libraryHasSongs.collectAsState()
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
+    val hasSavedArtistMusic = librarySongs.isNotEmpty() || libraryAlbums.isNotEmpty()
     val recentAlbum by viewModel.recentAlbum.collectAsState()
     val recentAlbumPreciseDate by viewModel.recentAlbumPreciseDate.collectAsState()
     val expandedTopSongs by viewModel.expandedTopSongs.collectAsState()
@@ -296,8 +331,6 @@ private fun ArtistScreenContent(
         rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by
         rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
-    val showMonthlyListeners by
-        rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
     val imageAspectRatio = 1f
     val irideHorizontalPadding = 20.dp
 
@@ -395,7 +428,7 @@ private fun ArtistScreenContent(
     } else remember { mutableFloatStateOf(1f) }
     val expansionBackdrop = LocalIrideExpansionBackdrop.current
     val pageEntryId = LocalCollectionSourceEntry.current
-    androidx.compose.runtime.SideEffect {
+    SideEffect {
         if (portraitTransitionActive && portraitSeed != null) expansionBackdrop?.progress = pageContentAlpha
     }
 
@@ -432,6 +465,7 @@ private fun ArtistScreenContent(
 
     var showLocalInitialized by remember { mutableStateOf(false) }
     LaunchedEffect(showLocal) {
+        viewModel.setLibraryContentActive(showLocal)
         if (showLocalInitialized) {
             lazyListState.animateScrollToItem(0)
         } else {
@@ -439,7 +473,8 @@ private fun ArtistScreenContent(
         }
     }
 
-    val artistLoading = artistPage == null && !showLocal
+    val artistLoadFailed = viewModel.artistPageLoadFailed && !showLocal
+    val artistLoading = artistPage == null && !showLocal && !artistLoadFailed
     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
     var artworkHeightPx by remember(viewModel.artistId) { mutableIntStateOf(0) }
     val artistArtworkScroll: () -> Float = {
@@ -447,7 +482,7 @@ private fun ArtistScreenContent(
         when {
             header != null -> (-header.offset).coerceAtLeast(0).toFloat()
             lazyListState.firstVisibleItemIndex > 0 -> artworkHeightPx.toFloat().coerceAtLeast(1f)
-            else -> 0f
+            else -> lazyListState.firstVisibleItemScrollOffset.toFloat()
         }
     }
     val statusTopPadding = iridePageStatusBarTopPadding()
@@ -458,7 +493,7 @@ private fun ArtistScreenContent(
     val blurLeadPx = with(density) { IrideFolio.ArtistPhotoBlurLead.toPx() }
     val blurFinishGapPx = with(density) { IrideFolio.TopScrimFadeHeight.toPx() }
     val initialArtistTitleTop: () -> Float = {
-        if (thumbnail != null || artistArtwork != null || headerVideoUrl != null || artistLoading) {
+        if (thumbnail != null || artistArtwork != null || artistLoading) {
             if (artworkHeightPx > 0) (artworkHeightPx - titleOverlapPx).coerceAtLeast(0f)
             else Float.POSITIVE_INFINITY
         } else with(density) { 80.dp.toPx() }
@@ -468,7 +503,7 @@ private fun ArtistScreenContent(
         when {
             header != null -> header.offset + lazyListState.layoutInfo.beforeContentPadding + initialArtistTitleTop()
             lazyListState.firstVisibleItemIndex > 0 -> Float.NEGATIVE_INFINITY
-            else -> Float.POSITIVE_INFINITY
+            else -> initialArtistTitleTop() - lazyListState.firstVisibleItemScrollOffset
         }
     }
     val artistBlurProgress: () -> Float = {
@@ -476,10 +511,25 @@ private fun ArtistScreenContent(
     }
 
     var pageFrame by remember { mutableStateOf(Rect.Zero) }
+    val panelGesture = rememberIridePanelGesture(
+        enabled = portraitSeed != null && portraitTransitionActive && !reducedMotion &&
+            visibilityScope?.transition?.targetState == EnterExitState.Visible,
+        onDismiss = { navController.popBackStack() },
+    )
     val panelContentMotion = remember(portraitSeed, pageContentAlpha) {
         portraitSeed?.let { IrideExpansionContentMotion(it.bounds, pageContentAlpha) }
     }
     panelContentMotion?.frame = pageFrame
+    panelContentMotion?.gesture = panelGesture
+    val restoringPortrait = portraitTransitionActive && portraitSeed != null && !reducedMotion &&
+        expansionBackdrop?.returning == true && expansionBackdrop.entryId != pageEntryId
+    val returnWithDissolve = remember(restoringPortrait) {
+        restoringPortrait && (artworkHeightPx <= 0 ||
+            minOf(artworkHeightPx - artistArtworkScroll(), pageFrame.height) <
+            artworkHeightPx * IrideExpansionMotion.ArtworkVisibleThreshold)
+    }
+    val restorePortraitPosition = restoringPortrait && !returnWithDissolve
+    panelContentMotion?.keepContentVisible = returnWithDissolve
     // This frame must stay outside both animated layers. Measuring the transformed panel
     // feeds its shrinking bounds back into the next frame's scale and outline.
     Box(Modifier.fillMaxSize().onGloballyPositioned {
@@ -492,24 +542,27 @@ private fun ArtistScreenContent(
                 visibilityScope?.transition?.isRunning == true ||
                     expansionBackdrop?.inFlight == true || expansionBackdrop?.gesturePreview == true
             } else Modifier)
-            .then(iridePanelGestureModifier(
-                progress = pageContentAlpha,
-                enabled = portraitSeed != null && portraitTransitionActive && !reducedMotion &&
-                    visibilityScope?.transition?.currentState == EnterExitState.Visible &&
-                    visibilityScope.transition.targetState == EnterExitState.Visible,
-                onDismiss = { navController.popBackStack() },
-            ))
-            .then(artistPortraitPanelModifier(pageContentAlpha) { pageFrame })
-            .then(pageEntryId?.let { irideExpansionBackdropModifier(it) } ?: Modifier)
+            .then(if (portraitSeed != null) artistPortraitPanelModifier(pageContentAlpha, panelGesture) { pageFrame } else Modifier)
+            .then(pageEntryId?.let { irideExpansionBackdropModifier(it, backgroundColor = artistBackdropColor) } ?: Modifier)
     ) {
         CompositionLocalProvider(
             LocalArtistControlMotion provides null,
+            LocalIrideExpansionContentMotion provides panelContentMotion,
         ) {
         IrideCollectionPageLayout(
+            lowPerformancePanelColor = artistBackdropColor,
             background = {
                 val backgroundTint = artistBackdropColor
                 Box(Modifier.fillMaxSize()) {
-                    IrideArtistBackground(tint = backgroundTint)
+                    IrideArtistBackground(
+                        tint = backgroundTint,
+                        modifier = Modifier.invalidateFrostOnChanges {
+                            visibilityScope?.transition?.currentState
+                            visibilityScope?.transition?.targetState
+                            expansionBackdrop?.visible
+                            backgroundTint
+                        },
+                    )
                     Box(
                         Modifier.fillMaxWidth()
                             .invalidateFrostOnChanges {
@@ -517,33 +570,50 @@ private fun ArtistScreenContent(
                                 headerPull.offset
                                 artistArtworkScroll()
                                 artistBlurProgress()
-                                pageContentAlpha.value
                                 backgroundTint
                             }
-                            .aspectRatio(imageAspectRatio),
+                            .aspectRatio(imageAspectRatio)
+                            // This layer is measured even when navigation restores the list below the header.
+                            .onSizeChanged { artworkHeightPx = it.height },
                     ) {
-                        val transitioning = portraitTransitionActive && portraitSeed != null && !reducedMotion
-                        val restoringPortrait = transitioning && visibilityScope?.transition?.targetState == EnterExitState.PostExit
-                        val portraitScrollFactor: () -> Float = {
-                            if (restoringPortrait) IrideExpansionMotion.restorationProgress(pageContentAlpha.value) else 1f
+                        val portraitRestorationFactor: () -> Float = {
+                            if (restorePortraitPosition) {
+                                IrideExpansionMotion.restorationProgress(pageContentAlpha.value)
+                            } else {
+                                1f
+                            }
                         }
-                        val portraitScroll: () -> Float = { artistArtworkScroll() * portraitScrollFactor() }
-                        val portraitBlur: () -> Float = { artistBlurProgress() * portraitScrollFactor() }
+                        val portraitScroll: () -> Float = { artistArtworkScroll() * portraitRestorationFactor() }
+                        val portraitBlur: () -> Float = { artistBlurProgress() * portraitRestorationFactor() }
+                        val portraitParallax: () -> Float = { portraitScroll() }
                         Box(
                             Modifier.fillMaxSize()
                                 .graphicsLayer {
-                                    val stretch = (headerPull.offset / size.height.coerceAtLeast(1f)).coerceAtLeast(0f)
+                                    val stretch = (headerPull.offset / size.height.coerceAtLeast(1f)).coerceAtLeast(0f) *
+                                        portraitRestorationFactor()
                                     scaleX = 1f + stretch
                                     scaleY = 1f + stretch
                                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
                                 }
                                 .graphicsLayer {
                                     translationY = -portraitScroll()
+                                    shape = if (restorePortraitPosition) {
+                                        ArtistReturnPhotoShape(IrideExpansionMotion.artistReturnPhotoRoundness(pageContentAlpha.value))
+                                    } else androidx.compose.ui.graphics.RectangleShape
                                     clip = true
                                 }
                                 .artistPortraitFinish(backgroundTint) {
-                                    if (restoringPortrait) (pageContentAlpha.value / 0.22f).coerceIn(0f, 1f) else 1f
-                                },
+                                    if (restorePortraitPosition) IrideExpansionMotion.contentAlpha(pageContentAlpha.value) else 1f
+                                }
+                                .then(
+                                    if (restorePortraitPosition) {
+                                        Modifier.artistPortraitReturnBorder(
+                                            pageContentAlpha,
+                                            pageFrame,
+                                            portraitSeed.borderColor,
+                                        )
+                                    } else Modifier
+                                ),
                         ) {
                             Box(
                                 Modifier.fillMaxSize(),
@@ -551,22 +621,12 @@ private fun ArtistScreenContent(
                             if (artistArtwork != null) {
                                 IrideArtistArtworkImage(
                                     artwork = artistArtwork,
-                                    scrollOffset = portraitScroll,
+                                    scrollOffset = portraitParallax,
                                     blurProgress = portraitBlur,
                                     pullOffset = { 0f },
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
                                     backingColor = backgroundTint,
-                                )
-                            }
-                            if (headerVideoUrl != null) {
-                                IrideArtistEditorialMotion(
-                                    videoUrl = headerVideoUrl,
-                                    active = headerVisible,
-                                    scrollOffset = portraitScroll,
-                                    blurProgress = portraitBlur,
-                                    pullOffset = { 0f },
-                                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = pageContentAlpha.value },
                                 )
                             }
                             }
@@ -577,11 +637,13 @@ private fun ArtistScreenContent(
             title = artistName.orEmpty(),
             showTopBar = true,
             state = lazyListState,
+            pageTransitionKey = listOf(viewModel.artistId, showLocal),
             listModifier = panelContentMotion?.let(::irideExpansionContentModifier) ?: Modifier,
             topBarModifier = irideExpansionControlsModifier(pageContentAlpha),
             navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
             actions = {
                 SongMenuIconButton(
+                    modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
                     enabled = libraryArtist != null || artistPage?.artist != null,
                     onClick = {
                         val savedArtist = libraryArtist
@@ -592,6 +654,10 @@ private fun ArtistScreenContent(
                                     originalArtist = savedArtist,
                                     coroutineScope = coroutineScope,
                                     onDismiss = menuState::dismiss,
+                                    onSelectLibraryView = if (savedArtist.artist.isLocal || onlineArtist == null) null else {
+                                        { useLibrary -> showLocal = useLibrary }
+                                    },
+                                    libraryViewActive = showLocal,
                                 )
                             } else if (onlineArtist != null) {
                                 YouTubeArtistMenu(
@@ -617,7 +683,7 @@ private fun ArtistScreenContent(
         ) {
             item(key = "header") {
                 val showRecentAlbumPanel = !showLocal && recentAlbum != null
-                val showArtistArtwork = artistArtwork != null || thumbnail != null || headerVideoUrl != null || artistLoading
+                val showArtistArtwork = artistArtwork != null || thumbnail != null || artistLoading
                 val titleOverlapPx = with(density) { IrideFolio.ArtistTitleOverlap.roundToPx() }
 
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -631,8 +697,7 @@ private fun ArtistScreenContent(
                         Spacer(
                             modifier =
                                 Modifier.fillMaxWidth()
-                                    .aspectRatio(imageAspectRatio)
-                                    .onSizeChanged { artworkHeightPx = it.height }
+                                        .aspectRatio(imageAspectRatio)
                         )
                     }
 
@@ -676,39 +741,58 @@ private fun ArtistScreenContent(
                                 color = MaterialTheme.colorScheme.onBackground,
                                 animateTitle = !headerRevealed,
                             )
-                            val monthlyListeners = artistPage?.monthlyListenerCount
-                            if (showMonthlyListeners && !monthlyListeners.isNullOrEmpty()) {
-                                val cleanListeners =
-                                    remember(monthlyListeners) {
-                                        monthlyListeners
-                                            .replace("monthly listeners", "", ignoreCase = true)
-                                            .replace("listeners this month", "", ignoreCase = true)
-                                            .replace("ascoltatori mensili", "", ignoreCase = true)
-                                            .replace("ascoltatori questo mese", "", ignoreCase = true)
-                                            .trim()
+                            val shuffleEndpointForPlay = artistPage?.artist?.shuffleEndpoint
+                            val canShufflePlay = shuffleEndpointForPlay != null || libraryHasSongs
+                            val actionsReady = artistPage != null || libraryArtist != null
+                            val isThisArtistQueueLoaded = queueSourceRoute == "artist/${viewModel.artistId}"
+                            IrideFolioCollectionControlPanel(
+                                leadingAction = IrideFolioCollectionAction(
+                                    icon = if (isChannelSubscribed) {
+                                        R.drawable.ic_widget_star_nav
+                                    } else {
+                                        R.drawable.ic_widget_star_outline_nav
+                                    },
+                                    contentDescription = stringResource(
+                                        if (isChannelSubscribed) R.string.remove_from_library else R.string.add_to_library,
+                                    ),
+                                    onClick = { viewModel.toggleChannelSubscription() },
+                                    enabled = actionsReady,
+                                    pressEffect = IridePressEffect.Punch,
+                                ),
+                                onPlayClick = {
+                                    if (isThisArtistQueueLoaded) {
+                                        playerConnection.togglePlayPause()
+                                    } else if (shuffleEndpointForPlay != null) {
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                shuffleEndpointForPlay,
+                                                sourceRoute = "artist/${viewModel.artistId}",
+                                            )
+                                        )
+                                    } else {
+                                        coroutineScope.launch {
+                                            val songs = librarySongs.takeIf { it.isNotEmpty() }
+                                                ?: viewModel.loadLibrarySongsForPlayback()
+                                            if (songs.isNotEmpty()) {
+                                                val queueItems = withContext(Dispatchers.Default) {
+                                                    songs.shuffled().map { it.toMediaItem() }
+                                                }
+                                                playerConnection.playQueue(
+                                                    ListQueue(
+                                                        sourceRoute = "artist/${viewModel.artistId}",
+                                                        title = artistName.orEmpty(),
+                                                        items = queueItems,
+                                                        startIndex = 0,
+                                                    )
+                                                )
+                                            }
+                                        }
                                     }
-                                val listenersProgress =
-                                    headerEnter(
-                                        revealed = headerRevealed,
-                                        play = artistName != null,
-                                        delayMillis = 0,
-                                        durationMillis = IrideMotion.Short,
-                                    )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = stringResource(R.string.artist_monthly_listeners, cleanListeners),
-                                    style =
-                                        TextStyle(
-                                            fontFamily = IBMPlexMonoFontFamily,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        ),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    textAlign = TextAlign.Start,
-                                    modifier = Modifier.fillMaxWidth().revealMask(listenersProgress),
-                                )
-                            }
-
+                                },
+                                isPlaying = isPlaying && isThisArtistQueueLoaded,
+                                playEnabled = canShufflePlay && !isGuest,
+                                modifier = Modifier.padding(top = 18.dp, bottom = 8.dp),
+                            )
                             if (showRecentAlbumPanel) {
                                 val panelProgress =
                                     headerEnter(
@@ -755,10 +839,26 @@ private fun ArtistScreenContent(
                 item(key = "artist_albums_loading") {
                     IrideFolioSectionSkeleton(180.dp)
                 }
+            } else if (artistLoadFailed) {
+                item(key = "artist_load_error") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = irideHorizontalPadding, vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.artist_page_load_error),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                        TextButton(onClick = viewModel::fetchArtistsFromYTM) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
             }
 
             if (showLocal) {
-                if (librarySongs.isNotEmpty()) {
+                if (hasSavedArtistMusic && librarySongs.isNotEmpty()) {
                     val filteredLibrarySongs =
                         if (hideExplicit) {
                             librarySongs.filter { !it.song.explicit }
@@ -776,13 +876,13 @@ private fun ArtistScreenContent(
                                     placementSpec = if (reducedMotion) null else IrideMotion.PlacementSpec,
                                     fadeOutSpec = null,
                                 ),
-                            artwork = filteredLibrarySongs.take(4).map { it.song.thumbnailUrl },
                             placeholder = { IrideFolioSectionSkeleton(180.dp, songs = true) },
                         ) {
                             NavigationTitle(
                                 title = stringResource(R.string.songs),
                                 showDivider = false,
                                 useIrideStyle = true,
+                                sentenceCaseTitle = true,
                                 onClick = { navController.navigate("artist/${viewModel.artistId}/songs") },
                             )
 
@@ -806,10 +906,7 @@ private fun ArtistScreenContent(
                                                 }
                                             }
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
-                                            )
+                                            TrackOverflowIcon()
                                         }
                                     },
                                     modifier =
@@ -826,7 +923,7 @@ private fun ArtistScreenContent(
                                                                     sourceRoute = "artist/${viewModel.artistId}",
                                                                     title =
                                                                         libraryArtist?.artist?.name
-                                                                            ?: "Unknown Artist",
+                                                                            ?: unknownArtist,
                                                                     items =
                                                                         filteredLibrarySongs.map {
                                                                             it.toMediaItem()
@@ -856,7 +953,7 @@ private fun ArtistScreenContent(
                     }
                 }
 
-                if (libraryAlbums.isNotEmpty()) {
+                if (hasSavedArtistMusic && libraryAlbums.isNotEmpty()) {
                     val filteredLibraryAlbums = libraryAlbums.filter { album ->
                         !hideExplicit || !album.album.explicit
                     }
@@ -874,13 +971,13 @@ private fun ArtistScreenContent(
                                         placementSpec = if (reducedMotion) null else IrideMotion.PlacementSpec,
                                         fadeOutSpec = null,
                                     ),
-                                artwork = filteredLibraryAlbums.take(4).map { it.album.thumbnailUrl },
                                 placeholder = { IrideFolioSectionSkeleton(180.dp) },
                             ) {
                                 NavigationTitle(
                                     title = stringResource(R.string.albums),
                                     showDivider = false,
                                     useIrideStyle = true,
+                                    sentenceCaseTitle = true,
                                     onClick = { navController.navigate("artist/${viewModel.artistId}/albums") },
                                 )
 
@@ -925,7 +1022,6 @@ private fun ArtistScreenContent(
                 }
             } else {
                 var essentialAlbumsRendered = false
-                var discographyButtonRendered = false
                 artistPage?.sections?.fastForEach { section ->
                     val isFromYourLibrarySection =
                         section.title.contains("your library", ignoreCase = true) ||
@@ -975,16 +1071,16 @@ private fun ArtistScreenContent(
                                                 placementSpec = if (reducedMotion) null else IrideMotion.PlacementSpec,
                                                 fadeOutSpec = null,
                                             ),
-                                        artwork = filteredItems.take(4).map { it.thumbnail },
-                                        placeholder = { IrideFolioSectionSkeleton(180.dp, songs = true) },
+                                        placeholder = { IrideFolioSectionSkeleton(180.dp, songs = true, songRows = 1) },
                                     ) {
                                         NavigationTitle(
-                                            title = section.title,
+                                            title = stringResource(R.string.most_played_songs),
                                             showDivider = false,
                                             useIrideStyle = true,
+                                            sentenceCaseTitle = true,
                                             onClick =
                                                 if (isAlbumOrSingleEpSection) {
-                                                    { navController.navigate("artist/${viewModel.artistId}/discography") }
+                                                    null
                                                 } else
                                                     section.moreEndpoint?.let {
                                                         {
@@ -995,15 +1091,21 @@ private fun ArtistScreenContent(
                                                     },
                                         )
 
-                                        val topSongsGridState = rememberLazyGridState()
-                                        SongCarousel(items = topSongs, key = { it.id }, gridState = topSongsGridState) {
-                                            song,
-                                            itemWidth ->
+                                        SharedQuickPicksCarousel(
+                                            items = topSongs,
+                                            key = { it.id },
+                                            loading = false,
+                                            contentPadding = irideHorizontalPadding - 4.dp,
+                                            usePager = true,
+                                            minimumRows = 1,
+                                        ) { song, itemWidth ->
+                                            CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                                             YouTubeListItem(
                                                 item = song,
                                                 isActive = mediaMetadata?.id == song.id,
                                                 isPlaying = isPlaying,
                                                 isSwipeable = false,
+                                                showDivider = false,
                                                 trailingContent = {
                                                     SongMenuIconButton(
                                                         onClick = {
@@ -1016,15 +1118,10 @@ private fun ArtistScreenContent(
                                                             }
                                                         }
                                                     ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.more_vert),
-                                                            contentDescription = null,
-                                                        )
+                                                        TrackOverflowIcon()
                                                     }
                                                 },
-                                                modifier =
-                                                    Modifier.width(itemWidth)
-                                                        .padding(horizontal = 8.dp)
+                                                modifier = Modifier.width(itemWidth)
                                                         .irideFolioCombinedClickable(
                                                             onClick = {
                                                                 if (!isGuest) {
@@ -1054,6 +1151,7 @@ private fun ArtistScreenContent(
                                                             },
                                                         ),
                                             )
+                                            }
                                         }
                                     }
                                 }
@@ -1072,13 +1170,13 @@ private fun ArtistScreenContent(
                                                     placementSpec = if (reducedMotion) null else IrideMotion.PlacementSpec,
                                                     fadeOutSpec = null,
                                                 ),
-                                            artwork = essentialAlbums.take(4).map { it.thumbnail },
                                             placeholder = { IrideFolioSectionSkeleton(270.dp) },
                                         ) {
                                             NavigationTitle(
                                                 title = stringResource(R.string.essential_albums),
                                                 showDivider = false,
                                                 useIrideStyle = true,
+                                                sentenceCaseTitle = true,
                                             )
 
                                             val rowState = rememberLazyListState()
@@ -1120,8 +1218,6 @@ private fun ArtistScreenContent(
                                     }
                                 }
                             } else {
-                                val showDiscographyButton = isSinglesSection && !discographyButtonRendered
-                                if (showDiscographyButton) discographyButtonRendered = true
                                 item(key = "section_list_${section.title}") {
                                     IrideFolioSection(
                                         sectionKey = "online_${section.title}",
@@ -1133,16 +1229,16 @@ private fun ArtistScreenContent(
                                                 placementSpec = if (reducedMotion) null else IrideMotion.PlacementSpec,
                                                 fadeOutSpec = null,
                                             ),
-                                        artwork = filteredItems.take(4).map { it.thumbnail },
                                         placeholder = { IrideFolioSectionSkeleton(180.dp, songs = false) },
                                     ) {
                                         NavigationTitle(
                                             title = section.title,
                                             showDivider = false,
                                             useIrideStyle = true,
+                                            sentenceCaseTitle = true,
                                             onClick =
                                                 if (isAlbumOrSingleEpSection) {
-                                                    { navController.navigate("artist/${viewModel.artistId}/discography") }
+                                                    null
                                                 } else
                                                     section.moreEndpoint?.let {
                                                         {
@@ -1159,6 +1255,14 @@ private fun ArtistScreenContent(
                                                 section.title.contains("Performance", ignoreCase = true) ||
                                                 section.items.all { it is SongItem && it.isVideoSong }
                                         val rowState = rememberLazyListState()
+                                        val orderedRowIds = remember(filteredItems) { filteredItems.map { it.id } }
+                                        var previousRowIds by rememberSaveable { mutableStateOf(orderedRowIds) }
+                                        LaunchedEffect(orderedRowIds) {
+                                            if (previousRowIds != orderedRowIds) {
+                                                rowState.scrollToItem(0)
+                                                previousRowIds = orderedRowIds
+                                            }
+                                        }
                                         LazyRow(
                                             state = rowState,
                                             overscrollEffect = null,
@@ -1183,6 +1287,7 @@ private fun ArtistScreenContent(
                                                     coroutineScope = coroutineScope,
                                                     thumbnailRatio = if (isVideoSection) IrideFolio.VideoThumbnailRatio else 1f,
                                                     forceThumbnailRatio = isVideoSection,
+                                                    cropBlackBorders = isVideoSection,
                                                     thumbnailUrlOverride =
                                                         if (isVideoSection && item is SongItem)
                                                             com.metrolist.music.playback.youtubeVideoThumbnail(
@@ -1309,41 +1414,6 @@ private fun ArtistScreenContent(
                                             }
                                         }
 
-                                        if (showDiscographyButton) {
-
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.Center,
-                                                modifier =
-                                                    Modifier.fillMaxWidth()
-                                                        .padding(horizontal = irideHorizontalPadding, vertical = 4.dp)
-                                                        .clip(SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f))
-                                                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
-                                                        .clickable {
-                                                            navController.navigate("artist/${viewModel.artistId}/discography")
-                                                        }
-                                                        .padding(vertical = 14.dp),
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.view_discography).uppercase(),
-                                                    style =
-                                                        TextStyle(
-                                                            fontFamily = IBMPlexMonoFontFamily,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 12.sp,
-                                                            letterSpacing = 1.sp,
-                                                        ),
-                                                    color = MaterialTheme.colorScheme.onBackground,
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Icon(
-                                                    painter = painterResource(R.drawable.arrow_forward),
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.size(16.dp),
-                                                )
-                                            }
-                                        }
                                     }
                                 }
                             }
@@ -1351,16 +1421,14 @@ private fun ArtistScreenContent(
                     }
                 }
 
-                if (!showLocal && (showArtistDescription || showArtistSubscriberCount || showMonthlyListeners)) {
+                if (!showLocal && (showArtistDescription || showArtistSubscriberCount)) {
                     val description = artistPage?.description
                     val descriptionRuns = artistPage?.descriptionRuns
                     val subscriberCount = artistPage?.subscriberCountText
-                    val monthlyListeners = artistPage?.monthlyListenerCount
 
                     if (
                         (showArtistDescription && !description.isNullOrEmpty()) ||
-                            (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) ||
-                            (showMonthlyListeners && !monthlyListeners.isNullOrBlank())
+                            (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty())
                     ) {
                         item(key = "about_artist") {
                             IrideFolioSection(
@@ -1392,28 +1460,6 @@ private fun ArtistScreenContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(bottom = 16.dp),
                                     )
-
-                                    if (showMonthlyListeners && !monthlyListeners.isNullOrBlank()) {
-                                        val cleanListeners =
-                                            remember(monthlyListeners) {
-                                                monthlyListeners
-                                                    .replace("monthly listeners", "", ignoreCase = true)
-                                                    .replace("listeners this month", "", ignoreCase = true)
-                                                    .replace("ascoltatori mensili", "", ignoreCase = true)
-                                                    .replace("ascoltatori questo mese", "", ignoreCase = true)
-                                                    .trim()
-                                            }
-                                        Text(
-                                            text = stringResource(R.string.artist_monthly_listeners, cleanListeners),
-                                            style =
-                                                MaterialTheme.typography.bodyMedium.copy(
-                                                    fontFamily = IBMPlexMonoFontFamily
-                                                ),
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                            modifier = Modifier.padding(bottom = 16.dp),
-                                        )
-                                    }
 
                                     if (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) {
                                         val formattedSubscribers = formatSubscriberCount(subscriberCount)
@@ -1474,7 +1520,7 @@ private fun ArtistScreenContent(
 
                                         if (wikiLink != null) {
                                             Text(
-                                                text = "Read more on Wikipedia",
+                                                text = stringResource(R.string.artist_read_more_wikipedia),
                                                 style = MaterialTheme.typography.labelLarge,
                                                 color = MaterialTheme.colorScheme.onBackground,
                                                 textDecoration = TextDecoration.Underline,
@@ -1500,6 +1546,12 @@ private fun ArtistScreenContent(
                 Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
                     .align(Alignment.BottomCenter),
         )
+        if (returnWithDissolve && portraitSeed != null) {
+            val photo = remember(portraitSeed.artwork.bitmap) { portraitSeed.artwork.bitmap.asImageBitmap() }
+            Box(Modifier.matchParentSize().irideExpansionReturnArtwork(portraitSeed.bounds, pageContentAlpha, panelGesture, { pageFrame }) { bounds, _ ->
+                drawIrideReturnArtwork(photo, bounds)
+            })
+        }
     }
     }
 }
@@ -1518,6 +1570,7 @@ fun RecentAlbumPanel(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val artistLocale = LocalConfiguration.current.locales[0]
     val panelInk = MaterialTheme.colorScheme.onBackground
     val (collectionTap, collectionCover) = rememberCollectionExpansionTile(
         CollectionExpansionKind.Album, album.id, artworkUrl = album.thumbnailUrl, title = album.title,
@@ -1550,12 +1603,7 @@ fun RecentAlbumPanel(
                 thumbnailUrl = album.thumbnailUrl?.resize(544, 544),
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape =
-                    if (useMonospace) {
-                        SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
-                    } else {
-                        SquircleShape(radius = 6.dp, cornerSmoothing = 0.48f)
-                    },
+                shape = CollectionArtworkShape,
                 modifier = Modifier.size(if (useMonospace) 108.dp else 96.dp).then(collectionCover),
                 hairlineBorder = true,
             )
@@ -1607,7 +1655,7 @@ fun RecentAlbumPanel(
 
                 val extendedDate =
                     remember(album.album.releaseDate, preciseDate) {
-                        formatExtendedDate(album.album.releaseDate ?: preciseDate)
+                        formatExtendedDate(album.album.releaseDate ?: preciseDate, artistLocale)
                     }
                 val displayDate = extendedDate ?: album.album.year?.toString()
 
@@ -1666,7 +1714,7 @@ fun RecentAlbumPanel(
     }
 }
 
-fun formatExtendedDate(dateStr: String?): String? {
+fun formatExtendedDate(dateStr: String?, locale: Locale = Locale.getDefault()): String? {
     if (dateStr == null) return null
     return try {
         val parts = dateStr.split("-")
@@ -1679,9 +1727,9 @@ fun formatExtendedDate(dateStr: String?): String? {
 
         val formatter =
             when (parts.size) {
-                3 -> DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.US)
-                2 -> DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US)
-                else -> DateTimeFormatter.ofPattern("yyyy", Locale.US)
+                3 -> DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale)
+                2 -> DateTimeFormatter.ofPattern("LLLL yyyy", locale)
+                else -> DateTimeFormatter.ofPattern("yyyy", locale)
             }
 
         date.format(formatter)

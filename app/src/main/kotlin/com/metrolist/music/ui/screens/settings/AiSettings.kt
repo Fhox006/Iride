@@ -4,6 +4,12 @@ package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IrideFolioAlertDialog
 import com.metrolist.music.ui.component.IrideFolioPrimaryButton
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -191,6 +199,7 @@ fun AiSettings(navController: NavController) {
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
     var showCustomModelInput by rememberSaveable { mutableStateOf(false) }
     var showSystemPromptDialog by rememberSaveable { mutableStateOf(false) }
+    var showAdvancedSettings by rememberSaveable { mutableStateOf(false) }
 
     if (showProviderHelpDialog) {
         IrideFolioAlertDialog(
@@ -546,246 +555,281 @@ fun AiSettings(navController: NavController) {
                     )
                 )
 
-                Material3SettingsGroup(
-                    title = stringResource(R.string.ai_provider),
-                    items =
-                        listOf(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.explore_outlined),
-                                    title = { Text(stringResource(R.string.ai_provider)) },
-                                    description = { Text(if (aiProvider == "None") stringResource(R.string.ai_provider_disabled) else aiProvider) },
-                                    onClick = { showProviderDialog = true },
-                                    trailingContent = {
-                                        IconButton(onClick = { showProviderHelpDialog = true }) {
-                                            Icon(
-                                                painterResource(R.drawable.info),
-                                                contentDescription =
-                                                    stringResource(R.string.ai_provider_help),
-                                                modifier = Modifier.size(20.dp),
-                                            )
-                                        }
-                                    },
-                                ),
-                                if (aiProvider == "Custom") {
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.link),
-                                        title = { Text(stringResource(R.string.ai_base_url)) },
-                                        description = {
-                                            Text(
-                                                openRouterBaseUrl.ifBlank {
-                                                    stringResource(R.string.not_set)
-                                                }
-                                            )
-                                        },
-                                        onClick = { showBaseUrlDialog = true },
-                                    )
-                                } else {
-                                    null
-                                },
-                            )
-                            .filterNotNull(),
+                GeminiQuickSetup(
+                    initialApiKey = openRouterApiKey.takeIf { aiProvider == "Gemini" }.orEmpty(),
+                    selectedModel = openRouterModel,
+                    onSetupSuccess = { apiKey, model ->
+                        aiProvider = "Gemini"
+                        openRouterBaseUrl = aiProviders["Gemini"].orEmpty()
+                        openRouterApiKey = apiKey
+                        openRouterModel = model
+                    },
                 )
 
-                Spacer(modifier = Modifier.height(27.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HorizontalDivider(Modifier.weight(1f))
+                    TextButton(onClick = { showAdvancedSettings = !showAdvancedSettings }) {
+                        Text(
+                            stringResource(
+                                if (showAdvancedSettings) R.string.ai_hide_advanced_settings
+                                else R.string.ai_advanced_settings,
+                            ),
+                        )
+                    }
+                    HorizontalDivider(Modifier.weight(1f))
+                }
 
-                Material3SettingsGroup(
-                    title = stringResource(R.string.ai_setup_guide),
-                    items =
-                        buildList {
-                            if (aiProvider == "DeepL") {
-                                add(
+                AnimatedVisibility(
+                    visible = showAdvancedSettings,
+                    enter = expandVertically(animationSpec = tween(320)) + fadeIn(tween(180)),
+                    exit = shrinkVertically(animationSpec = tween(260)) + fadeOut(tween(140)),
+                ) {
+                    Column {
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.ai_provider),
+                        items =
+                            listOf(
                                     Material3SettingsItem(
-                                        icon = painterResource(R.drawable.key),
-                                        title = {
-                                            Text("DeepL ${stringResource(R.string.ai_api_key)}")
-                                        },
-                                        description = {
-                                            Text(
-                                                if (deeplApiKey.isNotEmpty()) {
-                                                    "•".repeat(minOf(deeplApiKey.length, 8))
-                                                } else {
-                                                    stringResource(R.string.not_set)
-                                                }
-                                            )
-                                        },
-                                        onClick = { showDeeplApiKeyDialog = true },
-                                    )
-                                )
-                                add(
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.tune),
-                                        title = {
-                                            Text(stringResource(R.string.ai_deepl_formality))
-                                        },
-                                        description = {
-                                            Text(
-                                                when (deeplFormality) {
-                                                    "default" ->
-                                                        stringResource(
-                                                            R.string.ai_deepl_formality_default
-                                                        )
-                                                    "more" ->
-                                                        stringResource(
-                                                            R.string.ai_deepl_formality_more
-                                                        )
-                                                    "less" ->
-                                                        stringResource(
-                                                            R.string.ai_deepl_formality_less
-                                                        )
-                                                    else -> deeplFormality
-                                                }
-                                            )
-                                        },
-                                        onClick = { showDeeplFormalityDialog = true },
-                                    )
-                                )
-                            } else if (aiProvider != "None") {
-                                add(
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.key),
-                                        title = { Text(stringResource(R.string.ai_api_key)) },
-                                        description = {
-                                            Text(
-                                                if (openRouterApiKey.isNotEmpty()) {
-                                                    "•".repeat(minOf(openRouterApiKey.length, 8))
-                                                } else {
-                                                    stringResource(R.string.not_set)
-                                                }
-                                            )
-                                        },
-                                        onClick = { showApiKeyDialog = true },
-                                    )
-                                )
-                                add(
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.discover_tune),
-                                        title = { Text(stringResource(R.string.ai_model)) },
-                                        description = {
-                                            Text(
-                                                openRouterModel.ifBlank {
-                                                    stringResource(R.string.not_set)
-                                                }
-                                            )
-                                        },
-                                        onClick = { showModelDialog = true },
-                                    )
-                                )
-                            }
-                        },
-                )
-
-                Spacer(modifier = Modifier.height(27.dp))
-
-                AiIntegrationControls(
-                    provider = aiProvider,
-                    apiKey = openRouterApiKey,
-                    endpoint = openRouterBaseUrl,
-                    model = openRouterModel,
-                    onSelectModel = { openRouterModel = it },
-                )
-
-                Material3SettingsGroup(
-                    title = stringResource(R.string.ai_translation_mode),
-                    items =
-                        buildList {
-                            if (aiProvider != "DeepL") {
-                                add(
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.translate),
-                                        title = {
-                                            Text(stringResource(R.string.ai_translation_mode))
-                                        },
-                                        description = {
-                                            Text(
-                                                when (translateMode) {
-                                                    "Literal" ->
-                                                        stringResource(
-                                                            R.string.ai_translation_literal
-                                                        )
-                                                    "Transcribed" ->
-                                                        stringResource(
-                                                            R.string.ai_translation_transcribed
-                                                        )
-                                                    else -> translateMode
-                                                }
-                                            )
-                                        },
-                                        onClick = { showTranslateModeDialog = true },
+                                        icon = painterResource(R.drawable.explore_outlined),
+                                        title = { Text(stringResource(R.string.ai_provider)) },
+                                        description = { Text(if (aiProvider == "None") stringResource(R.string.ai_provider_disabled) else aiProvider) },
+                                        onClick = { showProviderDialog = true },
                                         trailingContent = {
-                                            IconButton(
-                                                onClick = { showTranslateModeHelpDialog = true }
-                                            ) {
+                                            IconButton(onClick = { showProviderHelpDialog = true }) {
                                                 Icon(
                                                     painterResource(R.drawable.info),
-                                                    contentDescription = null,
+                                                    contentDescription =
+                                                        stringResource(R.string.ai_provider_help),
                                                     modifier = Modifier.size(20.dp),
                                                 )
                                             }
                                         },
-                                    )
-                                )
-                                add(
-                                    Material3SettingsItem(
-                                        icon = painterResource(R.drawable.edit),
-                                        title = { Text(stringResource(R.string.ai_system_prompt)) },
-                                        description = {
-                                            Text(
-                                                if (aiSystemPrompt.isNotBlank()) {
-                                                    aiSystemPrompt.take(60).let {
-                                                        if (aiSystemPrompt.length > 60) "$it…"
-                                                        else it
+                                    ),
+                                    if (aiProvider == "Custom") {
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.link),
+                                            title = { Text(stringResource(R.string.ai_base_url)) },
+                                            description = {
+                                                Text(
+                                                    openRouterBaseUrl.ifBlank {
+                                                        stringResource(R.string.not_set)
                                                     }
-                                                } else {
-                                                    stringResource(
-                                                        R.string.ai_system_prompt_default
+                                                )
+                                            },
+                                            onClick = { showBaseUrlDialog = true },
+                                        )
+                                    } else {
+                                        null
+                                    },
+                                )
+                                .filterNotNull(),
+                    )
+
+                    Spacer(modifier = Modifier.height(27.dp))
+
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.ai_setup_guide),
+                        items =
+                            buildList {
+                                if (aiProvider == "DeepL") {
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.key),
+                                            title = {
+                                                Text("DeepL ${stringResource(R.string.ai_api_key)}")
+                                            },
+                                            description = {
+                                                Text(
+                                                    if (deeplApiKey.isNotEmpty()) {
+                                                        "•".repeat(minOf(deeplApiKey.length, 8))
+                                                    } else {
+                                                        stringResource(R.string.not_set)
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showDeeplApiKeyDialog = true },
+                                        )
+                                    )
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.tune),
+                                            title = {
+                                                Text(stringResource(R.string.ai_deepl_formality))
+                                            },
+                                            description = {
+                                                Text(
+                                                    when (deeplFormality) {
+                                                        "default" ->
+                                                            stringResource(
+                                                                R.string.ai_deepl_formality_default
+                                                            )
+                                                        "more" ->
+                                                            stringResource(
+                                                                R.string.ai_deepl_formality_more
+                                                            )
+                                                        "less" ->
+                                                            stringResource(
+                                                                R.string.ai_deepl_formality_less
+                                                            )
+                                                        else -> deeplFormality
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showDeeplFormalityDialog = true },
+                                        )
+                                    )
+                                } else if (aiProvider != "None") {
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.key),
+                                            title = { Text(stringResource(R.string.ai_api_key)) },
+                                            description = {
+                                                Text(
+                                                    if (openRouterApiKey.isNotEmpty()) {
+                                                        "•".repeat(minOf(openRouterApiKey.length, 8))
+                                                    } else {
+                                                        stringResource(R.string.not_set)
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showApiKeyDialog = true },
+                                        )
+                                    )
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.discover_tune),
+                                            title = { Text(stringResource(R.string.ai_model)) },
+                                            description = {
+                                                Text(
+                                                    openRouterModel.ifBlank {
+                                                        stringResource(R.string.not_set)
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showModelDialog = true },
+                                        )
+                                    )
+                                }
+                            },
+                    )
+
+                    Spacer(modifier = Modifier.height(27.dp))
+
+                    AiIntegrationControls(
+                        provider = aiProvider,
+                        apiKey = openRouterApiKey,
+                        endpoint = openRouterBaseUrl,
+                        model = openRouterModel,
+                        onSelectModel = { openRouterModel = it },
+                    )
+
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.ai_translation_mode),
+                        items =
+                            buildList {
+                                if (aiProvider != "DeepL") {
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.translate),
+                                            title = {
+                                                Text(stringResource(R.string.ai_translation_mode))
+                                            },
+                                            description = {
+                                                Text(
+                                                    when (translateMode) {
+                                                        "Literal" ->
+                                                            stringResource(
+                                                                R.string.ai_translation_literal
+                                                            )
+                                                        "Transcribed" ->
+                                                            stringResource(
+                                                                R.string.ai_translation_transcribed
+                                                            )
+                                                        else -> translateMode
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showTranslateModeDialog = true },
+                                            trailingContent = {
+                                                IconButton(
+                                                    onClick = { showTranslateModeHelpDialog = true }
+                                                ) {
+                                                    Icon(
+                                                        painterResource(R.drawable.info),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
                                                     )
                                                 }
+                                            },
+                                        )
+                                    )
+                                    add(
+                                        Material3SettingsItem(
+                                            icon = painterResource(R.drawable.edit),
+                                            title = { Text(stringResource(R.string.ai_system_prompt)) },
+                                            description = {
+                                                Text(
+                                                    if (aiSystemPrompt.isNotBlank()) {
+                                                        aiSystemPrompt.take(60).let {
+                                                            if (aiSystemPrompt.length > 60) "$it…"
+                                                            else it
+                                                        }
+                                                    } else {
+                                                        stringResource(
+                                                            R.string.ai_system_prompt_default
+                                                        )
+                                                    }
+                                                )
+                                            },
+                                            onClick = { showSystemPromptDialog = true },
+                                        )
+                                    )
+                                }
+                                add(
+                                    Material3SettingsItem(
+                                        icon = painterResource(R.drawable.language),
+                                        title = { Text(stringResource(R.string.ai_target_language)) },
+                                        description = {
+                                            Text(
+                                                LanguageCodeToName[translateLanguage]
+                                                    ?: translateLanguage
                                             )
                                         },
-                                        onClick = { showSystemPromptDialog = true },
+                                        onClick = { showLanguageDialog = true },
                                     )
                                 )
-                            }
-                            add(
+                            },
+                    )
+
+                    Spacer(modifier = Modifier.height(27.dp))
+
+                    Material3SettingsGroup(
+                        title = stringResource(R.string.genius_section_title),
+                        items =
+                            listOf(
                                 Material3SettingsItem(
-                                    icon = painterResource(R.drawable.language),
-                                    title = { Text(stringResource(R.string.ai_target_language)) },
+                                    icon = painterResource(R.drawable.key),
+                                    title = { Text(stringResource(R.string.genius_api_key)) },
                                     description = {
                                         Text(
-                                            LanguageCodeToName[translateLanguage]
-                                                ?: translateLanguage
+                                            if (geniusApiKey.isNotEmpty()) {
+                                                "•".repeat(minOf(geniusApiKey.length, 8))
+                                            } else {
+                                                stringResource(R.string.genius_api_key_description)
+                                            }
                                         )
                                     },
-                                    onClick = { showLanguageDialog = true },
+                                    onClick = { showGeniusApiKeyDialog = true },
                                 )
-                            )
-                        },
-                )
+                            ),
+                    )
 
-                Spacer(modifier = Modifier.height(27.dp))
-
-                Material3SettingsGroup(
-                    title = stringResource(R.string.genius_section_title),
-                    items =
-                        listOf(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.key),
-                                title = { Text(stringResource(R.string.genius_api_key)) },
-                                description = {
-                                    Text(
-                                        if (geniusApiKey.isNotEmpty()) {
-                                            "•".repeat(minOf(geniusApiKey.length, 8))
-                                        } else {
-                                            stringResource(R.string.genius_api_key_description)
-                                        }
-                                    )
-                                },
-                                onClick = { showGeniusApiKeyDialog = true },
-                            )
-                        ),
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
             }
         }
     }

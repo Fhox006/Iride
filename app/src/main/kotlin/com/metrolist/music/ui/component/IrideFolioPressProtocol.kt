@@ -88,7 +88,7 @@ fun Modifier.irideFolioCombinedClickable(
                     motion.recordDown(down.uptimeMillis, down.position)
                 }
             }
-    return Modifier.indication(pressInteractions, boundIndication).then(feedback).combinedClickable(
+    return this.indication(pressInteractions, boundIndication).then(feedback).combinedClickable(
         interactionSource = pressInteractions,
         indication = null,
         enabled = enabled,

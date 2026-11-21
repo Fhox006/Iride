@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="navigation_continue_anyway">とにかく続けてください</string>
+    <string name="navigation_choice_title">よろしいですか？</string>
+    <string name="navigation_choice_heart">デザイナーが心を込めて作りました。</string>
+    <string name="navigation_choice_motion">一部の動きや詳細にはジェスチャーが必要です。</string>
+    <string name="navigation_choice_support">ボタン ナビゲーションのサポートは限定的です。</string>
+    <string name="navigation_choice_alternatives">必要に応じて、無料の代替案も提供します。</string>
+    <string name="navigation_choice_confirm">それでもイリデを使いたい</string>
+    <string name="navigation_choice_close">閉じる</string>
+    <string name="navigation_choice_save_failed">保存できませんでした。もう一度試してください。</string>
+    <string name="navigation_choice_browser_failed">使用できるブラウザがありません。</string>
+    <string name="navigation_choice_open_repository">GitHub で %1$s を開く</string>
+</resources>

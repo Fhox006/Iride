@@ -22,6 +22,10 @@ data class HomeSnapshotItem(
     val type: String,
     val browseId: String? = null,
     val playlistId: String? = null,
+    val explicit: Boolean = false,
+    val year: Int? = null,
+    val albumType: String? = null,
+    val releaseDate: String? = null,
 )
 
 @Serializable
@@ -38,13 +42,59 @@ data class MoodSnapshot(
     val items: List<HomeSnapshotItem>,
 )
 
+@Serializable
+data class HomeDailyDiscoverSnapshotItem(
+    val seed: HomeSnapshotItem,
+    val recommendation: HomeSnapshotItem,
+)
+
+@Serializable
+data class HomeSimilarShelfSnapshot(
+    val titleType: String,
+    val titleId: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val playlistBrowseId: String? = null,
+    val items: List<HomeSnapshotItem>,
+)
+
+@Serializable
+data class HomeForYouTileSnapshot(
+    val type: String,
+    val item: HomeSnapshotItem,
+)
+
+@Serializable
+data class HomeForYouShelfSnapshot(
+    val artistId: String,
+    val artistName: String,
+    val artistThumbnailUrl: String? = null,
+    val tiles: List<HomeForYouTileSnapshot>,
+)
+
+@Serializable
+data class HomeRecommendationSnapshot(
+    val quickPicksUpdatedAt: Long = 0L,
+    val quickPicks: List<HomeSnapshotItem> = emptyList(),
+    val quickPicksAlgorithmVersion: Int = 0,
+    val dailyDiscoverUpdatedAt: Long = 0L,
+    val dailyDiscover: List<HomeDailyDiscoverSnapshotItem> = emptyList(),
+    val communityUpdatedAt: Long = 0L,
+    val communityPlaylists: List<HomeSnapshotItem> = emptyList(),
+    val similarUpdatedAt: Long = 0L,
+    val similarShelves: List<HomeSimilarShelfSnapshot> = emptyList(),
+    val forYouUpdatedAt: Long = 0L,
+    val forYouAlgorithmVersion: Int = 0,
+    val forYouShelves: List<HomeForYouShelfSnapshot> = emptyList(),
+)
+
 fun HomeSnapshotItem.toYTItem(): YTItem? = when (type) {
     "song" -> SongItem(
         id = id,
         title = title,
         artists = subtitle?.split(", ")?.map { Artist(name = it, id = null) } ?: emptyList(),
         thumbnail = thumbnailUrl ?: "",
-        explicit = false,
+        explicit = explicit,
     )
     "album" -> AlbumItem(
         browseId = browseId ?: id,
@@ -52,6 +102,10 @@ fun HomeSnapshotItem.toYTItem(): YTItem? = when (type) {
         title = title,
         artists = subtitle?.split(", ")?.map { Artist(name = it, id = null) },
         thumbnail = thumbnailUrl ?: "",
+        explicit = explicit,
+        year = year,
+        albumType = albumType,
+        releaseDate = releaseDate,
     )
     "artist" -> ArtistItem(
         id = id,

@@ -53,10 +53,12 @@ fun LibraryArtistListItem(
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     artist: Artist,
+    showSubtitle: Boolean = true,
     modifier: Modifier = Modifier
 ) = ArtistListItem(
     artist = artist,
     showLikedIcon = false,
+    showSubtitle = showSubtitle,
     trailingContent = {
         SongMenuIconButton(
             onClick = {
@@ -119,10 +121,12 @@ fun LibraryAlbumListItem(
     menuState: MenuState,
     album: Album,
     isActive: Boolean = false,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    showSubtitle: Boolean = true,
 ) = AlbumListItem(
     album = album,
     showLikedIcon = false,
+    showSubtitle = showSubtitle,
     isActive = isActive,
     isPlaying = isPlaying,
     trailingContent = {
@@ -309,9 +313,11 @@ fun LibraryPlaylistListItem(
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     playlist: Playlist,
+    showSubtitle: Boolean = true,
     modifier: Modifier = Modifier
 ) = PlaylistListItem(
     playlist = playlist,
+    showSubtitle = showSubtitle,
     trailingContent = {
         SongMenuIconButton(
             onClick = {
@@ -330,7 +336,7 @@ fun LibraryPlaylistListItem(
                                     title = playlist.playlist.name,
                                     author = null,
                                     songCountText = null,
-                                    thumbnail = playlist.thumbnails.getOrNull(0) ?: "",
+                                    thumbnail = playlist.playlist.thumbnailUrl.orEmpty(),
                                     playEndpoint = WatchEndpoint(
                                         playlistId = browseId,
                                         params = playlist.playlist.playEndpointParams
@@ -377,18 +383,14 @@ fun LibraryPlaylistGridItem(
     coroutineScope: CoroutineScope,
     playlist: Playlist,
     isActive: Boolean = false,
+    isPlaying: Boolean = false,
     modifier: Modifier = Modifier
 ) = PlaylistGridItem(
     playlist = playlist,
     fillMaxWidth = true,
+    isActive = isActive,
+    isPlaying = isPlaying,
     modifier = modifier
-        .then(
-            if (isActive) Modifier.border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary,
-                shape = com.metrolist.music.ui.theme.FolioShape(14.dp),
-            ) else Modifier,
-        )
         .fillMaxWidth()
         .irideFolioCombinedClickable(
             onClick = {
@@ -413,7 +415,7 @@ fun LibraryPlaylistGridItem(
                                     title = playlist.playlist.name,
                                     author = null,
                                     songCountText = null,
-                                    thumbnail = playlist.thumbnails.getOrNull(0) ?: "",
+                                    thumbnail = playlist.playlist.thumbnailUrl.orEmpty(),
                                     playEndpoint = WatchEndpoint(
                                         playlistId = browseId,
                                         params = playlist.playlist.playEndpointParams

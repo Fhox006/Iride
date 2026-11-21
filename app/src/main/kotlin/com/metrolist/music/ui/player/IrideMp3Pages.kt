@@ -14,9 +14,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,11 +34,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -62,6 +63,9 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.extensions.isManualQueueItem
+import com.metrolist.music.extensions.toggleRepeatMode
+import com.metrolist.music.extensions.withManualQueueItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.*
@@ -78,12 +82,12 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Stable
 internal class IrideMp3QueueControls {
-    var selectedMood by mutableStateOf(AUTOMIX_FILTER_ALL)
     val order = IrideMp3QueueOrder<Any>()
+    val manualQueueOverrides = mutableStateMapOf<Any, Boolean>()
 }
 
 private const val MP3_HISTORY_DIVIDER = "history_divider"
-private const val MP3_QUEUE_TITLE = "queue_title"
+private const val MP3_UP_NEXT_DIVIDER = "up_next_divider"
 
 private sealed interface Mp3QueueEntry {
     val key: String
@@ -92,10 +96,15 @@ private sealed interface Mp3QueueEntry {
         override val key: String,
         val metadata: MediaMetadata,
         val windowUid: Any? = null,
+        val manualQueue: Boolean = false,
     ) : Mp3QueueEntry
 
     data object HistoryDivider : Mp3QueueEntry {
         override val key = MP3_HISTORY_DIVIDER
+    }
+
+    data object UpNextDivider : Mp3QueueEntry {
+        override val key = MP3_UP_NEXT_DIVIDER
     }
 }
 
@@ -122,48 +131,21 @@ internal fun IrideMp3Queue(
     val database = LocalDatabase.current
     val windows by connection.queueWindows.collectAsState()
     val currentIndex by connection.currentWindowIndex.collectAsState()
-    val automaticRecommendations by connection.service.isAutomaticRecommendations.collectAsState()
-    val seed by connection.service.radioSeedMetadata.collectAsState()
-    val events by database.recentEventsPerSong(80).collectAsState(initial = emptyList())
-    val history = remember(events) { events.map { it.song.toMediaMetadata() } }
-    val upcoming = windows.drop((currentIndex + 1).coerceAtLeast(0))
+    val shuffleModeEnabled by connection.shuffleModeEnabled.collectAsState()
+    val repeatMode by connection.repeatMode.collectAsState()
+    val events by remember(database) { database.recentEventsPerSong(80) }.collectAsState(initial = null)
+    val history = remember(events) { events.orEmpty().map { it.song.toMediaMetadata() } }
     val displayed = remember { mutableStateListOf<Timeline.Window>() }
-    val listState = rememberLazyListState()
-    val moodsState = rememberLazyListState()
-    val rows = remember { mutableStateListOf<Mp3QueueEntry>() }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = 2)
+    var positionedQueue by remember { mutableStateOf(false) }
+    val queueItemHeights = remember { mutableStateMapOf<String, Int>() }
+    val rows = remember { mutableStateListOf<Mp3QueueEntry>(Mp3QueueEntry.HistoryDivider) }
     val historyOrder = remember { mutableListOf<String>() }
     val promotedHistory = remember { mutableStateMapOf<String, Any>() }
-    var draggedWindowUid by remember { mutableStateOf<Any?>(null) }
+    val manualQueueOverrides = controls.manualQueueOverrides.toMap()
     // ExoPlayer UIDs are opaque objects; LazyColumn keys must be saveable in an Android Bundle.
     val windowKeys = remember { mutableMapOf<Any, String>() }
     fun windowKey(uid: Any): String = windowKeys.getOrPut(uid) { "queued_${windowKeys.size}" }
-    val genreSongs =
-        remember(upcoming) {
-            upcoming
-                .map {
-                    GenreSongInfo(
-                        it.mediaItem.mediaId,
-                        it.mediaItem.metadata?.title.orEmpty(),
-                        it.mediaItem.metadata?.artists?.firstOrNull()?.name,
-                    )
-                }
-                .distinctBy { it.id }
-                .sortedBy { it.id }
-        }
-    val genres = rememberGenreFilter(genreSongs)
-    val moods =
-        remember(genres.sortedGenres) {
-            (listOf(
-                    AUTOMIX_FILTER_ALL,
-                    AUTOMIX_FILTER_PARTY,
-                    AUTOMIX_FILTER_WORKOUT,
-                ) + genres.sortedGenres.take(2).map { it.uppercase() })
-                .distinct()
-        }
-    val familiar =
-        remember(history, seed) {
-            (history.flatMap { it.artists } + seed?.artists.orEmpty()).map { it.name }.toSet()
-        }
     val reorder =
         rememberReorderableLazyListState(listState) { from, to ->
             val source = rows.indexOfFirst { it.key == from.key }
@@ -171,9 +153,9 @@ internal fun IrideMp3Queue(
             val track = rows.getOrNull(source) as? Mp3QueueEntry.Track
             if (!isGuest && track != null && target >= 0 && source != target) {
                 val divider = rows.indexOf(Mp3QueueEntry.HistoryDivider)
-                // Upcoming tracks stay in the queue; history tracks can cross its boundary.
+                // Queue tracks stay below History; history tracks can be promoted into the queue.
                 val destination =
-                    if (track.windowUid != null) target.coerceAtMost(divider - 1)
+                    if (track.windowUid != null) target.coerceAtLeast(divider + 1)
                     else target
                 if (destination >= 0 && source != destination) {
                     rows.add(destination, rows.removeAt(source))
@@ -181,9 +163,13 @@ internal fun IrideMp3Queue(
             }
         }
     fun finishDrag() {
-        val queueRows =
-            rows.takeWhile { it != Mp3QueueEntry.HistoryDivider }
+        val afterHistory = rows.dropWhile { it != Mp3QueueEntry.HistoryDivider }.drop(1)
+        val queueRows = afterHistory.filterIsInstance<Mp3QueueEntry.Track>()
+        val manualKeys =
+            afterHistory.takeWhile { it != Mp3QueueEntry.UpNextDivider }
                 .filterIsInstance<Mp3QueueEntry.Track>()
+                .map { it.key }
+                .toSet()
         val previousKeys = displayed.filter { it.mediaItem.metadata != null }.map { it.uid }
         val hasHistoryInsertion = queueRows.any { it.windowUid == null }
         if (!isGuest && queueRows.map { it.windowUid } != previousKeys) {
@@ -197,6 +183,7 @@ internal fun IrideMp3Queue(
                 }
                 player.shuffleModeEnabled = false
             }
+            val insertedUids = mutableMapOf<String, Any>()
             var offset = 0
             queueRows.forEach { track ->
                 val source = track.windowUid?.let(player::indexOfWindow)
@@ -205,11 +192,15 @@ internal fun IrideMp3Queue(
                 val target =
                     (player.currentMediaItemIndex + 1 + offset).coerceAtMost(player.mediaItemCount)
                 if (source == null) {
-                    player.addMediaItem(target, track.metadata.toMediaItem())
+                    player.addMediaItem(
+                        target,
+                        track.metadata.toMediaItem().withManualQueueItem(track.key in manualKeys),
+                    )
                     val uid = player.currentTimeline.getWindow(target, Timeline.Window()).uid
                     // Keep the row key stable across the history-to-queue transition.
                     windowKeys[uid] = track.key
                     promotedHistory[track.metadata.id] = uid
+                    insertedUids[track.key] = uid
                 } else if (source != target) {
                     player.moveMediaItem(source, target)
                 }
@@ -219,33 +210,30 @@ internal fun IrideMp3Queue(
                 (player.currentMediaItemIndex + 1 until player.mediaItemCount).map {
                     player.currentTimeline.getWindow(it, Timeline.Window()).uid
                 }
-            if (hasHistoryInsertion) {
+            val manualUids =
+                manualKeys.mapNotNull { key ->
+                    queueRows.firstOrNull { it.key == key }?.windowUid ?: insertedUids[key]
+                }.toSet()
+            controls.manualQueueOverrides.keys.retainAll(liveKeys.toSet())
+            liveKeys.forEach { uid -> controls.manualQueueOverrides[uid] = uid in manualUids }
+            if (hasHistoryInsertion || queueRows.map { it.windowUid } != previousKeys) {
                 controls.order.setManualOrder(liveKeys)
-                // A history track must remain visible even when it does not match the active mood.
-                controls.selectedMood = AUTOMIX_FILTER_ALL
-            } else {
-                // Keep the unfiltered order of untouched songs when reordering inside a mood.
-                draggedWindowUid?.let { uid ->
-                    val destination = queueRows.indexOfFirst { it.windowUid == uid }
-                    previousKeys.getOrNull(destination)?.let { controls.order.move(uid, it) }
-                }
             }
         }
         historyOrder.clear()
         historyOrder.addAll(
-            rows.dropWhile { it != Mp3QueueEntry.HistoryDivider }
+            rows.takeWhile { it != Mp3QueueEntry.HistoryDivider }
                 .filterIsInstance<Mp3QueueEntry.Track>()
                 .map { it.metadata.id }
         )
-        draggedWindowUid = null
     }
     LaunchedEffect(
         windows,
         currentIndex,
-        controls.selectedMood,
-        genres.genreBySongId,
-        familiar,
+        shuffleModeEnabled,
+        manualQueueOverrides,
         history,
+        events != null,
         promotedHistory.toMap(),
         reorder.isAnyItemDragging,
         isGuest,
@@ -256,27 +244,15 @@ internal fun IrideMp3Queue(
                 (connection.currentWindowIndex.value + 1).coerceAtLeast(0)
             )
         val keys = live.map { it.uid }
-        if (controls.order.synchronize(keys) || keys.isEmpty())
-            controls.selectedMood = AUTOMIX_FILTER_ALL
+        controls.order.synchronize(keys)
         val windowsByKey = live.associateBy { it.uid }
-        val canonical = controls.order.ordered(keys).mapNotNull(windowsByKey::get)
-        val mood = controls.selectedMood
-        val matchingIds =
-            filterAutomix(
-                    canonical.map { it.mediaItem },
-                    mood,
-                    familiar,
-                    genres.genreBySongId,
-                    fallbackToAll = false,
-                )
-                .map { it.mediaId }
-                .toSet()
-        val preferred =
-            canonical.filter { it.mediaItem.mediaId in matchingIds }.map { it.uid }.toSet()
-        val ordered =
-            controls.order.ordered(keys, if (mood == AUTOMIX_FILTER_ALL) null else preferred)
-        // Reprioritize upcoming matches only; changing or clearing a filter never discards a song.
-        if (!isGuest && ordered != keys) {
+        val manualUids =
+            live.filter { window ->
+                manualQueueOverrides[window.uid] ?: window.mediaItem.isManualQueueItem
+            }.map { it.uid }.toSet()
+        val ordered = controls.order.ordered(keys, preferred = manualUids)
+        val shufflePlaybackOrder = connection.player.shuffleModeEnabled
+        if (!isGuest && !shufflePlaybackOrder && ordered != keys) {
             ordered.forEachIndexed { offset, uid ->
                 val source = connection.player.indexOfWindow(uid)
                 val target = connection.player.currentMediaItemIndex + 1 + offset
@@ -290,36 +266,75 @@ internal fun IrideMp3Queue(
                 }
             }
         }
-        val filtered =
-            ordered.mapNotNull(windowsByKey::get).filter {
-                mood == AUTOMIX_FILTER_ALL || it.uid in preferred
-            }
-        if (displayed.toList() != filtered) {
+        val visibleOrder = if (shufflePlaybackOrder) keys else ordered
+        val orderedWindows = visibleOrder.mapNotNull(windowsByKey::get)
+        if (displayed.toList() != orderedWindows) {
             displayed.clear()
-            displayed.addAll(filtered)
+            displayed.addAll(orderedWindows)
         }
         val liveUids = live.map { it.uid }.toSet()
+        controls.manualQueueOverrides.keys.retainAll(liveUids)
         promotedHistory.entries.removeAll { it.value !in liveUids }
         val currentId = connection.player.currentMediaItem?.mediaId
-        val ranks = historyOrder.withIndex().associate { it.value to it.index }
+        val historyById = history.filterNot { it.id == currentId || it.id in promotedHistory }
+            .associateBy { it.id }
         val historyRows =
-            history.filterNot { it.id == currentId || it.id in promotedHistory }
-                .sortedBy { ranks[it.id] ?: -1 }
-                .map { Mp3QueueEntry.Track("history_${it.id}", it) }
-        val updated =
-            filtered.mapNotNull { window ->
+            queueHistoryOldestFirst(historyById.keys.toList(), historyOrder)
+                .map { Mp3QueueEntry.Track("history_$it", historyById.getValue(it)) }
+        val manualQueueRows =
+            orderedWindows.filter { window ->
+                manualQueueOverrides[window.uid] ?: window.mediaItem.isManualQueueItem
+            }.mapNotNull { window ->
+                window.mediaItem.metadata?.let {
+                    Mp3QueueEntry.Track(windowKey(window.uid), it, window.uid, manualQueue = true)
+                }
+            }
+        val upNextRows =
+            orderedWindows.filterNot { window ->
+                manualQueueOverrides[window.uid] ?: window.mediaItem.isManualQueueItem
+            }.mapNotNull { window ->
                 window.mediaItem.metadata?.let {
                     Mp3QueueEntry.Track(windowKey(window.uid), it, window.uid)
                 }
-            } + Mp3QueueEntry.HistoryDivider + historyRows
+            }
+        val updated =
+            historyRows + Mp3QueueEntry.HistoryDivider + manualQueueRows +
+                (if (upNextRows.isNotEmpty()) listOf(Mp3QueueEntry.UpNextDivider) else emptyList()) +
+                upNextRows
         if (rows.toList() != updated) {
             rows.clear()
             rows.addAll(updated)
         }
+        queueItemHeights.keys.retainAll(updated.map { it.key }.toSet())
+        if (!positionedQueue && events != null) {
+            // Request the queue heading before measurement, without animating through history.
+            // Later database emissions preserve this stable key as history is inserted above it.
+            val historyPrefixCount = if (historyRows.isEmpty()) 2 else 1
+            listState.requestScrollToItem(historyRows.size + historyPrefixCount)
+            positionedQueue = true
+        }
     }
-    fun chooseMood(index: Int) {
-        if (!isGuest) controls.selectedMood = moods[index.coerceIn(moods.indices)]
+    fun clearManualQueue() {
+        if (isGuest) return
+        val player = connection.player
+        rows.dropWhile { it != Mp3QueueEntry.HistoryDivider }.drop(1)
+            .takeWhile { it != Mp3QueueEntry.UpNextDivider }
+            .filterIsInstance<Mp3QueueEntry.Track>()
+            .mapNotNull { it.windowUid }
+            .forEach { uid ->
+                val index = player.indexOfWindow(uid)
+                if (index > player.currentMediaItemIndex) player.removeMediaItem(index)
+                controls.manualQueueOverrides.remove(uid)
+            }
     }
+    val queueRows = rows.dropWhile { it != Mp3QueueEntry.HistoryDivider }.drop(1)
+    val manualQueueCount =
+        queueRows.takeWhile { it != Mp3QueueEntry.UpNextDivider }.count { it is Mp3QueueEntry.Track }
+    val upNextCount =
+        queueRows.dropWhile { it != Mp3QueueEntry.UpNextDivider }.drop(1)
+            .count { it is Mp3QueueEntry.Track }
+    val hasHistory = rows.takeWhile { it != Mp3QueueEntry.HistoryDivider }
+        .any { it is Mp3QueueEntry.Track }
     val gestureLock = LocalPlayerSheetGestureLock.current
     val density = LocalDensity.current
     val scrollConnection =
@@ -330,228 +345,271 @@ internal fun IrideMp3Queue(
         }
     DisposableEffect(scrollConnection) { onDispose { scrollConnection.cancel() } }
     Column(Modifier.fillMaxSize().padding(1.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.mp3_queue_title),
+                modifier = Modifier.weight(1f).semantics { heading() },
+                color = Color.White,
+                fontFamily = IBMPlexMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+            )
+            Mp3QueueToggle(
+                icon = R.drawable.shuffle,
+                description = stringResource(R.string.mp3_shuffle_queue),
+                active = shuffleModeEnabled,
+                enabled = !isGuest,
+                onClick = { connection.setShuffleModeEnabled(!shuffleModeEnabled) },
+            )
+            Mp3QueueToggle(
+                icon = if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
+                description = stringResource(
+                    when (repeatMode) {
+                        Player.REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                        Player.REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                        else -> R.string.repeat_mode_off
+                    }
+                ),
+                active = repeatMode != Player.REPEAT_MODE_OFF,
+                enabled = !isGuest,
+                onClick = { connection.player.toggleRepeatMode() },
+            )
+        }
         windows.getOrNull(currentIndex)?.mediaItem?.metadata?.let { current ->
             IrideMp3CurrentTrack(current, remaining, textScale, onClick = onNowPlaying)
         }
-        Mp3QueueSectionTitle(stringResource(R.string.mp3_queue_and_history))
-        LazyColumn(
-            state = listState,
-            modifier =
-                Modifier.weight(1f)
-                    .fillMaxWidth()
-                    .clipToBounds()
-                    .nestedScroll(scrollConnection)
-                    .irideFolioGestures(listState)
-                    .pointerInput(scrollConnection) {
-                        awaitEachGesture {
-                            awaitFirstDown(
-                                requireUnconsumed = false,
-                                pass = PointerEventPass.Initial,
-                            )
-                            scrollConnection.reset()
-                            do {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                            } while (event.changes.any { it.pressed })
-                        }
-                    },
-            overscrollEffect = null,
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            item(key = "moods") {
-                LazyRow(
-                    state = moodsState,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp),
-                    overscrollEffect = null,
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .clipToBounds()
-                            .rubberBandOverscroll(
-                                androidx.compose.foundation.gestures.Orientation.Horizontal,
-                                moodsState,
-                            ),
-                ) {
-                    itemsIndexed(moods, key = { _, mood -> mood }) { index, mood ->
-                        CompositionLocalProvider(
-                            LocalArtworkContentColor provides Color.White
-                        ) {
-                            IrideFolioChoiceButton(
-                                selected = controls.selectedMood == mood,
-                                compact = true,
-                                enabled = !isGuest,
-                                onClick = { chooseMood(index) },
-                            ) {
-                                Text(mood, fontSize = 10.sp, lineHeight = 12.sp)
-                            }
-                        }
-                    }
-                }
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val queueSection = rows.dropWhile { it != Mp3QueueEntry.HistoryDivider }
+            val spacingPx = with(density) { 5.dp.roundToPx() }
+            val queueHeight = queueSection.sumOf { entry ->
+                queueItemHeights[entry.key] ?: if (entry is Mp3QueueEntry.Track) {
+                    with(density) { 54.dp.roundToPx() }
+                } else 0
+            } + spacingPx * (queueSection.size - 1).coerceAtLeast(0)
+            // Short queues need enough trailing space to align their heading with the viewport top.
+            val bottomSpace = with(density) {
+                (constraints.maxHeight - queueHeight).coerceAtLeast(0).toDp()
             }
-            stickyHeader(key = MP3_QUEUE_TITLE) {
-                Mp3QueueSectionTitle(
-                    stringResource(
-                        if (automaticRecommendations) R.string.mp3_queue_recommended
-                        else R.string.mp3_up_next
-                    )
-                )
-            }
-            if (displayed.isEmpty())
-                item {
-                    Mp3EmptyText(
-                        stringResource(
-                            if (upcoming.isEmpty()) R.string.mp3_queue_empty
-                            else if (
-                                genres.isLoading &&
-                                    controls.selectedMood in
-                                        listOf(AUTOMIX_FILTER_PARTY, AUTOMIX_FILTER_WORKOUT)
-                            )
-                                R.string.mp3_queue_moods_loading
-                            else R.string.mp3_queue_filter_empty
-                        )
-                    )
-                }
-            rows.forEach { entry ->
-                if (entry == Mp3QueueEntry.HistoryDivider) {
-                    stickyHeader(key = entry.key) {
-                        ReorderableItem(reorder, key = entry.key) {
-                            Mp3QueueSectionTitle(stringResource(R.string.history))
-                        }
-                    }
-                    if (rows.lastOrNull() == Mp3QueueEntry.HistoryDivider) {
-                        item(key = "history_empty") {
-                            Mp3EmptyText(stringResource(R.string.mp3_history_empty))
-                        }
-                    }
-                } else if (entry is Mp3QueueEntry.Track) {
-                    item(key = entry.key) {
-                        ReorderableItem(reorder, key = entry.key) { isDragging ->
-                            val lock = LocalPlayerSheetGestureLock.current
-                            val handle =
-                                if (isGuest) Modifier
-                                else
-                                    Modifier.pointerInput(lock) {
-                                            awaitEachGesture {
-                                                awaitFirstDown(
-                                                    requireUnconsumed = false,
-                                                    pass = PointerEventPass.Initial,
-                                                )
-                                                lock.value = true
-                                                try {
-                                                    do {
-                                                        val event =
-                                                            awaitPointerEvent(PointerEventPass.Initial)
-                                                    } while (event.changes.any { it.pressed })
-                                                } finally {
-                                                    lock.value = false
-                                                }
-                                            }
-                                        }
-                                        .draggableHandle(
-                                            onDragStarted = { draggedWindowUid = entry.windowUid },
-                                            onDragStopped = ::finishDrag,
-                                        )
-                            val dismiss = rememberSwipeToDismissBoxState()
-                            LaunchedEffect(dismiss.settledValue, isGuest) {
-                                // currentValue changes while dragging; settledValue waits for release.
-                                if (
-                                    dismiss.settledValue == SwipeToDismissBoxValue.StartToEnd &&
-                                        !isGuest && entry.windowUid != null
-                                ) {
-                                    val index = connection.player.indexOfWindow(entry.windowUid)
-                                    if (index > connection.player.currentMediaItemIndex)
-                                        connection.player.removeMediaItem(index)
-                                    dismiss.reset()
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = bottomSpace),
+                modifier =
+                    Modifier.fillMaxSize()
+                        .clipToBounds()
+                        .nestedScroll(scrollConnection)
+                        .irideFolioGestures(listState)
+                        .drawWithContent {
+                            drawContent()
+                            val layout = listState.layoutInfo
+                            val visible = layout.visibleItemsInfo
+                            if (visible.isNotEmpty() && layout.totalItemsCount > visible.size) {
+                                val viewport = layout.viewportSize.height.toFloat()
+                                val averageItemSize = visible.map { it.size }.average().toFloat()
+                                val contentSize = averageItemSize * layout.totalItemsCount
+                                if (contentSize > viewport && viewport > 0f) {
+                                    val thumbHeight =
+                                        (viewport * viewport / contentSize)
+                                            .coerceIn(18.dp.toPx(), viewport)
+                                    val scrollOffset =
+                                        (listState.firstVisibleItemIndex * averageItemSize +
+                                            listState.firstVisibleItemScrollOffset)
+                                            .coerceAtLeast(0f)
+                                    val scrollRange = (contentSize - viewport).coerceAtLeast(1f)
+                                    val top =
+                                        (scrollOffset / scrollRange * (viewport - thumbHeight))
+                                            .coerceIn(0f, viewport - thumbHeight)
+                                    drawRoundRect(
+                                        color = Color.White.copy(alpha = 0.36f),
+                                        topLeft = Offset(size.width - 2.dp.toPx(), top),
+                                        size = androidx.compose.ui.geometry.Size(2.dp.toPx(), thumbHeight),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
+                                    )
                                 }
                             }
-                            SwipeToDismissBox(
-                                state = dismiss,
-                                enableDismissFromStartToEnd =
-                                    !isGuest && entry.windowUid != null && !reorder.isAnyItemDragging,
-                                enableDismissFromEndToStart = false,
-                                backgroundContent = {
-                                    Box(
-                                        Modifier.fillMaxSize()
-                                            .drawWithContent {
-                                                // Transparent rows must expose the action only in the
-                                                // revealed strip.
-                                                if (
-                                                    dismiss.dismissDirection ==
-                                                        SwipeToDismissBoxValue.StartToEnd
-                                                ) {
-                                                    val reveal =
-                                                        abs(dismiss.requireOffset())
-                                                            .coerceIn(0f, size.width)
-                                                    if (layoutDirection == LayoutDirection.Ltr) {
-                                                        clipRect(right = reveal) {
-                                                            this@drawWithContent.drawContent()
-                                                        }
-                                                    } else {
-                                                        clipRect(left = size.width - reveal) {
-                                                            this@drawWithContent.drawContent()
+                        }
+                        .pointerInput(scrollConnection) {
+                            awaitEachGesture {
+                                awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                                scrollConnection.reset()
+                                do {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                } while (event.changes.any { it.pressed })
+                            }
+                        },
+                overscrollEffect = null,
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                item(key = "history_title") { Mp3QueueSectionTitle(stringResource(R.string.history)) }
+                if (!hasHistory) {
+                    item(key = "history_empty") {
+                        Mp3EmptyText(stringResource(R.string.mp3_history_empty))
+                    }
+                }
+                rows.forEach { entry ->
+                    when (entry) {
+                        Mp3QueueEntry.HistoryDivider -> {
+                            item(key = entry.key) {
+                                Box(Modifier.onSizeChanged { queueItemHeights[entry.key] = it.height }) {
+                                    ReorderableItem(reorder, key = entry.key) {
+                                        when {
+                                            manualQueueCount > 0 ->
+                                                Mp3QueueSectionTitle(
+                                                    stringResource(R.string.mp3_manual_queue),
+                                                    actionText = stringResource(R.string.mp3_clear_queue),
+                                                    onAction = ::clearManualQueue,
+                                                )
+                                            upNextCount == 0 ->
+                                                Mp3EmptyText(stringResource(R.string.mp3_queue_empty))
+                                            else -> Spacer(Modifier.height(2.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Mp3QueueEntry.UpNextDivider -> {
+                            item(key = entry.key) {
+                                Box(Modifier.onSizeChanged { queueItemHeights[entry.key] = it.height }) {
+                                    Mp3QueueSectionTitle(stringResource(R.string.mp3_up_next))
+                                }
+                            }
+                        }
+                        is Mp3QueueEntry.Track -> {
+                            item(key = entry.key) {
+                                ReorderableItem(reorder, key = entry.key) { isDragging ->
+                                    val lock = LocalPlayerSheetGestureLock.current
+                                    val handle =
+                                        if (isGuest) Modifier
+                                        else
+                                            Modifier.pointerInput(lock) {
+                                                    awaitEachGesture {
+                                                        awaitFirstDown(
+                                                            requireUnconsumed = false,
+                                                            pass = PointerEventPass.Initial,
+                                                        )
+                                                        lock.value = true
+                                                        try {
+                                                            do {
+                                                                val event =
+                                                                    awaitPointerEvent(PointerEventPass.Initial)
+                                                            } while (event.changes.any { it.pressed })
+                                                        } finally {
+                                                            lock.value = false
                                                         }
                                                     }
                                                 }
-                                            }
-                                            .clip(FolioShape(8.dp))
-                                            .background(Color.White.copy(alpha = 0.10f)),
-                                        contentAlignment = Alignment.CenterStart,
-                                    ) {
-                                        Icon(
-                                            painterResource(R.drawable.delete),
-                                            stringResource(R.string.mp3_remove_queue),
-                                            tint = Color.White.copy(alpha = 0.85f),
-                                            modifier = Modifier.padding(start = 12.dp).size(24.dp),
-                                        )
+                                                .draggableHandle(onDragStopped = ::finishDrag)
+                                    val dismiss = rememberSwipeToDismissBoxState()
+                                    LaunchedEffect(dismiss.settledValue, isGuest) {
+                                        // currentValue changes while dragging; settledValue waits for release.
+                                        if (
+                                            dismiss.settledValue == SwipeToDismissBoxValue.StartToEnd &&
+                                                !isGuest && entry.windowUid != null
+                                        ) {
+                                            val index = connection.player.indexOfWindow(entry.windowUid)
+                                            if (index > connection.player.currentMediaItemIndex)
+                                                connection.player.removeMediaItem(index)
+                                            controls.manualQueueOverrides.remove(entry.windowUid)
+                                            dismiss.reset()
+                                        }
                                     }
-                                },
-                            ) {
-                                val addToQueueLabel = stringResource(R.string.add_to_queue)
-                                Mp3QueueRow(
-                                    entry.metadata,
-                                    modifier =
-                                        Modifier.clip(FolioShape(8.dp))
-                                            .background(
-                                                if (isDragging) Color.White.copy(alpha = .10f)
-                                                else Color.Transparent
-                                            )
-                                            .semantics(mergeDescendants = true) {
-                                                if (!isGuest && entry.windowUid == null) {
-                                                    customActions = listOf(
-                                                        CustomAccessibilityAction(addToQueueLabel) {
-                                                            connection.addToQueue(
-                                                                entry.metadata.toMediaItem()
-                                                            )
-                                                            true
+                                    SwipeToDismissBox(
+                                        state = dismiss,
+                                        enableDismissFromStartToEnd =
+                                            !isGuest && entry.windowUid != null && !reorder.isAnyItemDragging,
+                                        enableDismissFromEndToStart = false,
+                                        backgroundContent = {
+                                            Box(
+                                                Modifier.fillMaxSize()
+                                                    .drawWithContent {
+                                                        // Transparent rows expose the action only in the revealed strip.
+                                                        if (
+                                                            dismiss.dismissDirection ==
+                                                                SwipeToDismissBoxValue.StartToEnd
+                                                        ) {
+                                                            val reveal =
+                                                                abs(dismiss.requireOffset())
+                                                                    .coerceIn(0f, size.width)
+                                                            if (layoutDirection == LayoutDirection.Ltr) {
+                                                                clipRect(right = reveal) {
+                                                                    this@drawWithContent.drawContent()
+                                                                }
+                                                            } else {
+                                                                clipRect(left = size.width - reveal) {
+                                                                    this@drawWithContent.drawContent()
+                                                                }
+                                                            }
                                                         }
+                                                    }
+                                                    .clip(FolioShape(8.dp))
+                                                    .background(Color.White.copy(alpha = 0.10f)),
+                                                contentAlignment = Alignment.CenterStart,
+                                            ) {
+                                                Icon(
+                                                    painterResource(R.drawable.delete),
+                                                    stringResource(R.string.mp3_remove_queue),
+                                                    tint = Color.White.copy(alpha = 0.85f),
+                                                    modifier = Modifier.padding(start = 12.dp).size(24.dp),
+                                                )
+                                            }
+                                        },
+                                    ) {
+                                        val addToQueueLabel = stringResource(R.string.add_to_queue)
+                                        Mp3QueueRow(
+                                            entry.metadata,
+                                            modifier =
+                                                Modifier.onSizeChanged {
+                                                    if (entry.windowUid != null) queueItemHeights[entry.key] = it.height
+                                                }.clip(FolioShape(8.dp))
+                                                    .background(
+                                                        if (isDragging) Color.White.copy(alpha = .10f)
+                                                        else Color.Transparent
                                                     )
+                                                    .semantics(mergeDescendants = true) {
+                                                        if (!isGuest && entry.windowUid == null) {
+                                                            customActions = listOf(
+                                                                CustomAccessibilityAction(addToQueueLabel) {
+                                                                    connection.addToQueue(
+                                                                        entry.metadata.toMediaItem()
+                                                                    )
+                                                                    true
+                                                                }
+                                                            )
+                                                        }
+                                                    },
+                                            handle = handle,
+                                            showReorderHandle = !isGuest,
+                                            enabled = !isGuest,
+                                            onClick = {
+                                                if (!isGuest) {
+                                                    if (entry.windowUid != null) {
+                                                        val index =
+                                                            connection.player.indexOfWindow(entry.windowUid)
+                                                        if (index > connection.player.currentMediaItemIndex)
+                                                            connection.playQueueItem(index)
+                                                    } else {
+                                                        connection.playNext(entry.metadata.toMediaItem())
+                                                        val player = connection.player
+                                                        val next = player.currentMediaItemIndex + 1
+                                                        val index =
+                                                            if (
+                                                                next < player.mediaItemCount &&
+                                                                    player.getMediaItemAt(next).mediaId ==
+                                                                        entry.metadata.id
+                                                            ) next
+                                                            else player.currentMediaItemIndex
+                                                        connection.playQueueItem(index)
+                                                    }
                                                 }
                                             },
-                                    handle = handle,
-                                    showReorderHandle = !isGuest,
-                                    enabled = !isGuest,
-                                    onClick = {
-                                        if (!isGuest) {
-                                            if (entry.windowUid != null) {
-                                                val index =
-                                                    connection.player.indexOfWindow(entry.windowUid)
-                                                if (index > connection.player.currentMediaItemIndex)
-                                                    connection.playQueueItem(index)
-                                            } else {
-                                                connection.playNext(entry.metadata.toMediaItem())
-                                                val player = connection.player
-                                                val next = player.currentMediaItemIndex + 1
-                                                val index =
-                                                    if (
-                                                        next < player.mediaItemCount &&
-                                                            player.getMediaItemAt(next).mediaId ==
-                                                                entry.metadata.id
-                                                    ) next
-                                                    else player.currentMediaItemIndex
-                                                connection.playQueueItem(index)
-                                            }
-                                        }
-                                    },
-                                )
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -622,19 +680,61 @@ private class Mp3QueueScrollConnection(
 }
 
 @Composable
-private fun Mp3QueueSectionTitle(text: String) {
+private fun Mp3QueueSectionTitle(
+    text: String,
+    actionText: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
     Column(
         Modifier.fillMaxWidth().semantics { heading() }
     ) {
         HorizontalDivider(color = Color.White.copy(alpha = .12f))
-        Text(
-            text,
-            color = Color.White.copy(alpha = .65f),
-            fontFamily = IBMPlexMonoFontFamily,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text,
+                modifier = Modifier.weight(1f).padding(start = 6.dp, top = 8.dp, bottom = 8.dp),
+                color = Color.White.copy(alpha = .65f),
+                fontFamily = IBMPlexMonoFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+            if (actionText != null && onAction != null) {
+                Text(
+                    actionText,
+                    modifier =
+                        Modifier.clickable(onClickLabel = actionText, onClick = onAction)
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                    color = Color.White.copy(alpha = .55f),
+                    fontFamily = IBMPlexMonoFontFamily,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Mp3QueueToggle(
+    icon: Int,
+    description: String,
+    active: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier.padding(horizontal = 2.dp).size(36.dp).clip(CircleShape)
+            .background(Color.White.copy(alpha = if (active) .24f else .10f))
+            .clickable(enabled = enabled, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            tint = Color.White.copy(alpha = if (enabled) 1f else .35f),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -746,6 +846,7 @@ internal fun IrideMp3Lyrics(
         }
     }
     val reducedMotion = rememberReducedMotion()
+    val lightweightMode by rememberLightweightFolioMode()
     var displayedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var incomingBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val artworkProgress = remember { Animatable(0f) }
@@ -770,7 +871,7 @@ internal fun IrideMp3Lyrics(
                         ?.toBitmap()
                 }
             else null
-        if (!reducedMotion && displayedBitmap != null && bitmap != null) {
+        if (!reducedMotion && !lightweightMode && displayedBitmap != null && bitmap != null) {
             incomingBitmap = bitmap
             artworkProgress.animateTo(1f, tween(700))
         }
@@ -788,14 +889,21 @@ internal fun IrideMp3Lyrics(
                 Modifier.fillMaxSize()
                     .recordFrostBackdrop(backdrop, enabled = (backdrop?.recordingRequests ?: 0) > 0)
             ) {
-                if (lyricsStyle == Mp3LyricsStyle.GRADIENT)
-                    BetterAnimatedGradientBackground(
-                        thumbnail = displayedBitmap,
-                        incomingThumbnail = incomingBitmap,
+                if (lyricsStyle == Mp3LyricsStyle.GRADIENT) {
+                    Mp3LyricsBackground(
+                        artwork = displayedBitmap,
+                        lightweight = lightweightMode,
+                        incomingArtwork = incomingBitmap,
                         crossfadeProgress = artworkProgress.value,
-                        grainOpacity = IrideFolio.LyricsGrainOpacity,
-                        modifier = Modifier.fillMaxSize(),
                     )
+                }
+            }
+            if (lightweightMode && lyricsStyle != Mp3LyricsStyle.GRADIENT) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .graphicsLayer { alpha = actionsOpacity }
+                        .background(Color.Black)
+                )
             }
             // Erase only the foreground text behind the actions, preserving the live background.
             Box(
@@ -856,6 +964,7 @@ internal fun IrideMp3Lyrics(
                     Row(
                         Modifier.fillMaxWidth().graphicsLayer { alpha = actionsOpacity },
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
                     ) {
                         IconButton(
                             onClick = {
@@ -864,7 +973,7 @@ internal fun IrideMp3Lyrics(
                             },
                             enabled =
                                 fullscreen && controlsOpacity > .5f && controller.canSelectLyrics,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
                         ) {
                             Icon(
                                 painterResource(R.drawable.share),
@@ -882,7 +991,7 @@ internal fun IrideMp3Lyrics(
                                 controller.translateAction()
                             },
                             enabled = fullscreen && controlsOpacity > .5f,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
                         ) {
                             Icon(
                                 painterResource(R.drawable.translate),
@@ -897,7 +1006,7 @@ internal fun IrideMp3Lyrics(
                                 showVocalPanel = !showVocalPanel
                             },
                             enabled = fullscreen && controlsOpacity > .5f,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.size(IrideFolio.ControlsTouchTargetSize),
                         ) {
                             Icon(
                                 painterResource(R.drawable.mic),

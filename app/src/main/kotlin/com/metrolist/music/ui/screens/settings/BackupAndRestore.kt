@@ -50,7 +50,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.metrolist.music.BuildConfig
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -67,6 +68,7 @@ import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.IrideFolio
 import com.metrolist.music.ui.menu.AddToPlaylistDialogOnline
 import com.metrolist.music.ui.menu.CsvColumnMappingDialog
 import com.metrolist.music.ui.menu.CsvImportProgressDialog
@@ -77,8 +79,6 @@ import com.metrolist.music.viewmodels.BackupPreviewInfo
 import com.metrolist.music.viewmodels.BackupRestoreViewModel
 import com.metrolist.music.viewmodels.ConvertedSongLog
 import com.metrolist.music.viewmodels.CsvImportState
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -121,35 +121,40 @@ fun BackupAndRestore(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    fun selectBackup(uri: android.net.Uri) {
+        pendingRestoreUri = uri
+        val preview = viewModel.previewBackup(context, uri)
+        backupPreviewInfo = preview
+        showRestoreConfirmDialog = true
+
+        accountCheckFailed = false
+        if (preview.hasAuthData && preview.cookie != null) {
+            isLoadingAccountInfo = true
+            coroutineScope.launch(Dispatchers.IO) {
+                val accountInfo = viewModel.fetchAccountInfoFromBackup(preview.cookie)
+                if (accountInfo != null) {
+                    backupPreviewInfo = accountInfo
+                } else {
+                    accountCheckFailed = true
+                }
+                isLoadingAccountInfo = false
+            }
+        }
+    }
     val backupLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/octet-stream")
         ) { uri ->
             if (uri != null) {
-                viewModel.backup(context, uri)
+                coroutineScope.launch(Dispatchers.IO) {
+                    viewModel.backup(context, uri)
+                }
             }
         }
     val restoreLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                pendingRestoreUri = uri
-                val preview = viewModel.previewBackup(context, uri)
-                backupPreviewInfo = preview
-                showRestoreConfirmDialog = true
-
-                accountCheckFailed = false
-                if (preview.hasAuthData && preview.cookie != null) {
-                    isLoadingAccountInfo = true
-                    coroutineScope.launch(Dispatchers.IO) {
-                        val accountInfo = viewModel.fetchAccountInfoFromBackup(preview.cookie)
-                        if (accountInfo != null) {
-                            backupPreviewInfo = accountInfo
-                        } else {
-                            accountCheckFailed = true
-                        }
-                        isLoadingAccountInfo = false
-                    }
-                }
+                selectBackup(uri)
             }
         }
     val importPlaylistFromCsv =
@@ -187,7 +192,7 @@ fun BackupAndRestore(
             .collectAsStateWithLifecycle()
 
     IridePageFrame(
-        title = stringResource(R.string.app_management_backup),
+        title = stringResource(R.string.iride_backup_screen_title),
         scrollState = settingsScrollState,
         navigationIcon = if (gestureNavigationEnabled()) null else ({ IridePageBackButton(navController) }),
         modifier = Modifier.fillMaxSize(),
@@ -207,7 +212,6 @@ fun BackupAndRestore(
                 Modifier.windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                            .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
                     )
                     .padding(horizontal = 16.dp)
             ) {
@@ -219,26 +223,24 @@ fun BackupAndRestore(
                     )
                 )
 
-                val appName = stringResource(R.string.app_name)
-                val arrowIcon = painterResource(R.drawable.navigate_next)
+                Spacer(Modifier.height(IrideFolio.SettingsTitleBottomSpacing))
 
+                val appName = stringResource(R.string.app_name)
                 Material3SettingsGroup(
                     items =
                         listOfNotNull(
                             Material3SettingsItem(
-                                title = { Text(stringResource(R.string.action_backup)) },
+                                title = { Text(stringResource(R.string.iride_save_copy)) },
                                 icon = painterResource(R.drawable.backup),
                                 onClick = {
                                     val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
                                     backupLauncher.launch(
-                                        "${appName}_${
-                                            LocalDateTime.now().format(formatter)
-                                        }.backup"
+                                        "${appName}_${LocalDateTime.now().format(formatter)}.backup"
                                     )
                                 },
                             ),
                             Material3SettingsItem(
-                                title = { Text(stringResource(R.string.action_restore)) },
+                                title = { Text(stringResource(R.string.iride_load_copy)) },
                                 icon = painterResource(R.drawable.restore),
                                 onClick = {
                                     restoreLauncher.launch(arrayOf("application/octet-stream"))
@@ -269,41 +271,13 @@ fun BackupAndRestore(
                                     },
                                 )
                             else null,
-                            if (BuildConfig.UPDATER_AVAILABLE) {
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.update),
-                                    title = { Text(stringResource(R.string.updater)) },
-                                    trailingContent = {
-                                        Icon(
-                                            painter = arrowIcon,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    },
-                                    onClick = { navController.navigate("settings/updater") },
-                                )
-                            } else null,
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.storage),
-                                title = { Text(stringResource(R.string.storage)) },
-                                description = {
-                                    Text(
-                                        stringResource(R.string.settings_storage_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                },
-                                trailingContent = {
-                                    Icon(
-                                        painter = arrowIcon,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                },
-                                onClick = { navController.navigate("settings/storage") },
-                            ),
-                        )
+                        ),
+                )
+                Text(
+                    text = stringResource(R.string.iride_backup_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                 )
             }
         }

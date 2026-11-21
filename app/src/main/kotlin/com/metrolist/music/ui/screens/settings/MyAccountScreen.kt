@@ -81,6 +81,7 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.screens.IrideFeatureCard
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -444,6 +445,22 @@ fun MyAccountScreen(navController: NavController) {
                     items =
                         listOfNotNull(
                             Material3SettingsItem(
+                                icon = painterResource(R.drawable.backup),
+                                title = { Text(stringResource(R.string.backup_restore)) },
+                                description = {
+                                    Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall)
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.navigate_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/backup_restore") },
+                            ),
+                            Material3SettingsItem(
                                 icon = painterResource(R.drawable.stats),
                                 title = { Text(stringResource(R.string.stats)) },
                                 trailingContent = {
@@ -494,27 +511,36 @@ fun MyAccountScreen(navController: NavController) {
                                 },
                                 onClick = { navController.navigate("settings/privacy") },
                             ) else null),
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.download),
-                                title = { Text(stringResource(R.string.music_import_title)) },
-                                description = {
-                                    Text(
-                                        stringResource(R.string.music_import_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                },
-                                trailingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.navigate_next),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                },
-                                onClick = { navController.navigate("music_import") },
-                            ),
                         ),
                     useLowContrast = true,
+                )
+
+                Text(
+                    text = stringResource(R.string.music_import_title),
+                    style =
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = IBMPlexMonoFontFamily,
+                            letterSpacing = (-0.1).sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 10.dp),
+                )
+                IrideFeatureCard(
+                    title = stringResource(R.string.sync_youtube_account),
+                    subtitle = stringResource(R.string.onboarding_login_desc),
+                    iconRes = R.drawable.sync,
+                    onClick = { navController.navigate("login") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                IrideFeatureCard(
+                    title = stringResource(R.string.spotify_import_playlists),
+                    subtitle = stringResource(R.string.spotify_import_desc),
+                    iconRes = R.drawable.spotify_logo,
+                    iconTint = Color.Unspecified,
+                    onClick = { navController.navigate("spotify_import") },
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

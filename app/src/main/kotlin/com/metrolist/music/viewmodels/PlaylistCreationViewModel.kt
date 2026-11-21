@@ -117,8 +117,6 @@ class PlaylistCreationViewModel @Inject constructor(
         if (_state.value.saving || _state.value.addingToPlaylist) return
         _state.update { it.copy(name = name.take(120)) }
         persist()
-        page = 0
-        if (_state.value.query.isBlank() && _state.value.songs.isEmpty()) discover(debounce = true)
     }
 
     fun setQuery(query: String) {
@@ -137,13 +135,16 @@ class PlaylistCreationViewModel @Inject constructor(
     fun toggle(song: MediaMetadata) {
         if (_state.value.saving || _state.value.preparing) return
         _state.update { draft ->
-            draft.copy(songs = if (draft.songs.any { it.id == song.id }) {
+            val songs = if (draft.songs.any { it.id == song.id }) {
                 draft.songs.filterNot { it.id == song.id }
-            } else draft.songs + song)
+            } else draft.songs + song
+            draft.copy(
+                songs = songs,
+                // Keep discovery results stable; adding a suggestion removes only that row.
+                suggestions = draft.suggestions.filterNot { it.id == song.id },
+            )
         }
         persist()
-        page = 0
-        if (_state.value.query.isBlank()) discover(debounce = true)
     }
 
     fun refresh() {
@@ -162,7 +163,6 @@ class PlaylistCreationViewModel @Inject constructor(
                 if (debounce) delay(500)
                 val query = draft.query.trim()
                 val local = repository.localSongs(query).filterNot { it.id in existingIds }
-                _state.update { it.copy(suggestions = playlistDraftRecommendations(local, allSongs, draft.name, page)) }
                 var unavailable = false
                 val remote = if (query.isNotEmpty()) {
                     repository.search(query).also { unavailable = it == null }.orEmpty()
@@ -180,10 +180,14 @@ class PlaylistCreationViewModel @Inject constructor(
                 } else if (draft.name.trim().length >= 3) {
                     repository.search(draft.name.trim()).also { unavailable = it == null }.orEmpty()
                 } else emptyList()
-                _state.update {
-                    it.copy(
-                        suggestions = if (query.isNotEmpty()) (local + remote).filterNot { song -> song.id in existingIds }.distinctBy { song -> song.id }
-                        else playlistDraftRecommendations(remote + local, allSongs, draft.name, page),
+                _state.update { current ->
+                    val selectedIds = current.songs.mapTo(mutableSetOf()) { it.id }
+                    current.copy(
+                        suggestions = if (query.isNotEmpty()) (local + remote)
+                            .filterNot { song -> song.id in existingIds || song.id in selectedIds }
+                            .distinctBy { song -> song.id }
+                        else playlistDraftRecommendations(remote + local, allSongs, draft.name, page)
+                            .filterNot { song -> song.id in selectedIds },
                         unavailable = unavailable,
                         loading = false,
                     )

@@ -102,13 +102,17 @@ internal class IrideFolioContextMotion {
         }
     }
 
-    suspend fun present(visible: Boolean, reducedMotion: Boolean) {
+    suspend fun present(visible: Boolean, reducedMotion: Boolean, lightweightMode: Boolean = false) {
         pressJob?.cancel()
         val target = FolioContextFrame(reveal = if (visible) 1f else 0f)
         if (reducedMotion) frame.snapTo(target)
         else frame.animateTo(
             target,
-            if (visible) IrideFolioContextMotionSpec.OpenSpring else IrideFolioContextMotionSpec.CloseTween,
+            when {
+                lightweightMode -> IrideFolioContextMotionSpec.LightweightTween
+                visible -> IrideFolioContextMotionSpec.OpenSpring
+                else -> IrideFolioContextMotionSpec.CloseTween
+            },
         )
         if (!visible) {
             committed = false
@@ -149,6 +153,10 @@ internal object IrideFolioContextMotionSpec {
 
     val CloseTween = tween<FolioContextFrame>(
         durationMillis = 300,
+        easing = CubicBezierEasing(0.2f, 0f, 0.2f, 1f),
+    )
+    val LightweightTween = tween<FolioContextFrame>(
+        durationMillis = 140,
         easing = CubicBezierEasing(0.2f, 0f, 0.2f, 1f),
     )
 }

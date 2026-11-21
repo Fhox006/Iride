@@ -15,6 +15,7 @@ fun <T> StateFlow<T>.collectDeferredHomeState(
     key: String,
     identity: (T) -> Any? = { Unit },
     mergeWhileVisible: (T, T) -> T = { current, _ -> current },
+    applyPendingWhenHidden: Boolean = true,
     hasContent: (T) -> Boolean = { value ->
         when (value) {
             null -> false
@@ -26,7 +27,7 @@ fun <T> StateFlow<T>.collectDeferredHomeState(
 ): State<T> {
     val snapshot = LocalHomeContentSnapshot.current
     val displayed = remember(snapshot, key, this) {
-        snapshot?.state(key, this, hasContent, identity, mergeWhileVisible) ?: this
+        snapshot?.state(key, this, hasContent, identity, mergeWhileVisible, applyPendingWhenHidden) ?: this
     }
     return displayed.collectAsStateWithLifecycle()
 }

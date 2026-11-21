@@ -148,13 +148,12 @@ fun IrideFolioPlaylistPicker(
                         },
                         thumbnailContent = {
                             PlaylistThumbnail(
-                                thumbnails = playlist.thumbnails,
+                                title = playlist.title,
+                                thumbnailUrl = playlist.playlist.thumbnailUrl,
+                                playlistId = playlist.playlist.browseId ?: playlist.id,
                                 size = ListThumbnailSize,
                                 shape = SquircleShape(ThumbnailCornerRadius, cornerSmoothing = 0.5f),
                                 softBorder = true,
-                                placeHolder = {
-                                    Icon(painterResource(R.drawable.queue_music), null, Modifier.size(ListThumbnailSize / 2))
-                                },
                             )
                         },
                         trailingContent = {

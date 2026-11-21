@@ -5,7 +5,9 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.models.MusicResponsiveHeaderRenderer
 import com.metrolist.innertube.models.MusicResponsiveListItemRenderer
+import com.metrolist.innertube.models.MusicShelfRenderer
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.getContinuation
 import com.metrolist.innertube.models.getItems
 import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.response.BrowseResponse
@@ -108,14 +110,37 @@ data class AlbumPage(
         }
 
         fun getSongs(response: BrowseResponse, album: AlbumItem): List<SongItem> {
-            val tabs = response.contents?.singleColumnBrowseResultsRenderer?.tabs ?: response.contents?.twoColumnBrowseResultsRenderer?.tabs
-            val shelfRenderer = tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()?.musicShelfRenderer ?:
-                response.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents?.firstOrNull()?.musicShelfRenderer
+            val shelfRenderer = getTrackShelf(response)
 
             val songs = shelfRenderer?.contents?.getItems()?.mapNotNull {
                 getSong(it, album)
             }
             return songs ?: emptyList()
+        }
+
+        fun hasSongsContinuation(response: BrowseResponse): Boolean {
+            val primarySectionList = (response.contents?.singleColumnBrowseResultsRenderer?.tabs
+                ?: response.contents?.twoColumnBrowseResultsRenderer?.tabs)
+                ?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer
+            val secondarySectionList = response.contents?.twoColumnBrowseResultsRenderer
+                ?.secondaryContents?.sectionListRenderer
+            val trackShelf = getTrackShelf(response)
+            return trackShelf?.let { shelf ->
+                shelf.contents?.getContinuation() != null ||
+                    shelf.continuations?.getContinuation() != null
+            } == true || primarySectionList?.continuations?.getContinuation() != null ||
+                secondarySectionList?.continuations?.getContinuation() != null
+        }
+
+        private fun getTrackShelf(response: BrowseResponse): MusicShelfRenderer? {
+            val tabs = response.contents?.singleColumnBrowseResultsRenderer?.tabs
+                ?: response.contents?.twoColumnBrowseResultsRenderer?.tabs
+            val primaryTrackShelf = tabs?.firstOrNull()?.tabRenderer?.content
+                ?.sectionListRenderer?.contents?.firstNotNullOfOrNull { it?.musicShelfRenderer }
+            val secondaryTrackShelf = response.contents?.twoColumnBrowseResultsRenderer
+                ?.secondaryContents?.sectionListRenderer?.contents
+                ?.firstNotNullOfOrNull { it.musicShelfRenderer }
+            return primaryTrackShelf ?: secondaryTrackShelf
         }
 
         /** Album track shelves can be returned in different columns depending on release type. */

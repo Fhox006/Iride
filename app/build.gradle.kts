@@ -33,8 +33,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 34
-        versionName = "0.1.0-alpha34"
+        versionCode = 35
+        versionName = "0.1.0-alpha35"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -139,7 +139,16 @@ android {
         create("performance") {
             initWith(getByName("debug"))
             isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             matchingFallbacks += listOf("debug")
+            if (applicationIdOverride == null) {
+                applicationIdSuffix = ".performance"
+            }
             if (appNameOverride == null) {
                 resValue("string", "app_name", "Iride Test")
             }
@@ -166,6 +175,10 @@ android {
         resValues = true
     }
 
+    sourceSets.named("main") {
+        kotlin.srcDir("src/main/rendering")
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -179,7 +192,7 @@ android {
     }
 
     androidResources {
-        generateLocaleConfig = true
+        generateLocaleConfig = false
     }
 
     packaging {
@@ -203,8 +216,69 @@ android {
     }
 }
 
+androidComponents {
+    beforeVariants(selector().withBuildType("performance")) { variant ->
+        providers.gradleProperty("iride.performanceMinSdk").orNull?.let { value ->
+            val minimumSdk = value.toInt()
+            require(minimumSdk in 26..36) { "iride.performanceMinSdk must be between 26 and 36" }
+            variant.minSdk = minimumSdk
+        }
+    }
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    // Keep rendering-only edits out of Room/Hilt inputs; processor-visible types stay
+    // in the regular Kotlin source root. KSP excludes source roots, not individual files.
+    excludedSources.from(file("src/main/rendering"))
+}
+
+val validateRenderingAnnotations = tasks.register("validateRenderingAnnotations") {
+    val renderingSources = fileTree("src/main/rendering") { include("**/*.kt") }
+    inputs.files(renderingSources).withPathSensitivity(PathSensitivity.RELATIVE)
+    doLast {
+        val allowed = setOf(
+            "Composable", "OptIn", "Suppress", "SuppressLint", "Preview", "Stable", "Immutable",
+            "ReadOnlyComposable", "NonRestartableComposable", "NonSkippableComposable",
+        )
+        val annotation = Regex("""(?<!\w)@(?:\w+\.)*(\w+)""")
+        renderingSources.forEach { source ->
+            val text = source.readText()
+            val unsupported = annotation.findAll(text).firstOrNull { it.groupValues[1] !in allowed }
+            check(unsupported == null && !Regex("""(?<!\w)@\[""").containsMatchIn(text)) {
+                "${source.name}: move processor annotations into src/main/kotlin; rendering sources bypass KSP."
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach {
+    dependsOn(validateRenderingAnnotations)
+}
+
+// KSP 2.3.12's AGP 9 integration re-adds Kotlin roots as Java inputs without
+// honoring excludedSources. Filter the final roots after that integration runs.
+afterEvaluate {
+    tasks.withType<com.google.devtools.ksp.gradle.KspAATask>().configureEach {
+        val renderingRoot = layout.projectDirectory.dir("src/main/rendering").asFile.toPath()
+        val processingRoots = files(kspConfig.javaSourceRoots.from.toList())
+        kspConfig.javaSourceRoots.setFrom(processingRoots.filter { !it.toPath().startsWith(renderingRoot) })
+    }
+}
+
+// Archiving the app's whole compiler output costs more than compiling a local edit.
+// Preserve incremental state locally; CI and explicit cache restores retain the cache.
+val cacheAppCompilation = providers.gradleProperty("iride.cacheAppCompilation")
+    .orElse(providers.environmentVariable("CI"))
+    .map(String::toBoolean)
+    .getOrElse(false)
+tasks.matching {
+    it.name.startsWith("compile") &&
+        (it.name.endsWith("DebugKotlin") || it.name.endsWith("PerformanceKotlin"))
+}.configureEach {
+    if (!cacheAppCompilation) {
+        outputs.doNotCacheIf("Local app compilation keeps incremental outputs in place") { true }
+    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSize
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.theme.IBMPlexMonoFontFamily
 import com.metrolist.music.ui.theme.FolioShape
@@ -80,6 +79,11 @@ import kotlinx.coroutines.launch
 
 val FloatingBottomNavigationHeight = IrideBottomDockTouchTargetSize + IrideMiniPlayerContentInset * 2
 private val BottomDockSelectionInset = 2.dp
+private val BottomNavigationCornerRadius = IrideFolio.ControlsCornerRadius
+private val BottomNavigationPanelShape = FolioShape(
+    bottomEnd = BottomNavigationCornerRadius,
+    bottomStart = BottomNavigationCornerRadius,
+)
 
 @Composable
 fun FloatingBottomNavigation(
@@ -151,23 +155,11 @@ fun FloatingBottomNavigation(
     )
     // Keep selection while hidden without leaving pointer targets above the expanded player.
     if (!visible) return
-    var panelBounds by remember { mutableStateOf<Rect?>(null) }
-    val cornerInfo = rememberDeviceCornerInfo()
-    val panelShape = rememberDeviceMatchedBottomPanelShape(
-        horizontalPadding = IrideFolio.HorizontalPadding,
-        additionalBottomSpacing = 0.dp,
-        topRadius = 0.dp,
-        panelBoundsOnScreen = panelBounds,
-        fallbackBottomRadius = IrideFolio.ControlsCornerRadius,
-        cornerInfo = cornerInfo,
-    )
+    val panelShape = BottomNavigationPanelShape
     BoxWithConstraints(
         modifier = modifier
             .irideBottomDockBounds()
             .height(FloatingBottomNavigationHeight)
-            .onGloballyPositioned {
-                panelBounds = Rect(it.positionOnScreen(), it.size.toSize())
-            }
             .clip(panelShape)
             .padding(IrideMiniPlayerContentInset)
             .selectableGroup()
@@ -274,14 +266,7 @@ fun FloatingBottomNavigation(
             (tabEdges[toIndex] - tabEdges[fromIndex]) * fraction + indicatorInsetPx
         val indicatorEnd = tabEdges[fromIndex + 1] +
             (tabEdges[toIndex + 1] - tabEdges[fromIndex + 1]) * fraction - indicatorInsetPx
-        val startCornerMatch = (1f - position).coerceIn(0f, 1f)
-        val endCornerMatch = (position - (navigationItems.lastIndex - 1)).coerceIn(0f, 1f)
-        val indicatorShape = FolioShape(
-            topStart = selectionRadius,
-            topEnd = selectionRadius,
-            bottomStart = selectionRadius * (1f - startCornerMatch),
-            bottomEnd = selectionRadius * (1f - endCornerMatch),
-        )
+        val indicatorShape = FolioShape(selectionRadius)
         Canvas(Modifier.fillMaxSize()) {
             // The shared inset contour keeps a constant gap at either outer corner, including
             // during a tab slide. Inner corners retain the regular selection rounding.
@@ -428,20 +413,32 @@ internal fun Modifier.frostedNavigationSurface(
     observeBackdrop: Boolean = false,
     backdropOpacity: Float = 1f,
     opaqueBackground: Boolean = true,
+    lowPerformanceSurface: Color? = null,
 ): Modifier = composed {
+    val lightweightMode by rememberLightweightFolioMode()
     var position by remember { mutableStateOf(Offset.Zero) }
     val revealPaint = remember { Paint() }
     val density = LocalDensity.current.density
-    val grain = remember(density) { irideGrainBrush(density) }
+    val grain = remember(density, lightweightMode) {
+        if (lightweightMode) null else irideGrainBrush(density)
+    }
     this
-        .onGloballyPositioned { position = it.positionOnScreen() }
+        .then(
+            if (lightweightMode) Modifier
+            else Modifier.onGloballyPositioned { position = it.positionOnScreen() },
+        )
         .clip(shape)
         // The observer must share the blur's clipped layer. Invalidating a node outside this
         // clip only replays the inner cached layer, which can still contain the unblurred fallback.
-        .then(if (observeBackdrop) Modifier.observeFrostBackdrop(backdrop) else Modifier)
+        .then(if (observeBackdrop && !lightweightMode) Modifier.observeFrostBackdrop(backdrop) else Modifier)
         .drawBehind {
             val reveal = progress.coerceIn(0f, 1f)
             if (reveal <= 0f) return@drawBehind
+            if (lightweightMode) {
+                if (lowPerformanceSurface != null) drawRect(lowPerformanceSurface, alpha = reveal)
+                else drawRect(surface, alpha = reveal * (surfaceAlpha ?: IrideFolio.FrostedFallbackOpacity))
+                return@drawBehind
+            }
             val backdropReady = backdrop != null && backdrop.content.size.width > 0 &&
                 backdrop.content.size.height > 0
             if (backdropReady) {
@@ -472,7 +469,7 @@ internal fun Modifier.frostedNavigationSurface(
                 // Sample in the same coordinates as the backdrop, not the moving control's local
                 // origin. Scrolling/dragging reveals another part of the field beneath the clip.
                 val sampleOffset = position - backdrop.positionOnScreen
-                drawIrideSurfaceGrain(grain, reveal * IrideFolio.SurfaceGrainOpacity, sampleOffset)
+                drawIrideSurfaceGrain(grain!!, reveal * IrideFolio.SurfaceGrainOpacity, sampleOffset)
             }
         }
 }

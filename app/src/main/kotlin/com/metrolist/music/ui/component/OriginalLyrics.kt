@@ -11,7 +11,6 @@ import android.content.Intent
 import timber.log.Timber
 import android.text.Layout
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -926,7 +925,7 @@ fun OriginalLyrics(
                 if (isLyricsProviderShown) {
                     item {
                         Text(
-                            text = "Lyrics from ${lyricsEntity?.provider}",
+                            text = stringResource(R.string.lyrics_from_provider, lyricsEntity?.provider.orEmpty()),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             fontWeight = FontWeight.Medium,
@@ -1921,7 +1920,7 @@ fun OriginalLyrics(
                 ) {
                     Box(modifier = Modifier.padding(32.dp)) {
                         Text(
-                            text = "Generating image..." + "\n" + "Please wait",
+                            text = stringResource(R.string.generating_image) + "\n" + stringResource(R.string.please_wait),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
@@ -1986,13 +1985,13 @@ fun OriginalLyrics(
                                     putExtra(Intent.EXTRA_STREAM, uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share lyrics"))
+                            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_lyrics)))
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to share lyrics image")
                             Toast
                                 .makeText(
                                     context,
-                                    "Failed to create image: ${e.message}",
+                                    context.getString(R.string.failed_to_create_image, e.message.orEmpty()),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                         } finally {

@@ -9,12 +9,17 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.ui.component.IrideFolioContextMenu
-import com.metrolist.music.ui.component.folioLibraryAction
 import com.metrolist.music.ui.component.folioMenuAction
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
-fun ArtistMenu(originalArtist: Artist, coroutineScope: CoroutineScope, onDismiss: () -> Unit) {
+fun ArtistMenu(
+    originalArtist: Artist,
+    coroutineScope: CoroutineScope,
+    onDismiss: () -> Unit,
+    onSelectLibraryView: ((Boolean) -> Unit)? = null,
+    libraryViewActive: Boolean = false,
+) {
     val context = LocalContext.current
     val database = LocalDatabase.current
     val artistState = database.artist(originalArtist.id).collectAsState(initial = originalArtist)
@@ -23,18 +28,33 @@ fun ArtistMenu(originalArtist: Artist, coroutineScope: CoroutineScope, onDismiss
     IrideFolioContextMenu(
         items =
             buildList {
-                add(
-                    folioLibraryAction(
-                        saved = artist.artist.bookmarkedAt != null,
-                        onClick = { database.transaction { update(artist.artist.toggleLike()) } },
+                if (onSelectLibraryView != null) {
+                    add(
+                        folioMenuAction(
+                            label = R.string.filter_library,
+                            icon = if (libraryViewActive) R.drawable.bookmark_filled else R.drawable.bookmark_outlined,
+                            onClick = { onSelectLibraryView(true) },
+                            selected = libraryViewActive,
+                            section = R.string.filter_library,
+                        )
                     )
-                )
+                    add(
+                        folioMenuAction(
+                            label = R.string.online,
+                            icon = R.drawable.language,
+                            onClick = { onSelectLibraryView(false) },
+                            selected = !libraryViewActive,
+                            section = R.string.filter_library,
+                        )
+                    )
+                }
 
                 if (artist.artist.isYouTubeArtist)
                     add(
                         folioMenuAction(
                             R.string.share,
                             R.drawable.share,
+                            section = R.string.share,
                             onClick = {
                                 context.startActivity(
                                     Intent.createChooser(

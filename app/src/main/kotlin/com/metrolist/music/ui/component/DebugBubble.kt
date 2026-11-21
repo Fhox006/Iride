@@ -1,11 +1,11 @@
 package com.metrolist.music.ui.component
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.shape.CircleShape
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -52,11 +52,12 @@ import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.utils.SyncStatus
 import kotlin.math.roundToInt
 
+@Composable
 private fun syncStatusLabel(s: SyncStatus) = when (s) {
-    SyncStatus.Idle -> "Idle"
-    SyncStatus.Syncing -> "Syncing..."
-    SyncStatus.Completed -> "Done"
-    is SyncStatus.Error -> "ERR: ${s.message.take(25)}"
+    SyncStatus.Idle -> stringResource(R.string.debug_sync_idle)
+    SyncStatus.Syncing -> stringResource(R.string.debug_sync_in_progress)
+    SyncStatus.Completed -> stringResource(R.string.debug_sync_complete)
+    is SyncStatus.Error -> stringResource(R.string.debug_sync_error, s.message.take(25))
 }
 
 @Composable
@@ -105,7 +106,7 @@ fun DebugBubble(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(R.drawable.bug_report),
-                            contentDescription = "Debug",
+                            contentDescription = stringResource(R.string.debug_title),
                             tint = MaterialTheme.colorScheme.textPrimary,
                             modifier = Modifier.size(24.dp)
                         )
@@ -127,7 +128,7 @@ fun DebugBubble(
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Text(
-                                text = "DEBUG",
+                                text = stringResource(R.string.debug_title),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -145,34 +146,34 @@ fun DebugBubble(
                                         } else ""
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                         clipboard.setPrimaryClip(ClipData.newPlainText("Lyrics+Debug", plain + debugBlock))
-                                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
                                     }
                                     expanded = false
                                 }
                             ) {
                                 Icon(painterResource(R.drawable.content_copy), null, Modifier.size(16.dp))
-                                Text(" Copy Lyrics+Debug", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.debug_copy_lyrics_and_log), style = MaterialTheme.typography.labelMedium)
                             }
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             Text(
-                                text = "SINCRONIZZAZIONE",
+                                text = stringResource(R.string.settings_section_sync_data),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
 
                             val statusLines = buildList {
-                                add("Overall: ${syncStatusLabel(syncState.overallStatus)}")
+                                add(stringResource(R.string.debug_sync_overall, syncStatusLabel(syncState.overallStatus)))
                                 if (syncState.currentOperation.isNotEmpty())
-                                    add("Op: ${syncState.currentOperation}")
-                                add("Liked songs: ${syncStatusLabel(syncState.likedSongs)}")
-                                add("Library: ${syncStatusLabel(syncState.librarySongs)}")
-                                add("Uploaded: ${syncStatusLabel(syncState.uploadedSongs)}")
-                                add("Albums: ${syncStatusLabel(syncState.likedAlbums)}")
-                                add("Artists: ${syncStatusLabel(syncState.artists)}")
-                                add("Playlists: ${syncStatusLabel(syncState.playlists)}")
+                                    add(stringResource(R.string.debug_sync_operation, syncState.currentOperation))
+                                add(stringResource(R.string.debug_sync_liked, syncStatusLabel(syncState.likedSongs)))
+                                add(stringResource(R.string.debug_sync_library, syncStatusLabel(syncState.librarySongs)))
+                                add(stringResource(R.string.debug_sync_uploaded, syncStatusLabel(syncState.uploadedSongs)))
+                                add(stringResource(R.string.debug_sync_albums, syncStatusLabel(syncState.likedAlbums)))
+                                add(stringResource(R.string.debug_sync_artists, syncStatusLabel(syncState.artists)))
+                                add(stringResource(R.string.debug_sync_playlists, syncStatusLabel(syncState.playlists)))
                             }
                             statusLines.forEach { line ->
                                 Text(
@@ -189,7 +190,7 @@ fun DebugBubble(
                                 }
                             ) {
                                 Icon(painterResource(R.drawable.sync), null, Modifier.size(16.dp))
-                                Text(" Force Full Sync", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.debug_force_sync), style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }

@@ -20,7 +20,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import com.metrolist.music.ui.theme.FolioShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +37,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,16 +98,11 @@ fun IrideFolioReleaseShelf(
         CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
             ListItem(
                 title = release.title,
+                trackLiked = librarySong?.song?.liked == true,
                 subtitle = release.artistName,
                 subtitleColor = MaterialTheme.colorScheme.textSecondary,
                 badges = {
-                    if (librarySong?.song?.liked == true) com.metrolist.music.ui.component.Icon.Starred()
                     if (release.explicit) com.metrolist.music.ui.component.Icon.Explicit()
-                    if (songId != null) {
-                        val download by LocalDownloadUtil.current.getDownload(songId)
-                            .collectAsStateWithLifecycle(initialValue = null)
-                        com.metrolist.music.ui.component.Icon.Download(download?.state)
-                    }
                 },
                 showDivider = false,
                 isActive = isActive,
@@ -122,7 +115,6 @@ fun IrideFolioReleaseShelf(
                             shape = SquircleShape(ThumbnailCornerRadius, cornerSmoothing = .5f),
                             modifier = Modifier.size(ListThumbnailSize),
                             softBorder = true,
-                            showLikedStar = librarySong?.song?.liked == true,
                         )
                         if (resolvingId == release.id) {
                             CircularProgressIndicator(
@@ -134,11 +126,13 @@ fun IrideFolioReleaseShelf(
                     }
                 },
                 trailingContent = {
+                    if (songId != null) {
+                        val download by LocalDownloadUtil.current.getDownload(songId)
+                            .collectAsStateWithLifecycle(initialValue = null)
+                        com.metrolist.music.ui.component.Icon.DownloadStatus(download?.state, showProgress = true)
+                    }
                     SongMenuIconButton(onClick = { onMenuClick(release) }) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = stringResource(R.string.more_options),
-                        )
+                        TrackOverflowIcon()
                     }
                 },
                 modifier = Modifier.width(itemWidth).irideFolioCombinedClickable(

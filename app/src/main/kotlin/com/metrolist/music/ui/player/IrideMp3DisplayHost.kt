@@ -118,7 +118,7 @@ internal fun IrideMp3DisplayHost(
         animateFloatAsState(
             if (!state.inFullscreenWindow || state.controlsVisible || expansion.value < 1f) 1f
             else 0f,
-            tween(if (reducedMotion) 0 else IrideMotion.Short),
+            tween(if (reducedMotion) 0 else IrideMotion.Long),
             label = "mp3DisplayControls",
         )
     val accessibility = LocalAccessibilityManager.current

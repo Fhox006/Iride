@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,10 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,6 +23,8 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.utils.rememberReducedMotion
+
+internal val LocalTopBarLowPerformanceSurfaceColor = staticCompositionLocalOf<Color?> { null }
 
 /**
  * Folio controls only. Legacy title/background arguments remain source-compatible, but never
@@ -34,12 +39,14 @@ fun IridePageTopBar(
     strokeColor: Color = Color.White.copy(alpha = 0.08f),
     titleProgress: Float = progress,
     navigationIcon: (@Composable () -> Unit)? = null,
+    detachedAction: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     menuSections: List<List<IrideFolioMenuAction>> = emptyList(),
     titleContent: (@Composable () -> Unit)? = null,
     reducedMotion: Boolean = rememberReducedMotion(),
 ) {
     val backdrop = LocalScreenFrostBackdrop.current
+    val lowPerformanceSurface = LocalTopBarLowPerformanceSurfaceColor.current
     val surfaceProgress = if (LocalArtistControlMotion.current != null) 1f else progress
     IridePageTopBar(progress = progress, modifier = modifier) {
         if (navigationIcon != null) {
@@ -48,7 +55,11 @@ fun IridePageTopBar(
                     Modifier.size(IrideFolio.ControlSurfaceSize)
                         .trackArtistSourceControl("back")
                         .artistControlMotion("back")
-                        .irideFolioControlSurface(surfaceProgress, backdrop)
+                        .irideFolioControlSurface(
+                            surfaceProgress,
+                            backdrop,
+                            lowPerformanceSurface = lowPerformanceSurface,
+                        )
                 ) {
                     navigationIcon()
                 }
@@ -58,12 +69,37 @@ fun IridePageTopBar(
             titleContent?.invoke()
         }
         Row(
-            modifier = Modifier.trackArtistSourceControl("menu", menuSections.isNotEmpty())
-                .artistControlMotion("menu").irideFolioControlSurface(surfaceProgress, backdrop),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IrideFolioCompactControls { Row(content = actions) }
-            IrideFolioOverflowMenu(menuSections)
+            detachedAction?.let { action ->
+                Box(
+                    modifier = Modifier.size(IrideFolio.ControlSurfaceSize)
+                        .irideFolioControlSurface(
+                            surfaceProgress,
+                            backdrop,
+                            shape = CircleShape,
+                            lowPerformanceSurface = lowPerformanceSurface,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    IrideFolioCompactControls { action() }
+                }
+            }
+            Row(
+                modifier = Modifier.trackArtistSourceControl("menu", menuSections.isNotEmpty())
+                    .artistControlMotion("menu").irideFolioControlSurface(
+                        surfaceProgress,
+                        backdrop,
+                        lowPerformanceSurface = lowPerformanceSurface,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IrideFolioCompactControls(normalizeHeaderActionIcons = true) {
+                    Row(content = actions)
+                }
+                IrideFolioOverflowMenu(menuSections)
+            }
         }
     }
 }

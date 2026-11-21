@@ -55,6 +55,16 @@ fun IrideSwitch(
         targetValue = if (checked) trackWidth - thumbSize - inset else inset,
         label = "irideSwitchThumbOffset",
     )
+    val interactionSource = remember { MutableInteractionSource() }
+    val clickModifier = if (onCheckedChange == null) {
+        Modifier
+    } else {
+        Modifier.clickable(
+            enabled = enabled,
+            interactionSource = interactionSource,
+            indication = null,
+        ) { onCheckedChange(!checked) }
+    }
 
     Box(
         modifier = modifier
@@ -68,11 +78,7 @@ fun IrideSwitch(
                 else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.4f),
                 shape = CircleShape,
             )
-            .clickable(
-                enabled = enabled && onCheckedChange != null,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { onCheckedChange?.invoke(!checked) },
+            .then(clickModifier),
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(

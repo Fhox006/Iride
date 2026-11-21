@@ -8,7 +8,7 @@ package com.metrolist.music.viewmodels
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import com.metrolist.music.ui.component.IrideFolioToast as Toast
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import com.metrolist.innertube.utils.parseCookieString
@@ -44,6 +44,7 @@ import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.OutputStream
 import java.util.zip.ZipEntry
 import javax.inject.Inject
 
@@ -74,22 +75,11 @@ class BackupRestoreViewModel @Inject constructor(
 ) : ViewModel() {
     fun backup(context: Context, uri: Uri) {
         runCatching {
-            context.applicationContext.contentResolver.openOutputStream(uri)?.use {
-                it.buffered().zipOutputStream().use { outputStream ->
-                    (context.filesDir / "datastore" / SETTINGS_FILENAME).inputStream().buffered()
-                        .use { inputStream ->
-                            outputStream.putNextEntry(ZipEntry(SETTINGS_FILENAME))
-                            inputStream.copyTo(outputStream)
-                        }
-                    runBlocking(Dispatchers.IO) {
-                        database.checkpoint()
-                    }
-                    FileInputStream(database.openHelper.writableDatabase.path).use { inputStream ->
-                        outputStream.putNextEntry(ZipEntry(InternalDatabase.DB_NAME))
-                        inputStream.copyTo(outputStream)
-                    }
+            val outputStream =
+                requireNotNull(context.applicationContext.contentResolver.openOutputStream(uri)) {
+                    context.getString(R.string.backup_open_selected_failed)
                 }
-            }
+            outputStream.use { writeBackup(context, it) }
         }.onSuccess {
             Toast.makeText(context, R.string.backup_create_success, Toast.LENGTH_SHORT).show()
         }.onFailure {
@@ -98,10 +88,29 @@ class BackupRestoreViewModel @Inject constructor(
         }
     }
 
+    private fun writeBackup(context: Context, output: OutputStream) {
+        output.buffered().zipOutputStream().use { outputStream ->
+            (context.filesDir / "datastore" / SETTINGS_FILENAME).inputStream().buffered()
+                .use { inputStream ->
+                    outputStream.putNextEntry(ZipEntry(SETTINGS_FILENAME))
+                    inputStream.copyTo(outputStream)
+                }
+            runBlocking(Dispatchers.IO) { database.checkpoint() }
+            FileInputStream(database.openHelper.writableDatabase.path).use { inputStream ->
+                outputStream.putNextEntry(ZipEntry(InternalDatabase.DB_NAME))
+                inputStream.copyTo(outputStream)
+            }
+        }
+    }
+
     fun restore(context: Context, uri: Uri, clearAuthData: Boolean = false) {
         runCatching {
             Timber.tag("RESTORE").i("Starting restore from URI: $uri, clearAuthData: $clearAuthData")
-            context.applicationContext.contentResolver.openInputStream(uri)?.use { raw ->
+            val inputStream =
+                requireNotNull(context.applicationContext.contentResolver.openInputStream(uri)) {
+                    context.getString(R.string.backup_open_selected_failed)
+                }
+            inputStream.use { raw ->
                 raw.zipInputStream().use { inputStream ->
                     var entry = tryOrNull { inputStream.nextEntry }
                     var foundAny = false
@@ -135,11 +144,9 @@ class BackupRestoreViewModel @Inject constructor(
                         entry = tryOrNull { inputStream.nextEntry }
                     }
                     if (!foundAny) {
-                        Timber.tag("RESTORE").w("No expected entries found in archive")
+                        error("No Iride backup entries found in archive")
                     }
                 }
-            } ?: run {
-                Timber.tag("RESTORE").e("Could not open input stream for uri: $uri")
             }
 
             if (clearAuthData) {
@@ -325,7 +332,7 @@ class BackupRestoreViewModel @Inject constructor(
             }
         }.onFailure {
             reportException(it)
-            Toast.makeText(context, "Failed to preview CSV file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.csv_preview_error, Toast.LENGTH_SHORT).show()
         }
         return CsvImportState()
     }
@@ -448,7 +455,7 @@ class BackupRestoreViewModel @Inject constructor(
         if (songs.isEmpty()) {
             Toast.makeText(
                 context,
-                "No songs found. Invalid file, or perhaps no song matches were found.",
+                context.getString(R.string.csv_no_song_matches),
                 Toast.LENGTH_SHORT
             ).show()
         }

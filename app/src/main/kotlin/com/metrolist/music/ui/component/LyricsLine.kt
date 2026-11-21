@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
@@ -76,7 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.WordTimestamp
-import com.metrolist.music.playback.PlayerConnection
+import androidx.media3.common.Player
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.ui.theme.SatoshiFontFamily
 import kotlinx.coroutines.isActive
@@ -185,7 +186,7 @@ internal fun LyricsLine(
     isSelectionModeActive: Boolean,
     currentPositionState: Long,
     lyricsOffset: Long,
-    playerConnection: PlayerConnection,
+    player: Player?,
     lyricsTextSize: Float,
     lyricsLineSpacing: Float,
     expressiveAccent: Color,
@@ -197,20 +198,19 @@ internal fun LyricsLine(
     enabledLanguages: List<String>,
     romanizeLyrics: Boolean,
     onSizeChanged: (Int) -> Unit,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    lyricsBlurEnabled: Boolean = true
+    lyricsBlurEnabled: Boolean = true,
+    inactiveLyricsAlphaMultiplier: Float = 1f,
+    playbackPosition: (() -> Long)? = null,
 ) {
 
     val itemModifier = modifier
         .fillMaxWidth()
         .onSizeChanged { onSizeChanged(it.height) }
         .clip(FolioShape(8.dp))
-        .irideFolioCombinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick
-        )
+        .then(if (onClick != null) Modifier.irideFolioCombinedClickable(onClick = onClick, onLongClick = onLongClick) else Modifier)
         .background(
             color = if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent,
             shape = FolioShape(8.dp)
@@ -291,7 +291,7 @@ internal fun LyricsLine(
         @Composable
         fun LyricContent() {
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = agentAlignment) {
-                val inactiveAlpha = if (item.isBackground) 0.22f else 0.50f
+                val inactiveAlpha = (if (item.isBackground) 0.22f else 0.50f) * inactiveLyricsAlphaMultiplier
                 val activeAlpha = 1f
                 val focusedAlpha = if (item.isBackground) 0.5f else 0.3f
 
@@ -300,7 +300,11 @@ internal fun LyricsLine(
                 } else if (isAutoScrollEnabled && displayedCurrentLineIndex >= 0) {
                     when (abs(index - displayedCurrentLineIndex)) {
                         0 -> focusedAlpha
-                        1 -> 0.30f; 2 -> 0.28f; 3 -> 0.22f; 4 -> 0.16f; else -> 0.12f
+                        1 -> 0.30f * inactiveLyricsAlphaMultiplier
+                        2 -> 0.28f * inactiveLyricsAlphaMultiplier
+                        3 -> 0.22f * inactiveLyricsAlphaMultiplier
+                        4 -> 0.16f * inactiveLyricsAlphaMultiplier
+                        else -> 0.12f * inactiveLyricsAlphaMultiplier
                     }
                 } else inactiveAlpha
                 val animatedAlpha by animateFloatAsState(targetAlpha, tween(500, easing = FastOutSlowInEasing), label = "lyricsLineAlpha")
@@ -355,7 +359,8 @@ internal fun LyricsLine(
                         isActiveLine = isActiveLine,
                         currentPositionState = currentPositionState,
                         lyricsOffset = lyricsOffset,
-                        playerConnection = playerConnection,
+                        player = player,
+                        playbackPosition = playbackPosition,
                         lyricStyle = lyricStyle,
                         lineColor = lineColor,
                         expressiveAccent = expressiveAccent,
@@ -432,7 +437,8 @@ private fun WordLevelLyrics(
     isActiveLine: Boolean,
     currentPositionState: Long,
     lyricsOffset: Long,
-    playerConnection: PlayerConnection,
+    player: Player?,
+    playbackPosition: (() -> Long)?,
     lyricStyle: TextStyle,
     lineColor: Color,
     expressiveAccent: Color,
@@ -445,28 +451,31 @@ private fun WordLevelLyrics(
     val textMeasurer = rememberTextMeasurer()
 
     var smoothPosition by remember { mutableLongStateOf(currentPositionState + lyricsOffset) }
+    val livePlayer by rememberUpdatedState(player)
+    val liveLyricsOffset by rememberUpdatedState(lyricsOffset)
 
-    LaunchedEffect(isActiveLine) {
-        if (isActiveLine) {
-            var lastPlayerPos = playerConnection.player.currentPosition
+    LaunchedEffect(isActiveLine, playbackPosition, if (playbackPosition == null) player else null) {
+        if (isActiveLine && (player != null || playbackPosition != null)) {
+            fun readPosition() = playbackPosition?.invoke() ?: livePlayer?.currentPosition ?: 0L
+            var lastPlayerPos = readPosition()
             var lastUpdateTime = System.currentTimeMillis()
             while (isActive) {
                 withFrameMillis {
                     val now = System.currentTimeMillis()
-                    val playerPos = playerConnection.player.currentPosition
+                    val playerPos = readPosition()
                     if (playerPos != lastPlayerPos) {
                         lastPlayerPos = playerPos
                         lastUpdateTime = now
                     }
                     val elapsed = now - lastUpdateTime
-                    smoothPosition = lastPlayerPos + lyricsOffset + (if (playerConnection.player.isPlaying) elapsed else 0)
+                    smoothPosition = lastPlayerPos + liveLyricsOffset + (if (livePlayer?.isPlaying == true) elapsed else 0)
                 }
             }
         }
     }
 
-    LaunchedEffect(isActiveLine, currentPositionState) {
-        if (!isActiveLine) {
+    LaunchedEffect(isActiveLine, currentPositionState, player, playbackPosition) {
+        if (!isActiveLine || (player == null && playbackPosition == null)) {
             smoothPosition = currentPositionState + lyricsOffset
         }
     }

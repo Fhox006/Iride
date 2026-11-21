@@ -52,6 +52,7 @@ enum class DensityScale(
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
+val ReducedFolioModeKey = booleanPreferencesKey("folioLightweightEntrances")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
@@ -118,6 +119,16 @@ val CheckForUpdatesKey = booleanPreferencesKey("checkForUpdates")
 val UpdateNotificationsEnabledKey = booleanPreferencesKey("updateNotifications")
 val LastUpdateCheckTimeKey = longPreferencesKey("lastUpdateCheckTime")
 val UpdateDownloadIdKey = longPreferencesKey("updateDownloadId")
+val UpdateDownloadTagKey = stringPreferencesKey("updateDownloadTag")
+val UpdateDownloadAllowsRoamingKey = booleanPreferencesKey("updateDownloadAllowsRoaming")
+val UpdateHomeCountryIsoKey = stringPreferencesKey("updateHomeCountryIso")
+val UpdateRoamingAllowedTagKey = stringPreferencesKey("updateRoamingAllowedTag")
+val UpdateRoamingDeferredTagKey = stringPreferencesKey("updateRoamingDeferredTag")
+val UpdateRoamingDeferredUntilKey = longPreferencesKey("updateRoamingDeferredUntil")
+val UpdateReadyShownTagKey = stringPreferencesKey("updateReadyShownTag")
+val UpdateInstallPermissionPendingKey = booleanPreferencesKey("updateInstallPermissionPending")
+val UpdateInstallStartedTagKey = stringPreferencesKey("updateInstallStartedTag")
+val UpdateInstallPermissionPromptedTagKey = stringPreferencesKey("updateInstallPermissionPromptedTag")
 val BetaBannerDismissedVersionKey = stringPreferencesKey("betaBannerDismissedVersion")
 
 // Update announcement ("sneaky updater") state: the check runs silently on launch N and
@@ -308,12 +319,16 @@ val SimpMusicMigrationDoneKey = booleanPreferencesKey("simpMusicMigrationDone")
 val OnboardingCompletedKey = booleanPreferencesKey("onboardingCompleted")
 val GestureTutorialCompletedKey = booleanPreferencesKey("gestureTutorialCompleted")
 val GestureSetupRequiredKey = booleanPreferencesKey("gestureSetupRequired")
+val ButtonNavigationAcceptedKey = booleanPreferencesKey("buttonNavigationAccepted")
 val Android14AcknowledgedBuildKey = stringPreferencesKey("android14AcknowledgedBuild")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 val HomeCacheLastLoadedKey = longPreferencesKey("home_cache_last_loaded")
 val LastUpdateCheckKey = longPreferencesKey("last_update_check")
 val SmartBootKey = booleanPreferencesKey("smartBoot")
 val HeroCarouselSnapshotKey = stringPreferencesKey("heroCarouselSnapshot")
+val HeroCarouselPendingSnapshotKey = stringPreferencesKey("heroCarouselPendingSnapshot")
+val HomeRecommendationSnapshotKey = stringPreferencesKey("homeRecommendationSnapshot")
+val HomeRecommendationPendingSnapshotKey = stringPreferencesKey("homeRecommendationPendingSnapshot")
 val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
 val WrappedSeenKey = booleanPreferencesKey("wrapped_seen")
 val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
@@ -709,6 +724,26 @@ val LanguageCodeToName =
         "zh-HK" to "中文 (香港)",
         "ja" to "日本語",
         "ko" to "한국어",
+    )
+
+val FullyTranslatedAppLanguageNames =
+    linkedMapOf(
+        "en" to LanguageCodeToName.getValue("en"),
+        "ar" to LanguageCodeToName.getValue("ar"),
+        "cs" to LanguageCodeToName.getValue("cs"),
+        "de" to LanguageCodeToName.getValue("de"),
+        "es" to LanguageCodeToName.getValue("es"),
+        "es-US" to "Español (Estados Unidos)",
+        "fr" to LanguageCodeToName.getValue("fr"),
+        "it" to LanguageCodeToName.getValue("it"),
+        "ja" to LanguageCodeToName.getValue("ja"),
+        "ko" to LanguageCodeToName.getValue("ko"),
+        "pl" to LanguageCodeToName.getValue("pl"),
+        "pt-BR" to "Português (Brasil)",
+        "pt-PT" to LanguageCodeToName.getValue("pt-PT"),
+        "ru" to LanguageCodeToName.getValue("ru"),
+        "tr" to LanguageCodeToName.getValue("tr"),
+        "zh-CN" to LanguageCodeToName.getValue("zh-CN"),
     )
 
 val CountryCodeToName =

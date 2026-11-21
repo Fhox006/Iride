@@ -214,6 +214,12 @@ private fun NewMiniPlayer(
     // Player states - only collect what's needed at this level
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val videoPlaybackState by playerConnection.videoPlayback.state.collectAsState()
+    val displayMetadata = if (videoPlaybackState.isVideo) {
+        videoPlaybackState.audioMetadata ?: mediaMetadata
+    } else {
+        mediaMetadata
+    }
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
 
@@ -263,17 +269,17 @@ private fun NewMiniPlayer(
             (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
         }
 
-    LaunchedEffect(mediaMetadata?.id, miniPlayerBackground) {
+    LaunchedEffect(displayMetadata?.id, miniPlayerBackground) {
         gradientColors = emptyList()
         if (miniPlayerBackground == MiniPlayerBackgroundStyle.GRADIENT) {
-            val url = mediaMetadata?.thumbnailUrl
+            val url = displayMetadata?.thumbnailUrl
             if (url != null) {
                 withContext(Dispatchers.IO) {
                     val request = ImageRequest.Builder(context)
                         .data(url)
                         .size(100, 100)
                         .allowHardware(false)
-                        .memoryCacheKey("gradient_${mediaMetadata?.id}")
+                        .memoryCacheKey("gradient_${displayMetadata?.id}")
                         .build()
                     val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
                     val bitmap = result?.image?.toBitmap()
@@ -426,7 +432,7 @@ private fun NewMiniPlayer(
                 // Play button with progress - isolated composable
                 NewMiniPlayerPlayButton(
                     progressState = progressState,
-                    mediaMetadata = mediaMetadata,
+                    mediaMetadata = displayMetadata,
                     // Always white regardless of theme/background, so the progress ring stays
                     // legible instead of blending into whatever accent color is active.
                     primaryColor = Color.White,
@@ -438,7 +444,7 @@ private fun NewMiniPlayer(
 
                 // Song info - isolated composable
                 NewMiniPlayerSongInfo(
-                    mediaMetadata = mediaMetadata,
+                    mediaMetadata = displayMetadata,
                     onSurfaceColor = onSurfaceColor,
                     errorColor = errorColor,
                     modifier = Modifier.weight(1f),
@@ -450,7 +456,7 @@ private fun NewMiniPlayer(
                 if (isCasting) {
                     Icon(
                         painter = painterResource(R.drawable.cast_connected),
-                        contentDescription = "Casting",
+                        contentDescription = stringResource(R.string.current_casting),
                         tint = primaryColor,
                         modifier = Modifier.size(20.dp),
                     )
@@ -578,15 +584,7 @@ private fun NewMiniPlayerSongInfo(
             )
             if (metadata.explicit) MIcon.Explicit()
 
-            AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
-                Text(
-                    text = stringResource(R.string.error_playing),
-                    color = errorColor,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            PlaybackErrorIndicator(hasPlaybackError = error != null)
         }
     }
 }
@@ -627,7 +625,7 @@ private fun PlayPauseIconButton(
             painter = painterResource(
                 when {
                     playbackState == Player.STATE_ENDED -> R.drawable.replay
-                    effectiveIsPlaying -> R.drawable.pause
+                    effectiveIsPlaying -> R.drawable.mini_player_pause_bold
                     else -> R.drawable.play
                 },
             ),
@@ -660,4 +658,3 @@ private fun SkipNextIconButton(
         )
     }
 }
-

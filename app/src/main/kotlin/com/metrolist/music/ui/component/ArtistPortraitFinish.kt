@@ -4,6 +4,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 /** The gradient travels with the portrait in both directions. */
 internal fun Modifier.artistPortraitFinish(pigment: Color, opacity: () -> Float = { 1f }): Modifier {
@@ -20,6 +22,13 @@ internal fun Modifier.artistPortraitFinish(pigment: Color, opacity: () -> Float 
             drawContent()
             // Keep the artwork pigment fixed inside the clipped panel during the gesture.
             drawRect(gradient, alpha = opacity().coerceIn(0f, 1f))
+            val finishAlpha = opacity().coerceIn(0f, 1f)
+            drawRect(
+                pigment,
+                topLeft = Offset(0f, (size.height - 2f).coerceAtLeast(0f)),
+                size = Size(size.width, 2f),
+                alpha = finishAlpha,
+            )
         }
     }
 }

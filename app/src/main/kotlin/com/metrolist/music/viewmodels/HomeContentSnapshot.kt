@@ -15,8 +15,9 @@ class HomeContentSnapshot(private val scope: CoroutineScope) {
         hasContent: (T) -> Boolean,
         identity: (T) -> Any?,
         mergeWhileVisible: (T, T) -> T,
+        applyPendingWhenHidden: Boolean,
     ) {
-        val content = DeferredHomeContent(initial, hasContent, identity, mergeWhileVisible)
+        val content = DeferredHomeContent(initial, hasContent, identity, mergeWhileVisible, applyPendingWhenHidden)
         val displayed = MutableStateFlow(initial)
 
         fun setVisible(visible: Boolean) {
@@ -39,9 +40,10 @@ class HomeContentSnapshot(private val scope: CoroutineScope) {
         hasContent: (T) -> Boolean,
         identity: (T) -> Any? = { Unit },
         mergeWhileVisible: (T, T) -> T = { current, _ -> current },
+        applyPendingWhenHidden: Boolean = true,
     ): StateFlow<T> {
         bindings[key]?.let { return (it as Binding<T>).displayed.asStateFlow() }
-        val binding = Binding(source.value, hasContent, identity, mergeWhileVisible)
+        val binding = Binding(source.value, hasContent, identity, mergeWhileVisible, applyPendingWhenHidden)
         binding.setVisible(visible)
         bindings[key] = binding
         scope.launch(start = CoroutineStart.UNDISPATCHED) {

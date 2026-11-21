@@ -49,6 +49,7 @@ import com.metrolist.music.db.entities.SongEntity
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.metrolist.music.ui.theme.CollectionArtworkShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -154,6 +155,7 @@ private fun IrideTopItemCard(
     onClick: () -> Unit,
     tapModifier: Modifier = Modifier,
     coverModifier: Modifier = Modifier,
+    artworkShape: Shape = CardSquircle,
 ) {
     Column(
         modifier = Modifier
@@ -174,8 +176,8 @@ private fun IrideTopItemCard(
                     .fillMaxWidth()
                     .height(imageHeight)
                     .then(coverModifier)
-                    .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, CardSquircle)
-                    .clip(CardSquircle)
+                    .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, artworkShape)
+                    .clip(artworkShape)
             )
             Box(
                 modifier = Modifier
@@ -253,6 +255,7 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
         onClick = onClick,
         tapModifier = tap,
         coverModifier = cover,
+        artworkShape = CollectionArtworkShape,
     )
 }
 

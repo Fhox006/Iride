@@ -2,6 +2,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.navigation.NavController
 import androidx.navigation.NavBackStackEntry
@@ -12,9 +13,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.draw.alpha
 import java.util.UUID
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -22,6 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,9 +35,12 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
@@ -44,6 +49,9 @@ import androidx.compose.ui.platform.LocalGraphicsContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.viewmodels.prefetchArtistPage
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -59,6 +67,7 @@ internal data class ArtistPortraitSeed(
     val artwork: IrideArtistArtwork,
     val thumbnailUrl: String?,
     val bounds: Rect,
+    val borderColor: Color,
     val sourceEntryId: String?,
     val sourceControls: Map<String, Rect>,
 )
@@ -86,15 +95,32 @@ internal class ArtistPortraitNavigation(
         }
     }
 
-    fun select(sourceKey: String, artistId: String, name: String, artwork: IrideArtistArtwork, thumbnailUrl: String?, bounds: Rect) {
+    fun select(
+        sourceKey: String,
+        artistId: String,
+        name: String,
+        artwork: IrideArtistArtwork,
+        thumbnailUrl: String?,
+        bounds: Rect,
+        borderColor: Color,
+    ) {
+        if (backdrop.lightweightMode) return
         backdrop.capture(navController.currentBackStackEntry?.id)
-        seed = ArtistPortraitSeed(sourceKey, artistId, name, artwork, thumbnailUrl, bounds, navController.currentBackStackEntry?.id,
+        seed = ArtistPortraitSeed(sourceKey, artistId, name, artwork, thumbnailUrl, bounds, borderColor, navController.currentBackStackEntry?.id,
             controls.values.associate { it.first to it.second })
         pending = true
         selectedAtMillis = android.os.SystemClock.uptimeMillis()
     }
 
     fun transition(from: NavBackStackEntry?, to: NavBackStackEntry?): Boolean {
+        if (usesSimpleSearchSectionMotion(from, to)) {
+            pending = false
+            return false
+        }
+        if (backdrop.lightweightMode) {
+            pending = false
+            return false
+        }
         if (from == null || to == null) return false
         val entering = hasPendingSelection() && to.destination.route?.startsWith("artist/{artistId}?") == true &&
             seed?.sourceEntryId == from.id && to.arguments?.getString("artistId") == seed?.artistId
@@ -118,11 +144,17 @@ internal class ArtistPortraitNavigation(
         return true
     }
 
-    fun isPair(from: NavBackStackEntry, to: NavBackStackEntry): Boolean =
+    fun retain(entryIds: Set<String>) {
+        flights.keys.retainAll(entryIds)
+        if (flights.values.none { it.sourceKey == seed?.sourceKey }) seed = null
+    }
+
+    fun isPair(from: NavBackStackEntry, to: NavBackStackEntry): Boolean = !backdrop.lightweightMode && !usesSimpleSearchSectionMotion(from, to) && (
         (hasPendingSelection() && to.destination.route?.startsWith("artist/{artistId}?") == true &&
             seed?.sourceEntryId == from.id && to.arguments?.getString("artistId") == seed?.artistId) ||
             flights[from.id]?.sourceEntryId == to.id ||
             flights[to.id]?.sourceEntryId == from.id
+        )
 }
 
 internal val LocalArtistPortraitTransitionActive = staticCompositionLocalOf { false }
@@ -133,20 +165,26 @@ internal val LocalArtistPortraitNavigation =
 @Composable
 internal fun IrideArtistNavigationTransitions(
     navController: NavController,
-    onTouchLockChanged: (Boolean) -> Unit,
+    onTransitionLockChanged: (touchLocked: Boolean, backLocked: Boolean) -> Unit,
     content: @Composable () -> Unit,
 ) {
     val graphicsContext = LocalGraphicsContext.current
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val scope = rememberCoroutineScope()
-    val backdrop = remember(navController, graphicsContext) { IrideExpansionBackdrop(graphicsContext, scope) }
-    val portraits = remember(navController) { ArtistPortraitNavigation(navController, backdrop) }
-    val collections = remember(navController, backdrop, density, layoutDirection) {
+    val lightweightMode by rememberLightweightFolioMode()
+    if (lightweightMode) {
+        content()
+        return
+    }
+    val backdrop = remember(navController, graphicsContext, density, layoutDirection, lightweightMode) {
+        IrideExpansionBackdrop(graphicsContext, scope, density, layoutDirection, lightweightMode)
+    }
+    val portraits = remember(navController, backdrop) { ArtistPortraitNavigation(navController, backdrop) }
+    val collections = remember(navController, backdrop, graphicsContext, density, layoutDirection) {
         CollectionExpansionNavigation(navController, backdrop, graphicsContext, density, layoutDirection)
     }
-    val backdropBlurs = rememberExpansionBackdropBlurs()
-    val backdropLayer = rememberGraphicsLayer()
+    val backdropBlurs = rememberExpansionBackdropBlurs(enabled = !backdrop.lightweightMode)
     DisposableEffect(backdrop) { onDispose { backdrop.dispose() } }
     DisposableEffect(collections) { onDispose { collections.dispose() } }
 
@@ -162,13 +200,13 @@ internal fun IrideArtistNavigationTransitions(
     val fallbackTop = with(LocalDensity.current) { 24.dp.toPx() }
     collections.fallbackBounds = Rect(fallbackWidth / 2f - fallbackSize / 2f, fallbackTop,
         fallbackWidth / 2f + fallbackSize / 2f, fallbackTop + fallbackSize)
-    collections.motionEnabled = !reducedMotion
+    collections.motionEnabled = !reducedMotion && !lightweightMode
     LaunchedEffect(flight) {
         if (flight > 0) {
             val runningFlight = flight
             val outgoing = outgoingEntryId
             try {
-                if (flying) {
+                if (flying && !backdrop.lightweightMode) {
                     Animatable(0f).animateTo(1f, tween(IrideExpansionMotion.Duration, easing = IrideExpansionMotion.Easing)) {
                         backdrop.returnBlur = if (returning) 1f - value else value
                     }
@@ -178,7 +216,6 @@ internal fun IrideArtistNavigationTransitions(
                 navController.visibleEntries.first { entries -> entries.none { it.id == outgoing } }
                 flying = false
                 backdrop.inFlight = false
-                backdrop.gesturePreview = false
                 backdrop.returnBlur = 0f
                 backdrop.progress = null
                 backdrop.returning = false
@@ -186,12 +223,15 @@ internal fun IrideArtistNavigationTransitions(
                 collectionActive = collections.settle(navController.currentBackStackEntry)
                 // The visible page's parent snapshot is used by its next predictive gesture.
                 backdrop.show(if (collectionActive) collections.source?.entryId else if (active) portraits.seed?.sourceEntryId else null)
-                backdrop.retain(navController.currentBackStack.value.map { it.id }.toSet())
+                val retainedEntries = navController.currentBackStack.value.map { it.id }.toSet()
+                backdrop.retain(retainedEntries)
+                portraits.retain(retainedEntries)
                 // Retire GPU resources after the final visible artwork has left the display list.
                 repeat(2) { withFrameNanos { } }
                 collections.releaseRetired()
+                backdrop.releaseRetiredScenes()
             } finally {
-                if (flight == runningFlight) onTouchLockChanged(false)
+                if (flight == runningFlight) onTransitionLockChanged(false, false)
             }
         }
     }
@@ -210,15 +250,15 @@ internal fun IrideArtistNavigationTransitions(
                     backdrop.returnBlur = if (returning) 1f else 0f
                     backdrop.progress = null
                     backdrop.inFlight = true
-                    backdrop.gesturePreview = false
+                    backdrop.previewGesture = null
                     flying = true
-                    onTouchLockChanged(true)
+                    onTransitionLockChanged(true, active && returning)
                 } else {
                     flying = false
                     backdrop.inFlight = false
-                    backdrop.gesturePreview = false
+                    backdrop.previewGesture = null
                     backdrop.returnBlur = 0f
-                    onTouchLockChanged(false)
+                    onTransitionLockChanged(false, false)
                 }
                 flight++
                 previous = next
@@ -227,30 +267,31 @@ internal fun IrideArtistNavigationTransitions(
         navController.addOnDestinationChangedListener(listener)
         onDispose {
             navController.removeOnDestinationChangedListener(listener)
-            onTouchLockChanged(false)
+            onTransitionLockChanged(false, false)
         }
     }
-    SharedTransitionLayout(Modifier.drawWithContent {
-        // Show the real previous page when NavHost has it composed. Before pop, its
-        // retained scene fills the exposed area of the dragged panel immediately.
-        if (backdrop.visible) backdrop.layer?.takeUnless { it.isReleased }?.let { previousPage ->
-            backdropLayer.renderEffect = backdropBlurs[(backdrop.blurProgress.coerceIn(0f, 1f) * 20f).toInt()]
-            backdropLayer.record {
-                val snapshot = backdrop.snapshot
-                if (snapshot != null) drawImage(snapshot) else drawLayer(previousPage)
+    Box {
+        // Isolate the retained scene from NavHost. Only the layer's effect changes on
+        // animation frames; its full-resolution display list is reused by the renderer.
+        Box(Modifier.matchParentSize().graphicsLayer {
+            renderEffect = if (backdrop.useRetainedScene && !backdrop.hasFrozenScene) {
+                backdropBlurs[(backdrop.blurProgress.coerceIn(0f, 1f) * backdropBlurs.lastIndex).toInt()]
+            } else null
+        }.drawWithContent {
+            if (backdrop.useRetainedScene && !backdrop.drawFrozenScene(this)) {
+                backdrop.layer?.takeUnless { it.isReleased }?.let { drawLayer(it) }
             }
-            drawLayer(backdropLayer)
+        })
+        SharedTransitionLayout {
+            CompositionLocalProvider(
+                LocalSharedTransitionScope provides this,
+                LocalArtistPortraitNavigation provides portraits,
+                LocalArtistPortraitTransitionActive provides active,
+                LocalCollectionExpansionNavigation provides collections,
+                LocalCollectionExpansionActive provides collectionActive,
+                LocalIrideExpansionBackdrop provides backdrop,
+            ) { content() }
         }
-        drawContent()
-    }) {
-        CompositionLocalProvider(
-            LocalSharedTransitionScope provides this,
-            LocalArtistPortraitNavigation provides portraits,
-            LocalArtistPortraitTransitionActive provides active,
-            LocalCollectionExpansionNavigation provides collections,
-            LocalCollectionExpansionActive provides collectionActive,
-            LocalIrideExpansionBackdrop provides backdrop,
-        ) { content() }
     }
 }
 
@@ -290,10 +331,43 @@ internal object ArtistPortraitMotion {
 
 /** Clips every layer of the artist page to the same shrinking device-shaped panel. */
 @Composable
-internal fun artistPortraitPanelModifier(progress: State<Float>, frame: () -> Rect): Modifier {
+internal fun artistPortraitPanelModifier(progress: State<Float>, gesture: IridePanelGestureMotion, frame: () -> Rect): Modifier {
     val source = LocalArtistPortraitNavigation.current?.seed?.bounds ?: return Modifier
     if (!LocalArtistPortraitTransitionActive.current || rememberReducedMotion()) return Modifier
-    return irideExpansionPanelModifier(source, source.width / 2f, progress, frame)
+    return irideExpansionPanelModifier(source, source.width / 2f, progress, gesture, continuousCorners = false, frame = frame)
+}
+
+/** Keep source artwork edge visible while the full artist header returns to its tile. */
+@Composable
+internal fun Modifier.artistPortraitReturnBorder(
+    progress: State<Float>,
+    frame: Rect,
+    color: Color,
+): Modifier {
+    val seed = LocalArtistPortraitNavigation.current?.seed ?: return this
+    if (frame.width <= 0f) {
+        return this
+    }
+    val baseStroke = with(LocalDensity.current) { IrideBaseBorderWidth.toPx() }
+    return drawWithContent {
+        drawContent()
+        val p = progress.value.coerceIn(0f, 1f)
+        val aperture = IrideExpansionMotion.aperture(seed.bounds, frame, p)
+        val panelScale = (aperture.width / frame.width).coerceAtLeast(0.001f)
+        val strokeWidth = (baseStroke / panelScale).coerceAtMost(size.minDimension * 0.2f)
+        val shape = ArtistReturnPhotoShape(IrideExpansionMotion.artistReturnPhotoRoundness(p))
+        val outline = shape.createOutline(
+            Size(
+                (size.width - strokeWidth).coerceAtLeast(0f),
+                (size.height - strokeWidth).coerceAtLeast(0f),
+            ),
+            layoutDirection,
+            this,
+        )
+        translate(strokeWidth / 2f, strokeWidth / 2f) {
+            drawPath(Path().apply { addOutline(outline) }, color, style = Stroke(strokeWidth))
+        }
+    }
 }
 
 /** Ink stays at its final size; the moving aperture reveals it without stretching it. */
@@ -393,28 +467,41 @@ internal fun rememberArtistPortraitTile(
     val entryId = LocalCollectionSourceEntry.current
     val key = rememberSaveable(artistId, entryId) { UUID.randomUUID().toString() }
     val tile = remember(key) { ArtistPortraitTileState(key) }
+    val borderColor = MaterialTheme.colorScheme.strokeCard
+    val hiddenPortrait = rememberGraphicsLayer()
     val artwork by rememberIrideArtistArtwork(artistId, url, name, channelId, externalEnabled, highResolution = false)
+    val currentArtwork by rememberUpdatedState(artwork)
+    val artworkLoader = rememberArtistArtworkLoader()
+    val artworkRequest = remember(artistId, name, url, channelId, externalEnabled) {
+        ArtistArtworkRequest(artistId, name, url, channelId, externalEnabled)
+    }
     val scope = LocalAnimatedVisibilityScope.current
+    val backdrop = LocalIrideExpansionBackdrop.current
     val inFlight = !reducedMotion && LocalArtistPortraitTransitionActive.current &&
         navigation.seed?.sourceKey == tile.key && scope != null
-    val sourceProgress = if (inFlight) {
-        val value by scope.transition.animateFloat(
+    if (inFlight) {
+        scope.transition.animateFloat(
             transitionSpec = { tween(ArtistPortraitMotion.Duration, easing = ArtistPortraitMotion.Easing) },
             label = "artistTileVisibility",
         ) { if (it == EnterExitState.Visible) 1f else 0f }
-        value
-    } else 1f
-    val tap = Modifier.pointerInput(tile, artwork, url, reducedMotion) {
+    }
+    val tap = Modifier.pointerInput(tile, artworkRequest, reducedMotion) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val detailPreload = artworkLoader.prefetchHighResolution(artworkRequest)
+            if (externalEnabled && artistId.startsWith("UC")) prefetchArtistPage(artistId)
             val up = waitForUpOrCancellation(PointerEventPass.Initial)
             if (up != null && up.uptimeMillis - down.uptimeMillis < android.view.ViewConfiguration.getLongPressTimeout() &&
-                !reducedMotion && artwork != null && tile.bounds.width > 0f && tile.bounds.height > 0f) {
-                navigation.select(tile.key, artistId, name, artwork!!, url, tile.bounds)
-            }
+                !reducedMotion && currentArtwork != null && tile.bounds.width > 0f && tile.bounds.height > 0f) {
+                navigation.select(tile.key, artistId, name, currentArtwork!!, url, tile.bounds, borderColor)
+            } else detailPreload?.cancel()
         }
     }
     val portrait = Modifier.onGloballyPositioned { tile.bounds = it.irideUnclippedBoundsInWindow() }
-        .alpha(if (inFlight && sourceProgress < 1f) 0f else 1f)
+        .drawWithContent {
+            if (inFlight && backdrop?.artworkInFlight == true) {
+                hiddenPortrait.record { this@drawWithContent.drawContent() }
+            } else drawContent()
+        }
     return tap to portrait
 }

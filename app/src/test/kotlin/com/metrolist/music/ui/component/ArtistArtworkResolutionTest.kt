@@ -2,9 +2,19 @@ package com.metrolist.music.ui.component
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class ArtistArtworkResolutionTest {
+    @Test
+    fun flightOnlyAcceptsSharperPixelsOfTheSamePhoto() {
+        assertTrue(artistArtworkCanUpgrade("photo", "photo", 192, 1200))
+        assertFalse(artistArtworkCanUpgrade("photo", "editorial", 192, 1200))
+        assertFalse(artistArtworkCanUpgrade(null, null, 192, 1200))
+        assertFalse(artistArtworkCanUpgrade("photo", "photo", 1200, 448))
+        assertFalse(artistArtworkCanUpgrade("photo", "photo", 1200, 1200))
+    }
+
     @Test
     fun allowsFourKWhenItsDecodedPhotoFitsTheBudget() {
         assertEquals(3840, artistArtworkDetailResolution(64 * 1024 * 1024))
